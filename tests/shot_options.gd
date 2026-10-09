@@ -1,5 +1,6 @@
 extends SceneTree
 ## Captura del menú y de las pestañas de Opciones (con ventana; usa y deja limpio el archivo de ajustes del jugador).
+## Correr con GAME_SANDBOX=1 para no tocar los archivos reales del jugador.
 ## Uso: ... --rendering-driver opengl3 --resolution 1280x720 -s tests/shot_options.gd -- SALIDA [en]
 const Settings := preload("res://scripts/settings.gd")
 func _init() -> void:
@@ -17,5 +18,6 @@ func _init() -> void:
 		main.main_menu.options.show_tab(t)
 		for i in 60: await process_frame
 		root.get_texture().get_image().save_png(args[0] + "_" + t + ".png")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
+	if Settings.path.contains("test_"):   # (nunca se borran los ajustes reales: correr con GAME_SANDBOX=1)
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	quit()

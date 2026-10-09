@@ -179,6 +179,13 @@ var _jobs: Array = []       # hilos de generación: la torre de la etapa actual 
 
 
 func _ready() -> void:
+	# Las pruebas (y las capturas hechas con GAME_SANDBOX=1) no tocan la partida, el perfil ni los ajustes reales del jugador.
+	if test_mode or DisplayServer.get_name() == "headless" or OS.get_environment("GAME_SANDBOX") == "1":
+		SaveGame.path = "user://test_save.json"
+		Profile.path = "user://test_profile.json"
+		Settings.path = "user://test_settings.json"
+		Profile._loaded_from = ""
+		Settings._loaded = false
 	if test_mode:
 		casino_balance = false
 		dice_always = false
