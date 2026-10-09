@@ -53,6 +53,7 @@ func test_start() -> void:
 	main.main_menu.credits.find_child("volver_creditos", true, false).pressed.emit()
 	check(not main.main_menu.credits.visible and cb.visible and main.main_menu.column.get_parent().visible, "Volver cierra los creditos")
 	# Entrar al juego: etapa 1 con torre de 25 pisos
+	main._cancel_jobs()   # (sin partida guardada el menu ya viene generando la etapa 1 con el largo normal: se descarta)
 	main.tower_rows = 4  # torre chica para que el test sea rapido
 	main.test_mode_jobs = true
 	main.main_menu.buttons["nueva"].pressed.emit()   # abre el selector de escenario
