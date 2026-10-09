@@ -27,6 +27,7 @@ var info_panel: Control  # descripción de una habilidad (se abre al tocar su í
 var info_box: VBoxContainer
 var info_close: Button
 var info_icon: Control
+var tip: Control         # cartel con la información de la habilidad bajo el mouse (o con el foco)
 
 
 func _init() -> void:
@@ -62,6 +63,41 @@ func _init() -> void:
 	back_button.pressed.connect(func(): back.emit())
 	col.add_child(back_button)
 	_build_info_panel()
+	tip = UI.label(self, "", 2, Draw.MARBLE, false, 520)
+	tip.name = "cartel"
+	tip.plate_alpha = 1.0
+	tip.z_index = 20
+	tip.visible = false
+
+
+## El texto del cartel de una habilidad: nombre, si se tiene, qué hace y en qué escenarios se gana.
+func tip_text(id: String) -> String:
+	var a := Abilities.get_ability(id)
+	var names: Array[String] = []
+	for s in Scenarios.scenarios_for_ability(id):
+		names.append(Loc.t(str(s.name)))
+	return "%s
+%s
+%s
+%s" % [Loc.t(str(a.name)), Loc.t("Ya la tenés") if Profile.has_ability(id) else Loc.t("Todavía no la tenés"), Loc.t(str(a.desc)),
+			Loc.f("Se gana escapando en: %s", [", ".join(names)])]
+
+
+func show_tip(id: String, tile: Control) -> void:
+	if info_panel.visible:
+		return
+	tip.text = tip_text(id)
+	tip.visible = true
+	var vs := get_viewport_rect().size
+	var sz := tip.get_combined_minimum_size()
+	var pos := tile.global_position + Vector2((tile.size.x - sz.x) * 0.5, tile.size.y + 6.0)
+	if pos.y + sz.y > vs.y - 8.0:   # no entra abajo: va arriba del casillero
+		pos.y = tile.global_position.y - sz.y - 6.0
+	tip.global_position = Vector2(clampf(pos.x, 8.0, maxf(vs.x - sz.x - 8.0, 8.0)), maxf(pos.y, 8.0))
+
+
+func hide_tip() -> void:
+	tip.visible = false
 
 
 func _build_info_panel() -> void:
@@ -116,8 +152,13 @@ func refresh() -> void:
 		grid.add_child(tile)
 		tile.setup(a.id, Profile.has_ability(a.id))
 		tile.pressed.connect(show_info.bind(a.id))
+		tile.mouse_entered.connect(show_tip.bind(a.id, tile))
+		tile.focus_entered.connect(show_tip.bind(a.id, tile))
+		tile.mouse_exited.connect(hide_tip)
+		tile.focus_exited.connect(hide_tip)
 		tiles[a.id] = tile
 	info_panel.visible = false
+	hide_tip()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -128,6 +169,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Abre la descripción de una habilidad: qué hace, cómo se consiguió (o cómo conseguirla) y en qué escenarios.
 func show_info(id: String) -> void:
+	hide_tip()
 	var a := Abilities.get_ability(id)
 	var owned := Profile.has_ability(id)
 	for ch in info_box.get_children():
