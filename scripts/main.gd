@@ -11,6 +11,7 @@ const SILHOUETTE_SHADER := preload("res://shaders/silhouette.gdshader")
 const RunState := preload("res://scripts/run_state.gd")
 const Controls := preload("res://scripts/controls.gd")
 const Graphics := preload("res://scripts/graphics.gd")
+const LivesHud := preload("res://scripts/lives_hud.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino_rules.gd")
 const BalanceScreen := preload("res://scripts/casino_balance_screen.gd")
@@ -139,6 +140,7 @@ var _trial_msg := ""         # resultado de la prueba superada (se muestra al ll
 var _gen_failures := 0
 var lost_screen              # pantalla de derrota: Reintentar o Salir al menú
 var dice_always := true      # los dados del tabernero se ven en toda pantalla de carga, aunque la torre ya esté lista (las pruebas lo apagan)
+var lives_hud                # las tres vidas (corazones 3D que giran, abajo a la derecha)
 var targeting := {}          # consumible con objetivo en uso ({id, slot}): se elige un bloque con el mouse (conversores y teletransporte)
 var _target_box: MeshInstance3D   # marca el bloque bajo el mouse mientras se elige (verde si sirve, rojo si no)
 var _press_pos := Vector2.ZERO
@@ -336,10 +338,14 @@ func _build_hud() -> void:
 	left_bar.min_y = 262.0   # debajo de la etapa, la claridad, la cuenta de la fila de abajo y la racha
 	left_bar.tip = item_tip
 	left_bar.slot_pressed.connect(use_consumable_slot)
+	left_bar.discarded.connect(_on_item_discarded)
 	right_bar = ItemBar.new()
 	right_bar.name = "barra_boosts"
 	layer.add_child(right_bar)
 	right_bar.edge = 1
+	right_bar.discarded.connect(_on_item_discarded)
+	lives_hud = LivesHud.new()
+	layer.add_child(lives_hud)
 	right_bar.tip = item_tip
 	_bind_bars()
 	perk_label = _label(layer, 2, Color(0.8, 0.95, 0.85))
@@ -1375,6 +1381,8 @@ func _on_anim_done() -> void:
 			enter_casino()
 	elif logic.lost and trial.get("no_retry", false) and not training:
 		end_run(false, Loc.f("Fallaste la prueba «%s»: %s.", [Loc.t(trial.name), Loc.t(logic.lost_reason).to_lower()]))
+	elif logic.lost and not training and not run.can_revive():
+		end_run(false, Loc.t("Te quedaste sin vidas."))
 	elif logic.lost:
 		var cost := run.restart_cost(true)   # (con un Tótem, reintentar después de morir es gratis)
 		lost_screen.show_loss(Loc.t(logic.lost_reason), cost, run.can_afford(cost), training)
@@ -1390,6 +1398,9 @@ func _flash(msg: String) -> void:
 
 
 func _refresh() -> void:
+	if lives_hud != null and run != null:
+		lives_hud.lives = run.lives
+		lives_hud.visible = not training
 	var state := "colgado" if logic.hang_dir != Vector3i.ZERO else "de pie"
 	var prof_text := ("ENTRENAMIENTO   " if training else "") + "Etapa %d/%d (ritmo %s)" % [stage_number, FINAL_STAGE, PACE_NAMES.get(profile.get("pace", "normal"), "normal")]
 	if lab_active:
@@ -1738,6 +1749,9 @@ func request_restart() -> void:
 		_flash(Loc.f("Prueba «%s»: no hay reintentos", [Loc.t(trial.name)]))
 		return
 	var dead: bool = logic.lost
+	if dead and not run.can_revive():
+		end_run(false, Loc.t("Te quedaste sin vidas."))
+		return
 	var cost := run.restart_cost(dead)
 	if not run.can_afford(cost):
 		end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost]))
@@ -2042,6 +2056,16 @@ func use_consumable_slot(slot: int) -> void:
 		cancel_targeting()
 		if same:
 			return
+	if id == "vida_extra":   # una vida más (máximo 3): es del run, no de la torre
+		if run.add_life():
+			run.use_consumable(id)
+			_flash(Loc.t("¡Una vida más!"))
+			Sfx.play("item")
+			_refresh()
+			save_game()
+		else:
+			_flash(Loc.f("Ya tenés las %d vidas", [RunState.MAX_LIVES]))
+		return
 	if Items.needs_target(id):
 		_begin_targeting(id, slot)
 		return
@@ -2055,6 +2079,15 @@ func use_consumable_slot(slot: int) -> void:
 		attempt_dirty = true
 		_refresh()
 		save_game()
+
+
+## Se tiró un ítem con clic derecho en la barra: se actualiza el HUD y se guarda. (Un boost tirado deja de valer desde el próximo intento.)
+func _on_item_discarded(item_kind: int, id: String) -> void:
+	_flash(Loc.f("Tiraste %s.", [Loc.t(str(Items.get_item(id).get("name", id)))]) + ("" if item_kind == ItemBar.Kind.CONSUMABLE else Loc.t(" Deja de valer desde el próximo intento.")))
+	Sfx.play("miss")
+	if logic != null:
+		_refresh()
+	save_game()
 
 
 # --- consumibles con objetivo (conversores y teletransporte) ------------------------------------------------------

@@ -11,6 +11,7 @@ const ICON_CUBE := 6.0
 
 signal pressed
 signal hovered(on: bool)
+signal discard   ## clic derecho: se quiere tirar el ítem
 
 var item_id := "":
 	set(v):
@@ -44,6 +45,10 @@ func is_empty() -> bool:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if not is_empty() and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		discard.emit()
+		accept_event()
+		return
 	if interactive and not is_empty() and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		pressed.emit()
 		accept_event()

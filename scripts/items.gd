@@ -66,7 +66,9 @@ const ALL: Array[Dictionary] = [
 	{"id": "doble_salto", "name": "Doble salto", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 110,
 		"desc": "Tu próximo salto sube 2 bloques en vez de 1."},
 	{"id": "totem", "name": "Tótem", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200, "passive": true,
-		"desc": "Si morís, reintentás la torre sin costo. Se gasta solo."},
+		"desc": "Si morís, reintentás la torre sin costo (ni claridad ni una vida). Se gasta solo."},
+	{"id": "vida_extra", "name": "Vida extra", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 220,
+		"desc": "Te da una vida más. Sólo se puede usar si tenés menos de 3."},
 	{"id": "teletransporte", "name": "Teletransporte", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 190, "target": true,
 		"desc": "Elegí con el mouse un bloque a 5 cubos o menos de vos y aparecés encima."},
 	# ---- consumibles baratos y bolsas de claridad ----

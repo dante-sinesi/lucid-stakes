@@ -33,6 +33,7 @@ var meta_consumable_slots := 0   # mejoras permanentes del Despertar (ver profil
 var restart_discount := 0.0
 var collapse_bonus := 0
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
+var lives := MAX_LIVES    # vidas: cuántas veces se puede reintentar después de morir (3 por partida, sin importar la etapa)
 var casino_visit := {}    # estado de la visita al casino actual (casino_rules.gd); no se guarda
 var vault := 0            # claridad guardada en la caja fuerte (casino_services.gd); se cobra con interés en el casino siguiente
 var vault_stage := 0      # etapa del casino en el que se guardó
@@ -40,6 +41,7 @@ var insurance := false    # seguro contratado: el primer reintento de la próxim
 
 ## Reintentar la torre cuesta claridad: la mitad de la ficha de la ruleta de la etapa, y un poco más por cada reintento
 ## que ya hiciste en esta misma torre (el primero cuesta 1 vez, el segundo 2 veces, etc.).
+const MAX_LIVES := 3
 const RESTART_BASE := 25
 const DICE_CAP := 150   # tope de claridad que se puede ganar con los dados en una partida
 
@@ -71,14 +73,32 @@ func restart_cost(dead := false) -> int:
 	return maxi(int(round(base * (1.0 - restart_discount))), 1)
 
 
-## Anota un reintento de la torre. Si fue gratis se gasta el seguro o, si no había, el Tótem (sólo al reintentar después de morir).
+## Anota un reintento de la torre. Después de morir, el Tótem (si lo tenés) lo hace gratis y sin gastar una vida; si no, cuesta una vida.
+## El seguro, si había, se gasta en el reintento gratis (si el Tótem ya lo cubrió, el seguro queda para otro).
 func note_retry(dead := false) -> void:
 	retries += 1
 	tower_retries += 1
-	if insurance:
-		insurance = false
-	elif dead and consumables.has("totem"):
+	var saved_by_totem := false
+	if dead and consumables.has("totem"):
 		use_consumable("totem")
+		saved_by_totem = true
+	elif insurance:
+		insurance = false
+	if dead and not saved_by_totem:
+		lives = maxi(lives - 1, 0)
+
+
+## ¿Se puede reintentar después de morir? (queda alguna vida o hay un Tótem)
+func can_revive() -> bool:
+	return lives > 0 or consumables.has("totem")
+
+
+## Suma una vida (máximo MAX_LIVES). false si ya están todas.
+func add_life() -> bool:
+	if lives >= MAX_LIVES:
+		return false
+	lives += 1
+	return true
 
 
 func can_afford_restart(dead := false) -> bool:
@@ -150,13 +170,41 @@ func use_consumable(id: String) -> bool:
 	return true
 
 
+## Por qué no se puede tirar el ítem de ese casillero ("" si se puede). Un boost que agranda las barras no se tira si lo demás ya no entraría.
+func discard_error(kind: String, index: int) -> String:
+	var list: Array = boosts if kind == "boost" else consumables
+	if index < 0 or index >= list.size():
+		return "No hay nada en ese lugar"
+	if kind == "boost":
+		var after: Array = boosts.duplicate()
+		after.remove_at(index)
+		var cap_b := BASE_BOOSTS
+		var cap_c := BASE_CONSUMABLES + meta_consumable_slots
+		for id in after:
+			cap_b += int(BOOST_SLOTS_FROM.get(id, 0))
+			cap_c += int(CONSUMABLE_SLOTS_FROM.get(id, 0))
+		if after.size() > cap_b or consumables.size() > cap_c:
+			return "Si lo tirás, lo demás no entraría en las barras"
+	return ""
+
+
+## Tira el ítem de ese casillero (sin recuperar nada). Devuelve el id tirado, o "" si no se pudo.
+func discard(kind: String, index: int) -> String:
+	if discard_error(kind, index) != "":
+		return ""
+	var list: Array = boosts if kind == "boost" else consumables
+	var id := str(list[index])
+	list.remove_at(index)
+	return id
+
+
 func to_dict() -> Dictionary:
 	return {"stage": stage, "claridad": claridad, "boosts": boosts.duplicate(), "consumables": consumables.duplicate(),
 			"casino_spent": casino_spent, "casino_won": casino_won, "retries": retries, "tower_retries": tower_retries,
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "collapse_bonus": collapse_bonus,
 			"scenario_id": scenario_id, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad,
-			"vault": vault, "vault_stage": vault_stage, "insurance": insurance}
+			"vault": vault, "vault_stage": vault_stage, "insurance": insurance, "lives": lives}
 
 
 func _schedule_out() -> Dictionary:
@@ -193,6 +241,7 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.vault = int(d.get("vault", 0))
 	r.vault_stage = int(d.get("vault_stage", 0))
 	r.insurance = bool(d.get("insurance", false))
+	r.lives = clampi(int(d.get("lives", MAX_LIVES)), 0, MAX_LIVES)
 	for st in d.get("trial_schedule", {}):
 		r.trial_schedule[int(st)] = str(d.trial_schedule[st])
 	return r

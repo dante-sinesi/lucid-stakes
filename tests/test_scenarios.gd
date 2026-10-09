@@ -296,7 +296,8 @@ func test_screens() -> void:
 	var colors_owned := {}
 	var colors_gray := {}
 	var ids: Array = AbilityArt.ART.keys()
-	check(ids.size() == Abilities.ALL.size(), "cada habilidad tiene un icono")
+	ids.erase("corazon")   # (el corazón de las vidas usa el mismo dibujo pero no es una habilidad)
+	check(ids.size() == Abilities.ALL.size() and AbilityArt.ART.has("corazon"), "cada habilidad tiene un icono (y las vidas su corazón)")
 	for id in ids:
 		for row in AbilityArt.ART[id].rows:
 			for ch in row:

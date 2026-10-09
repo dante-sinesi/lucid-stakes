@@ -878,6 +878,8 @@ func use_item(id: String) -> Dictionary:
 			return {"ok": true, "msg": "Doble salto listo: el próximo salto sube 2 bloques"}
 		"escudo", "totem":
 			return {"ok": false, "msg": "Se usa solo cuando hace falta"}
+		"vida_extra":
+			return {"ok": false, "msg": "Se usa desde el juego"}
 		"teletransporte", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta":
 			return {"ok": false, "msg": "Elegí un bloque con el mouse"}
 	return {"ok": false, "msg": "Consumible desconocido"}

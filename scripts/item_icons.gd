@@ -63,6 +63,8 @@ const ICONS := {
 		"....o....", "...oao...", "..oaaao..", "....a....", "...oao...", "..oaaao..", "....a....", "..obbbo..", ".ooooooo."]},
 	"totem": {"a": Color(0.62, 0.40, 0.20), "b": Color(1.0, 0.82, 0.25), "rows": [
 		"..ooooo..", ".oaaaaao.", ".oabaabo.", ".oaaaaao.", "..ooooo..", ".oabbbao.", ".oaaaaao.", ".oabbbao.", "..ooooo.."]},
+	"vida_extra": {"a": Color(0.92, 0.16, 0.27), "w": Color(1.0, 0.7, 0.75), "rows": [
+		".oo...oo.", "oaaoooaao", "oawaaaaao", "oaaaaaaao", "oaaaaaaao", ".oaaaaao.", "..oaaao..", "...oao...", "....o...."]},
 	"teletransporte": {"a": Color(0.68, 0.42, 1.0), "b": Color(0.97, 0.93, 1.0), "rows": [
 		".ooooooo.", "oaaaaaaao", "oabbbbbao", "oabaaabao", "oabaaabao", "oabaaabao", "oabbbbbao", "oaaaaaaao", ".ooooooo."]},
 	"desarmar": {"a": Color(0.35, 0.33, 0.40), "b": Color(0.95, 0.30, 0.20), "w": Color(0.80, 0.80, 0.90), "rows": [

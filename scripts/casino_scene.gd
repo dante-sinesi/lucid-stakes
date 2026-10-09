@@ -23,6 +23,7 @@ const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const CasinoTheme := preload("res://scripts/casino_theme.gd")
+const LivesHud := preload("res://scripts/lives_hud.gd")
 const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const Services := preload("res://scripts/casino_services.gd")
@@ -70,6 +71,7 @@ var hud_layer: CanvasLayer
 var left_bar
 var right_bar
 var clarity_counter
+var lives_hud
 var rule_label: Control      # la regla de la casa de esta sala y cómo viene
 var item_tip: Control
 var overlay: CanvasLayer
@@ -221,9 +223,13 @@ func _build_hud() -> void:
 	left_bar.edge = 0
 	left_bar.tip = item_tip
 	left_bar.setup(run, ItemBar.Kind.CONSUMABLE, false)
+	left_bar.discarded.connect(_on_item_discarded)
 	right_bar = ItemBar.new()
 	layer.add_child(right_bar)
 	right_bar.edge = 1
+	right_bar.discarded.connect(_on_item_discarded)
+	lives_hud = LivesHud.new()
+	layer.add_child(lives_hud)
 	right_bar.tip = item_tip
 	right_bar.setup(run, ItemBar.Kind.BOOST, false)
 	toast = _label(layer, 2, Color(1.0, 0.95, 0.85))
@@ -253,7 +259,16 @@ func _place_player() -> void:
 	player_node.rotation.y = atan2(facing.x, facing.y)
 
 
+## Se tiró un ítem con clic derecho en una barra: se actualiza el HUD y se avisa para guardar.
+func _on_item_discarded(_kind: int, id: String) -> void:
+	_flash(Loc.f("Tiraste %s.", [Loc.t(str(preload("res://scripts/items.gd").get_item(id).get("name", id)))]))
+	_refresh_hud()
+	changed.emit()
+
+
 func _refresh_hud() -> void:
+	if lives_hud != null:
+		lives_hud.lives = run.lives
 	if left_bar != null:
 		left_bar.refresh()
 		right_bar.refresh()
