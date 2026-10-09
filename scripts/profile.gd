@@ -1,0 +1,264 @@
+extends RefCounted
+## Perfil del jugador: lo que se conserva entre runs (meta-progresión). Se guarda en user://profile.json.
+##  - Luz: la moneda. Se gana al terminar cada run (según cuánto avanzaste, multiplicada por el escenario) y se gasta en la entrada
+##    de los escenarios (cada partida en un escenario de pago cuesta su entrada; La Pesadilla es gratis).
+##  - Habilidades persistentes: se ganan la primera vez que superás cada prueba (ver abilities.gd); valen para siempre.
+##  - Estadísticas: mejor etapa, runs, escapes, pruebas superadas.
+## Todo es estático (un solo perfil por proceso). Un archivo ilegible se ignora.
+
+const Abilities := preload("res://scripts/abilities.gd")
+const Scenarios := preload("res://scripts/scenarios.gd")
+const Trials := preload("res://scripts/trials.gd")
+const Cosmetics := preload("res://scripts/cosmetics.gd")
+const Characters := preload("res://scripts/characters.gd")
+const VERSION := 2
+
+## Ruta del archivo (las pruebas la cambian para no tocar el perfil real).
+static var path := "user://profile.json"
+static var data := {}
+static var _loaded_from := ""
+
+
+static func default_data() -> Dictionary:
+	return {"version": VERSION, "luz": 0, "luz_total": 0, "best_stage": 0, "runs": 0, "victories": 0, "trials_cleared": 0, "abilities": {}, "cosmetics": {},
+			"hat": "", "outfit": "", "characters": {"gato": true}, "character": "gato"}
+
+
+## Carga el perfil (una vez por ruta). Si no hay archivo o está dañado, uno vacío.
+static func load_profile() -> Dictionary:
+	if _loaded_from == path and not data.is_empty():
+		return data
+	data = default_data()
+	_loaded_from = path
+	if FileAccess.file_exists(path):
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f != null:
+			var json := JSON.new()
+			if json.parse(f.get_as_text()) == OK and typeof(json.data) == TYPE_DICTIONARY and int(json.data.get("version", 0)) == VERSION:
+				for k in default_data():
+					if json.data.has(k):
+						data[k] = json.data[k]
+				_migrate_cosmetics(json.data)
+	if not data.characters.has(Characters.DEFAULT):
+		data.characters[Characters.DEFAULT] = true
+	return data
+
+
+## Cuando los cosméticos eran colores del cubo: se pasan a la ropa equivalente (lo ya ganado no se pierde) y el aspecto elegido se pone
+## como gorro o prenda.
+static func _migrate_cosmetics(raw: Dictionary) -> void:
+	var cos: Dictionary = data.cosmetics
+	for old in Cosmetics.OLD_IDS:
+		if cos.has(old):
+			cos.erase(old)
+			cos[Cosmetics.OLD_IDS[old]] = true
+	for id in cos.keys():
+		if Cosmetics.get_cosmetic(str(id)).is_empty():
+			cos.erase(id)
+	var eq := str(raw.get("equipped", ""))
+	if eq != "":
+		eq = str(Cosmetics.OLD_IDS.get(eq, eq))
+		var c := Cosmetics.get_cosmetic(eq)
+		if not c.is_empty() and cos.has(eq):
+			data["hat" if c.slot == "gorro" else "outfit"] = eq
+
+
+static func save() -> void:
+	load_profile()
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(data))
+
+
+## Vuelve a un perfil vacío (y lo guarda). Para pruebas y "borrar progreso".
+static func reset() -> void:
+	data = default_data()
+	_loaded_from = path
+	save()
+
+
+static func luz() -> int:
+	return int(load_profile().luz)
+
+
+# --- escenarios ---------------------------------------------------------------------------------------------------
+
+static func can_enter(scenario_id: String) -> bool:
+	return luz() >= int(Scenarios.get_scenario(scenario_id).get("entry", 0))
+
+
+## Paga la entrada de un escenario. Devuelve false (y no cobra) si no alcanza la Luz.
+static func pay_entry(scenario_id: String) -> bool:
+	var cost := int(Scenarios.get_scenario(scenario_id).get("entry", 0))
+	if luz() < cost:
+		return false
+	var d := load_profile()
+	d.luz = int(d.luz) - cost
+	save()
+	return true
+
+
+# --- habilidades ---------------------------------------------------------------------------------------------------
+
+static func owned_abilities() -> Array[String]:
+	var out: Array[String] = []
+	for id in load_profile().abilities:
+		out.append(str(id))
+	return out
+
+
+static func has_ability(id: String) -> bool:
+	return load_profile().abilities.has(id)
+
+
+## Da una habilidad. Devuelve true si es nueva (si ya la tenías, no pasa nada).
+static func grant_ability(id: String) -> bool:
+	if id == "" or has_ability(id):
+		return false
+	load_profile().abilities[id] = true
+	save()
+	return true
+
+
+## Aplica a un run recién empezado las habilidades y el escenario elegido.
+static func apply_to_run(run) -> void:
+	Abilities.apply_to_run(run, owned_abilities())
+	run.price_mult = float(run.scenario().get("price_mult", 1.0))
+
+
+# --- Luz suelta y cosméticos ----------------------------------------------------------------------------------------
+
+## Suma Luz al perfil (por ejemplo, un premio de los dados de la pantalla de carga).
+static func add_luz(n: int) -> void:
+	var d := load_profile()
+	d.luz = maxi(int(d.luz) + n, 0)
+	d.luz_total = int(d.luz_total) + maxi(n, 0)
+	save()
+
+
+static func owned_cosmetics() -> Array[String]:
+	var out: Array[String] = []
+	for id in load_profile().cosmetics:
+		out.append(str(id))
+	return out
+
+
+static func has_cosmetic(id: String) -> bool:
+	return id == "" or load_profile().cosmetics.has(id)
+
+
+## Da un cosmético. Devuelve true si es nuevo.
+static func grant_cosmetic(id: String) -> bool:
+	if id == "" or load_profile().cosmetics.has(id):
+		return false
+	load_profile().cosmetics[id] = true
+	save()
+	return true
+
+
+## Se pone un gorro o una prenda que se tenga (va al hueco que le toca). "" no hace nada: para sacar algo, `unequip`.
+static func equip(id: String) -> bool:
+	var c := Cosmetics.get_cosmetic(id)
+	if c.is_empty() or not has_cosmetic(id):
+		return false
+	load_profile()["hat" if c.slot == "gorro" else "outfit"] = id
+	save()
+	return true
+
+
+## Se saca lo que lleva en el hueco ("gorro" o "prenda").
+static func unequip(slot: String) -> void:
+	load_profile()["hat" if slot == "gorro" else "outfit"] = ""
+	save()
+
+
+static func equipped_hat() -> String:
+	var id := str(load_profile().get("hat", ""))
+	return id if has_cosmetic(id) else ""
+
+
+static func equipped_outfit() -> String:
+	var id := str(load_profile().get("outfit", ""))
+	return id if has_cosmetic(id) else ""
+
+
+# --- personajes ----------------------------------------------------------------------------------------------------------
+
+static func owned_characters() -> Array[String]:
+	var out: Array[String] = []
+	for c in Characters.ALL:
+		if load_profile().characters.has(c.id):
+			out.append(c.id)
+	return out
+
+
+static func has_character(id: String) -> bool:
+	return load_profile().characters.has(id)
+
+
+## Desbloquea un personaje. Devuelve true si es nuevo.
+static func unlock_character(id: String) -> bool:
+	if Characters.get_character(id).id != id or has_character(id):
+		return false
+	load_profile().characters[id] = true
+	save()
+	return true
+
+
+## Elige con qué personaje se juega (sólo uno desbloqueado).
+static func select_character(id: String) -> bool:
+	if not has_character(id):
+		return false
+	load_profile().character = id
+	save()
+	return true
+
+
+static func character() -> String:
+	var id := str(load_profile().get("character", Characters.DEFAULT))
+	return id if has_character(id) else Characters.DEFAULT
+
+
+## Se superó una prueba: desbloquea al perrito. Devuelve los personajes nuevos.
+static func on_trial_cleared() -> Array[String]:
+	return _unlocked(["perro"])
+
+
+## Se ganó una habilidad: la de la prueba del Hielo total desbloquea al pingüino.
+static func on_ability(ability_id: String) -> Array[String]:
+	return _unlocked(["pinguino"] if ability_id == "garras_de_hielo" else [])
+
+
+## Se llegó a una etapa: la 10 desbloquea al conejito.
+static func on_stage_reached(stage: int) -> Array[String]:
+	return _unlocked(["conejo"] if stage >= 10 else [])
+
+
+static func _unlocked(ids: Array) -> Array[String]:
+	var out: Array[String] = []
+	for id in ids:
+		if unlock_character(str(id)):
+			out.append(str(id))
+	return out
+
+
+# --- fin de run ------------------------------------------------------------------------------------------------------
+
+## Luz que da un run: 3 por cada torre superada, 12 por cada prueba y 100 por escapar; el escenario la multiplica.
+static func luz_for_run(run, victory: bool) -> int:
+	var base: int = run.towers_cleared * 3 + run.trials_cleared * 12 + (100 if victory else 0)
+	return int(round(base * float(run.scenario().get("luz_mult", 1.0))))
+
+
+## Anota un run terminado: suma Luz y estadísticas, y guarda. Devuelve la Luz ganada.
+static func record_run(run, victory: bool) -> int:
+	var d := load_profile()
+	var gained := luz_for_run(run, victory)
+	d.luz = int(d.luz) + gained
+	d.luz_total = int(d.luz_total) + gained
+	d.runs = int(d.runs) + 1
+	d.victories = int(d.victories) + (1 if victory else 0)
+	d.best_stage = maxi(int(d.best_stage), run.max_stage)
+	d.trials_cleared = int(d.trials_cleared) + run.trials_cleared
+	save()
+	return gained

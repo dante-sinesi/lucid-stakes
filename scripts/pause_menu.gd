@@ -1,0 +1,94 @@
+extends Control
+## Menú de pausa (Esc): Continuar, Reintentar la torre, Volver al menú principal, Abandonar el run y Salir. Hecho de cubitos.
+
+const UI := preload("res://scripts/menu_ui.gd")
+const MenuAnim := preload("res://scripts/menu_anim.gd")
+const OptionsScreen := preload("res://scripts/options_screen.gd")
+const Loc := preload("res://scripts/loc.gd")
+
+signal resume
+signal restart_tower
+signal to_main_menu
+signal abandon_run
+signal quit_game
+signal language_changed
+var buttons := {}
+var column: VBoxContainer
+var center: CenterContainer
+var options: Control
+
+
+func _init() -> void:
+	name = "menu_pausa"
+	process_mode = Node.PROCESS_MODE_ALWAYS  # sigue funcionando con el juego en pausa
+	visible = false
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.66)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(dim)
+	center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
+	column = VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	center.add_child(column)
+	var title := UI.label(column, Loc.t("Pausa"), 6, UI.GOLD)
+	title.dance = true
+	_button("continuar", "Continuar", true, func(): resume.emit())
+	_button("reiniciar", Loc.t("Reintentar la torre"), false, func(): restart_tower.emit())
+	_button("menu", Loc.t("Volver al menú principal"), false, func(): to_main_menu.emit())
+	_button("abandonar", Loc.t("Abandonar el run"), false, func(): abandon_run.emit())
+	_button("opciones", Loc.t("Opciones"), false, func(): show_options(true))
+	_button("salir", Loc.t("Salir del juego"), false, func(): quit_game.emit())
+	options = OptionsScreen.new()
+	options.back.connect(func(): show_options(false))
+	options.language_changed.connect(func(): language_changed.emit())
+	add_child(options)
+
+
+func _button(id: String, text: String, primary: bool, action: Callable) -> void:
+	var b := UI.button(text, primary, 3.0, 88)
+	b.name = id
+	b.pressed.connect(action)
+	column.add_child(b)
+	buttons[id] = b
+
+
+## Texto del botón de reintentar: con el costo en claridad (en el modo entrenamiento es gratis).
+func set_restart_cost(cost: int, free := false) -> void:
+	buttons["reiniciar"].disabled = false
+	buttons["reiniciar"].set_label(Loc.t("Reintentar la torre") if free else Loc.f("Reintentar la torre (−%d)", [cost]))
+	buttons["abandonar"].visible = not free
+
+
+## Muestra u oculta las opciones dentro de la pausa.
+func show_options(on: bool) -> void:
+	center.visible = not on
+	options.visible = on
+	if on:
+		options.refresh()
+		options.focus_default()
+	else:
+		buttons["opciones"].grab_focus()
+
+
+func open() -> void:
+	visible = true
+	show_options(false)
+	buttons["continuar"].grab_focus()
+	MenuAnim.stagger(MenuAnim.buttons_in(column), 0.04, 0.25)
+
+
+func close() -> void:
+	visible = false
+
+
+# Esc cierra la pausa.
+func _unhandled_input(event: InputEvent) -> void:
+	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		if options.visible:
+			show_options(false)
+		else:
+			resume.emit()
+		get_viewport().set_input_as_handled()

@@ -1,0 +1,112 @@
+extends Control
+## Tarjeta de un escenario: nombre, ilustración, un botón "?" arriba a la derecha (toda la información) y abajo al centro el botón
+## de entrada con su costo y el sol de la Luz (o "Jugar" en el gratuito). Hecha de cubitos, como el resto de la interfaz.
+
+const UI := preload("res://scripts/menu_ui.gd")
+const Draw := preload("res://scripts/voxel_draw.gd")
+const VFont := preload("res://scripts/voxel_font.gd")
+const LuzIcon := preload("res://scripts/luz_icon.gd")
+const ScenarioArt := preload("res://scripts/scenario_art.gd")
+const VoxelLabel := preload("res://scripts/voxel_label.gd")
+
+signal info_pressed(scenario_id: String)
+signal enter_pressed(scenario_id: String)
+
+const SIZE := Vector2(300, 430)
+
+var scenario := {}
+var info_button: Button
+var enter_button: Button
+var affordable := true:
+	set(v):
+		affordable = v
+		if enter_button != null:
+			enter_button.disabled = not v
+		queue_redraw()
+var _t := 0.0
+
+
+func setup(s: Dictionary, can_afford: bool) -> void:
+	scenario = s
+	custom_minimum_size = SIZE
+	size = SIZE
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	var title := VoxelLabel.new()
+	title.cube = 3.0
+	title.color = Draw.GOLD if int(s.entry) > 0 else Draw.MARBLE
+	title.align = VoxelLabel.Align.CENTER
+	title.wrap_px = 270
+	title.text = s.name
+	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top = 74
+	title.offset_left = 10
+	title.offset_right = -10
+	title.name = "nombre"
+	add_child(title)
+	info_button = UI.button("?", false, 3.0, 8, false)
+	info_button.name = "info"
+	info_button.position = Vector2(SIZE.x - 66, 14)
+	info_button.pressed.connect(func(): info_pressed.emit(scenario.id))
+	add_child(info_button)
+	enter_button = _CostButton.new()
+	(enter_button as _CostButton).setup(int(s.entry))
+	enter_button.name = "entrar"
+	enter_button.pressed.connect(func(): enter_pressed.emit(scenario.id))
+	add_child(enter_button)
+	enter_button.position = Vector2((SIZE.x - enter_button.custom_minimum_size.x) * 0.5, SIZE.y - enter_button.custom_minimum_size.y - 26)
+	affordable = can_afford
+
+
+func _process(delta: float) -> void:
+	_t += delta
+	queue_redraw()
+
+
+func _draw() -> void:
+	var body := Rect2(Vector2.ZERO, SIZE - Vector2(0, 12))
+	Draw.card(self, body, 6.0, 3 if not affordable else 0, 0.12, scenario.get("name", "").hash() & 0xFFFF, int(scenario.get("entry", 0)) > 0, -1.0)
+	var theme: Color = ScenarioArt.THEME.get(scenario.get("id", ""), Color(0.15, 0.1, 0.25))
+	if not affordable:
+		theme = theme.darkened(0.4)
+	var panel := Rect2(Vector2(36, 126), Vector2(SIZE.x - 72, 140))
+	draw_rect(panel, theme)
+	draw_rect(panel, Color(1, 1, 1, 0.12), false, 2.0)
+	var bob := sin(_t * 1.6) * 3.0
+	ScenarioArt.draw(self, scenario.get("id", ""), panel.get_center() + Vector2(0, bob), 11.0)
+	# Cuánta Luz paga: "×1.5" y el sol (el gratuito paga lo normal y no muestra nada)
+	var mult: float = float(scenario.get("luz_mult", 1.0))
+	if mult != 1.0:
+		var txt := "x%.1f" % mult
+		var l: Dictionary = VFont.layout([txt])
+		var cs := 3.0
+		var w: float = float(l.size.x) * cs
+		var origin := Vector2((SIZE.x - w - 40.0) * 0.5, 288.0)
+		Draw.text_cells(self, origin, l.cells, l.size.y, cs, Color(1.0, 0.95, 0.7), 0.0, 3, true)
+		LuzIcon.draw_sun(self, origin + Vector2(w + 24.0, 12.0), 2.2, _t)
+
+
+## Botón de entrada: el costo y el sol de la Luz a la derecha del número.
+class _CostButton extends "res://scripts/voxel_button.gd":
+	const LuzIcon2 := preload("res://scripts/luz_icon.gd")
+	var cost := 0
+
+	func setup(c: int) -> void:
+		cost = c
+		cube = 3.0
+		min_cells_w = 26
+		animated = false
+		primary = c == 0
+		set_label("Jugar" if c == 0 else "%d  " % c)
+
+	func _update_processing() -> void:   # siempre se redibuja: el sol está animado
+		set_process(true)
+		queue_redraw()
+
+	func _draw() -> void:
+		super._draw()
+		if cost > 0:
+			var t := Time.get_ticks_msec() / 1000.0
+			var fc := frame_cube()
+			var center := Vector2(size.x, size.y - fc * 2.0) * 0.5
+			var text_w := float(VFont.line_width(text)) * cube
+			LuzIcon2.draw_sun(self, center + Vector2(text_w * 0.5 - 4.0, 0.0), 2.2, t)

@@ -1,0 +1,370 @@
+# Diseño — Balatro x Catherine (título provisional)
+
+Estado: borrador v0. Lo marcado **[ABIERTO]** está sin decidir; **[CERRADO]** lo definió Dante.
+
+## 1. Fantasía
+- **[CERRADO]** El personaje intenta despertar de una pesadilla escalando una torre de bloques.
+- **[CERRADO]** Progresión visual: el fondo empieza oscuro y tenebroso y se aclara a medida que sube. Despertar = luz.
+- **[ABIERTO]** Quién es el personaje, qué hay en la pesadilla, tono (¿culpa/terror como Catherine, o absurdo/casino como Balatro?). Lore pendiente de volcar.
+
+## 2. Estructura
+- **[CERRADO]** Un nivel = **27 etapas** de **50 bloques de altura** cada una.
+- **[CERRADO]** Cada etapa tiene un fondo de oscuridad propio y constante dentro de la etapa; cambia al pasar a la siguiente. Etapa 1 = la más oscura, etapa 27 = la más clara.
+- **[CERRADO]** Al completar una etapa se llega a una zona checkpoint con tienda (trampas / objetos), y luego se sale a la siguiente etapa.
+- **[ABIERTO]** ¿Un "nivel" es todo el run, o hay varios niveles/mundos de 27 etapas? ¿Qué pasa al perder (todo se pierde, metaprogresión)?
+- **[ABIERTO]** Duración del run. 27 × 50 = 1350 filas; con ~3 movimientos/fila al inicio y 30 al final, un run completo son horas. Revisar alcance.
+
+## 3. Sin tiempo ni tope de movimientos: el vacío que sube
+- **[CERRADO]** No hay máximo de movimientos ni cronómetro.
+- **[CERRADO]** Cada N movimientos, la **fila más baja de la torre cae al vacío**. Si el jugador estaba apoyado/sostenido en esa fila, cae y pierde.
+- Consecuencia de diseño: el reloj es el propio movimiento; el jugador tiene que ganar altura a un ritmo de ~1 fila cada N movimientos.
+- **[CERRADO]** N sube con el mínimo de movimientos por fila de la etapa: siempre hay un margen sobre el mínimo, así la presión existe en todas las etapas y ninguna es imposible. **[ABIERTO]** la fórmula exacta (ej. N = mínimo × holgura, con la holgura bajando en etapas avanzadas).
+- **[ABIERTO]** Avisos al jugador: contador visible, fila que se agrieta antes de caer.
+- **[ABIERTO]** Zona checkpoint: se asume segura (el vacío no sube ahí).
+
+## 3b. Forma de la torre (decidido con Dante, reemplaza el 4x5)
+- **[CERRADO]** La torre tiene un **core sólido e inmóvil** de 2x2 (o 3x3) en el centro. No se puede empujar ni tirar; sí sostiene a sus vecinos y es trepable.
+- **[CERRADO]** Alrededor del core hay **3 cubos de espesor hacia todos los lados**: huella total 8x8 con core 2x2 (9x9 con core 3x3). El tope de 4x5 queda descartado.
+- **[CERRADO]** Ese anillo es solo el espacio disponible: el **generador llena parte** con plataformas, salientes y obstáculos; el resto queda vacío. Los bloques deben tocar al core o a otros para sostenerse.
+- **[CERRADO]** La ruta sube **por afuera, rodeando el core**, de cara en cara (sin interior hueco). Girar la cámara sirve para ver lo que el core tapa.
+- **[CERRADO]** Se acepta el truco de la catapulta (poner uno, empujarlo hacia afuera y saltar): forma parte de la gracia.
+- Implicación: la heurística de altura del solucionador deja de ser exacta cuando haya catapultas (hay que revisarla), y la ventana del solucionador deberá recortarse también en horizontal.
+
+## 5b. Criterio de dificultad (revisado tras probar el juego)
+Dante probó el nivel y le resultó fácil: ganar a base de "más movimientos mínimos por fila" y con un margen holgado antes de la caída no alcanza. Decidido (Dante): buscar la dificultad en **puzzles que engañan**, en **combinar mecánicas** y en un **ritmo de caída variable por etapa**.
+- **[IMPLEMENTADO] Ritmo variable por etapa** (`Gen.profile_for_stage`, `PACES`): cada etapa (1–27) tiene una dificultad, un ritmo (**rápido / normal / lento**), una probabilidad de mezclar mecánicas y las mecánicas activas. Las dos primeras etapas son de ritmo normal; después el ritmo cambia de una etapa a otra. Rápido: margen de la caída ×0,55 (la fila de abajo cae cerca, ≈2,2× el costo medio de una fila) y banda objetivo corrida −1. Normal: ≈4×. Lento: margen ×1,25 (≈5×) y banda objetivo +2. **El margen sí sigue el ritmo de forma confiable (2,2× / 4,0× / 5,0× medido); el largo real de las filas solo lo sigue de forma ruidosa** (con una muestra salió 5,2 lento contra 3,6 rápido, con otra al revés), así que la diferencia que se siente entre ritmos es sobre todo cuánta presión pone la caída. En el juego, las teclas `[` y `]` cambian de etapa para probarlo.
+- **[IMPLEMENTADO] Puzzles que engañan**: el solucionador cuenta cuántos estados tuvo que explorar para resolver cada fila; ese "esfuerzo" mide cuántos caminos tentadores sin salida hay. Una fase de **enriquecimiento** muta los obstáculos de una fila ya válida mientras siga dentro de la banda y suba su esfuerzo. Medido (4 torres de 6 filas, dificultad 0,6): esfuerzo medio por fila 105 con enriquecimiento contra 79 sin él (+33 %); muestra chica, es una tendencia.
+- **[IMPLEMENTADO] Combinar mecánicas**: desde la dificultad 0,4 (etapa ≈12) crece la probabilidad de que, entre las filas válidas, se prefiera la que mezcla hielo y bomba, y el enriquecimiento la busca. Medido: filas con ≥2 mecánicas 4 de 24 contra 2 de 24 sin la preferencia (tendencia, muestra chica).
+- **[ABIERTO]** Falta probarlo jugando: ajustar los valores (`PACES`, ratio, umbrales) con la experiencia de Dante, y decidir si la caída debe además depender de cómo se juega (idea descartada por ahora: ligarla a la altura).
+
+## 4. Reglas de bloques (estilo Catherine)
+- **[CERRADO]** La estabilidad se decide por contacto en los ejes: un cubo que no toca a ningún otro cubo cae al vacío (en vez de gravedad simple "apoyado abajo").
+- **[CERRADO]** El jugador empuja y tira bloques para armar la ruta. **Tirar sin piso atrás** (decisión de Dante, como en Catherine): el jugador da el paso igual y queda **colgado del borde** de donde estaba parado, y el bloque viene a ese lugar (queda justo encima del agarre: para trepar hay que correrse por el borde). Si atrás hay un escalón más bajo, baja en vez de colgarse. No se puede sobre hielo ni hacia fuera de la huella.
+- **[CERRADO]** **Empujar hacia afuera de la huella** (decisión de Dante): el límite de 3 celdas alrededor del core solo restringe dónde se **generan** bloques. Un bloque empujado puede salir de la huella; el jugador no se mueve al empujar. Fuera queda como cualquier bloque: se sostiene si toca otro (por ejemplo, queda pegado al costado de la base, un nivel más abajo) y si no, cae al vacío. El hielo se desliza hasta chocar o hasta la primera celda fuera de la huella. El jugador sí sigue sin poder caminar fuera de la huella. (El solucionador codifica las celdas con desplazamiento para soportar coordenadas negativas.)
+- **[CERRADO]** Regla de soporte: un cubo se queda si tiene al menos un vecino en cualquiera de los 6 ejes. Sin vecinos, cae. (Sin concepto de "ancla": dos cubos que se tocan se sostienen entre sí. Revisar si da exploits al probar.)
+- **[CERRADO]** El jugador puede colgarse de bordes (hang) como en Catherine. Colgado puede avanzar por el borde y **doblar esquinas**: hacia afuera (el borde del bloque termina y se lo rodea, quedando agarrado de la otra cara del mismo bloque) y hacia adentro (la pared gira hacia el jugador y se agarra de ella sin moverse). No se dobla si el borde no está libre arriba o es de hielo. Complica la lógica del jugador y del solucionador; hay que definir estados: de pie / colgado, y qué cuenta como "sostenido" cuando cae la fila de abajo.
+- Nota técnica: el prototipo actual usa gravedad simple (cae si no hay bloque debajo). Hay que reescribir `_settle()` en `scripts/tower_logic.gd` con la regla nueva.
+
+## 5. Dificultad
+- **[CERRADO]** La dificultad NO sube por menos movimientos disponibles, sino por la **cantidad de movimientos mínimos necesarios para pasar cada fila**.
+  - Etapas iniciales: uno o dos bloques por fila, sin complejidad.
+  - Etapas finales: pueden hacer falta muchos movimientos solo para pasar a la fila siguiente.
+- Implicación: N (§3) tiene que ser ≥ el mínimo por fila de la etapa, o la etapa es imposible. Opciones: N crece con la etapa, o N fijo y se limita el mínimo por fila.
+- Implicación técnica: generador de torres con **solucionador** que calcule el mínimo de movimientos por fila. Push y pull son inversos, así que se puede generar "desordenando" una fila resuelta con movimientos inversos y verificar con el solver.
+
+## 6. Capa Balatro
+
+### Trampas
+- **[CERRADO]** Las trampas son consecuencia de los actos del propio jugador (como el hielo en Catherine), no peligros arbitrarios.
+- **[CERRADO]** Ejemplo: **bloque bomba**. Se activa tras X movimientos; si explota, se cae toda la torre y se pierde.
+- **[CERRADO]** La bomba se desactiva empujándola al vacío o purificándola.
+- **[CERRADO]** La cuenta regresiva de la bomba se ve siempre.
+- **[CERRADO]** Tipos de bloque por ahora: normal, **hielo**, **bomba**, **catapulta**. Más adelante se pueden sumar.
+- **[CERRADO]** **Hielo**: al empujarlo se desliza hasta chocar contra algo. Si el jugador se desplaza sobre él es resbaladizo y no se puede agarrar del borde.
+- **[CERRADO — CAMBIADO]** **Catapulta** (antes "trampolín"): una sola variante que **sube 4 bloques en vertical y no se mueve nada hacia los costados** (decisión de Dante). Arriba se **agarra del lateral** de un bloque vecino y queda colgado (no parado encima). Se descartaron las variantes diagonal y horizontal, y se quitó la flecha de la etiqueta.
+- **[IMPLEMENTADO — reglas que fijé yo, revisar]** (`scripts/tower_logic.gd`, tests en `tests/test_logic.gd`):
+  - **Hielo**: empujado, se desliza hasta chocar con otro bloque o el borde de la huella. El jugador que llega a una celda apoyada en hielo (caminando, trepando o tirando) sigue deslizándose en la dirección del movimiento hasta salir del hielo o chocar con un bloque; si se desliza fuera del borde, cae. No se puede colgar del borde de un bloque de hielo ni avanzar colgado hacia un agarre de hielo.
+  - **Bomba**: cuenta un movimiento por acción **solo mientras el jugador está en su misma fila** (player.y == y del bloque). Al llegar a 0 explota: se cae toda la torre y se pierde. En otra fila la cuenta queda congelada; si la bomba cae al vacío queda desactivada. Ganar en el mismo movimiento tiene prioridad sobre la explosión. La cuenta se ve siempre (roja si está contando, gris si está congelada).
+  - **Catapulta** (se activa al llegar a una celda apoyada en ella): dispara **hacia arriba** `CATAPULT_RISE` = 4 celdas (un techo corta el ascenso; si hay un techo pegado no despega). Arriba se agarra del lateral de un bloque vecino que tenga el borde de arriba libre y no sea de hielo (primero hacia donde miraba, después los costados y atrás) y queda colgado; trepar desde ahí cuesta otro movimiento. Si no hay de dónde agarrarse, vuelve a caer sobre la catapulta. Nunca avanza hacia los costados. Es el truco: empujar una catapulta contra una pared alta y subirla.
+  - Estas cifras (`TRAMP_JUMPS`) y la regla de la bomba son fáciles de cambiar si no son lo que imaginabas.
+- Nota técnica: los bloques con temporizador son estado extra para el solucionador/generador (hay que garantizar que la ruta mínima llega antes de la explosión).
+
+### Economía: purificación y claridad
+- **[CERRADO]** Todos los bloques empiezan **corruptos** (estética oscura, partículas de corrupción). Al **pasar sobre ellos**, el jugador los **purifica** (estética clara, partículas/efecto de luz).
+- **[CERRADO]** La moneda se llama **claridad**. Cada bloque purificado da X claridad según su tipo.
+- **[CERRADO]** Habrá un sistema de **racha de purificación** y similares.
+- **[IMPLEMENTADO — reglas que fijé yo, revisar]** (`scripts/tower_logic.gd`, tests en `tests/test_logic.gd` y `tests/test_view.gd`):
+  - **Qué purifica**: todo bloque sobre el que el jugador estuvo durante la acción (parado, trepando, resbalando por hielo, o el bloque del que se cuelga). Volar en un salto de catapulta no purifica lo que se sobrevuela (no hay contacto). La purificación acompaña al bloque (empujarlo no lo corrompe de nuevo); si cae al vacío se pierde.
+  - **Claridad por bloque**: normal 1, hielo 2, catapulta 3, bomba 5, core 1 (`CLARITY`).
+  - **Racha**: cada acción seguida que purifica algo nuevo suma 1 a la racha; el multiplicador es 1 + 0,5 × (racha − 1), con tope ×4. Una acción que no purifica nada nuevo (o volver por lo ya purificado) la corta a 0; se recuerda la mejor racha. Ganancia por acción = suma de bloques nuevos × multiplicador (redondeado). Las acciones fallidas no tocan nada.
+  - **Bomba**: purificarla (pararse encima) la **desactiva**: deja de contar y no explota. Se ve con una tilde.
+  - **Aspecto**: los bloques empiezan oscuros y violáceos con partículas oscuras; al purificarse recuperan su color, emiten luz suave, sueltan partículas de luz y dan un destello. El HUD muestra claridad, racha (con multiplicador), mejor racha y purificados; cada ganancia muestra un aviso dorado.
+  - El solucionador y el generador **no optimizan claridad** (no cambia el juego); solo tienen en cuenta que purificar desactiva bombas.
+- **[ABIERTO]** "Cosas del estilo" de la racha (bonus por combos, claridad por altura o etapa, objetos de la tienda que modifiquen el multiplicador); cómo se acumula la claridad entre etapas (el run todavía no existe).
+- Tensión de diseño a aprovechar: purificar más bloques suele significar rodeos, y cada movimiento acerca la caída de la fila de abajo. Ruta mínima = seguro; rodeo = claridad pero riesgo.
+
+### Azar
+- **[CERRADO]** El azar entra en la **generación de la torre**, la **tienda** y los **eventos**. Eventos queda para más adelante (con lore y personajes).
+
+### Tienda: casino
+- **[CERRADO]** La tienda es un casino. No se compran cosas concretas: se **apuesta** en juegos con probabilidades de dar **boosts** o **herramientas**.
+- **[CERRADO]** Hay dos categorías de premios:
+  - **Boosts**: se compran/ganan y mejoran una habilidad de forma duradera (algunos con contrapartida, tipo trampa). Ejemplos: +1 al límite de movimientos por fila (retrasa la caída de la fila de abajo), que los movimientos de subir/bajar no descuenten.
+  - **Consumibles**: efectos temporales o con usos limitados que se agotan. Ejemplo: convertir un bloque cualquiera en catapulta.
+- **[ABIERTO]** Qué juegos (tragamonedas, cartas, dados…), probabilidades, cuánto se puede perder, límite de espacios para boosts y consumibles, si los boosts duran todo el run.
+- Principio propuesto: la torre debe ser siempre resoluble sin boosts; los boosts dan margen, no son obligatorios.
+
+## 6b. Casino (fase 6)
+Decidido con Dante: **sala caminable más pantalla de apuesta** (se camina hasta la máquina y se abre una pantalla tipo Balatro); los tres juegos son **ruleta, tragamonedas y cartas/póker**, **empezando por la ruleta**; el riesgo **depende del juego**. La moneda es la **claridad**. Se arrancó por el casino antes que por las torres altas.
+
+**Qué hay hecho** (todo con tests: `tests/test_casino.gd`, `tests/test_roulette_screen.gd`, `tests/test_casino_room.gd`):
+- `scripts/items.gd`: catálogo de premios (solo datos; los efectos todavía no están conectados al juego): 4 épicos, 4 raros, 6 comunes y 3 baratos.
+- `scripts/run_state.gd`: estado del run (claridad, boosts, consumibles, etapa). Máximo 5 boosts (únicos) y 3 consumibles.
+- `scripts/roulette.gd`: reglas de la **Ruleta de la Luz**.
+- `scripts/roulette_screen.gd` y `roulette_wheel.gd`: pantalla de apuesta.
+- `scripts/casino_room.gd` y `voxel_mesh.gd`: distribución y modelo de minibloques de la sala.
+
+**Ruleta de la Luz (reglas v0.1, las fijé yo, revisar)**
+- 13 casillas: la **0 es la Pesadilla** (la casa: nunca se puede cubrir) y la 1–12 son de Luz.
+- El jugador elige una apuesta, que fija cuántas casillas cubre, y las casillas: **Pleno** (1 casilla, 7,7 %, premio épico), **Terna** (3, 23,1 %, raro), **Mitad** (6, 46,2 %, común), **Rango** (9, 69,2 %, consumible). Cuanto menos cubre, mejor el premio.
+- **Precio de la ficha fijo y el mismo para las cuatro**: 50 en la etapa 1, +15 % del precio base por etapa (65 en la etapa 3, 125 en la 11). No se elige el monto: con monto libre, los premios de valor fijo harían muy buenas las apuestas chicas o muy malas las grandes. Con precio fijo las cuatro rinden casi lo mismo (esperado 0,92–0,97 por ficha) y la decisión es cuánto riesgo querés.
+- Gira: si cae una casilla cubierta se gana un premio del nivel de esa apuesta; si no, **se pierde la ficha** (la ruleta es el juego de riesgo: sin red).
+- Los boosts duran el run y son únicos. Si no hay lugar (o ya lo tenés), el premio **se convierte en claridad: la mitad de su valor**. La **Bolsa de luz** (nivel consumible) paga 1,4 veces la ficha en claridad.
+- La pantalla decide el resultado primero y la rueda gira para mostrarlo (la casilla ganadora queda bajo la bola, comprobado para las 13).
+
+**Premios (borrador)**: épicos (boosts): Segundo aliento (una vez por etapa, si caés al vacío volvés a la última plataforma firme), Madrugada (la fila de abajo cae al doble de lento en toda la etapa), Luz propia (al pisar se purifican los vecinos), Mano de oro (la racha sube de a 1,0). Raros (boosts): Pies de luz (+1 de claridad por purificar), Paso firme (trepar y bajar no cuenta para la caída), Reflejos (+3 a las cuentas de las bombas), Racha larga (tope ×6). Comunes: Aire extra (la caída llega 1 movimiento más tarde), Ojo de hielo, Ahorro (+20 de claridad al empezar cada etapa) y los consumibles Freno (pausa la caída 5 movimientos), **Catapulta de bolsillo** (convierte el bloque de enfrente en catapulta), Desarmar (desactiva una bomba). Baratos: Bolsa de luz, Hielo a roca, Ancla chica.
+
+**Sala del casino** (11 × 9 celdas, a la escala del personaje; zona segura: no sube el vacío ni hay corrupción): plataforma de llegada de luz al sudeste, mesa de la ruleta (3×2 celdas) con rueda de 13 sectores en el paño, **el crupier** de galera detrás de la mesa (gancho para el lore), tres tragamonedas tapadas con un cartel "?" contra la pared oeste, una mesa de cartas tapada, y una **escalera de luz** que sube hasta un portal en la pared norte (salida a la etapa siguiente). Se juega a la ruleta parado en una celda que toca la mesa (6 lugares). La distribución en celdas es la única fuente de verdad del dibujo y de las celdas caminables.
+
+**Pendiente del casino**: (a) escena jugable (caminar por la sala con el movimiento existente, interactuar con la mesa, abrir la pantalla y salir por la escalera); (b) ocultar o atenuar las paredes que quedan del lado de la cámara al rotarla; (c) conectar los efectos de los premios al juego; (d) tragamonedas y cartas/póker; (e) diálogo y lore del crupier; (f) balancear contra la claridad real que se junta en una etapa de 50 filas (hoy el precio de la ficha es un valor inicial sin esa medición).
+
+## 7. Visual
+- **[CERRADO]** 3D, vista isométrica, cámara rotable de a 90°, estilo voxel de cubos simples.
+- **[ABIERTO]** Cámara que sigue al jugador (la torre mide 50 filas: se ve una ventana de altura, no entera).
+
+## 7b. Aspecto de los bloques
+- **[CERRADO]** Los bloques deben distinguirse por **dibujo propio** y no solo por color (con la claridad, corrupto/purificado cambia el color y ya no alcanzaba).
+- **[CERRADO — IMPLEMENTADO]** Cada bloque se modela con **minibloques** (voxels de 5x5x5; `scripts/block_models.gd`, shader `shaders/voxel_block.gdshader`). Es solo visual: la lógica sigue en cubos. Cada tipo y estado tiene un modelo que se construye una vez y comparten todos los bloques de ese tipo (sin costo por bloque).
+  - **Normal**: cubo con esquinas cortadas, aristas oscuras y panel claro arriba; al purificarse toma el color de su altura. **Hielo**: cristal astillado con vetas blancas y azules (arriba queda plano). **Bomba**: bola oscura con mecha y chispa; desactivada se vuelve gris verdosa. **Catapulta**: placa de abajo, cuatro resortes plateados y plato naranja. **Core**: piedra gris con esquinas rotas.
+  - **Corrupto vs purificado**: el corrupto es **irregular** (le faltan minibloques sueltos) y oscuro, con un toque violeta pero conservando algo del tono de su tipo; el purificado está completo y con su color. Al purificarse cambia de modelo con un rebote y un destello. La cara de arriba (la que se pisa) se conserva casi completa en todos los estados.
+  - Pruebas: `tests/test_models.gd` (forma, caras hacia afuera, tamaño, determinismo, cara de arriba) y `tests/test_view.gd`. Maqueta previa en `docs/maquetas/`.
+- **[DESCARTADO]** El dibujo por shader sobre cubos planos (`block.gdshader`) se reemplazó por los minibloques.
+
+## 8. Tecnología
+- **[CERRADO]** Godot 4 (MIT) + GodotSteam (MIT). Sin Unity. Publicación en Steam.
+
+## 8b. Ideas que podrían no aplicarse
+- **Deshacer / reintentar fila** (como en Catherine): descartado por ahora por decisión de Dante. Queda como idea abierta; sin él, un empuje o tirón malo puede dejar la torre sin salida.
+
+## 9. Plan técnico por fases (propuesto)
+Cada fase termina con algo jugable y testeado.
+1. **Reglas núcleo** — HECHO (`scripts/tower_logic.gd`, tests en `tests/test_logic.gd`): soporte por vecinos en 6 ejes, hang, empujar/tirar, caída de la fila de abajo cada N movimientos.
+2. **Solucionador** — HECHO (`scripts/solver.gd`, tests en `tests/test_solver.gd`): A* con heurística de altura; opcionalmente simula la caída de la fila base. `solve_rows` da el perfil de movimientos por fila a partir de un camino óptimo global; `solve_rows_greedy` es una aproximación barata que sobrestima (el óptimo de una fila puede dejar mal parado para la siguiente).
+   - **Rendimiento medido**: ~4–5 mil estados/segundo en GDScript. En terrenos abiertos con muchos bloques movibles (5x5 a 6x6, alturas hasta 3) el solucionador llega a 15 mil estados sin resolver subir 3–4 niveles. Conclusión: el solucionador NO puede validar torres de 50 filas enteras ni terrenos con muchos bloques sueltos. El generador de la fase 3 tiene que construir filas con pocos bloques movibles y validar cada fila en una ventana local (más el contexto necesario), y la dificultad por fila debe venir de la construcción (movimientos inversos desde una fila resuelta), no de buscar a ciegas.
+   - Posibles mejoras si hace falta: poda de bloques irrelevantes, solver sobre ventana de filas, o llevarlo a C# / GDExtension.
+3. **Generador de filas** — HECHO v3 (`scripts/tower_gen.gd`, tests en `tests/test_gen.gd`).
+   - Estructura: core fijo 2x2 (opción 3x3) en una huella de 8x8 (9x9); capa 0 = base completa; el core llega una capa sobre la meta.
+   - **Formas de plataforma** (variedad): mancha, barra, L y arco que sigue el anillo alrededor del core (los arcos largos obligan a caminar mucho). Sesgadas a rodear el core y a tocarlo.
+   - **Tipos de bloque**: las celdas de la plataforma pueden ser de hielo o catapulta (es el piso de la fila siguiente); los obstáculos pueden ser normales, de hielo, bombas (cuenta 3–8) o catapultas, y a veces pilares de 2. Las probabilidades suben con la dificultad.
+   - **Dificultad**: se valida cada candidato con el solucionador (ventana de 4 capas, más arriba si hay catapultas) y se busca que el mínimo caiga en `band_for(d)` (d=0 → 2–4, d=1 → 10–12). Después de generar candidatos hay un **ascenso por mutaciones** (suma, mueve o cambia obstáculos, o pone hielo en la plataforma) que mantiene la resolubilidad y empuja el mínimo hacia arriba. La plataforma se pide lejos de donde llega el jugador (distancia que crece con la dificultad; se relaja si no hay candidatos).
+   - **Resolubilidad**: se avanza fila a fila ejecutando el camino óptimo; todo lo que pisa el jugador (rastro, con deslizamientos y saltos) y la celda de arriba quedan reservados en 3D para que nada posterior lo invalide; al final se reproduce el camino completo con la caída activa y las bombas vivas, y si falla se reintenta con otra semilla derivada (hasta 4 veces). Una ronda final con dificultad 0 garantiza que cada fila produzca algo.
+   - **N** (cada cuántos movimientos cae la fila base) = **margen constante sobre el costo medio de una fila**: ratio 4,5 en dificultad 0 y 2,6 en dificultad 1, y nunca menos que 1,6 × el mínimo que exige el propio camino. La **primera caída llega a los 2N movimientos** (tiempo para explorar). Así dos torres de la misma dificultad presionan igual. (Antes N salía del peor momento de cada torre y el margen iba de 2,1× a 5,1× el costo medio: unas torres eran muy justas y otras casi no presionaban.)
+   - **Sin filas triviales**: ninguna fila se resuelve en menos de max(2, banda−1) movimientos ni en más de banda+4. Cada plataforma tiene un tamaño mínimo (es el espacio de juego de la fila siguiente). Un bloque suelto de una capa es un escalón, no un obstáculo: los obstáculos normales son pilares de 2 en el 60 % de los casos, y como la parte de arriba de un pilar cae en la capa de la fila siguiente, el generador **mira una fila hacia adelante** y descarta los candidatos que le regalan un escalón (también se evalúa la variante sin la parte de arriba).
+   - **Mecánicas de a una**: hielo desde dificultad 0,05, catapulta desde 0,25, bomba desde 0,4; tope de bloques especiales por fila (1 + 3·d) y de celdas de hielo por plataforma (2 + 2·d). Se prefiere una forma de plataforma distinta a la de la fila anterior.
+   - **Medido** (10 torres de 8 filas, dificultad 0,3; banda 4–6): media 4,25 movimientos por fila, desvío 1,3 (antes 2,6), filas de 1 movimiento 2 de 64 (antes 11 de 80), margen de la caída 4,0–4,1 × el costo medio en todas las torres (antes 2,1–5,1). Dificultad 0: media 2,6, desvío 1,0. Dificultad 0,7: media 6,8. Dificultad máxima (2 torres de 4 filas): media 6,6–8,6.
+   - **Pendiente de la dificultad alta**: con dificultad ≥ 0,7 todavía aparecen filas de 1 movimiento (≈ 2 de 18 con 0,8) y algo de dispersión; la banda 10–12 de la dificultad 1 casi no se alcanza. Sigue haciendo falta más búsqueda por fila o un solucionador más rápido.
+   - **Tiempo** (medido tras agregar hang con esquinas): generación completa ≈ 7 s (d=0) a 15–60 s (d≥0,3) por torre de 6–8 filas; una etapa de 50 filas a dificultad media/alta tarda varios minutos, así que hay que generarla fuera de línea. Colgarse y doblar esquinas multiplica las posiciones que explora el solucionador (≈2,4× más lento).
+   - **Generación al jugar**: corre en un **hilo aparte** (el juego no se congela y muestra los segundos transcurridos), con una búsqueda más liviana (`GEN_OPTS`: 6 candidatos por fila, ascenso por mutaciones a la mitad): ≈3,8 s de media (peor caso ≈8 s) a dificultad 0,3 con 8 filas, con algo más de filas triviales (≈10 % contra ≈3 %). Si una semilla no sale, prueba con otras (hasta 4).
+   - **Robustez** (corregido tras detectar que una etapa difícil no se generaba con la búsqueda completa): al agregar plataformas más arriba, un bloque nuevo puede sostener uno que en la simulación caía (la parte de arriba de un pilar) o frenar uno que se deslizaba, y entonces el camino de una fila anterior se desviaba. Reservar de antemano el entorno de todo lo que se mueve dejaba sin lugar para las plataformas; lo que funcionó fue **validar**: antes de aceptar un candidato se repite sobre la torre completa todo el camino anterior más el de la fila nueva (`_path_consistent`), y si se desvía se descarta ese candidato. Además se reservan las celdas sobre el bloque del que se agarra el jugador. Medido con la búsqueda liviana, 6 filas: 12 de 12 torres se generan (dificultades 0,3 / 0,6 / 1,0); a dificultad media/alta a veces hace falta un segundo intento (a la primera: 4/4, 2/4, 3/4).
+   - **Pruebas del generador**: `tests/test_gen.gd` (≈1,5–2 min, búsqueda liviana) y `tests/test_gen_quality.gd` (búsqueda completa, ≈10 min, a mano). El de calidad dio, antes de esta corrección, 3 de 24 filas triviales (12,5 % contra el 10 % buscado) y una etapa difícil que no se generaba; **no se volvió a correr tras la corrección**.
+   - **Catapultas**: ya no se generan en las torres (`CATAPULTS_IN_TOWERS = false`): suben 4 en vertical y se agarran de un borde, y en una torre generada casi nunca hay una pared alta con el borde libre al lado; no aportaban a la solución y encarecían la búsqueda. El bloque sigue disponible (reglas, solucionador, vista, tests) para la tienda (consumible "convertir un bloque en catapulta") y para el truco.
+   - Limitaciones: (a) la dificultad máxima sigue sin llegar a la banda 10–12 en la mayoría de las filas; (b) el jugador puede dejar la torre sin salida si empuja o tira mal (el deshacer queda como idea que podría no aplicarse); (c) la ventana del solucionador no recorta en horizontal; (d) el truco de la catapulta (poner uno y saltar) lo permite el juego pero el generador no lo busca ni lo evita; (e) la claridad no entra todavía en la generación ni en la dificultad.
+   - Visibilidad: la torre se ve entera (desde arriba, con la cámara muy inclinada, se ocultan las capas que tapan al personaje); silueta del personaje solo donde algo lo tapa (`shaders/silhouette.gdshader`).
+4. **Tipos de bloque** — HECHO: hielo, bomba (cuenta) y catapulta (única, horizontal) en las reglas, el solucionador (clave de estado con tipos y cuentas; heurística ajustada a los catapultas), el generador y la vista.
+5. **Purificación y claridad** — HECHO: bloques corruptos/purificados (aspecto y partículas), claridad por tipo, racha con multiplicador, bombas desactivables al purificarlas. Falta que la claridad se acumule entre etapas (depende del run, fase 6).
+6. **Zona checkpoint y casino** — EN CURSO: economía y ruleta (reglas + pantalla) y sala dibujada y probada; falta la escena jugable, los efectos de los premios y los otros dos juegos (ver §6b).
+7. **Etapas y fondos**: progresión 27 etapas, fondo por etapa, cámara que sigue al jugador.
+8. **Pulido, lore y eventos, Steam** (GodotSteam).
+La demo para Steam puede ser fases 1–7 con pocas etapas.
+
+## 5c. Meta = portal
+Ganar la torre exige estar **parado** sobre el bloque-portal (`goal_block` en `TowerLogic`), marcado con una baldosa dorada y un haz de luz que siguen al bloque si se lo mueve; llegar a la altura de la meta sobre otro bloque (o colgado) no gana. El generador fija el portal en el bloque donde termina el camino de referencia (si termina colgado suma el paso de trepar). Idea de historia: el portal lleva al casino, y el portal del casino lleva a la torre siguiente. Sin `goal_block` (torres de prueba) vale cualquier bloque de la capa superior.
+
+## 6c. Casino jugable
+`scripts/casino_scene.gd`: la sala de `casino_room.gd` con el personaje caminando por celdas (WASD, siguiendo la diagonal de la pantalla, Q/E giran la cámara y ocultan la pared que tapa). Flujo del run: pisar el portal de la torre → la claridad de la torre pasa al `RunState` → casino (se aparece frente a la puerta de llegada, sólo estética) → chocar con la mesa (o Espacio/Enter mirándola) abre la ruleta → empujar la puerta de salida (pared norte) lleva a la torre de la etapa siguiente. Las dos puertas llevan un portal en espiral (estilo Minecraft); se aclaran con las etapas y la de salida es algo más clara (`Room.portal_color`). En la torre, el rayo de luz del portal sólo se ve cuando se ve el bloque-portal. Tragamonedas y mesa de cartas avisan "próximamente". Pendientes: efectos de los premios, balance ficha vs. claridad real, tragamonedas y cartas.
+
+## 3c. Etapas de 25 pisos, menús y aclarado por etapa
+- Una **etapa** es una torre de 25 pisos; al llegar al bloque-portal de la cima se entra al casino y al salir empieza la etapa siguiente, algo más difícil. Son 27 etapas (la última no tiene casino: termina el juego y se vuelve al menú).
+- Toda torre se genera en el momento y es **nueva** (nada pregenerado): mientras se juega la etapa N, otro hilo genera la N+1 (`_prefetch_next_stage`); si todavía no está lista al salir del casino se muestra "Generando la torre...". La generación se aborta con `TowerGen.cancel` al volver al menú.
+- Fondo y bloques se aclaran **de una etapa a la siguiente**, no dentro de una misma (`stage_tone`: color de fondo, tono de los bloques normales purificados y tinte de los corruptos).
+- Menú principal (Nueva partida / Cómo jugar / Salir) y menú de pausa con Esc (Continuar / Reintentar la torre / Cómo jugar / Volver al menú principal / Salir del juego): `scripts/main_menu.gd`, `scripts/pause_menu.gd`.
+- Cámara: en torres de más de 16 de alto sigue al personaje en altura.
+- Pendiente: rendimiento con 25 capas visibles, tiempos de generación en las etapas altas (con `budget_ms` como tope del afinado).
+
+## 2b. Reglas de movimiento: solo lo que existe en Catherine
+Criterio: el juego implementa únicamente mecánicas de Catherine (fuentes: [Catherine Wiki – Puzzle Mechanics](https://catherine.fandom.com/wiki/Puzzle_Mechanics), [Samurai Gamers – técnicas de Full Body](https://samurai-gamers.com/catherine-full-body/techniques-locations-list/) y reseñas del juego). Lo que confirman esas fuentes:
+- Vincent **no salta**: trepa de a un bloque. Corre por encima de los bloques, empuja y tira en 4 direcciones.
+- Si no hay bloque abajo al caminar hacia un borde se cuelga de él (en el juego, a propósito: Espacio + dirección). Colgado: se desplaza de costado, dobla esquinas y trepa solo si hay lugar arriba.
+- **Regla de la arista**: un bloque sin nada debajo se queda en el aire mientras una de sus aristas toque la arista de otro bloque; si un bloque se empuja a un lugar sin contacto, cae junto con lo que sostenía.
+- Bloques especiales: hielo (resbala), bomba y resorte (nuestra catapulta).
+
+Decisiones de nuestro juego:
+- **Tirar de un bloque sin piso atrás no se permite**: el bloque tirado quedaría sobre el borde del que te agarrarías (no hay borde que agarrar entre dos cubos). Se cuelga solo a propósito (Espacio + dirección). Se quitó además el "bajar al piso del costado desde colgado", que no es una mecánica de Catherine.
+- Se mantienen: empujar fuera de la huella (el bloque queda por la regla de la arista o cae), colgarse una celda por fuera de la huella, bajar de a un escalón.
+- No implementado todavía (existe en Catherine): empujar varios bloques en fila de una vez; bloques pesados, trampas de pinchos y bloques que se desmoronan.
+
+## 3d. Modo entrenamiento
+Se entra desde el menú principal y se elige la etapa (1–27, la dificultad). Es una torre de la etapa elegida sin casino ni etapa siguiente; al llegar a la cima se avisa y con N se genera otra. **P** muestra el mejor próximo movimiento ("W", "Shift + A", "Espacio + D"; con la cámara actual) y otra vez **P** lo oculta; la pista se recalcula tras cada movimiento (en un hilo). `scripts/hint.gd`: resuelve la fila que toca con el mismo solucionador del generador (llegar a la plataforma de esa fila; la torre guarda los ids de las plataformas por fila en `row_platforms`) y, si no se puede, cae a "subir k pisos".
+
+## 6d. Boosts, consumibles y economía (efectos conectados)
+- **Boosts** (duran todo el run; `TowerLogic.apply_perks` al empezar o reintentar cada etapa): Aire extra (+1 a la caída), Madrugada (la caída al doble), Paso firme (trepar/bajar no cuenta para la caída), Pies de luz (+1 por bloque purificado), Luz propia (purifica los vecinos), Mano de oro (racha de a 1,0), Racha larga (tope ×6), Reflejos (bombas +3), Ojo de hielo (frena una celda antes), Ahorro (+20 de claridad por etapa), Segundo aliento (una vez por etapa, si caés volvés a la última celda firme).
+- **Consumibles** (teclas 1/2/3, no gastan movimiento; `TowerLogic.use_item`): Freno (5 movimientos sin que se acerque la caída), Desarmar (bomba más cercana), Hielo a roca (hielo cercano), Catapulta de bolsillo (el bloque de enfrente), Ancla chica (el bloque de enfrente o el de abajo no cae esta etapa).
+- **Economía**: una torre da entre ~190 (etapa 1) y ~390 (etapas altas) de claridad siguiendo el camino mínimo. La ficha de la ruleta sube `PRICE_STEP` = 2 por etapa (50 → 102, ≈ un cuarto de lo que se junta) y el valor de los premios escala con la ficha (`Items.value_of`), así el rendimiento esperado se mantiene entre 0,90 y 1,00 en todas las etapas.
+
+## 7. Interfaz de cubitos (estilo Balatro)
+Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la rueda) y el HUD están hechos de cubitos con relieve, vistos **de frente** (sin perspectiva): el volumen sale de los niveles (placa, borde, letras), de las sombras duras y de la inclinación de las cartas. Estilo híbrido: algo limpio (mármol y dorado) que se va corrompiendo (cubitos violetas, huecos y chorreras oscuras que crecen hacia abajo).
+- `voxel_font.gd`: fuente propia de 5 x 11 celdas (ASCII, números, acentos, ñ, ¡ ¿ × « »). Un carácter sin glifo se dibuja como "?".
+- `voxel_draw.gd`: cubitos con luz y sombra (`cube`), texto con sombra dura (`text_cells`) y cartas (`card`: sombra dura, placa lisa, borde de cubitos y franja de brillo).
+- `voxel_label.gd` (reemplaza a Label: alineación, corte por ancho, placa oscura para leer sobre la escena 3D, `dance` para que cada letra baile en los títulos) y `voxel_button.gd` (botón-carta: flota, se inclina hacia el mouse, crece al pasar por encima y se hunde al apretarlo; su tamaño sale del texto con margen de sobra, así nunca queda chico; cambiar el texto con `set_label`).
+- `swirl_bg.gd`: fondo en remolino de cubitos (menús y ruleta).
+- `menu_ui.gd`, `main_menu.gd`, `pause_menu.gd`, `roulette_screen.gd`, `roulette_wheel.gd` (mosaico de cubitos que gira), HUD de la torre (`main.gd`) y del casino (`casino_scene.gd`).
+
+## 6e. Barras de ítems
+- **Izquierda: consumibles** (4 casilleros de base, teclas 1 a 4 o clic) y **derecha: boosts** (5 de base). Los casilleros **no son fijos**: dependen de los boosts del run (`RunState.consumable_capacity` / `boost_capacity`). **Bolsillo hondo** suma 1 casillero de consumibles y **Mente abierta** suma 2 de boosts (ocupa uno, neto +1); los dos son acumulables (`stack`). Si los casilleros están llenos, el premio se convierte en claridad.
+- Cada ítem tiene su ícono de 9 x 9 cubitos (`scripts/item_icons.gd`); los casilleros (`item_slot.gd`) son cartas que se inclinan hacia el mouse, y pasar por encima muestra el nombre y la descripción. Con muchos casilleros acumulados se achican para entrar en la pantalla. El casino muestra las mismas barras (de sólo lectura).
+
+## 6f. Pantalla de la ruleta (rediseño) e ícono de claridad
+- Rueda grande y centrada: **las fichas se ponen tocando la rueda** (lo que ves es lo que tocás: el clic usa la rotación actual de la rueda, que gira despacio mientras se elige). Las casillas elegidas se oscurecen y llevan una pila de fichas doradas, así resaltan; al pasar el mouse se aclara la casilla.
+- Debajo, las cuatro apuestas como cartas, el precio de la ficha y GIRAR. Un mensaje corto reemplaza los párrafos ("Tocá 2 casillas en la rueda"). **Premios** abre una ventana (`prizes_window.gd`) con los premios de cada apuesta: ícono, descripción y probabilidad (probabilidad de acertar x peso del premio en su nivel).
+- **Ícono de la claridad** (`clarity_icon.gd`, `clarity_counter.gd`): una barra vertical atravesada por tres cruces horizontales, de cubitos en isométrico y girando, en colores cálidos de rayo (blanco amarillento y dorado). Se usa en vez del texto "Claridad: N" en la ruleta, el casino y el HUD de la torre.
+
+## 8. Modo dev (consola)
+- **F1** abre y cierra una consola arriba de la pantalla (Esc también la cierra; flechas arriba y abajo recorren el historial). Con la consola abierta el juego ignora el teclado.
+- Comandos (`scripts/dev_commands.gd`): `help`, `goto_end` (o `win`: te lleva al portal de la torre actual, o sea al casino), `set_claridad <n>` (deja la claridad total en n; para restar, un número menor; no baja de 0), `give <id>` (un boost o consumible; `items` lista los ids).
+- **No existe en Steam**: `DevCommands.available()` es `OS.is_debug_build()`, que es falso en las exportaciones con plantilla **release**; ahí la consola ni se crea y los comandos no hacen nada. Al exportar para Steam hay que usar la plantilla release (no marcar "Export With Debug"). Las pruebas lo verifican simulando una compilación release (`tests/test_dev.gd`).
+
+## 9. Reintentos, fin de run, cámara libre y guardado
+- **Reintentar la torre cuesta claridad** (`RunState.restart_cost`): la mitad de la ficha de la ruleta de la etapa (25 en la etapa 1, 51 en la 27), multiplicado por 1 + los reintentos que ya hiciste en esa misma torre. Se paga de la claridad del run; la que juntaste en el intento que abandonás se pierde. Si no alcanza, el run termina. En el entrenamiento es gratis. La pausa muestra el costo y tiene "Abandonar el run".
+- **Pantalla de fin de run** (`run_end_screen.gd`): victoria (etapa 27 superada) o fin (abandono o sin claridad para reintentar), con etapa alcanzada, torres superadas, claridad juntada, gastada y ganada en la ruleta, reintentos, movimientos y los boosts; botones Nueva partida y Menú principal.
+- **Cámara libre**: arrastrar con el mouse gira e inclina, la rueda hace zoom; Q y E vuelven al ángulo isométrico (inclinación y zoom incluidos) girando 90 grados. Se quitaron C y Z. Desde arriba (inclinación ≥ 52°) se ocultan las capas que tapan al personaje.
+- **Guardar y continuar** (`save_game.gd`, `user://save.json`): autoguardado cuando la torre está lista, al primer movimiento o consumible, al entrar al casino, al cobrar cada tirada de la ruleta y al salir al menú o cerrar. Continuar vuelve al casino donde estabas o al comienzo de la misma torre; si el intento ya había empezado, continuar cuenta como un reintento (así salir y volver no reinicia gratis). Terminar el run borra el guardado; el entrenamiento no guarda.
+
+## 10. Más mecánicas de Catherine
+
+- **Agrietado** (`Kind.CRACKED`, arenisca con grietas): se pisa y se puede empujar como uno normal, pero se rompe y cae al vacío apenas el jugador se mueve estando parado sobre él. Lo que sólo se sostenía de él cae también. Aparece desde la dificultad 0,25 (etapa 8).
+- **Pesado** (`Kind.HEAVY`, hierro con remaches): no se empuja ni se tira, pero se puede trepar; cae si se queda sin apoyo. Aparece desde la dificultad 0,15 (etapa 5).
+- Ambos salen como obstáculos sueltos del generador (no en plataformas), cuentan para el tope de bloques especiales por fila y el solucionador los valida igual que el resto. `BlockModels.CORE` pasó a valer 9 para dejar lugar a los tipos nuevos.
+- La torre se ve entera (ya no se oculta lo que está por encima de la altura alcanzada).
+- La pantalla de inicio de Godot está apagada (`boot_splash/show_image=false`). La licencia MIT de Godot pide conservar su aviso de copyright en algún lugar (créditos o archivo de licencias), no mostrar el logo.
+- **Créditos** (botón "Créditos" abajo a la izquierda del menú principal, `UI.make_credits_panel`): los créditos del juego (`UI.CREDITS_GAME`, con nombres por completar), el aviso de copyright y la licencia MIT de Godot, y la lista de componentes de terceros del motor. El texto sale de `Engine.get_license_text()` y `Engine.get_copyright_info()`, así se mantiene al día con la versión de Godot usada.
+
+## 11. Tutorial y cámara con flechas
+
+- El **modo entrenamiento se quitó**; en su lugar el menú principal tiene **Tutorial** (`scripts/tutorial.gd`): 10 lecciones, cada una una torre chica armada a mano que enseña una sola cosa: moverse (y la rosa de los vientos), trepar, empujar (un hueco que sólo se cruza empujando un bloque encima), tirar (se completa dejando el bloque en la casilla dorada), colgarse (una torre alta que no se baja caminando), hielo, pesado, agrietado, bomba, y una torre generada de verdad de 4 pisos. `tests/test_tutorial.gd` comprueba con el solucionador que cada lección se puede ganar y que empujar y colgarse son imprescindibles donde se enseñan.
+- Dentro del tutorial: cartel con la lección arriba, reintento gratis (R), pista con P, al completar una lección aparece un "¡Bien!" y a los ~1,3 s pasa sola a la siguiente (Enter o N la adelantan o saltan) y Esc pausa. No hay casino ni claridad en juego y no se guarda. La última lección vuelve al menú.
+- **Las flechas ahora giran la cámara** (izquierda y derecha giran, arriba y abajo inclinan, igual que arrastrar con el mouse); ya no mueven al personaje: el movimiento es sólo WASD.
+- `N` (torre nueva) y `[` `]` (cambiar de etapa) quedaron **sólo para compilaciones de desarrollo** (donde existe la consola F1): antes funcionaban en una partida normal y eran un truco.
+- Curva de mecánicas por etapa (según la dificultad `(etapa-1)/26`): 1 y 2 sólo bloques normales; hielo desde la 3; pesado desde la 5; agrietado desde la 8; bomba desde la 12.
+
+## 12. El casino se aclara con las etapas
+
+- `Room.look(stage)` (casino_room.gd) da la paleta de la sala según la etapa: de un sótano sucio y casi sin luz (etapa 1: piso y paredes oscuros, bronce en vez de dorado, mugre violeta y minibloques rotos en paredes y piso, lámparas rojizas) a un salón de mármol claro (etapa 27: piso blanco y celeste pálido, dorado brillante, sin corrupción y con pilastras de mármol: una desde la etapa ~10 y tres por pared desde la ~19). El cambio es suave en los extremos (curva smoothstep).
+- La luz ambiente del casino también sube con la etapa (`AMBIENT_TOWER` 0,7 → `AMBIENT_CASINO_LATE` 1,5 en `main._apply_casino_light`); en las torres vuelve a 0,7. El fondo ya seguía el tono de la etapa.
+- La distribución (celdas, mesa, puertas) no cambia con la etapa: sólo el aspecto. Que la sala "crezca" de tamaño quedó descartado por ahora porque toca la caminata, las puertas y las pruebas.
+- **Actualización: el casino cambia de diseño, no sólo de color.** `Room.layout(stage)` define 4 niveles de sala: **taberna** (etapas 1-6: 7×6 celdas, tablas rústicas, barriles, chimenea, sin tragamonedas), **salón** (7-13: 9×7, piedra y ladrillo con zócalo de madera, estantes con botellas, plantas, 2 tragamonedas), **casino** (14-20: 11×9, la distribución clásica con alfombra, cuadros y pilastras) y **gran casino** (21-27: 13×11, mármol, paredes más altas, pilastras acanaladas, columnas libres de mármol, 3 tragamonedas, 2 mesas de cartas y la ruleta sobre una tarima de dos escalones; el personaje sube con ellos). El piso, las paredes y los muebles se modelan distinto en cada nivel (el material se afina). La escena (`casino_scene.gd`) usa `lay` (la distribución de su etapa) y el zoom de la cámara crece con la sala. `tests/test_casino_room.gd` comprueba para varias etapas que todo es alcanzable, que hay lugares de ruleta y que el piso y las puertas están completos.
+
+## 13. Generación adelantada, comando goto_casino y registro de partidas perdidas
+
+- La torre de la etapa siguiente ya se generaba en un hilo mientras se jugaba la actual; ahora además se asegura al **entrar al casino** (`enter_casino` llama a `_prefetch_next_stage`, que no duplica) y, con el menú abierto y sin partida guardada, se va generando la **etapa 1** (para que "Nueva partida" arranque casi sin espera). Continuar y Tutorial cancelan esa generación del menú.
+- Consola dev: **`goto_casino <1-27>`** abre directamente el casino de esa etapa (taberna 1-6, salón 7-13, casino 14-20, gran casino 21-27) sin pasar por las torres; al salir sigue con la torre siguiente.
+- **Registro de partidas perdidas**: al perder, el juego imprime en el log de Godot (`%APPDATA%\Godot\app_userdata\Balatro x Catherine\logs\godot.log`) una línea `PERDIDA (motivo): semilla=... etapa=... acciones=dx,dz,modo;...` con todas las acciones del intento. Con la semilla y las acciones se puede regenerar la torre y reproducir el caso exacto (generar con esa semilla, etapa y 25 filas, y aplicar las acciones en orden).
+
+## 14. HUD del jugador
+
+- **El jugador no ve textos de controles ni de depuración.** Se quitaron las líneas de ayuda ("Esc: pausa, Mouse o flechas...") de la torre y del casino; los controles se explican en "Cómo jugar" y en el tutorial.
+- **HUD de la torre** (arriba a la izquierda): `Etapa N/27` y `Piso N/M`, la claridad (ícono más grande y placa oscura para leerla también en las etapas claras), `Cae en N` (cuántos movimientos faltan para que caiga la fila de abajo; roja con 2 o menos; no aparece en las lecciones sin caída) y `Racha ×N` (sólo con racha). Los consumibles de la izquierda bajan para no pisar esos textos. Arriba a la derecha, la rosa de los vientos.
+- **HUD del casino:** sólo los contadores de claridad y de la ficha (con placa) y la frase del crupier; sin título ni ayuda.
+- **Textos de depuración** (etapa con ritmo, caída, altura, movimientos, racha, purificados, semilla): `main.hud`, ocultos; **F2** los muestra y oculta, y sólo en compilaciones de desarrollo (en la release F2 no hace nada).
+- El aviso al perder queda como `R: reintentar (−N de claridad)`.
+
+## 15. Escenarios, pruebas y habilidades persistentes (meta-progresión)
+
+- **Escenarios** (`scenarios.gd`): son como los mazos de Balatro. **La Pesadilla** (el juego de siempre) es gratis; los demás cuestan **Luz** *por partida* (la entrada se gasta cada vez que se juega) y pagan más Luz (multiplicador `luz_mult`). Cada uno cambia reglas: **Glaciar** (torres llenas de hielo), **Ruinas** (agrietados y pesados), **Polvorín** (bombas), **Relojería** (ritmo rápido siempre y ficha 25 % más barata) y **Gran Casino** (casino de lujo desde la etapa 1, ficha 20 % más barata, torres algo más difíciles). Si no alcanza la Luz se juega La Pesadilla. Quedó pendiente un escenario "Sprint" de pocas etapas (hace falta que el largo del run no sea fijo en 27).
+- **Selector de escenario** (`scenario_screen.gd`, `scenario_card.gd`): "Nueva partida" (y la del fin de run) abre una fila de **tarjetas** que se desplaza en horizontal (flechas, rueda del mouse o teclas izquierda y derecha). Cada tarjeta tiene el nombre, una ilustración de cubitos (`scenario_art.gd`), cuánto multiplica la Luz, un botón **?** arriba a la derecha (reglas, pruebas que pueden salir y habilidades que se pueden ganar) y abajo al centro el botón de entrada con el costo y el sol (el gratuito dice Jugar). Los de pago se bloquean sin Luz.
+- **Pruebas** (`trials.gd`): caen en las etapas **3, 6, 9... 27** (múltiplos de 3). Al empezar cada partida se **sortea** cuál toca en cada una (con el conjunto de pruebas de ese escenario, sin repetir la misma dos veces seguidas), y **se ve desde el principio**: en las etapas comunes el HUD dice "Próxima prueba: X (en N etapas)" (también en el casino) y en la prueba muestra su nombre y su efecto. Pruebas: Niebla, Oscuridad, Prisa, Sin ayudas, Todo o nada, Sin racha, Hielo total, Quebradizo y Polvorín (las tres últimas sesgan el generador). Las últimas pagan más claridad (×1,5 la primera, ×2,7 la última). Al superarlas dan claridad extra y un boost de regalo.
+- **Habilidades persistentes** (`abilities.gd`): **no se compran**; se ganan la primera vez que se supera cada prueba y están relacionadas con ella (Hielo total → *Garras de hielo*, poder colgarse de bloques de hielo; Quebradizo → *Fuerza bruta*, empujar pesados; Polvorín → *Mecha larga*; Niebla → *Mente despejada*, +25 de claridad al empezar; Oscuridad → *Ojos de gato*; Prisa → *Pies ligeros*; Sin ayudas → *Bolsillo de soñador*; Todo o nada → *Segunda oportunidad*, reintentos 15 % más baratos; Sin racha → *Racha firme*). Valen en todos los escenarios. La pantalla **Habilidades** del menú las lista (las que faltan dicen con qué prueba se consiguen).
+- **Luz** (`profile.gd`, `user://profile.json`): al terminar un run se gana 3 por torre superada, 12 por prueba y 100 por escapar, multiplicado por el escenario. Una sola moneda: sirve sólo para entrar a los escenarios de pago.
+- Generador: `opts.bias` ({kinds, plat_ice, cap_bonus}) viaja en el propio `RandomNumberGenerator` (meta) para no depender de estado global entre hilos.
+- Los premios "bloqueados" de la primera versión del Despertar se quitaron (ya no hay tienda de mejoras).
+
+- **La Luz es un ícono, no una palabra** (`luz_icon.gd`, `luz_counter.gd`): una esfera sombreada, como un sol en miniatura, que late y suelta partículas que salen disparadas y se apagan. Se usa en los contadores (selector de escenario, fin de run, habilidades), en el costo de las tarjetas y en el multiplicador; no hay texto que nombre la Luz en esas pantallas (hay un test que lo comprueba).
+
+## 16. Tutorial narrativo: el tabernero
+
+- **Inicio en la taberna**: "Tutorial" lleva a la taberna (la sala de las etapas 1 a 6, en modo historia). El tabernero (el crupier) cuenta el lore de la pesadilla (la torre hecha de recuerdos corruptos, la claridad, que él también subió y se quedó a cuidar la taberna, las 27 torres) y manda a la puerta de atrás. No se camina mientras habla; al terminar, la puerta de salida se marca con una flecha dorada que sube y baja. Chocar con la mesa no abre la ruleta (el tabernero avisa que primero la puerta). Al empujar la puerta empiezan las lecciones.
+- **Cuadro de diálogo** (`dialogue_box.gd`): abajo, de cubitos, con la cara del tabernero a la izquierda, su nombre y el texto que se escribe letra por letra. Modo bloqueante (historias: Enter, Espacio, E o clic avanzan; Esc salta) y modo consejo (las lecciones: el texto se escribe solo, se queda mientras jugás y no pide nada). Una línea puede llevar un ícono (el sol o el rayo de la claridad) para hablar de la moneda sin escribir su nombre.
+- **Lecciones en su voz** (`story.gd`): cada lección la dice el tabernero en el cuadro (ya no hay cartel arriba); la torre se sube un poco en la pantalla para que el cuadro no la tape.
+- **Cierre en el salón de piedra** (etapa 7): al terminar la última lección el tabernero te recibe y explica la claridad y la ruleta, las pruebas cada 3 torres, las habilidades que se aprenden superándolas, la Luz (con su ícono) y los escenarios; después se vuelve al menú.
+- Los textos de la historia están en `story.gd` (todo entra en 4 renglones del cuadro; hay un test que lo comprueba). `start_tutorial(index, skip_intro)` permite saltar la escena de la taberna.
+
+## 17. Pantalla de Habilidades con íconos
+
+- Cada habilidad persistente tiene su **ícono de cubitos 3D** (`ability_art.gd`): una figura de 9 × 9 que se extruye en profundidad (el borde 3 cubitos de espesor, el centro hasta 5) y se dibuja en isométrico **girando despacio**, como la Luz y la claridad: lamparita (Mente despejada), ojo de gato (Ojos de gato), bota alada (Pies ligeros), bolsita (Bolsillo de soñador), flecha que da la vuelta (Segunda oportunidad), llama (Racha firme), garras de hielo (Garras de hielo), bloque de hierro con flecha (Fuerza bruta) y bomba de mecha larga (Mecha larga).
+- La pantalla (`meta_screen.gd`) es una grilla de casilleros con los íconos: las que no tenés se ven **grises y quietas**; las que ganaste, **a todo color, girando despacio, flotando, con un brillo que las cruza y chispas** (las grises también son 3D, pero no giran), sobre un marco dorado.
+- Tocar un ícono abre su **descripción**: el nombre, si la tenés o no, qué hace, **cómo la conseguiste** (o cómo conseguirla: qué prueba la enseña) y **en qué escenarios sale esa prueba** (con el costo de entrada como sol). Funciona igual para las que no tenés.
+- Consola dev: `set_luz <n>` fija la Luz del perfil (sirve en el menú y en el juego, y actualiza las pantallas abiertas).
+
+## 18. Pantalla de carga con dados y cosméticos
+
+- **Dados del tabernero** (`dice_game.gd`): en **toda** pantalla de carga (mientras se genera la torre y la espera pasa de ~0,8 s; si la torre ya estaba lista, ni se ve) aparece un minijuego de dados. Cada carga empieza con **3 tiros**, y cada tiro es una tirada nueva de **5 dados**: elegís qué cara va a salir en cada uno (clic en el dado o en sus flechas, rueda del mouse, o con el teclado izquierda/derecha para elegir el dado, arriba/abajo para cambiar la cara, 1 a 6 para fijarla y Enter para tirar), y al tirar ruedan y **se revelan de a uno** (verde si acertaste, rojo si no) con una frase del tabernero.
+- **Premios**: 0 aciertos nada · 1: +2 de claridad · 2: +8 · 3: +25 · **4: +80 de claridad y 1 de Luz** · **5: un cosmético** (1 chance en 7.776 por tiro). El promedio es ~3 de claridad por tiro. La claridad que dan los dados tiene un **tope de 150 por partida** (`RunState.DICE_CAP`); la Luz no tiene tope. Si ya se tienen todos los cosméticos, los 5 aciertos dan 100 de claridad.
+- **No bloquea nunca**: cuando la torre está lista, el tiro en curso termina (unos segundos como mucho) y el minijuego se cierra solo. Volver al menú lo cierra.
+- **Cosméticos** (`cosmetics.gd`, `cosmetics_screen.gd`): 6 aspectos del personaje (Azul noche, Verde bosque, Dorado, Fantasma, Sombrero de copa y Corona) además del Clásico. Se eligen en el menú **Cosméticos** (casilleros con el personaje en 3D, gris con "?" los que no se tienen) y se ven en la torre y en el casino. Se guardan en el perfil.
+- Para que entraran los 7 botones del menú principal se achicó un poco su tamaño.
+
+## 19. Dados con caída y Empezar, y menú sin "Cómo jugar"
+
+- **Los dados caen desde arriba**: al tirar, los 5 dados bajan desde arriba de la pantalla acelerando (cada uno aterriza un poco después que el anterior), pegan con un aplastón, **rebotan cada vez menos y se frenan**, deslizándose; mientras caen giran (cambian de cara cada vez más lento). Los dados son **todos blancos**, con un relieve redondeado en cada cara y los **puntos en las tres caras que se ven** (una orientación real de dado: las opuestas suman 7), con su sombra en la mesa. Al revelarse salta un poquito, y los aciertos sueltan chispas doradas.
+- **Se juega con WASD** además de con las flechas y el mouse: A y D eligen el dado, W y S cambian la cara (1 a 6 las fijan, Enter tira) y **E** empieza cuando la torre está lista.
+- **Botón "Empezar"** (a la derecha): la pantalla de carga ya no se cierra sola. Mientras la torre se genera, el botón está gris con una espiral de carga; cuando está lista se habilita y se puede seguir tirando hasta apretarlo (si hay un tiro en curso, termina antes de cerrarse). En las pruebas (`auto_start`) se cierra solo.
+- **Menú principal**: se quitó "Cómo jugar" (de este menú y de la pausa): para eso está el tutorial, que ahora es **la primera tarjeta de "Nueva partida"** (gratis, con su "?"). Ya no hay un botón Tutorial suelto.
+
+## 20. Generación con varios hilos y pantalla de carga directa
+
+- La torre se genera con **varias semillas a la vez** (la mitad de los procesadores, de 1 a 4 hilos, `MAX_GEN_THREADS`): como el tiempo de una torre varía mucho de una semilla a otra, la primera que sale gana y frena a las demás con un testigo de cancelación propio de cada trabajo (`cancel_token`; la bandera global `Gen.cancel` sigue sirviendo para cancelar todo). Cada hilo usa `s + k * 7919`; la torre trae `seed_used` para poder reproducirla.
+- Al entrar a la partida ya no aparece el cartel "Generando la torre...": si hay que esperar, **se abre directo la pantalla de los dados** (sin demora y sin ningún texto antes). Si la torre ya estaba generada de antemano, no se ve nada.
+- No se agrega un aviso de "sin salida": si te quedás sin camino, es parte del juego tirarte al vacío o reiniciar.
+
+## 21. Cosméticos con rareza y la trampa de los dados
+
+- **Rareza de los cosméticos** (`cosmetics.gd`): común, raro y épico (13 en total). Comunes (6, sólo cambian el color): Azul noche, Verde bosque, Brasa, Turquesa, Rosa y Plateado. Raros (4): Dorado, Fantasma, Sombrero de copa y Gorro de brujo. Épicos (3): Corona, Halo y Obsidiana. Hay sombreros nuevos (gorro de brujo y halo flotante). La pantalla de Cosméticos muestra una barra con el color de la rareza en cada casillero, cuántos tenés de cada una y el nombre del elegido con su rareza.
+- **Premios de los dados** (`dice_game.gd`): 0 aciertos nada · 1: +2 de claridad · 2: +8 · **3: +25 de claridad y 1 de Luz** · **4: +80, 2 de Luz y un cosmético común (85 %) o raro (15 %)** · **5: +150, 5 de Luz y un cosmético raro (70 %) o épico (30 %)**. Si de la rareza que toca ya los tenés todos, sale de otra; si ya tenés todos, 100 de claridad. La claridad de los dados sigue con tope de 150 por partida; la Luz y los cosméticos no.
+- **La trampa**: con los dados ya revelados, si algo falló y te alcanza la Luz, se abre una pausa (botón "Cobrar") en la que cada dado que falló muestra cuánto cuesta amañarlo (con el sol): **2 el primero, 3 el segundo, 4 el tercero...** (sube con cada uno y vuelve a empezar en cada tiro). Un clic (o W, o Espacio, con A y D para elegir) lo cambia por la cara que habías pedido y se vuelve violeta. Con Luz de sobra se compran los cinco (2 + 3 + 4 + 5 + 6 = 20). Si amañás todos, se cobra solo; con Enter o "Cobrar" se cobra lo que hay, y "Empezar" también cobra y cierra. Arriba a la derecha se ve cuánta Luz tenés. Si no te alcanza para el primero, el tiro se cobra enseguida sin pausa.
+
+## 22. Opciones, idiomas y semillas reproducibles
+
+- **Pantalla de Opciones** (`options_screen.gd`, desde el menú principal y desde la pausa): idioma (Español / English), ventana o pantalla completa, resolución (1280x720 hasta la que entre en el monitor; en pantalla completa se apaga), sincronía vertical y volumen general (10 pasos). Cada cambio se aplica y se guarda al instante en `user://settings.json` (`settings.gd`). La primera vez el idioma sale del sistema. El proyecto estira la interfaz (`canvas_items`, `expand`) para que se vea igual en cualquier resolución.
+- **Tabla de idiomas** (`loc.gd`, `loc_en*.gd`): la CLAVE es la frase en español. `Loc.t("Nueva partida")` la traduce; los textos con datos van como patrón (`Loc.f("Etapa %d/%d", [n, total])`). Las etiquetas y botones de cubitos traducen solos lo que reciben (`Loc.auto`), así que los textos fijos no hay que tocarlos. Lo que falta traducir se muestra en español. Para sumar un idioma: un archivo `loc_xx.gd` con su tabla y una línea en `Loc.LANGS`.
+- `tests/test_loc.gd` revisa que cada frase pedida con `Loc.t/f`, cada nombre/descripción del catálogo, la historia y el tutorial estén en la tabla, y recorre las pantallas en inglés sin que quede nada sin traducir (con `LOC_PRINT=1` imprime lo que falta).
+- **Semillas reproducibles**: antes el tope de tiempo del generador (ms) cortaba la búsqueda según la velocidad de la máquina, y la misma semilla daba torres distintas. Ahora el tope se mide en trabajo del solucionador (`budget_states`), así que la misma semilla (con la misma etapa, escenario y prueba) da siempre la misma torre. `tests/check_seed.gd` genera una semilla y reproduce su camino.
+
+## 23. Cámara libre en el casino y mecánicas nuevas (fila, trampa, pinchos)
+
+- **Casino**: la cámara gira e inclina igual que en la torre: arrastrar con el mouse, flechas (izquierda y derecha giran, arriba y abajo inclinan; ya no mueven al personaje: W A S D), rueda para el zoom. Q y E vuelven a la diagonal isométrica y giran 90 grados.
+- **Empujar una fila** (`TowerLogic._push_row`): si detrás del bloque que empujás hay otros pegados, se mueve toda la fila (hasta 3) siempre que la celda de más allá esté libre y ninguno sea fijo ni pesado. Una fila no resbala (el hielo sólo se desliza si va solo). Tirar sigue siendo de a un bloque.
+- **Trampa** (`Kind.TRAP`): parece un bloque común pero tiene una cruz roja hundida arriba (siempre visible, también corrupta). Al quedar parado sobre ella se desarma y el jugador cae con ella (sobre otro bloque, o al vacío si abajo no hay nada). Empujarla, tirarla o colgarse de su borde no la activa. En las torres aparece como celda de plataforma (hasta 2 por plataforma) desde la dificultad 0,30 (etapa ~9).
+- **Pinchos** (`Kind.SPIKES`): bloque de acero con cinco púas plateadas; quedar parado encima (trepando, bajando o cayendo sobre él) pierde ("Caíste sobre los pinchos"). Se pueden empujar y tirar como un bloque común. En las torres aparecen como celda de plataforma (1 por plataforma) y como obstáculo desde la dificultad 0,35 (etapa ~10). El solucionador sigue garantizando que cada fila tenga camino.
+- El tutorial suma tres lecciones (Fila de bloques, Trampa, Pinchos) antes de "Una torre de verdad", cada una con su texto del tabernero y su traducción.
+
+## 24. Tragamonedas, blackjack y sonido
+
+- **Tragamonedas con retener** (`slots.gd`, `slots_screen.gd`): se choca contra una máquina del casino. Se paga una ficha (la misma de la ruleta) y giran tres rodillos con cinco símbolos (cubo, hielo, bomba, sol y corona; pesos 7/5/3/2/1). Después se puede, **una vez**, retener los rodillos que se quieran (teclas 1, 2, 3) y volver a girar los otros por **media ficha**, o cobrar lo que hay (Enter). Pagan dos iguales (cubo ×0,3 · hielo ×0,5 · bomba ×0,9 · sol ×1,4 · corona ×2,5) y tres iguales (×2 · ×4 · ×9 · ×20 · ×50, y tres coronas dan además un boost épico). Rendimiento con la mejor estrategia ≈ 0,915 (lo vigila `tests/test_games.gd`). Los pagos son en claridad y cuentan en las estadísticas del casino.
+- **Blackjack** (`blackjack.gd`, `blackjack_screen.gd`): mesa de cartas de los casinos grandes. Un mazo de 52 (palos = cubo, hielo, bomba, sol) que se baraja en cada mano; apuesta de una ficha; Pedir (Espacio), Plantarse (Enter), Doblar (D, con las dos primeras cartas). El crupier pide hasta 17 y se planta en todos los 17. Blackjack paga 3 a 2, ganar 1 a 1, empate devuelve la apuesta. Sin dividir ni seguro. Con una estrategia simple rinde ≈ 0,99. En el tutorial las mesas y máquinas siguen cerradas (el tabernero lo avisa).
+- Las máquinas y la mesa del casino ya no están tapadas: las máquinas tienen sus tres ventanitas de rodillo y la mesa, el fieltro con cartas y fichas.
+- **Sonido y música, todo sintetizado por código** (`synth.gd`, `sfx.gd`, `music.gd`, `audio_hub.gd`): `Sfx.play("nombre")` con ~30 efectos (pasos, empujar, tirar, trepar, colgarse, purificar con tono que sube con la racha, resbalar, catapulta, trampa, pinchos, caída, explosión, ruleta, dados, rodillos, cartas, monedas, clics de menú, el "blip" del tabernero al hablar...). Tres pistas de música en bucle armadas en un hilo la primera vez (menú, torre, casino) con fundido al cambiar. Buses "Musica" y "Efectos" con sus volúmenes en Opciones (más el general). Sin pantalla (pruebas) no suena nada. Para reemplazar cualquier sonido por un archivo real basta ponerlo en `res://audio/sfx/<nombre>.ogg|wav` o `res://audio/music/<pista>.ogg|wav`.
+
+## 25. Personajes animalitos y ropa
+
+- **Personajes** (`characters.gd`): el cubo con nariz se reemplaza por cuatro animalitos de voxels (cabeza grande, torso chico, patitas y bracitos que se balancean al caminar, cola): **Gatito** (el de siempre), **Perrito**, **Conejito** y **Pingüino**. Todos juegan igual; sólo cambia el aspecto. El modelo mide ~0,75 con los pies en el origen y mira hacia +Z; tiene una copia de silueta (se ve a través de las plataformas).
+- **Desbloqueos**: el Perrito al superar tu primera prueba; el Conejito al llegar a la etapa 10; el Pingüino al superar la prueba del Hielo total (la de la habilidad Garras de hielo). Al desbloquear uno el juego avisa ("¡Personaje nuevo: ...!"). Los desbloqueos y el personaje elegido se guardan en el perfil (`Profile.on_trial_cleared / on_ability / on_stage_reached`).
+- **Ropa** (`cosmetics.gd`): dos huecos, **gorro** y **prenda**, que se combinan con cualquier animalito. 13 piezas, con las mismas rarezas y los mismos premios de los dados: comunes (6): Gorra, Gorro de lana, Cinta, Bufanda, Remera, Mochila; raros (4): Sombrero de copa, Gorro de brujo, Capa, Chaleco dorado; épicos (3): Corona, Halo, Armadura de obsidiana. Los cosméticos viejos (colores del cubo) se pasan solos a su equivalente (el perfil guardado se migra al cargarlo).
+- **Pantalla Personaje** (antes Cosméticos): el animalito grande girando a la izquierda y, a la derecha, solapas Personajes / Gorros / Ropa con casilleros con miniatura 3D (en gris con "?" lo que no se tiene; al pasar el mouse dice cómo conseguirlo). Un clic elige un personaje o pone/saca una pieza.
+
+## 26. Ajustes de la bomba, la catapulta y el casino
+
+- **Lección de la bomba**: la bomba está sobre el piso, a la altura del jugador (así su cuenta baja con cada movimiento), a exactamente 3 movimientos (dos pasos y subirse encima) y con cuenta 3: perder un solo movimiento o retroceder la hace explotar. Subirse encima la desactiva. Si explota hay animación (destello naranja que crece, llamas y escombros que salen disparados, sacudón y destello de pantalla) además de la caída de la torre.
+- **Sonidos de la bomba**: al desactivarse suena una mecha que se apaga (`defuse`), y mientras haya una bomba con cuenta a la vista suena un tic-tac (`tic`/`tac`) que se acelera cuanto menos le queda.
+- **Catapulta**: además de las 4 celdas que sube, busca de dónde agarrarse hasta 2 celdas más arriba (si el camino está libre) y se agarra del borde más alto que alcanza (antes sólo miraba a la altura exacta del punto más alto y, si no había borde, volvía a caer).
+- **Casino**: tiene la misma rosa de los vientos que la torre (arriba a la derecha): al girar la cámara las letras W A S D cambian de eje, así no hay que adivinar para dónde va cada tecla.
+
+## 27. Dados: retener y volver a tirar (reemplaza a la trampa)
+
+- Después de ver un tiro, con Luz y re-tiradas disponibles se abre una pausa: los dados que acertaron quedan **retenidos** y de los que fallaron se elige cuáles **volver a tirar** (por defecto todos los que alcanza la Luz; tocar uno lo retiene, con un candado). Cada dado que se vuelve a tirar cuesta **1 de Luz** y acierta con probabilidad 1/6: no hay garantía. Hasta **2 re-tiradas por tiro**. Botones "Tirar de nuevo (−N Luz)" y "Cobrar"; teclas: A/D eligen, W o Espacio marcan, Enter vuelve a tirar, C cobra. Constantes: `DiceGame.REROLL_COST` y `MAX_REROLLS`.
+- Los dados que ruedan de nuevo caen otra vez con la animación; los retenidos siguen quietos a la vista. Si se llega a los cinco se cobra solo; si se acaban las re-tiradas o la Luz, también.
+
+## 28. El laboratorio (modo dev)
+
+- Sólo en compilaciones de desarrollo (nunca en la exportación release). Comandos de la consola (F1): `lab [n|id]` entra al laboratorio o salta a otra estación, `labs` las lista, `spawn <tipo> [cuenta]` pone un bloque delante del personaje (normal, hielo, bomba, catapulta, agrietado, pesado, trampa, pinchos, fijo), `perk <id>` activa o saca un boost o habilidad (por ejemplo `perk fuerza_bruta`), `collapse on|off` enciende o apaga la caída de la fila de abajo. R reinicia la estación, gratis, con los perks activos. Salir: Esc, menú.
+- Hay una **estación por bloque o mecánica** (`lab.gd`): común (empujar, tirar, filas de 2, 3 y 4), hielo, bomba, catapulta (paredes de 5, 7 y 10), agrietado, pesado, trampa, pinchos, fila de bloques, colgarse, bloque fijo y combinaciones. Cada una tiene su cartel 3D que dice qué probar. Se carga **una estación a la vez**: las bombas cuentan en todo el mundo cuando estás a su altura, así que varias juntas se pisarían.
+- `tests/test_lab.gd` comprueba que cada estación se arma bien (sin bloques fantasma, dentro de su franja, con piso bajo el arranque) y que se comporta como dice su cartel; así cualquier cambio en las reglas que rompa un bloque se nota.
+- **Boosts, habilidades y consumibles en el laboratorio**: `give <id>` da un consumible (hay casilleros de sobra; se usa con las teclas 1-4) o un boost (se aplica enseguida: reinicia la estación). `perk <id>` prende o apaga un boost sin gastar casillero (por ejemplo `perk reflejos`, `perk aire_extra`) y también reinicia la estación, porque varios boosts cambian números al armar la torre. `ability [id]` prende o apaga una habilidad persistente (`ability garras_de_hielo`, `ability mente_despejada`...; sin id las lista con una marca en las prendidas). En el laboratorio no valen las habilidades del perfil real, sólo las que prendas a mano: así lo que probás no depende de qué hayas ganado jugando.

@@ -1,0 +1,11 @@
+# Godot
+.godot/
+*.translation
+export_presets.cfg.bak
+
+# El ejecutable de Godot (se descarga aparte, pesa más de 100 MB)
+tools/*.exe
+
+# Capturas y archivos temporales de las pruebas
+*.tmp
+tests/_*.gd

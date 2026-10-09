@@ -1,0 +1,501 @@
+extends Node3D
+## Casino jugable: la sala de casino_room.gd con el personaje caminando de celda en celda.
+##  - Se llega frente a la puerta de llegada (pared oeste), que es sólo estética. Se vuelve a la torre empujando la puerta
+##    de salida (pared norte, frente a EXIT).
+##  - Chocar contra la mesa de la ruleta abre la pantalla de apuesta (roulette_screen.gd). Espacio / Enter hace lo
+##    mismo parado al lado de la mesa, mirándola. Tragamonedas y mesa de cartas: próximamente.
+##  - Q / E giran la cámara; las paredes que quedan entre la cámara y la sala se ocultan.
+## Uso: crear, add_child, setup(run, rng). Emite `left` al irse por el portal.
+
+const Room := preload("res://scripts/casino_room.gd")
+const VoxelMesh := preload("res://scripts/voxel_mesh.gd")
+const RouletteScreen := preload("res://scripts/roulette_screen.gd")
+const SlotsScreen := preload("res://scripts/slots_screen.gd")
+const BlackjackScreen := preload("res://scripts/blackjack_screen.gd")
+const Sfx := preload("res://scripts/sfx.gd")
+const Characters := preload("res://scripts/characters.gd")
+const Compass := preload("res://scripts/compass.gd")
+const Roulette := preload("res://scripts/roulette.gd")
+const VoxelLabel := preload("res://scripts/voxel_label.gd")
+const ItemBar := preload("res://scripts/item_bar.gd")
+const ClarityCounter := preload("res://scripts/clarity_counter.gd")
+
+signal left
+signal roulette_opened
+signal changed   ## el run cambió (se jugó una tirada): hay que guardar
+signal story_message(text: String)   ## en el modo historia (tutorial): algo que el tabernero tiene para decir
+
+const STEP_TIME := 0.14
+const PITCH := -35.264
+const PITCH_MIN := -86.0
+const PITCH_MAX := -10.0
+const MOUSE_SENS := 0.28       # grados por píxel (igual que en la torre)
+const ARROW_SPEED := 110.0     # grados por segundo al girar con las flechas
+const ZOOM_FACTOR := 1.1
+const PLAYER_SCALE := 1.5  # el personaje se agranda un poco: la sala está hecha de minibloques y el crupier es alto
+const DEALER_LINES := [
+	"Crupier: «Sentate, soñador. Acá la claridad se juega, no se regala.»",
+	"Crupier: «Cada ficha es un pedazo de despertar. ¿Cuánto arriesgás?»",
+	"Crupier: «La casa siempre gana... salvo cuando te acordás de despertar.»",
+]
+
+var run
+var rng: RandomNumberGenerator
+var lay := {}                 # distribución de la sala de esta etapa (casino_room.gd: layout)
+var cell := Vector2i.ZERO
+var facing := Vector2i(0, -1)
+var yaw_target := 45.0
+var cam_pitch := PITCH
+var pitch_node: Node3D
+var model: Node3D             # el animalito
+var compass                    # rosa de los vientos
+var busy := false             # caminando o con una pantalla abierta
+var leaving := false
+var player_node: Node3D
+var pivot: Node3D
+var cam: Camera3D
+var walls := {}               # "west"/"north" -> [sólido, luces]
+var hud: Control
+var next_label: Control        # "Próxima prueba: Niebla (en 2 etapas)"
+var toast: Control
+var hud_layer: CanvasLayer
+var left_bar
+var right_bar
+var clarity_counter
+var price_counter
+var item_tip: Control
+var overlay: CanvasLayer
+var screen
+var _walk_tween: Tween
+var _cam_tween: Tween
+var story := false            # modo historia (tutorial): la ruleta no se abre y no se ve la interfaz de juego
+var input_locked := false     # mientras habla el tabernero no se camina
+var _arrow: Node3D            # flecha que marca la puerta de salida
+var _t := 0.0
+var quick := false            # pruebas: sin animaciones
+
+
+func setup(run_state, random: RandomNumberGenerator) -> void:
+	run = run_state
+	rng = random
+	lay = Room.layout(run.stage, int(run.scenario().get("casino_tier", -1)))
+	cell = lay.entry
+	_build_room()
+	_build_player()
+	_build_camera()
+	_build_hud()
+	if story:
+		hud_layer.visible = false
+	_place_player()
+	_flash(DEALER_LINES[rng.randi() % DEALER_LINES.size()])
+	_refresh_hud()
+
+
+# --- construcción --------------------------------------------------------------------------------------------
+
+func _solid_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.roughness = 0.85
+	return m
+
+
+func _glow_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return m
+
+
+func _mesh_node(vox: Dictionary, material: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = VoxelMesh.build(vox, Room.VOXEL)
+	mi.material_override = material
+	add_child(mi)
+	return mi
+
+
+func _build_room() -> void:
+	var data := Room.build_voxels(run.stage, int(run.scenario().get("casino_tier", -1)))
+	var base_solid: Dictionary = data.solid.duplicate()
+	var base_glow: Dictionary = data.glow.duplicate()
+	for side in ["west", "north"]:
+		for p in data[side].solid:
+			base_solid.erase(p)
+		for p in data[side].glow:
+			base_glow.erase(p)
+	_mesh_node(base_solid, _solid_material())
+	_mesh_node(base_glow, _glow_material())
+	for side in ["west", "north"]:
+		walls[side] = [_mesh_node(data[side].solid, _solid_material()), _mesh_node(data[side].glow, _glow_material())]
+
+
+func _build_player() -> void:
+	player_node = Node3D.new()
+	player_node.scale = Vector3.ONE * PLAYER_SCALE
+	var profile := preload("res://scripts/profile.gd")
+	model = Characters.build(profile.character(), profile.equipped_hat(), profile.equipped_outfit())   # el animalito elegido, con su ropa
+	model.position = Vector3(0, -0.35, 0)   # (el origen del modelo está en los pies; el del personaje, en el centro del cuerpo)
+	player_node.add_child(model)
+	add_child(player_node)
+
+
+func _room_center() -> Vector3:
+	return Vector3(lay.cells.x * 0.5, 1.0, lay.cells.y * 0.5) * (Room.CELL_VOX * Room.VOXEL)
+
+
+func _build_camera() -> void:
+	pivot = Node3D.new()
+	add_child(pivot)
+	pivot.position = _room_center()
+	pivot.rotation_degrees.y = yaw_target
+	var pitch := Node3D.new()
+	pitch.rotation_degrees.x = PITCH
+	pitch_node = pitch
+	pivot.add_child(pitch)
+	cam = Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.size = lay.cam_size
+	cam.far = 200.0
+	cam.position = Vector3(0, 0, 40)
+	pitch.add_child(cam)
+	cam.make_current()
+
+
+func _build_hud() -> void:
+	var layer := CanvasLayer.new()
+	hud_layer = layer
+	add_child(layer)
+	hud = _label(layer, 3, Color(1.0, 0.92, 0.7))   # (el título "Casino" ya no se muestra)
+	hud.visible = false
+	next_label = _label(layer, 3, Color(0.88, 0.85, 0.98))
+	next_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	next_label.align = VoxelLabel.Align.RIGHT
+	next_label.margin = 190.0
+	next_label.y_offset = 22.0
+	next_label.plate_alpha = 0.6
+	# La rosa de los vientos (como en la torre): qué eje mueve cada tecla según como esté girada la cámara.
+	compass = Compass.new()
+	compass.name = "rosa_vientos"
+	compass.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	compass.position = Vector2(-Compass.SPAN - 16, 10)
+	compass.size = Vector2(Compass.SPAN, Compass.SPAN)
+	compass.view_source = func(): return Vector2(pivot.rotation_degrees.y, pitch_node.rotation_degrees.x) if pivot != null and pitch_node != null else Vector2(45, PITCH)
+	compass.dir_source = func(sx, sy): return Vector3i(_dir_for_screen(sx, sy).x, 0, _dir_for_screen(sx, sy).y)
+	layer.add_child(compass)
+	var counters := HBoxContainer.new()   # claridad y precio de la ficha: el ícono girando y el número
+	counters.position = Vector2(26, 20)
+	counters.add_theme_constant_override("separation", 22)
+	layer.add_child(counters)
+	clarity_counter = ClarityCounter.new(4.0)
+	clarity_counter.name = "claridad"
+	clarity_counter.plate_alpha = 0.55
+	counters.add_child(clarity_counter)
+	var ficha := _label(counters, 3, Color(0.85, 0.8, 1.0))
+	ficha.text = "Ficha"
+	ficha.plate_alpha = 0.55
+	price_counter = ClarityCounter.new(3.0, Color(0.9, 0.85, 1.0))
+	price_counter.name = "ficha"
+	price_counter.plate_alpha = 0.55
+	counters.add_child(price_counter)
+	item_tip = _label(layer, 2, Color(0.95, 0.93, 0.88))
+	item_tip.wrap_px = 460
+	item_tip.plate_alpha = 0.85
+	item_tip.visible = false
+	left_bar = ItemBar.new()
+	layer.add_child(left_bar)
+	left_bar.edge = 0
+	left_bar.tip = item_tip
+	left_bar.setup(run, ItemBar.Kind.CONSUMABLE, false)
+	right_bar = ItemBar.new()
+	layer.add_child(right_bar)
+	right_bar.edge = 1
+	right_bar.tip = item_tip
+	right_bar.setup(run, ItemBar.Kind.BOOST, false)
+	toast = _label(layer, 2, Color(1.0, 0.95, 0.85))
+	toast.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	toast.align = VoxelLabel.Align.CENTER
+	toast.y_offset = 104.0
+	toast.plate_alpha = 0.6
+	toast.modulate.a = 0.0
+
+
+func _label(parent: Node, cube: float, color: Color) -> Control:
+	var l := VoxelLabel.new()
+	l.cube = cube
+	l.color = color
+	parent.add_child(l)
+	return l
+
+
+# --- estado y movimiento -------------------------------------------------------------------------------------
+
+func cell_position(c: Vector2i) -> Vector3:
+	return Room.world_of_cell(c, lay) + Vector3(0, 0.35 * PLAYER_SCALE, 0)
+
+
+func _place_player() -> void:
+	player_node.position = cell_position(cell)
+	player_node.rotation.y = atan2(facing.x, facing.y)
+
+
+func _refresh_hud() -> void:
+	if left_bar != null:
+		left_bar.refresh()
+		right_bar.refresh()
+	hud.text = "Casino"
+	var nt: String = run.next_trial_text(run.stage + 1)   # la que toca después de este casino
+	next_label.text = nt
+	next_label.visible = nt != ""
+	clarity_counter.value = run.claridad
+	price_counter.value = Roulette.run_price(run)
+
+
+func _flash(msg: String) -> void:
+	toast.text = msg
+	toast.modulate.a = 1.0
+	create_tween().tween_property(toast, "modulate:a", 0.0, 3.0).set_delay(1.5)
+
+
+## Intenta dar un paso hacia `dir` (en celdas). Devuelve qué pasó: "moved", "blocked", "roulette", "soon" o "exit".
+func step(dir: Vector2i) -> String:
+	if busy or leaving or input_locked:
+		return "blocked"
+	facing = dir
+	player_node.rotation.y = atan2(dir.x, dir.y)
+	var n := cell + dir
+	if not Room.in_room(n, lay):
+		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida
+			leaving = true
+			left.emit()
+			return "exit"
+		return "blocked"
+	if not Room.walkable(n, lay):
+		return _bump(n)
+	cell = n
+	busy = true
+	Sfx.play("step", 1.3, -8.0)
+	Characters.step_anim(model, STEP_TIME)
+	var target := cell_position(cell)
+	if quick:
+		player_node.position = target
+		_on_arrived()
+	else:
+		if _walk_tween:
+			_walk_tween.kill()
+		# Un saltito por casilla: sube y baja mientras avanza, se estira en el aire y se aplasta al pisar.
+		var start := player_node.position
+		var base := Vector3.ONE * PLAYER_SCALE
+		_walk_tween = create_tween()
+		_walk_tween.tween_method(func(t: float) -> void:
+				var e := 1.0 - (1.0 - t) * (1.0 - t)
+				player_node.position = start.lerp(target, e) + Vector3(0, sin(t * PI) * 0.18, 0)
+				var stretch := sin(t * PI) * 0.12
+				player_node.scale = base * Vector3(1.0 - stretch * 0.5, 1.0 + stretch, 1.0 - stretch * 0.5), 0.0, 1.0, STEP_TIME)
+		_walk_tween.tween_callback(_on_arrived)   # se puede seguir caminando mientras termina el aplastón
+		_walk_tween.tween_property(player_node, "scale", base * Vector3(1.12, 0.88, 1.12), 0.04)
+		_walk_tween.tween_property(player_node, "scale", base, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return "moved"
+
+
+func _on_arrived() -> void:
+	busy = false
+
+
+## Chocar contra lo que no se camina: la mesa de la ruleta se abre; el resto avisa.
+func _bump(n: Vector2i) -> String:
+	if lay.table.has_point(n) or n == lay.dealer:
+		if story:   # en el tutorial no se apuesta todavía
+			story_message.emit(preload("res://scripts/story.gd").BLOCKED_TABLE)
+			return "blocked"
+		open_roulette()
+		return "roulette"
+	if lay.machines.has(n):
+		if story:
+			story_message.emit(preload("res://scripts/story.gd").BLOCKED_TABLE)
+			return "blocked"
+		open_slots()
+		return "slots"
+	for ct in lay.card_tables:
+		if ct.has_point(n):
+			if story:
+				story_message.emit(preload("res://scripts/story.gd").BLOCKED_TABLE)
+				return "blocked"
+			open_blackjack()
+			return "blackjack"
+	return "blocked"
+
+
+## Espacio / Enter: jugar a la ruleta si se está al lado de la mesa y mirándola.
+func interact() -> String:
+	if busy or leaving or input_locked:
+		return "blocked"
+	var n := cell + facing
+	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n):
+		return _bump(n)
+	for ct in lay.card_tables:
+		if ct.has_point(n):
+			return _bump(n)
+	return "blocked"
+
+
+func open_roulette() -> void:
+	_open_screen(RouletteScreen.new())
+	roulette_opened.emit()
+
+
+func open_slots() -> void:
+	_open_screen(SlotsScreen.new())
+
+
+func open_blackjack() -> void:
+	_open_screen(BlackjackScreen.new())
+
+
+## Abre una pantalla de juego (ruleta, tragamonedas o blackjack) a pantalla completa sobre el casino.
+func _open_screen(new_screen: Control) -> void:
+	if screen != null:
+		new_screen.free()
+		return
+	busy = true
+	overlay = CanvasLayer.new()
+	overlay.layer = 20
+	add_child(overlay)
+	screen = new_screen
+	overlay.add_child(screen)
+	screen.setup(run, rng, quick)
+	screen.closed.connect(close_roulette)
+	screen.resolved.connect(func(): changed.emit())
+	hud_layer.visible = false   # el juego ocupa toda la pantalla: la interfaz del casino no se ve detras
+
+
+func close_roulette() -> void:
+	if screen == null:
+		return
+	overlay.queue_free()
+	overlay = null
+	screen = null
+	busy = false
+	hud_layer.visible = true
+	_refresh_hud()
+
+
+# --- cámara --------------------------------------------------------------------------------------------------
+
+func _dir_for_screen(sx: float, sy: float) -> Vector2i:
+	var yaw := deg_to_rad(yaw_target)
+	var right := Vector2(cos(yaw), -sin(yaw))
+	var fwd := Vector2(-sin(yaw), -cos(yaw))
+	var want := right * sx + fwd * sy
+	var best := Vector2i(1, 0)
+	var best_dot := -INF
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var dot := Vector2(d).dot(want)
+		if dot > best_dot:
+			best_dot = dot
+			best = d
+	return best
+
+
+## Gira (x) e inclina (y) la cámara según un desplazamiento del mouse en píxeles (igual que en la torre).
+func orbit_view(rel: Vector2) -> void:
+	yaw_target -= rel.x * MOUSE_SENS
+	cam_pitch = clampf(cam_pitch - rel.y * MOUSE_SENS, PITCH_MIN, PITCH_MAX)
+	if _cam_tween:
+		_cam_tween.kill()
+	pivot.rotation_degrees.y = yaw_target
+	pitch_node.rotation_degrees.x = cam_pitch
+
+
+## Acerca (factor < 1) o aleja (factor > 1) la cámara.
+func zoom_view(factor: float) -> void:
+	cam.size = clampf(cam.size * factor, float(lay.cam_size) * 0.4, float(lay.cam_size) * 1.8)
+
+
+func rotate_camera(stp: int) -> void:
+	yaw_target = roundf((yaw_target - 45.0) / 90.0) * 90.0 + 45.0 + 90.0 * stp   # vuelve a la diagonal más cercana y gira desde ahí
+	cam_pitch = PITCH
+	if _cam_tween:
+		_cam_tween.kill()
+	if quick:
+		pivot.rotation_degrees.y = yaw_target
+		pitch_node.rotation_degrees.x = cam_pitch
+		return
+	_cam_tween = create_tween().set_parallel(true)
+	_cam_tween.tween_property(pivot, "rotation_degrees:y", yaw_target, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_cam_tween.tween_property(pitch_node, "rotation_degrees:x", cam_pitch, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## Qué paredes quedan entre la cámara y la sala (la cámara está del lado de sin(yaw), cos(yaw) respecto del centro).
+func hidden_walls(yaw_deg: float) -> Array[String]:
+	var yaw := deg_to_rad(yaw_deg)
+	var out: Array[String] = []
+	if sin(yaw) < -0.1:
+		out.append("west")
+	if cos(yaw) < -0.1:
+		out.append("north")
+	return out
+
+
+## Marca la puerta de salida con una flecha dorada que sube y baja (la ve quien tiene que ir hasta ahí: el tutorial).
+func show_exit_arrow(on: bool) -> void:
+	if _arrow != null:
+		_arrow.queue_free()
+		_arrow = null
+	if not on:
+		return
+	_arrow = Node3D.new()
+	var cone := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.0
+	cm.bottom_radius = 0.3
+	cm.height = 0.55
+	cm.radial_segments = 4
+	cone.mesh = cm
+	cone.rotation_degrees.x = 180.0
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.85, 0.25)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	cone.material_override = mat
+	_arrow.add_child(cone)
+	add_child(_arrow)
+	_arrow.position = Room.world_of_cell(lay.exit, lay) + Vector3(0, 3.7, 0.1)
+
+
+func _process(delta: float) -> void:
+	_t += delta
+	if screen == null and pivot != null:   # las flechas giran (izquierda y derecha) e inclinan (arriba y abajo) la cámara, como en la torre
+		var ax := int(Input.is_key_pressed(KEY_RIGHT)) - int(Input.is_key_pressed(KEY_LEFT))
+		var ay := int(Input.is_key_pressed(KEY_DOWN)) - int(Input.is_key_pressed(KEY_UP))
+		if ax != 0 or ay != 0:
+			orbit_view(Vector2(ax, ay) * ARROW_SPEED * delta / MOUSE_SENS)
+	if _arrow != null:
+		_arrow.position.y = Room.world_of_cell(lay.exit, lay).y + 3.7 + sin(_t * 4.0) * 0.18
+		_arrow.rotation.y += delta * 2.0
+	if pivot == null:
+		return
+	var hide := hidden_walls(pivot.rotation_degrees.y)
+	for side in walls:
+		for mi in walls[side]:
+			mi.visible = not hide.has(side)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if screen == null and pivot != null:   # mouse: arrastrar gira e inclina, la rueda acerca y aleja
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				zoom_view(1.0 / ZOOM_FACTOR)
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				zoom_view(ZOOM_FACTOR)
+		elif event is InputEventMouseMotion and (event.button_mask & (MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT | MOUSE_BUTTON_MASK_MIDDLE)) != 0:
+			orbit_view(event.relative)
+	if input_locked or not (event is InputEventKey) or not event.pressed or event.echo or screen != null:
+		return
+	match event.keycode:
+		KEY_Q: rotate_camera(1)
+		KEY_E: rotate_camera(-1)
+		KEY_SPACE, KEY_ENTER, KEY_KP_ENTER: interact()
+		KEY_W: step(_dir_for_screen(1, 1))
+		KEY_D: step(_dir_for_screen(1, -1))
+		KEY_S: step(_dir_for_screen(-1, -1))
+		KEY_A: step(_dir_for_screen(-1, 1))
