@@ -85,6 +85,8 @@ func test_catalog() -> void:
 	for k in CasinoServices.INFO:
 		need(CasinoServices.INFO[k].name, "servicio del casino")
 		need(CasinoServices.INFO[k].desc, "descripción del servicio " + k)
+	for g in CasinoRules.GAME_NAMES.values() + CasinoRules.ROOM_NAMES:
+		need(g, "balance del casino")
 	for r in CasinoRules.RULES:
 		need(r.name, "regla de la casa")
 		need(r.desc, "descripción de la regla " + r.id)

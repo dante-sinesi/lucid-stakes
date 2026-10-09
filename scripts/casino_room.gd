@@ -51,11 +51,11 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 	var heights := {}
 	var tier := tier_of(stage) if tier_override < 0 else tier_override
 	match tier:
-		0:   # taberna: chica pero con las tres mesas (ruleta, una tragamonedas y una mesa de cartas)
-			machines.assign([Vector2i(0, 1), Vector2i(0, 3)])
+		0:   # taberna: chica, sólo la ruleta y una tragamonedas (y ninguna estación de servicio)
+			machines.assign([Vector2i(0, 1)])
 			obstacles.assign([Vector2i(0, 0), Vector2i(6, 0), Vector2i(6, 5), Vector2i(0, 2)])
 			return {"tier": 0, "cells": Vector2i(7, 6), "entry": Vector2i(0, 4), "exit": Vector2i(5, 0), "table": Rect2i(2, 2, 3, 2),
-					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [Rect2i(5, 3, 2, 2)] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "rumores", "cell": Vector2i(1, 5)},
+					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [] as Array[Rect2i], "obstacles": obstacles,
 					"heights": heights, "table_h": 0, "cam_size": 9.5}
 		1:   # salón: más espacio, dos tragamonedas y una mesa de cartas
 			machines.assign([Vector2i(0, 1), Vector2i(0, 3)])
@@ -607,20 +607,12 @@ static func build_voxels(stage := 14, tier_override := -1) -> Dictionary:
 			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
 
 
-## El mueble de una estación de servicio, en su celda: pizarra de rumores, yunque del taller, caja fuerte o escritorio del seguro.
+## El mueble de una estación de servicio, en su celda: yunque del taller, caja fuerte o escritorio del seguro.
 static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dictionary) -> void:
 	var ox: int = st.cell.x * CELL_VOX
 	var oz: int = st.cell.y * CELL_VOX
 	var wood: Color = L.wood
 	match str(st.id):
-		"rumores":   # pizarra con tiza sobre dos patas
-			_box(solid, ox + 1, 2, oz + 2, ox + 2, 7, oz + 3, wood.darkened(0.2))
-			_box(solid, ox + 3, 2, oz + 2, ox + 4, 7, oz + 3, wood.darkened(0.2))
-			_box(solid, ox, 7, oz + 2, ox + 5, 13, oz + 3, wood)
-			_box(solid, ox + 1, 8, oz + 3, ox + 4, 12, oz + 4, Color(0.07, 0.12, 0.11))
-			for r in 3:
-				_box(solid, ox + 1, 9 + r, oz + 4, ox + 1 + 3 - (r % 2), 10 + r, oz + 5, Color(0.92, 0.92, 0.85))
-			glow[Vector3i(ox + 2, 13, oz + 2)] = L.lamp
 		"taller":   # yunque con un brasero al lado
 			_box(solid, ox + 1, 2, oz + 1, ox + 4, 4, oz + 4, Color(0.22, 0.22, 0.26))
 			_box(solid, ox + 2, 4, oz + 2, ox + 3, 6, oz + 3, Color(0.28, 0.28, 0.32))

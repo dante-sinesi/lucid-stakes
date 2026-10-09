@@ -334,7 +334,7 @@ func test_loading_screen() -> void:
 		await process_frame
 	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.disabled, "cuando la torre esta lista el minijuego sigue y Empezar se habilita")
 	check(not main.dice.start_button.get_node("espiral").visible, "la espiral de carga desaparece")
-	check(main.generating == main.generating and main.dice.status_label.text.contains("lista"), "el aviso dice que la torre esta lista")
+	check(main.dice.status_label.text == "", "los dados no muestran ningún aviso de la torre: el jugador sólo ve Empezar apagado o encendido")
 	# Se puede seguir jugando mientras tanto
 	main.dice.throw_dice()
 	check(main.dice.phase == main.DiceGame.Phase.ROLLING and main.dice.visible, "se puede tirar aunque la torre este lista")
@@ -385,7 +385,24 @@ func test_loading_screen() -> void:
 	var stop_token := [true]
 	var stopped: Dictionary = Gen.generate_stage(7, 8, 0.4, {"tries": 4, "cancel_token": stop_token})
 	check(not stopped.ok and not Gen.cancel, "con el testigo en true la generacion se corta y la bandera global queda apagada")
-	# Una generacion instantanea: ni se ve
+	# Con los dados siempre activos, una generacion instantanea los muestra igual (con Empezar habilitado)
+	main.dice_always = true
+	var th_fast := Thread.new()
+	th_fast.start(func() -> Dictionary: return {"ok": true})
+	var job_fast := {"stage": 3, "thread": th_fast, "t0": Time.get_ticks_msec(), "done": false}
+	OS.delay_msec(120)
+	main._await_job(job_fast)
+	for i in 6:
+		await process_frame
+	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.disabled, "aunque la torre ya esté lista, los dados se ven siempre y se puede apretar Empezar")
+	main.dice.start_button.pressed.emit()
+	await process_frame
+	check(not main.dice.visible, "Empezar los cierra")
+	if th_fast.is_started():
+		th_fast.wait_to_finish()
+	main._jobs.erase(job_fast)
+	main.dice_always = false
+	# Una generacion instantanea (con los dados opcionales): ni se ve
 	var th2 := Thread.new()
 	th2.start(func() -> Dictionary: return {"ok": true})
 	var job2 := {"stage": 3, "thread": th2, "t0": Time.get_ticks_msec(), "done": false}

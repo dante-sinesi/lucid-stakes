@@ -21,7 +21,6 @@ func check(cond: bool, label: String) -> void:
 
 func _init() -> void:
 	test_layout()
-	test_rumors()
 	test_taller()
 	test_vault()
 	test_insurance()
@@ -41,7 +40,8 @@ func make_run(stage := 5, claridad := 1000) -> RunState:
 
 func test_layout() -> void:
 	var ids := []
-	for st in [1, 8, 16, 24]:
+	check(not Room.layout(1).has("station") and Services.service_for_tier(0) == "", "la taberna no tiene estación de servicio")
+	for st in [8, 16, 24]:
 		var lay := Room.layout(st)
 		ids.append(lay.station.id)
 		check(Services.service_for_tier(lay.tier) == lay.station.id, "la estación de la etapa %d es la de su nivel" % st)
@@ -52,22 +52,7 @@ func test_layout() -> void:
 			near = near or reach.has(lay.station.cell + d)
 		check(near, "se llega caminando hasta la estación de la etapa %d" % st)
 		check(not Room.build_voxels(st).solid.is_empty(), "la sala de la etapa %d se arma con su estación" % st)
-	check(ids == ["rumores", "taller", "caja", "seguro"], "una estación distinta por nivel: %s" % str(ids))
-
-
-func test_rumors() -> void:
-	var run := make_run(5)
-	var lines := Services.rumors(run)
-	check(lines.size() >= 2 and lines[0].contains("6"), "Rumores habla de la etapa que sigue (%s)" % str(lines))
-	run.stage = 26
-	check(Services.rumors(run)[0].contains("27"), "y de la última")
-	run.stage = 27
-	check(Services.rumors(run)[0].contains("27"), "sin pasarse de la última etapa")
-	# con prueba
-	run.stage = 2
-	run.trial_schedule = {3: "niebla"}
-	var with_trial := Services.rumors(run)
-	check(with_trial.size() == 3 and with_trial[2].contains("prueba"), "si la próxima etapa es una prueba, lo avisa")
+	check(ids == ["taller", "caja", "seguro"], "una estación distinta por nivel (menos la taberna): %s" % str(ids))
 
 
 func test_taller() -> void:
@@ -153,18 +138,7 @@ func test_run_state() -> void:
 func test_screens() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
-	# Rumores
-	var run := make_run(5)
-	var r = ServiceScreens.make("rumores")
-	root.add_child(r)
-	r.setup(run, rng, true)
-	await process_frame
-	check(r.lines.size() >= 2 and r.find_child("volver", true, false) != null, "Rumores muestra lo que cuenta el tabernero")
-	var closed := [0]
-	r.closed.connect(func(): closed[0] += 1)
-	r.find_child("volver", true, false).pressed.emit()
-	check(closed[0] == 1, "Volver cierra")
-	r.queue_free()
+	var run: RunState
 	# Taller
 	run = make_run(5, 100)
 	run.boosts.assign(["aire_extra"])
@@ -234,7 +208,7 @@ func test_scene() -> void:
 	story_c.story = true
 	root.add_child(story_c)
 	story_c.quick = true
-	story_c.setup(make_run(1, 0), RandomNumberGenerator.new())
+	story_c.setup(make_run(8, 0), RandomNumberGenerator.new())
 	await process_frame
 	check(story_c._bump(story_c.lay.station.cell) == "blocked" and story_c.screen == null, "en el tutorial la estación está cerrada")
 	story_c.queue_free()

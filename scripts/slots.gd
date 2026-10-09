@@ -124,7 +124,7 @@ func collect() -> Dictionary:
 			reward += int(round(Items.value_of(item, ficha) * 0.5))
 	run.gain(reward)
 	run.casino_won += reward
-	var rules: Dictionary = Rules.settle(run, price, reward, reward >= price or not item.is_empty(), p.kind == "triple" and p.symbol == CROWN)
+	var rules: Dictionary = Rules.settle(run, price, reward, reward >= price or not item.is_empty(), p.kind == "triple" and p.symbol == CROWN, "tragamonedas")
 	result = {"ok": true, "kind": p.kind, "symbol": p.symbol, "mult": p.mult, "claridad": reward, "spent": price,
 			"item": item, "converted": converted, "reels": reels.duplicate(), "rules": rules}
 	return result

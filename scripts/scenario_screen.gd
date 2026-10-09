@@ -235,7 +235,7 @@ func show_info(id: String) -> void:
 			continue
 		seen[tid] = true
 		UI.label(info_box, Loc.f("- %s: %s", [Loc.t(Trials.CATALOG[tid].name), Loc.t(Trials.CATALOG[tid].desc)]), 2, Color(0.88, 0.84, 0.96), false, 900)
-	UI.label(info_box, "Habilidades que se pueden ganar", 3, Color(0.65, 0.95, 0.8), false)
+	UI.label(info_box, "Habilidades que se pueden ganar al escapar (de a una por vez)", 3, Color(0.65, 0.95, 0.8), false, 900)
 	for aid in Scenarios.ability_ids(s):
 		var a := Abilities.get_ability(aid)
 		UI.label(info_box, Loc.f("- %s: %s%s", [Loc.t(a.name), Loc.t(a.desc), Loc.t("  (ya la tenés)") if Profile.has_ability(aid) else ""]), 2, Color(0.75, 0.95, 0.85), false, 900)

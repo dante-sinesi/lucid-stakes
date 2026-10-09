@@ -167,7 +167,7 @@ func test_tiers() -> void:
 		check(lay.tier == Room.tier_of(st), "el layout de la etapa %d es del nivel %d" % [st, Room.tier_of(st)])
 	check(areas[0] < areas[1] and areas[1] < areas[2] and areas[2] < areas[3], "la sala crece: %s celdas" % str(areas))
 	check(machines[0] >= 1 and machines[0] <= machines[1] and machines[1] <= machines[2], "desde la taberna hay tragamonedas y los niveles altos suman más: %s" % str(machines))
-	check(Room.layout(1).card_tables.size() == 1 and Room.layout(7).card_tables.size() == 1 and Room.layout(21).card_tables.size() == 2 and Room.layout(14).card_tables.size() == 1, "desde la taberna hay mesa de cartas y el gran casino tiene dos")
+	check(Room.layout(1).card_tables.is_empty() and Room.layout(1).machines.size() == 1 and Room.layout(7).card_tables.size() == 1 and Room.layout(21).card_tables.size() == 2 and Room.layout(14).card_tables.size() == 1, "la taberna sólo tiene una tragamonedas y ninguna mesa de cartas; el salón suma una mesa y el gran casino tiene dos")
 	check(Room.layout(21).heights.size() > 10 and Room.layout(1).heights.is_empty(), "el gran casino tiene tarima con escalones; la taberna no")
 	var lay3 := Room.layout(25)
 	var min_h := 99

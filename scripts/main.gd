@@ -11,6 +11,9 @@ const SILHOUETTE_SHADER := preload("res://shaders/silhouette.gdshader")
 const RunState := preload("res://scripts/run_state.gd")
 const Controls := preload("res://scripts/controls.gd")
 const Graphics := preload("res://scripts/graphics.gd")
+const KeyDirs := preload("res://scripts/key_dirs.gd")
+const CasinoRules := preload("res://scripts/casino_rules.gd")
+const BalanceScreen := preload("res://scripts/casino_balance_screen.gd")
 const PadBridge := preload("res://scripts/pad_bridge.gd")
 const CasinoScene := preload("res://scripts/casino_scene.gd")
 const MainMenu := preload("res://scripts/main_menu.gd")
@@ -131,6 +134,9 @@ var trial_label: Control    # "* Prueba: Niebla" arriba al centro
 var _trial_msg := ""         # resultado de la prueba superada (se muestra al llegar al portal)
 var _gen_failures := 0
 var lost_screen              # pantalla de derrota: Reintentar o Salir al menú
+var dice_always := true      # los dados del tabernero se ven en toda pantalla de carga, aunque la torre ya esté lista (las pruebas lo apagan)
+var casino_balance := true   # al salir del casino se ve el balance (las pruebas lo apagan: salir pasa directo a la torre)
+var balance_layer: CanvasLayer   # donde vive el balance mientras se ve
 var _tick_t := 0.0           # tic-tac de las bombas a la vista
 var _tick_tock := false
 var _trial_banner := ""      # texto del anuncio de la prueba (para borrarlo solo si sigue siendo ese)
@@ -173,6 +179,9 @@ var _jobs: Array = []       # hilos de generación: la torre de la etapa actual 
 
 
 func _ready() -> void:
+	if test_mode:
+		casino_balance = false
+		dice_always = false
 	Settings.apply()   # idioma, ventana, resolución y volumen del jugador
 	AudioHub.instance()   # el audio (efectos y música) se prepara desde el arranque
 	_register_globals()
@@ -469,14 +478,13 @@ func _find_job(stage: int) -> Dictionary:
 
 func _await_job(job: Dictionary) -> Dictionary:
 	while _job_alive(job):  # el juego sigue respondiendo mientras se genera
-		var waited_ms: int = Time.get_ticks_msec() - job.t0
 		if not dice.visible and not job.done:   # pantalla de carga: se abre directo con los dados del tabernero (sin ningún cartel antes)
 			dice.open()
 		banner.text = ""
-		dice.set_status(Loc.f("Generando la torre de la etapa %d... %d s", [job.stage, waited_ms / 1000]))
 		await get_tree().process_frame
+	if dice_always and not dice.visible and not job.done:   # los dados van siempre (son parte del juego): si la torre ya estaba lista, se abren igual con Empezar habilitado
+		dice.open()
 	if dice.visible:   # la torre está lista: el minijuego no te saca, se habilita "Empezar" (el tiro en curso termina antes de cerrar)
-		dice.set_status("¡La torre está lista! Cuando quieras, apretá Empezar.")
 		dice.set_ready(true)
 		while dice.visible:
 			await get_tree().process_frame
@@ -1078,24 +1086,8 @@ func _bomb_ticking(delta: float) -> void:
 
 ## Traduce una diagonal de pantalla (sx derecha, sy arriba) a la dirección de grilla más cercana.
 func _dir_for_screen(sx: float, sy: float) -> Vector3i:
-	var yaw := deg_to_rad(yaw_target)
-	var right := Vector3(cos(yaw), 0, -sin(yaw))
-	var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
-	# Las teclas apuntan a las diagonales de pantalla (así la vista isométrica por defecto queda en el medio de un sector), pero
-	# girándolas 10° hacia arriba/abajo/izquierda/derecha: en las vistas "de frente" W va hacia adelante sin empates y el cambio
-	# de eje ocurre cuando otro eje queda más cerca de la dirección de la tecla en pantalla.
-	var rot := deg_to_rad(10.0)
-	var kx := sx * cos(rot) - sy * sin(rot)
-	var ky := sx * sin(rot) + sy * cos(rot)
-	var want := right * kx + fwd * ky
-	var best: Vector3i = TowerLogic.DIRS[0]
-	var best_dot := -INF
-	for d in TowerLogic.DIRS:
-		var dot := Vector3(d).dot(want)
-		if dot > best_dot:
-			best_dot = dot
-			best = d
-	return best
+	var d := KeyDirs.dir_for(yaw_target, sx, sy)   # ver key_dirs.gd: W es la dirección que más sube en la pantalla
+	return Vector3i(d.x, 0, d.y)
 
 
 func _act(sx: float, sy: float, mode: int) -> void:
@@ -1472,11 +1464,6 @@ func _bank_claridad() -> void:
 			run.gain(int(rw.claridad))
 		_trial_msg = Loc.f("¡Prueba superada!   +%d de claridad extra\n%s", [gained - logic.claridad, rw.text])
 		var new_chars: Array = Profile.on_trial_cleared()   # superar una prueba puede desbloquear personajes
-		var ab := Abilities.get_ability(str(trial.get("ability", "")))
-		if not ab.is_empty() and Profile.grant_ability(ab.id):   # la primera vez da una habilidad persistente
-			run_new_abilities.append(ab.name)
-			_trial_msg += Loc.f("\nHabilidad persistente: %s (%s)", [Loc.t(ab.name), Loc.t(ab.desc)])
-			new_chars.append_array(Profile.on_ability(ab.id))
 		if not new_chars.is_empty():
 			_trial_msg = Loc.join([_trial_msg, _character_msg(new_chars)])
 			Sfx.play("item")
@@ -1512,8 +1499,31 @@ func enter_casino(restoring := false) -> void:
 	save_game()
 
 
-## El portal del casino lleva a la torre de la etapa siguiente.
+## El portal del casino lleva a la torre de la etapa siguiente. Antes se ve el balance del casino (mientras la torre se genera).
 func leave_casino() -> void:
+	if casino == null or balance_layer != null:
+		return
+	if casino_balance and CasinoRules.active(run):
+		balance_layer = CanvasLayer.new()
+		balance_layer.layer = 50
+		add_child(balance_layer)
+		var screen := BalanceScreen.new()
+		balance_layer.add_child(screen)
+		screen.setup(run)
+		screen.done.connect(func():
+			_close_balance()
+			_leave_casino_now())
+		return
+	_leave_casino_now()
+
+
+func _close_balance() -> void:
+	if balance_layer != null:
+		balance_layer.queue_free()
+		balance_layer = null
+
+
+func _leave_casino_now() -> void:
 	if casino == null:
 		return
 	Music.play("torre")
@@ -1587,6 +1597,7 @@ func _rebuild_menus() -> void:
 
 
 func open_main_menu() -> void:
+	_close_balance()
 	lab_active = false
 	_clear_lab_signs()
 	if lost_screen != null:
@@ -1705,6 +1716,7 @@ func end_run(victory: bool, reason := "") -> void:
 	Sfx.play("win" if victory else "lose")
 	run_over = true
 	epoch += 1
+	_close_balance()
 	_cancel_jobs()
 	get_tree().paused = false
 	pause_menu.close()
@@ -1719,6 +1731,17 @@ func end_run(victory: bool, reason := "") -> void:
 	in_menu = true
 	SaveGame.delete()   # el run terminó: no hay nada que continuar
 	var luz := Profile.record_run(run, victory)   # la Luz y las estadísticas pasan al perfil
+	if victory and not training:   # escapar da una habilidad persistente del escenario (o Luz si ya las tenés todas)
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		var award := Profile.award_scenario_ability(run.scenario_id, rng)
+		if award.ability != "":
+			var ab := Abilities.get_ability(str(award.ability))
+			run_new_abilities.append(ab.name)
+			var chars: Array = Profile.on_ability(ab.id)
+			if not chars.is_empty():
+				reason = Loc.join([reason, _character_msg(chars)]) if reason != "" else _character_msg(chars)
+		luz += int(award.luz)
 	run_end.show_summary(run, victory, reason, luz, Profile.luz(), run_new_abilities.duplicate())
 
 

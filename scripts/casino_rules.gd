@@ -5,6 +5,7 @@ extends RefCounted
 ## - Casino, "Apuesta libre": en las tragamonedas y el blackjack se puede apostar 1, 2, 3 o 5 fichas juntas (paga proporcional).
 ## - Gran casino, "Jackpot": parte de lo que se pierde en la sala va a un pozo, y el premio mayor (tres coronas, blackjack, pleno) se lo lleva.
 ## El estado de la visita vive en `run.casino_visit` (se arma al entrar a la sala, `enter`); si está vacío (pruebas, entrenamiento) no hay reglas.
+## Además lleva las estadísticas de la visita (partidas, ganadas, perdidas, gastado y ganado de cada mesa) para el balance que se ve al salir.
 
 const Loc := preload("res://scripts/loc.gd")
 
@@ -14,6 +15,9 @@ const RULES := [
 	{"id": "libre", "name": "Apuesta libre", "desc": "En las tragamonedas y el blackjack podés apostar 1, 2, 3 o 5 fichas juntas."},
 	{"id": "jackpot", "name": "Jackpot", "desc": "Lo que perdés en la sala va a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva."},
 ]
+const GAMES: Array[String] = ["ruleta", "tragamonedas", "blackjack"]
+const GAME_NAMES := {"ruleta": "Ruleta", "tragamonedas": "Tragamonedas", "blackjack": "Blackjack"}
+const ROOM_NAMES: Array[String] = ["Taberna", "Salón", "Casino", "Gran casino"]
 const STAKES: Array[int] = [1, 2, 3, 5]
 const FIADO_REFUND := 0.5        # fracción de lo perdido que devuelve el fiado
 const STREAK_STEP := 0.1         # lo que suma cada victoria seguida (desde la segunda)
@@ -27,12 +31,13 @@ static func rule_of(tier: int) -> Dictionary:
 
 ## Estado nuevo de una visita a la sala de ese nivel.
 static func new_visit(tier: int) -> Dictionary:
-	return {"tier": tier, "fiado_used": false, "streak": 0, "pool": 0, "stake": 1}
+	return {"tier": tier, "fiado_used": false, "streak": 0, "max_streak": 0, "pool": 0, "stake": 1, "stats": {}, "claridad_in": 0, "best": 0, "best_game": ""}
 
 
 ## Se entra a la sala: arma el estado de la visita en el run.
 static func enter(run, tier: int) -> void:
 	run.casino_visit = new_visit(tier)
+	run.casino_visit["claridad_in"] = run.claridad
 
 
 static func _visit(run) -> Dictionary:
@@ -74,7 +79,7 @@ static func pool(run) -> int:
 ## Cierra una apuesta aplicando la regla de la sala. `wager`: lo apostado; `reward`: la claridad que ya se pagó; `win`: se considera una
 ## victoria (aunque el premio no sea claridad); `top`: salió el premio mayor del juego. Paga lo que corresponda (devolución, extra de racha o pozo)
 ## y devuelve {refund, bonus, jackpot, total, notes}; `notes` son frases ya traducidas para mostrar.
-static func settle(run, wager: int, reward: int, win: bool, top: bool) -> Dictionary:
+static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "") -> Dictionary:
 	var out := {"refund": 0, "bonus": 0, "jackpot": 0, "total": 0, "notes": []}
 	var v := _visit(run)
 	if v.is_empty():
@@ -89,6 +94,7 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool) -> Dictio
 		"racha":
 			if win:
 				v.streak = int(v.streak) + 1
+				v.max_streak = maxi(int(v.max_streak), int(v.streak))
 				var pct := streak_bonus(int(v.streak))
 				if pct > 0.0 and reward > 0:
 					out.bonus = int(round(float(reward) * pct))
@@ -106,4 +112,45 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool) -> Dictio
 	if out.total > 0:
 		run.gain(out.total)
 		run.casino_won += out.total
+	_record(v, game, wager, reward + int(out.total), win, lost)
 	return out
+
+
+## Anota una apuesta en las estadísticas de la visita.
+static func _record(v: Dictionary, game: String, wager: int, paid: int, win: bool, lost: bool) -> void:
+	if game == "":
+		return
+	var st: Dictionary = v.stats.get(game, {"plays": 0, "wins": 0, "losses": 0, "pushes": 0, "spent": 0, "won": 0})
+	st.plays += 1
+	if win:
+		st.wins += 1
+	elif lost:
+		st.losses += 1
+	else:
+		st.pushes += 1
+	st.spent += wager
+	st.won += paid
+	v.stats[game] = st
+	if paid - wager > int(v.best):
+		v.best = paid - wager
+		v.best_game = game
+
+
+## El balance de la visita: una fila por mesa ({game, name, plays, wins, losses, pushes, spent, won, net}), los totales y datos sueltos.
+## Sin visita, todo en cero.
+static func balance(run) -> Dictionary:
+	var v := _visit(run)
+	var rows: Array[Dictionary] = []
+	var total := {"plays": 0, "wins": 0, "losses": 0, "pushes": 0, "spent": 0, "won": 0, "net": 0}
+	for g in GAMES:
+		var st: Dictionary = v.get("stats", {}).get(g, {})
+		var row := {"game": g, "name": GAME_NAMES[g], "plays": int(st.get("plays", 0)), "wins": int(st.get("wins", 0)), "losses": int(st.get("losses", 0)),
+				"pushes": int(st.get("pushes", 0)), "spent": int(st.get("spent", 0)), "won": int(st.get("won", 0))}
+		row["net"] = row.won - row.spent
+		rows.append(row)
+		for k in total:
+			total[k] += int(row[k])
+	return {"rows": rows, "total": total, "best": int(v.get("best", 0)), "best_game": str(v.get("best_game", "")),
+			"claridad_in": int(v.get("claridad_in", 0)), "claridad_out": run.claridad, "max_streak": int(v.get("max_streak", 0)),
+			"pool": int(v.get("pool", 0)), "fiado_used": bool(v.get("fiado_used", false)), "rule": rule_id(run),
+			"room": ROOM_NAMES[clampi(int(v.get("tier", 0)), 0, ROOM_NAMES.size() - 1)] if not v.is_empty() else ""}

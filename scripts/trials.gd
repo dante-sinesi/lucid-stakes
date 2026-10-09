@@ -2,9 +2,9 @@ extends RefCounted
 ## Pruebas: etapas especiales (como los jefes de Balatro). Caen en las etapas 3, 6, 9... 27 (de a múltiplos de 3). Cada partida
 ## se sortea qué prueba toca en cada una (el escenario inclina el sorteo), y se sabe desde el principio cuál es la próxima y
 ## cuántas etapas faltan. Cada prueba cambia una regla de la torre, paga más claridad, regala un boost al superarla y, la primera
-## vez, da una habilidad persistente relacionada (ver abilities.gd).
+## vez, da un regalo (ver `reward`). Las habilidades persistentes no salen de acá: se ganan por escenario (ver scenarios.gd).
 ##
-## Una prueba es un diccionario: {id, name, desc, ability (id de la habilidad que da), pace ("" = el de la etapa), fog (sólo se ven
+## Una prueba es un diccionario: {id, name, desc, pace ("" = el de la etapa), fog (sólo se ven
 ## los pisos cercanos), dark (sólo se ven los bloques cercanos), no_items (sin consumibles), no_retry (sin reintentos: si caés se
 ## termina el run), no_streak (la racha no sube el multiplicador), bias (sesgo del generador: ver TowerGen._bias)}.
 ## `mult` (multiplicador de la claridad juntada) y `index` (0..8) se completan al sortear: las últimas pagan más.
@@ -20,17 +20,17 @@ const FOG_ABOVE := 3        # pisos que se ven por encima del jugador con niebla
 const DARK_RADIUS := 4.5    # distancia (en celdas) hasta la que se ven los bloques en la oscuridad
 
 const CATALOG := {
-	"niebla": {"name": "Niebla", "desc": "Sólo ves unos pocos pisos por encima de vos.", "fog": true, "ability": "mente_despejada"},
-	"oscuridad": {"name": "Oscuridad", "desc": "Sólo ves los bloques que tenés cerca.", "dark": true, "ability": "ojos_de_gato"},
-	"prisa": {"name": "Prisa", "desc": "La fila de abajo cae mucho más rápido.", "pace": "fast", "ability": "pies_ligeros"},
-	"sin_ayudas": {"name": "Sin ayudas", "desc": "No se pueden usar consumibles.", "no_items": true, "ability": "bolsillo_sonador"},
-	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caés, se termina el run.", "no_retry": true, "ability": "segunda_oportunidad"},
-	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true, "ability": "racha_firme"},
-	"hielo_total": {"name": "Hielo total", "desc": "La torre está llena de hielo.", "ability": "garras_de_hielo",
+	"niebla": {"name": "Niebla", "desc": "Sólo ves unos pocos pisos por encima de vos.", "fog": true},
+	"oscuridad": {"name": "Oscuridad", "desc": "Sólo ves los bloques que tenés cerca.", "dark": true},
+	"prisa": {"name": "Prisa", "desc": "La fila de abajo cae mucho más rápido.", "pace": "fast"},
+	"sin_ayudas": {"name": "Sin ayudas", "desc": "No se pueden usar consumibles.", "no_items": true},
+	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caés, se termina el run.", "no_retry": true},
+	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true},
+	"hielo_total": {"name": "Hielo total", "desc": "La torre está llena de hielo.",
 			"bias": {"kinds": {K.ICE: 1.6}, "plat_ice": 0.35, "cap_bonus": 3}},
-	"quebradizo": {"name": "Quebradizo", "desc": "Casi todo se rompe al pisarlo o no se mueve.", "ability": "fuerza_bruta",
+	"quebradizo": {"name": "Quebradizo", "desc": "Casi todo se rompe al pisarlo o no se mueve.",
 			"bias": {"kinds": {K.CRACKED: 1.2, K.HEAVY: 0.8}, "cap_bonus": 3}},
-	"polvorin": {"name": "Polvorín", "desc": "La torre está llena de bombas.", "ability": "mecha_larga",
+	"polvorin": {"name": "Polvorín", "desc": "La torre está llena de bombas.",
 			"bias": {"kinds": {K.BOMB: 1.2}, "cap_bonus": 2}},
 }
 

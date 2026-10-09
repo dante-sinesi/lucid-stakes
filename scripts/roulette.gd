@@ -100,7 +100,7 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 
 ## Aplica la regla de la sala (casino_rules.gd) al resultado: devolución del fiado, extra de racha o pozo del jackpot.
 static func _with_rules(run, res: Dictionary, cost: int, reward: int, bet: int) -> Dictionary:
-	var rules: Dictionary = Rules.settle(run, cost, reward, res.won, res.won and bet == Bet.PLENO)
+	var rules: Dictionary = Rules.settle(run, cost, reward, res.won, res.won and bet == Bet.PLENO, "ruleta")
 	res["rules"] = rules
 	res.claridad_delta = reward + int(rules.total) - cost
 	return res

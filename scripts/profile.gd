@@ -120,6 +120,30 @@ static func grant_ability(id: String) -> bool:
 	return true
 
 
+## Luz que se da cuando ya tenés todas las habilidades del escenario (multiplicada por la `luz_mult` del escenario).
+const ABILITY_LUZ := 30
+
+
+## Al escapar de la pesadilla en un escenario: gana una de sus habilidades que todavía no tenés (al azar); si ya las tenés todas, da Luz.
+## Devuelve {ability (id o ""), luz}. Un escenario sin habilidades (el tutorial) no da nada.
+static func award_scenario_ability(scenario_id: String, rng: RandomNumberGenerator) -> Dictionary:
+	var scn := Scenarios.get_scenario(scenario_id)
+	var all := Scenarios.ability_ids(scn)
+	if all.is_empty():
+		return {"ability": "", "luz": 0}
+	var pending: Array[String] = []
+	for id in all:
+		if not has_ability(id):
+			pending.append(id)
+	if pending.is_empty():
+		var luz := int(round(ABILITY_LUZ * float(scn.get("luz_mult", 1.0))))
+		add_luz(luz)
+		return {"ability": "", "luz": luz}
+	var pick: String = pending[rng.randi() % pending.size()]
+	grant_ability(pick)
+	return {"ability": pick, "luz": 0}
+
+
 ## Aplica a un run recién empezado las habilidades y el escenario elegido.
 static func apply_to_run(run) -> void:
 	Abilities.apply_to_run(run, owned_abilities())

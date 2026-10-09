@@ -21,6 +21,7 @@ const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ItemBar := preload("res://scripts/item_bar.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
+const KeyDirs := preload("res://scripts/key_dirs.gd")
 const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const Services := preload("res://scripts/casino_services.gd")
@@ -68,7 +69,6 @@ var hud_layer: CanvasLayer
 var left_bar
 var right_bar
 var clarity_counter
-var price_counter
 var rule_label: Control      # la regla de la casa de esta sala y cómo viene
 var item_tip: Control
 var overlay: CanvasLayer
@@ -89,8 +89,8 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	cell = lay.entry
 	var vault_paid := 0
 	if not story:
-		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
 		vault_paid = Services.enter(run)   # expira el seguro sin usar y se paga la caja fuerte del casino anterior
+		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
 	_build_room()
 	_build_player()
 	_build_camera()
@@ -194,7 +194,7 @@ func _build_hud() -> void:
 	compass.view_source = func(): return Vector2(pivot.rotation_degrees.y, pitch_node.rotation_degrees.x) if pivot != null and pitch_node != null else Vector2(45, PITCH)
 	compass.dir_source = func(sx, sy): return Vector3i(_dir_for_screen(sx, sy).x, 0, _dir_for_screen(sx, sy).y)
 	layer.add_child(compass)
-	var counters := HBoxContainer.new()   # claridad y precio de la ficha: el ícono girando y el número
+	var counters := HBoxContainer.new()   # la claridad que tenés: el ícono girando y el número
 	counters.position = Vector2(26, 20)
 	counters.add_theme_constant_override("separation", 22)
 	layer.add_child(counters)
@@ -202,13 +202,6 @@ func _build_hud() -> void:
 	clarity_counter.name = "claridad"
 	clarity_counter.plate_alpha = 0.55
 	counters.add_child(clarity_counter)
-	var ficha := _label(counters, 3, Color(0.85, 0.8, 1.0))
-	ficha.text = "Ficha"
-	ficha.plate_alpha = 0.55
-	price_counter = ClarityCounter.new(3.0, Color(0.9, 0.85, 1.0))
-	price_counter.name = "ficha"
-	price_counter.plate_alpha = 0.55
-	counters.add_child(price_counter)
 	rule_label = _label(layer, 2, RuleUI.COLOR)
 	rule_label.position = Vector2(26, 76)
 	rule_label.plate_alpha = 0.55
@@ -262,7 +255,6 @@ func _refresh_hud() -> void:
 	next_label.text = nt
 	next_label.visible = nt != ""
 	clarity_counter.value = run.claridad
-	price_counter.value = Roulette.run_price(run)
 	rule_label.text = RuleUI.status(run)
 	rule_label.visible = rule_label.text != ""
 
@@ -410,18 +402,7 @@ func close_roulette() -> void:
 # --- cámara --------------------------------------------------------------------------------------------------
 
 func _dir_for_screen(sx: float, sy: float) -> Vector2i:
-	var yaw := deg_to_rad(yaw_target)
-	var right := Vector2(cos(yaw), -sin(yaw))
-	var fwd := Vector2(-sin(yaw), -cos(yaw))
-	var want := right * sx + fwd * sy
-	var best := Vector2i(1, 0)
-	var best_dot := -INF
-	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		var dot := Vector2(d).dot(want)
-		if dot > best_dot:
-			best_dot = dot
-			best = d
-	return best
+	return KeyDirs.dir_for(yaw_target, sx, sy)   # ver key_dirs.gd: W es la dirección que más sube en la pantalla
 
 
 ## Gira (x) e inclina (y) la cámara según un desplazamiento del mouse en píxeles (igual que en la torre).

@@ -85,10 +85,13 @@ func test_schedule() -> void:
 func test_catalog() -> void:
 	for id in Trials.CATALOG:
 		var t: Dictionary = Trials.CATALOG[id]
-		check(t.name != "" and t.desc != "" and Abilities.get_ability(t.ability).get("trial", "") == id, "la prueba %s tiene nombre, descripcion y su habilidad persistente" % id)
-	for a in Abilities.ALL:
-		check(Trials.CATALOG.has(a.trial) and Trials.CATALOG[a.trial].ability == a.id, "la habilidad %s la da la prueba %s" % [a.id, a.trial])
-	check(Trials.CATALOG.size() == Abilities.ALL.size(), "una habilidad por prueba")
+		check(t.name != "" and t.desc != "" and not t.has("ability"), "la prueba %s tiene nombre y descripcion y ya no da habilidades (se ganan por escenario)" % id)
+	var seen := {}
+	for sc in Scenarios.ALL:
+		for aid in Scenarios.ability_ids(sc):
+			check(not Abilities.get_ability(aid).is_empty() and not seen.has(aid), "la habilidad %s existe y es de un solo escenario (%s)" % [aid, sc.id])
+			seen[aid] = true
+	check(seen.size() == Abilities.ALL.size(), "cada habilidad se gana en algún escenario")
 	for sc in Scenarios.ALL:
 		for id in sc.pool:
 			check(Trials.CATALOG.has(id), "el escenario %s sortea pruebas que existen" % sc.id)
@@ -176,11 +179,9 @@ func test_in_game() -> void:
 	var mult: float = main.trial.mult
 	check(main.run.claridad >= 100 + int(round(30 * mult)) and main.run.trials_cleared == 1, "la claridad de la prueba se multiplica")
 	check(main.run.boosts.size() == boosts_before + 1 and main._trial_msg.contains("Prueba superada") and main._trial_msg.contains("Recompensa"), "y da un boost de regalo")
-	check(main._trial_msg.contains("Habilidad persistente") and Profile.has_ability("mente_despejada") and main.run_new_abilities == ["Mente despejada"], "la primera vez da la habilidad persistente de la prueba")
-	main.banked = false
-	main._bank_claridad()
-	check(not main._trial_msg.contains("Habilidad persistente"), "la segunda vez ya no")
+	check(not main._trial_msg.contains("Habilidad persistente") and Profile.owned_abilities().is_empty() and main.run_new_abilities.is_empty(), "superar una prueba ya no da habilidades persistentes (se ganan por escenario)")
 	# Las habilidades valen en los proximos runs
+	Profile.grant_ability("mente_despejada")
 	var run2 := RunState.new()
 	Profile.apply_to_run(run2)
 	check(run2.claridad == 25, "Mente despejada: se empieza con +25 de claridad")

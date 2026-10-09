@@ -137,11 +137,9 @@ func show_info(id: String) -> void:
 	UI.label(info_box, a.name, 5, UI.GOLD if owned else Color(0.7, 0.67, 0.78), false)
 	UI.label(info_box, "Ya la tenés" if owned else "Todavía no la tenés", 2, Color(0.65, 0.95, 0.8) if owned else Color(0.78, 0.74, 0.86), false)
 	UI.label(info_box, a.desc, 3, Draw.MARBLE, false, 740)
-	var trial: Dictionary = Trials.CATALOG[a.trial]
 	UI.label(info_box, ("Cómo la conseguiste" if owned else "Cómo conseguirla"), 3, UI.GOLD, false)
-	UI.label(info_box, Loc.f("Superando la prueba «%s»: %s", [Loc.t(trial.name), Loc.t(trial.desc)]), 2, Color(0.88, 0.84, 0.96), false, 740)
-	UI.label(info_box, "Escenarios donde sale esa prueba", 3, UI.GOLD, false)
-	for s in scenarios_for_trial(a.trial):
+	UI.label(info_box, "Escapando de la pesadilla (las 27 etapas) en alguno de estos escenarios:", 2, Color(0.88, 0.84, 0.96), false, 740)
+	for s in Scenarios.scenarios_for_ability(id):
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
 		info_box.add_child(row)
@@ -154,15 +152,6 @@ func show_info(id: String) -> void:
 			UI.label(row, "(gratis)", 2, Color(0.65, 0.95, 0.8), false)
 	info_panel.visible = true
 	info_close.grab_focus()
-
-
-## Los escenarios cuyo sorteo incluye una prueba.
-static func scenarios_for_trial(trial_id: String) -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	for s in Scenarios.ALL:
-		if s.pool.has(trial_id):
-			out.append(s)
-	return out
 
 
 ## Casillero de la grilla: el ícono de una habilidad en un marco; gris y quieto si no la tenés, a color y animado si sí.

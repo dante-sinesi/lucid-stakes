@@ -1,5 +1,5 @@
 extends RefCounted
-## Pantallas de las estaciones de servicio del casino (las reglas están en casino_services.gd): Rumores, Taller, Caja fuerte y Seguro.
+## Pantallas de las estaciones de servicio del casino (las reglas están en casino_services.gd): Taller, Caja fuerte y Seguro.
 ## Todas se abren como los juegos (casino_scene._open_screen): `setup(run, rng, quick)`, señal `closed` al salir y `resolved` cuando algo cambió
 ## en el run (hay que guardar).
 
@@ -16,10 +16,9 @@ const GOOD := Color(0.8, 1.0, 0.7)
 const BAD := Color(1.0, 0.65, 0.55)
 
 
-## La pantalla de una estación según su id ("rumores", "taller", "caja" o "seguro").
+## La pantalla de una estación según su id ("taller", "caja" o "seguro").
 static func make(id: String) -> Control:
 	match id:
-		"rumores": return RumoresScreen.new()
 		"taller": return TallerScreen.new()
 		"caja": return CajaScreen.new()
 	return SeguroScreen.new()
@@ -107,21 +106,6 @@ class Base extends Control:
 		if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 			request_close()
 			get_viewport().set_input_as_handled()
-
-
-## Taberna: el tabernero cuenta qué trae la próxima torre.
-class RumoresScreen extends Base:
-	var lines: Array[Control] = []
-
-	func _init() -> void:
-		service_id = "rumores"
-
-	func _build_body() -> void:
-		UI.label(col, "Tabernero", 3, UI.GOLD)
-		for t in Services.rumors(run):
-			lines.append(UI.label(col, t, 3, Draw.MARBLE, true, 900))
-		var back := button(col, Loc.t("Volver"), "volver", func(): request_close(), true)
-		back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 
 ## Salón: vender o cambiar un boost o consumible.

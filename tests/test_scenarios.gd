@@ -26,6 +26,7 @@ func _init() -> void:
 	Profile.reset()
 	test_catalog()
 	test_profile()
+	test_award()
 	test_abilities_effects()
 	test_price_and_casino()
 	await test_flow()
@@ -98,6 +99,30 @@ func test_profile() -> void:
 	Profile.data = {}
 	Profile._loaded_from = ""
 	check(Profile.luz() == 0 and Profile.owned_abilities().is_empty(), "un perfil danado se ignora")
+	Profile.reset()
+
+
+## Las habilidades se ganan por escenario: al escapar se da una de las del escenario que todavía no tengas; cuando no quedan, Luz.
+func test_award() -> void:
+	Profile.reset()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var pesadilla := Scenarios.ability_ids(Scenarios.get_scenario("pesadilla"))
+	check(pesadilla.size() == 3, "La Pesadilla tiene 3 habilidades posibles")
+	var got := []
+	for i in 3:
+		var res := Profile.award_scenario_ability("pesadilla", rng)
+		check(res.ability != "" and res.luz == 0 and pesadilla.has(res.ability) and not got.has(res.ability) and Profile.has_ability(res.ability), "escape %d: gana una habilidad del escenario que no tenía (%s)" % [i + 1, res.ability])
+		got.append(res.ability)
+	check(Profile.luz() == 0, "mientras hay habilidades por ganar no se da Luz")
+	var done := Profile.award_scenario_ability("pesadilla", rng)
+	check(done.ability == "" and done.luz == Profile.ABILITY_LUZ and Profile.luz() == Profile.ABILITY_LUZ, "cuando ya las tiene todas, da Luz (%d)" % Profile.ABILITY_LUZ)
+	var glaciar := Profile.award_scenario_ability("glaciar", rng)
+	check(glaciar.ability == "garras_de_hielo" and Profile.has_ability("garras_de_hielo"), "cada escenario da las suyas (el Glaciar, las garras de hielo)")
+	var again := Profile.award_scenario_ability("glaciar", rng)
+	check(again.ability == "" and again.luz == int(round(Profile.ABILITY_LUZ * 1.5)), "y la Luz de reemplazo escala con el escenario")
+	check(Profile.award_scenario_ability("tutorial", rng) == {"ability": "", "luz": 0}, "el tutorial no da nada")
+	check(Scenarios.scenarios_for_ability("fuerza_bruta").size() == 1 and Scenarios.scenarios_for_ability("fuerza_bruta")[0].id == "ruinas", "se sabe en qué escenario se gana cada una")
 	Profile.reset()
 
 
@@ -293,18 +318,20 @@ func test_screens() -> void:
 	meta.tiles["garras_de_hielo"].pressed.emit()
 	var t2 := all_text(meta.info_panel)
 	check(meta.info_panel.visible and t2.contains("Garras de hielo") and t2.contains("Ya la tenés") and t2.contains("Podés colgarte de los bloques de hielo"), "tocar un icono muestra la habilidad que se tiene y su efecto")
-	check(t2.contains("Cómo la conseguiste") and t2.contains("Hielo total") and t2.contains("Glaciar") and not t2.contains("La Pesadilla"), "dice con que prueba se consiguio y en que escenarios sale (el Glaciar, no La Pesadilla)")
+	check(t2.contains("Cómo la conseguiste") and t2.contains("Escapando de la pesadilla") and t2.contains("Glaciar") and not t2.contains("La Pesadilla"), "dice que se gana al escapar y en que escenarios (el Glaciar, no La Pesadilla)")
 	meta.info_close.pressed.emit()
 	check(not meta.info_panel.visible, "se cierra con Volver")
 	meta.tiles["fuerza_bruta"].pressed.emit()
 	var t3 := all_text(meta.info_panel)
-	check(t3.contains("Todavía no la tenés") and t3.contains("Cómo conseguirla") and t3.contains("Quebradizo") and t3.contains("Ruinas") and t3.contains("empujar"), "la que no se tiene tambien da su descripcion y como y donde conseguirla")
+	check(t3.contains("Todavía no la tenés") and t3.contains("Cómo conseguirla") and t3.contains("Escapando de la pesadilla") and t3.contains("Ruinas") and t3.contains("empujar"), "la que no se tiene tambien da su descripcion y como y donde conseguirla")
 	check(not t3.contains("Luz"), "la descripcion tampoco nombra la Luz con texto")
 	check(meta.info_panel.find_child("*", true, false) != null, "la ventana de descripcion tiene contenido")
 	# La prueba de la Pesadilla aparece en la Pesadilla (gratis)
 	meta.info_close.pressed.emit()
 	meta.tiles["mente_despejada"].pressed.emit()
-	check(all_text(meta.info_panel).contains("La Pesadilla") and all_text(meta.info_panel).contains("(gratis)"), "las pruebas comunes salen tambien en La Pesadilla, que es gratis")
+	check(all_text(meta.info_panel).contains("La Pesadilla") and all_text(meta.info_panel).contains("(gratis)"), "Mente despejada se gana en La Pesadilla, que es gratis")
+	meta.info_close.pressed.emit()
+	meta.tiles["pies_ligeros"].pressed.emit()   # (Relojería: un escenario de pago)
 	var luz_costs := 0
 	var stack: Array = [meta.info_panel]
 	while not stack.is_empty():

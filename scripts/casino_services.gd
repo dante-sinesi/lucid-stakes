@@ -1,20 +1,18 @@
 extends RefCounted
 ## Servicios del casino: cada nivel de sala tiene una estación propia que no es un juego (reglas puras, sin interfaz; las pantallas están en
 ## casino_service_screens.gd). Rompen a propósito la regla de que todo es apuesta: son decisiones con precio fijo.
-## - Taberna, "Rumores": el tabernero cuenta qué trae la próxima torre (gratis).
+## - Taberna: ninguno (es el primer casino: lo justo para jugar).
 ## - Salón, "Taller": se vende un boost o consumible por claridad, o se cambia por otro del mismo nivel (se libera lugar en las barras).
 ## - Casino, "Caja fuerte": se guarda claridad y se cobra con interés en el casino siguiente; mientras tanto no sirve para reintentar.
 ## - Gran casino, "Seguro": por un precio fijo, el primer reintento de la torre siguiente sale gratis.
 
 const Items := preload("res://scripts/items.gd")
 const Roulette := preload("res://scripts/roulette.gd")
-const Gen := preload("res://scripts/tower_gen.gd")
 const RunState := preload("res://scripts/run_state.gd")
 const Loc := preload("res://scripts/loc.gd")
 
-const BY_TIER: Array[String] = ["rumores", "taller", "caja", "seguro"]
+const BY_TIER: Array[String] = ["", "taller", "caja", "seguro"]
 const INFO := {
-	"rumores": {"name": "Rumores", "desc": "El tabernero te cuenta qué trae la próxima torre."},
 	"taller": {"name": "Taller", "desc": "Vendé un boost o un consumible por claridad, o cambialo por otro del mismo nivel."},
 	"caja": {"name": "Caja fuerte", "desc": "Guardá claridad y cobrala con interés en el próximo casino. Mientras tanto no podés usarla."},
 	"seguro": {"name": "Seguro", "desc": "Pagá ahora y el primer reintento de la próxima torre sale gratis."},
@@ -24,10 +22,9 @@ const SWAP_FRACTION := 0.3      # cambiar un ítem cuesta esta fracción de la f
 const VAULT_INTEREST := 0.15    # interés de la caja fuerte por pasar un casino
 const INSURANCE_FRACTION := 0.6 # el seguro cuesta esta fracción de lo que costaría ese primer reintento
 
-const PACE_NAMES := {"normal": "normal", "fast": "rápido", "slow": "lento"}
-const MECHANIC_NAMES := {"hielo": "hielo", "pesado": "bloques pesados", "agrietado": "bloques agrietados", "bomba": "bombas", "trampa": "trampas", "pinchos": "pinchos"}
 
 
+## El servicio de un nivel de sala ("" si no tiene: la taberna).
 static func service_for_tier(tier: int) -> String:
 	return BY_TIER[clampi(tier, 0, BY_TIER.size() - 1)]
 
@@ -42,29 +39,6 @@ static func enter(run) -> int:
 		run.gain(paid)
 		return paid
 	return 0
-
-
-# --- Rumores ---------------------------------------------------------------------------------------------------------------
-
-## Lo que cuenta el tabernero de la próxima torre: líneas ya traducidas. Sale del mismo perfil que usa el generador.
-static func rumors(run) -> Array[String]:
-	var next_stage := mini(run.stage + 1, 27)
-	var out: Array[String] = []
-	var prof: Dictionary = Gen.profile_for_stage(next_stage, run.trial_at(next_stage), run.scenario())
-	var d: float = prof.difficulty
-	var level := Loc.t("tranquila") if d < 0.25 else (Loc.t("media") if d < 0.55 else (Loc.t("difícil") if d < 0.8 else Loc.t("brutal")))
-	out.append(Loc.f("La torre de la etapa %d será %s, de ritmo %s.", [next_stage, level, Loc.t(str(PACE_NAMES.get(prof.pace, "normal")))]))
-	var names: Array[String] = []
-	for m in prof.mechanics:
-		names.append(Loc.t(str(MECHANIC_NAMES.get(m, m))))
-	if names.is_empty():
-		out.append(Loc.t("Trae sólo bloques comunes."))
-	else:
-		out.append(Loc.f("Trae: %s.", [", ".join(names)]))
-	var trial: Dictionary = run.trial_at(next_stage)
-	if not trial.is_empty():
-		out.append(Loc.f("Ojo: es la prueba «%s»: %s", [Loc.t(trial.name), Loc.t(str(trial.get("desc", "")))]))
-	return out
 
 
 # --- Taller ----------------------------------------------------------------------------------------------------------------

@@ -167,7 +167,7 @@ func _settle() -> void:
 	var reward := int(round(back * bet))
 	run.gain(reward)
 	run.casino_won += reward
-	var rules: Dictionary = Rules.settle(run, bet, reward, outcome == Outcome.WIN or outcome == Outcome.BLACKJACK, outcome == Outcome.BLACKJACK)
+	var rules: Dictionary = Rules.settle(run, bet, reward, outcome == Outcome.WIN or outcome == Outcome.BLACKJACK, outcome == Outcome.BLACKJACK, "blackjack")
 	result = {"ok": true, "outcome": outcome, "player": pv, "dealer": dv, "bet": bet, "claridad": reward, "net": reward - bet + int(rules.total), "rules": rules}
 
 
