@@ -21,7 +21,7 @@ static var _loaded_from := ""
 
 static func default_data() -> Dictionary:
 	return {"version": VERSION, "luz": 0, "luz_total": 0, "best_stage": 0, "runs": 0, "victories": 0, "trials_cleared": 0, "abilities": {}, "cosmetics": {},
-			"hat": "", "outfit": "", "characters": {"gato": true}, "character": "gato"}
+			"hat": "", "outfit": "", "characters": {"dante": true, "gaby": true}, "character": "dante"}
 
 
 ## Carga el perfil (una vez por ruta). Si no hay archivo o está dañado, uno vacío.
@@ -39,8 +39,9 @@ static func load_profile() -> Dictionary:
 					if json.data.has(k):
 						data[k] = json.data[k]
 				_migrate_cosmetics(json.data)
-	if not data.characters.has(Characters.DEFAULT):
-		data.characters[Characters.DEFAULT] = true
+	for c in Characters.ALL:   # los personajes "de inicio" (Dante y Gaby) se tienen siempre
+		if c.unlock == "inicio":
+			data.characters[c.id] = true
 	return data
 
 
@@ -253,9 +254,14 @@ static func on_ability(ability_id: String) -> Array[String]:
 	return _unlocked(["pinguino"] if ability_id == "garras_de_hielo" else [])
 
 
-## Se llegó a una etapa: la 10 desbloquea al conejito.
+## Se llegó a una etapa: la 4 desbloquea al gatito y la 10 al conejito.
 static func on_stage_reached(stage: int) -> Array[String]:
-	return _unlocked(["conejo"] if stage >= 10 else [])
+	var ids: Array = []
+	if stage >= 4:
+		ids.append("gato")
+	if stage >= 10:
+		ids.append("conejo")
+	return _unlocked(ids)
 
 
 static func _unlocked(ids: Array) -> Array[String]:

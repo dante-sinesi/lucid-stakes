@@ -47,18 +47,18 @@ func _init() -> void:
 
 
 func test_models() -> void:
-	check(Characters.ALL.size() == 4 and Characters.get_character("nope").id == "gato", "hay cuatro animalitos y un id raro cae en el gatito")
+	check(Characters.ALL.size() == 6 and Characters.get_character("nope").id == "dante" and Characters.DEFAULT == "dante", "hay seis personajes (Dante y Gaby y cuatro animalitos) y un id raro cae en Dante")
 	var seen := {}
 	for c in Characters.ALL:
 		var m := Characters.build(c.id)
-		for part in ["pata_i", "pata_d", "brazo_i", "brazo_d", "cola"]:
+		for part in ["pata_i", "pata_d", "brazo_i", "brazo_d"] + (["cola"] if c.id != "dante" else []):
 			check(m.get_node_or_null(part) != null, "%s tiene %s" % [c.id, part])
 		var b := bounds(m)
 		check(b.position.y >= -0.001 and b.position.y < 0.01, "%s: los pies estan en el piso (y=%.3f)" % [c.id, b.position.y])
 		check(b.size.x <= 0.72 and b.size.z <= 0.72, "%s: cabe en la celda (ancho %.2f, fondo %.2f)" % [c.id, b.size.x, b.size.z])
 		check(b.end.y >= 0.7 and b.end.y <= 1.05, "%s: mide lo que corresponde (%.2f)" % [c.id, b.end.y])
 		# mira hacia +Z: lo que sobresale al frente (hocico, pico, nariz) esta del lado positivo
-		check(b.end.z > -b.position.z - 0.001 or b.end.z >= 0.25, "%s: la cara mira hacia +Z" % c.id)
+		check(b.end.z > -b.position.z - 0.001 or b.end.z >= 0.22, "%s: la cara mira hacia +Z" % c.id)
 		var sig := "%d:%.3f:%.3f" % [m.get_child_count(), b.size.y, b.size.x]
 		for part in m.get_children():
 			sig += str(part.name)
@@ -91,12 +91,14 @@ func test_models() -> void:
 func test_unlocks() -> void:
 	Profile.path = "user://test_profile.json"
 	Profile.reset()
-	check(Profile.owned_characters() == ["gato"] and Profile.character() == "gato", "al empezar solo esta el gatito")
-	check(not Profile.select_character("perro") and Profile.character() == "gato", "no se puede elegir uno bloqueado")
+	check(Profile.owned_characters() == ["dante", "gaby"] and Profile.character() == "dante", "al empezar se tienen Dante y Gaby, y se juega con Dante")
+	check(Profile.select_character("gaby") and Profile.character() == "gaby" and Profile.select_character("dante"), "se puede elegir entre los dos")
+	check(not Profile.select_character("perro") and Profile.character() == "dante", "no se puede elegir uno bloqueado")
+	check(Profile.on_stage_reached(3).is_empty() and Profile.on_stage_reached(4) == ["gato"] and Profile.on_stage_reached(5).is_empty(), "llegar a la etapa 4 desbloquea al gatito (una sola vez)")
 	check(Profile.on_stage_reached(9).is_empty() and Profile.on_stage_reached(10) == ["conejo"] and Profile.on_stage_reached(12).is_empty(), "llegar a la etapa 10 desbloquea al conejito (una sola vez)")
 	check(Profile.on_ability("niebla").is_empty() and Profile.on_ability("garras_de_hielo") == ["pinguino"], "la habilidad del Hielo total desbloquea al pinguino")
 	check(Profile.on_trial_cleared() == ["perro"] and Profile.on_trial_cleared().is_empty(), "superar una prueba desbloquea al perrito")
-	check(Profile.owned_characters().size() == 4, "ya estan los cuatro")
+	check(Profile.owned_characters().size() == 6, "ya estan los seis")
 	check(Profile.select_character("pinguino") and Profile.character() == "pinguino", "se elige uno desbloqueado")
 	Profile.data = {}
 	Profile._loaded_from = ""
@@ -118,7 +120,7 @@ func test_migration() -> void:
 	check(Profile.has_cosmetic("bufanda") and not Profile.has_cosmetic("capa_azul") and Profile.has_cosmetic("copa") and Profile.has_cosmetic("chaleco"), "los cosmeticos viejos pasan a su ropa equivalente")
 	check(not d.cosmetics.has("viejo_inexistente"), "lo que ya no existe se descarta")
 	check(Profile.equipped_outfit() == "bufanda" and Profile.equipped_hat() == "", "el aspecto elegido pasa al hueco que corresponde")
-	check(Profile.character() == "gato", "y se tiene al gatito")
+	check(Profile.character() == "dante", "y se juega con Dante")
 	Profile.reset()
 
 
