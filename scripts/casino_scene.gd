@@ -22,6 +22,7 @@ const ItemBar := preload("res://scripts/item_bar.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
+const CasinoTheme := preload("res://scripts/casino_theme.gd")
 const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const Services := preload("res://scripts/casino_services.gd")
@@ -87,6 +88,8 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	rng = random
 	lay = Room.layout(run.stage, int(run.scenario().get("casino_tier", -1)))
 	cell = lay.entry
+	if not story:
+		CasinoTheme.apply_ui(int(lay.tier))   # los botones y textos se limpian según el nivel de la sala (se restablece al salir)
 	var vault_paid := 0
 	if not story:
 		vault_paid = Services.enter(run)   # expira el seguro sin usar y se paga la caja fuerte del casino anterior
@@ -103,6 +106,10 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 
 
 # --- construcción --------------------------------------------------------------------------------------------
+
+func _exit_tree() -> void:
+	CasinoTheme.reset_ui()
+
 
 func _solid_material() -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()

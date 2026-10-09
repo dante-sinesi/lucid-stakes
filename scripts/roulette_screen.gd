@@ -9,6 +9,7 @@ const Items := preload("res://scripts/items.gd")
 const Wheel := preload("res://scripts/roulette_wheel.gd")
 const UI := preload("res://scripts/menu_ui.gd")
 const SwirlBG := preload("res://scripts/swirl_bg.gd")
+const CasinoTheme := preload("res://scripts/casino_theme.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const PrizesWindow := preload("res://scripts/prizes_window.gd")
 const Juice := preload("res://scripts/juice.gd")
@@ -35,6 +36,8 @@ var selected: Array = []   # casillas elegidas (en orden de elección)
 var wheel
 var claridad_counter       # [ícono] claridad del run
 var rule_label: Control
+var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
+var sparkles: Control
 var price_counter          # [ícono] precio de la ficha
 var bet_buttons := {}
 var spin_button: Button
@@ -52,14 +55,16 @@ func setup(run_state, random: RandomNumberGenerator, quick := false) -> void:
 	run = run_state
 	rng = random
 	fast = quick
+	th = CasinoTheme.for_run(run)
 	_build()
+	wheel.th = th
 	select_bet(Roulette.Bet.PLENO)
 
 
 func _build() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)   # (con offsets: se arma ya dentro del arbol, bajo una CanvasLayer)
 	var bg := ColorRect.new()   # sólo oscurece lo que hay detrás: separa la ruleta del casino
-	bg.color = Color(0.015, 0.008, 0.035, 0.93)
+	bg.color = Color(th.bg, 0.93)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
@@ -75,6 +80,8 @@ func _build() -> void:
 	claridad_counter = ClarityCounter.new(4.0)
 	claridad_counter.name = "claridad"
 	top.add_child(claridad_counter)
+	rule_label = RuleUI.make_status(top, 620)   # la regla de la casa, al lado de la claridad (no se pisa con los botones)
+	rule_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(gap)
@@ -105,7 +112,6 @@ func _build() -> void:
 	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	col.add_theme_constant_override("separation", 6)
 	row.add_child(col)
-	rule_label = RuleUI.make_status(col, 350)
 	result_label = UI.label(col, "", 2, Color(0.9, 0.86, 1.0), false, 350)
 	result_label.custom_minimum_size = Vector2(350, 112)
 	result_label.plate_alpha = 0.0
@@ -243,6 +249,7 @@ func _result_effects(res: Dictionary) -> void:
 		_flash(Color(0.45, 0.1, 0.7), 0.3)
 	elif res.won:
 		_flash(Color(1.0, 0.88, 0.4), 0.3)
+		_sparkle(18)
 	var from := shown_claridad
 	if fast or from == run.claridad:
 		shown_claridad = run.claridad
@@ -252,6 +259,16 @@ func _result_effects(res: Dictionary) -> void:
 			claridad_counter.value = shown_claridad, float(from), float(run.claridad), 0.7).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	if run.claridad > from:
 		Juice.pop(claridad_counter, 1.3)
+
+
+## Chispas doradas al ganar en los casinos de nivel alto.
+func _sparkle(count: int) -> void:
+	if fast or int(th.shine) < 2:
+		return
+	if sparkles == null:
+		sparkles = CasinoTheme.Sparkles.new()
+		add_child(sparkles)
+	sparkles.burst(wheel.global_position - global_position + wheel.size * 0.5, count * (int(th.shine) - 1), [Color(1.0, 0.9, 0.4), Color(1, 1, 0.9), Color(1.0, 0.7, 0.25)])
 
 
 func _flash(color: Color, peak: float) -> void:

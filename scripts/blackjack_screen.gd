@@ -12,6 +12,7 @@ const VFont := preload("res://scripts/voxel_font.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
+const CasinoTheme := preload("res://scripts/casino_theme.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 
@@ -34,6 +35,8 @@ var dealer_views: Array = []
 var player_total: Control
 var dealer_total: Control
 var rule_label: Control
+var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
+var sparkles: Control
 var stake_ui := {}
 var message: Control
 var bet_counter
@@ -51,6 +54,7 @@ func setup(run_state, random: RandomNumberGenerator, quick := false) -> void:
 	rng = random
 	fast = quick
 	game = Blackjack.new(run, rng)
+	th = CasinoTheme.for_run(run)
 	_build()
 	_refresh()
 
@@ -58,10 +62,13 @@ func setup(run_state, random: RandomNumberGenerator, quick := false) -> void:
 func _build() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
-	bg.color = Color(0.015, 0.03, 0.04, 0.94)
+	bg.color = Color((th.felt_edge as Color).darkened(0.75), 0.94)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
+	var felt := _Felt.new()   # el paño de la mesa, detrás de las cartas
+	felt.th = th
+	add_child(felt)
 	var top := HBoxContainer.new()
 	top.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	top.offset_left = 24
@@ -252,10 +259,12 @@ func _show_result() -> void:
 			color = Color(1.0, 0.9, 0.45)
 			Sfx.play("jackpot")
 			_flash()
+			_sparkle(30)
 		Blackjack.Outcome.WIN:
 			color = Color(1.0, 0.9, 0.45)
 			Sfx.play("win")
 			Sfx.play("coin")
+			_sparkle(16)
 		Blackjack.Outcome.PUSH:
 			color = Color(0.85, 0.85, 1.0)
 			Sfx.play("chip")
@@ -270,6 +279,16 @@ func _show_result() -> void:
 func _say(text: String, color: Color) -> void:
 	message.text = text
 	message.color = color
+
+
+## Chispas doradas sobre la mesa al ganar (casinos de nivel alto).
+func _sparkle(count: int) -> void:
+	if fast or int(th.shine) < 2:
+		return
+	if sparkles == null:
+		sparkles = CasinoTheme.Sparkles.new()
+		add_child(sparkles)
+	sparkles.burst(size * 0.5, count * (int(th.shine) - 1), [Color(1.0, 0.9, 0.4), Color(1, 1, 0.9), Color(1.0, 0.7, 0.25)], 380.0)
 
 
 func _flash() -> void:
@@ -292,6 +311,7 @@ func _clear_hands() -> void:
 func _add_card(box: HBoxContainer, views: Array, card: Vector2i, face_up: bool) -> void:
 	var v := _CardView.new()
 	v.card = card
+	v.th = th
 	v.face_up = face_up
 	v.instant = fast
 	box.add_child(v)
@@ -374,6 +394,8 @@ class _CardView extends Control:
 	const Draw := preload("res://scripts/voxel_draw.gd")
 	const SIZE := Vector2(96, 134)
 	var card := Vector2i(1, 0)
+	var th := CasinoTheme.for_tier(0)
+	var _t := randf() * 3.0
 	var face_up := true
 	var instant := false
 	var _appear := 0.0
@@ -393,6 +415,7 @@ class _CardView extends Control:
 		_flip = 0.0 if not instant else 1.0
 
 	func _process(delta: float) -> void:
+		_t += delta
 		if _appear < 1.0:
 			_appear = minf(_appear + delta * 4.5, 1.0)
 		if _flip < 1.0:
@@ -405,21 +428,106 @@ class _CardView extends Control:
 		draw_set_transform(Vector2(SIZE.x * 0.5 * (1.0 - sx), (1.0 - e) * -60.0), 0.0, Vector2(sx, 1.0))
 		modulate.a = e
 		var r := Rect2(Vector2.ZERO, SIZE)
+		var orn: int = th.ornament
+		var trim: Color = th.trim
 		if face_up:
-			draw_rect(r, Color(0.96, 0.94, 0.88))
-			draw_rect(r.grow(-3), Color(0.99, 0.98, 0.95))
+			draw_rect(r, th.card)
+			draw_rect(r.grow(-3), th.card_in)
+			if float(th.corruption) >= 0.4:   # taberna: cartas manoseadas, con alguna mancha y un borde mordido
+				for k in 5:
+					var nx := Draw.noise(card.x * 7 + k, card.y * 5, 21)
+					var ny := Draw.noise(card.x * 3 + k, card.y * 11, 33)
+					draw_rect(Rect2(Vector2(6.0 + nx * (SIZE.x - 18.0), 6.0 + ny * (SIZE.y - 18.0)), Vector2(5, 4)), Color(0.55, 0.42, 0.25, 0.28))
+				draw_rect(Rect2(Vector2(SIZE.x - 9, 0), Vector2(9, 5)), Color(0.04, 0.02, 0.07, 0.9))
 			var rank: String = ["", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"][card.x]
 			var l: Dictionary = VFont.layout([rank])
 			var col := Color(0.15, 0.08, 0.25) if card.y % 2 == 0 else Color(0.7, 0.12, 0.12)
 			Draw.text_cells(self, Vector2(10, 8), l.cells, l.size.y, 3.0, col, 0.0, card.x, false)
 			Icons.draw(self, ["cubo", "hielo", "bomba", "sol"][card.y], Vector2(SIZE.x * 0.5, SIZE.y * 0.58), 52.0)
 			Icons.draw(self, ["cubo", "hielo", "bomba", "sol"][card.y], Vector2(SIZE.x - 17, SIZE.y - 17), 18.0)
+			if orn >= 3:   # filete interior dorado y rombitos en las esquinas
+				draw_rect(r.grow(-6), Color(trim, 0.85), false, 1.0)
+				for p in [Vector2(11, SIZE.y - 11), Vector2(SIZE.x - 11, 11)]:
+					draw_colored_polygon(PackedVector2Array([p + Vector2(0, -4), p + Vector2(4, 0), p + Vector2(0, 4), p + Vector2(-4, 0)]), trim)
+			if int(th.shine) >= 3:   # un brillo cruza la carta de vez en cuando
+				var sw := CasinoTheme.sweep(_t, 3.2)
+				if sw > 0.0 and sw < 1.0:
+					var x := sw * (SIZE.x + 20.0) - 10.0
+					draw_colored_polygon(PackedVector2Array([Vector2(maxf(x - 10, 0), SIZE.y), Vector2(clampf(x + 2, 0, SIZE.x), SIZE.y), Vector2(clampf(x + 22, 0, SIZE.x), 0), Vector2(clampf(x + 10, 0, SIZE.x), 0)]), Color(1, 1, 1, 0.22))
 		else:
-			draw_rect(r, Color(0.96, 0.94, 0.88))
-			draw_rect(r.grow(-6), Color(0.36, 0.14, 0.56))
+			draw_rect(r, th.card)
+			draw_rect(r.grow(-6), th.back)
 			for y in 7:
 				for x in 5:
 					if (x + y) % 2 == 0:
-						draw_rect(Rect2(Vector2(14 + x * 14, 14 + y * 15), Vector2(12, 12)), Color(0.62, 0.3, 0.85))
-		draw_rect(r, Color(0.1, 0.05, 0.16), false, 2.0)
+						var dot: Color = th.back_dot
+						if orn >= 2:   # en los niveles altos el damero es de rombos dorados
+							var c := Vector2(14 + x * 14 + 6, 14 + y * 15 + 6)
+							draw_colored_polygon(PackedVector2Array([c + Vector2(0, -6), c + Vector2(6, 0), c + Vector2(0, 6), c + Vector2(-6, 0)]), dot)
+						else:
+							draw_rect(Rect2(Vector2(14 + x * 14, 14 + y * 15), Vector2(12, 12)), dot)
+			if orn >= 1:
+				draw_rect(r.grow(-6), Color(trim, 0.9), false, 2.0 if orn >= 2 else 1.0)
+			if orn >= 3:
+				draw_rect(r.grow(-11), Color(trim, 0.6), false, 1.0)
+		draw_rect(r, th.card_edge, false, 3.0 if orn >= 3 else 2.0)
+		if orn >= 2 and face_up:   # esquinas con una tachuela dorada
+			for p in [Vector2(3, 3), Vector2(SIZE.x - 6, 3), Vector2(3, SIZE.y - 6), Vector2(SIZE.x - 6, SIZE.y - 6)]:
+				draw_rect(Rect2(p, Vector2(3, 3)), trim)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## El paño de la mesa de blackjack, detrás de las cartas: verde manchado y gastado en la taberna, cada vez más limpio, hasta esmeralda con filete y
+## guarda dorada y un brillo que lo cruza en el gran casino.
+class _Felt extends Control:
+	const Draw := preload("res://scripts/voxel_draw.gd")
+	var th := CasinoTheme.for_tier(0)
+	var _t := 0.0
+	var _frame := -1
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if int(th.shine) >= 3:
+			var fr := int(_t * 10.0)
+			if fr != _frame:
+				_frame = fr
+				queue_redraw()
+
+	func _draw() -> void:
+		var s := 10.0
+		var area := Rect2(size * 0.5 - Vector2(560, 320), Vector2(1120, 640)).intersection(Rect2(Vector2(12, 70), size - Vector2(24, 84)))
+		var cols := int(area.size.x / s)
+		var rows := int(area.size.y / s)
+		var o := area.position + (area.size - Vector2(cols, rows) * s) * 0.5
+		var felt: Color = th.felt
+		draw_rect(Rect2(o, Vector2(cols, rows) * s), felt)
+		var corr: float = th.corruption
+		if corr > 0.05:   # manchas y quemaduras (sólo en las salas gastadas)
+			for y in rows:
+				for x in cols:
+					var n := Draw.noise(x, y, 91)
+					if n < corr * 0.06:
+						draw_rect(Rect2(o + Vector2(x, y) * s, Vector2(s, s)), felt.darkened(0.35))
+					elif n > 1.0 - corr * 0.006:
+						draw_rect(Rect2(o + Vector2(x, y) * s, Vector2(s, s)), Draw.corrupt_color(n))
+		var orn: int = th.ornament
+		# borde: marco oscuro de madera y, desde el salón, un filete de metal
+		for x in cols:
+			for y in [0, rows - 1]:
+				Draw.cube(self, o + Vector2(x, y) * s, s, th.felt_edge if orn == 0 else (th.trim as Color).darkened(0.2 if orn == 1 else 0.0), true)
+		for y in range(1, rows - 1):
+			for x in [0, cols - 1]:
+				Draw.cube(self, o + Vector2(x, y) * s, s, th.felt_edge if orn == 0 else (th.trim as Color).darkened(0.2 if orn == 1 else 0.0), true)
+		if orn >= 3:   # guarda dorada interior y rombos en las esquinas
+			var inner := Rect2(o + Vector2(2, 2) * s, Vector2(cols - 4, rows - 4) * s)
+			draw_rect(inner, Color(th.trim, 0.7), false, 2.0)
+			for p in [inner.position, Vector2(inner.end.x, inner.position.y), Vector2(inner.position.x, inner.end.y), inner.end]:
+				draw_colored_polygon(PackedVector2Array([p + Vector2(0, -9), p + Vector2(9, 0), p + Vector2(0, 9), p + Vector2(-9, 0)]), th.trim)
+			var sw := CasinoTheme.sweep(_t, 4.0)
+			if sw > 0.0 and sw < 1.0:
+				var x := inner.position.x + sw * inner.size.x
+				draw_colored_polygon(PackedVector2Array([Vector2(x - 40, inner.end.y), Vector2(x - 10, inner.end.y), Vector2(x + 70, inner.position.y), Vector2(x + 40, inner.position.y)]), Color(1, 1, 1, 0.05))

@@ -12,6 +12,7 @@ const Draw := preload("res://scripts/voxel_draw.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
+const CasinoTheme := preload("res://scripts/casino_theme.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 
@@ -39,6 +40,8 @@ var prizes_button
 var claridad_counter
 var price_counter
 var rule_label: Control
+var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
+var sparkles: Control
 var stake_ui := {}
 var result_label: Control
 var prizes_panel: Control
@@ -55,6 +58,7 @@ func setup(run_state, random: RandomNumberGenerator, quick := false) -> void:
 	rng = random
 	fast = quick
 	game = Slots.new(run, rng)
+	th = CasinoTheme.for_run(run)
 	_build()
 	_refresh()
 
@@ -62,7 +66,7 @@ func setup(run_state, random: RandomNumberGenerator, quick := false) -> void:
 func _build() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
-	bg.color = Color(0.015, 0.008, 0.035, 0.93)
+	bg.color = Color(th.bg, 0.93)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
@@ -111,6 +115,7 @@ func _build() -> void:
 		var reel := _Reel.new()
 		reel.name = "rodillo_%d" % (i + 1)
 		reel.symbol = int(game.reels[i])
+		reel.th = th
 		cell.add_child(reel)
 		reel_nodes.append(reel)
 		var hb := UI.button("Retener", false, 2.5, 38, false)
@@ -353,7 +358,21 @@ func _say(text: String, color: Color) -> void:
 	result_label.color = color
 
 
+## Chispas doradas sobre los rodillos al ganar (casinos de nivel alto).
+func _sparkle(count: int) -> void:
+	if fast or int(th.shine) < 2:
+		return
+	if sparkles == null:
+		sparkles = CasinoTheme.Sparkles.new()
+		add_child(sparkles)
+	var mid := Vector2.ZERO
+	for r in reel_nodes:
+		mid += r.global_position - global_position + r.size * 0.5
+	sparkles.burst(mid / maxf(reel_nodes.size(), 1), count * (int(th.shine) - 1), [Color(1.0, 0.9, 0.4), Color(1, 1, 0.9), Color(1.0, 0.7, 0.25)], 320.0)
+
+
 func _flash() -> void:
+	_sparkle(26)
 	if fast:
 		return
 	var tw := create_tween()
@@ -435,6 +454,9 @@ class _Reel extends Control:
 	var held := false
 	var _scroll := 0.0
 	var _settle := 1.0   # 0..1 desde que frenó: el símbolo cae y rebota
+	var th := CasinoTheme.for_tier(0)
+	var _t := 0.0
+	var _frame := -1
 
 	func _init() -> void:
 		custom_minimum_size = SIZE
@@ -450,6 +472,12 @@ class _Reel extends Control:
 		_settle = 0.0
 
 	func _process(delta: float) -> void:
+		_t += delta
+		if int(th.shine) >= 2:   # luces que corren por el marco: se redibuja unas 12 veces por segundo
+			var fr := int(_t * 12.0)
+			if fr != _frame:
+				_frame = fr
+				queue_redraw()
 		if spinning:
 			_scroll += delta * 14.0
 			queue_redraw()
@@ -459,9 +487,10 @@ class _Reel extends Control:
 
 	func _draw() -> void:
 		var r := Rect2(Vector2.ZERO, SIZE)
-		Draw.card(self, r, 6.0, 0, 0.04, 77, held, -1.0)
+		Draw.card(self, r, 6.0, 0, 0.09 * float(th.corruption) / 0.45, 77, held, -1.0)
+		CasinoTheme.frame(self, r, 6.0, th, _t, spinning)
 		var inner := r.grow(-14)
-		draw_rect(inner, Color(0.04, 0.02, 0.09))
+		draw_rect(inner, th.window)
 		var step := 118.0
 		var icon := 96.0
 		if spinning:
@@ -472,12 +501,17 @@ class _Reel extends Control:
 				var cy := SIZE.y * 0.5 + (frac + float(k)) * step - step * 0.0
 				Icons.draw(self, ["cubo", "hielo", "bomba", "sol", "corona"][sym], Vector2(SIZE.x * 0.5, cy), icon, Color(1, 1, 1, 0.9))
 			# las franjas de arriba y abajo tapan lo que sale de la ventana
-			draw_rect(Rect2(inner.position.x, r.position.y, inner.size.x, inner.position.y - r.position.y), Color(0.13, 0.07, 0.22))
-			draw_rect(Rect2(inner.position.x, inner.end.y, inner.size.x, r.end.y - inner.end.y), Color(0.13, 0.07, 0.22))
+			draw_rect(Rect2(inner.position.x, r.position.y, inner.size.x, inner.position.y - r.position.y), th.strip)
+			draw_rect(Rect2(inner.position.x, inner.end.y, inner.size.x, r.end.y - inner.end.y), th.strip)
 		else:
 			var drop := (1.0 - _settle)
 			var bounce := -sin(drop * PI) * 10.0 * drop
 			Icons.draw(self, ["cubo", "hielo", "bomba", "sol", "corona"][symbol], Vector2(SIZE.x * 0.5, SIZE.y * 0.5 - drop * 40.0 + bounce), icon)
+			if int(th.shine) >= 3:   # un brillo cruza la ventanilla de vez en cuando
+				var sw := CasinoTheme.sweep(_t + float(get_index()) * 0.7, 3.0)
+				if sw > 0.0 and sw < 1.0:
+					var x := inner.position.x + sw * inner.size.x
+					draw_colored_polygon(PackedVector2Array([Vector2(x - 14, inner.end.y), Vector2(x + 2, inner.end.y), Vector2(x + 30, inner.position.y), Vector2(x + 14, inner.position.y)]).duplicate(), Color(1, 1, 1, 0.16))
 
 
 ## Un ícono suelto (para la tabla de premios).

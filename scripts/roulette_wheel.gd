@@ -6,6 +6,7 @@ extends Control
 const Roulette := preload("res://scripts/roulette.gd")
 const VFont := preload("res://scripts/voxel_font.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
+const CasinoTheme := preload("res://scripts/casino_theme.gd")
 
 const CUBE := 10.0   # lado de un cubito de la rueda, en píxeles
 
@@ -36,6 +37,9 @@ var hover_pocket := -1:
 
 ## Animaciones: el marcador da un golpecito cada vez que pasa una casilla, la bola salta al caer, las fichas nuevas rebotan,
 ## la casilla ganadora parpadea y la rueda tiembla cuando gana la casa.
+var th := CasinoTheme.for_tier(0)     # estética según el nivel del casino (casino_theme.gd): la rueda se purifica con las salas
+var _anim := 0.0
+var _anim_frame := -1
 var spinning := false
 var kick := 0.0                 # golpe del marcador (1 = recién pasó una casilla)
 var ball_off := 0.0             # desplazamiento vertical de la bola, en cubitos (negativo = arriba)
@@ -53,6 +57,12 @@ func _init() -> void:
 
 func _process(delta: float) -> void:
 	var dirty := false
+	if int(th.shine) > 0:   # destellos: se redibuja unas 8 veces por segundo
+		_anim += delta
+		var fr := int(_anim * 8.0)
+		if fr != _anim_frame:
+			_anim_frame = fr
+			dirty = true
 	if spinning:
 		var u := pocket_under_ball()
 		if u != _last_under:
@@ -144,8 +154,14 @@ func pocket_at(dx: float, dy: float) -> int:
 
 func pocket_color(i: int) -> Color:
 	if i == 0:
-		return Color(0.28, 0.08, 0.40)   # la Pesadilla
-	return Color(1.0, 0.86, 0.5) if i % 2 == 1 else Color(0.95, 0.60, 0.34)
+		return th.zero   # la Pesadilla
+	return th.pocket_a if i % 2 == 1 else th.pocket_b
+
+
+## Color de los números de una casilla: oscuros sobre fondo claro y claros sobre fondo oscuro (las casillas rojas del gran casino).
+func number_color(i: int) -> Color:
+	var c := pocket_color(i)
+	return Color(0.22, 0.10, 0.04) if c.get_luminance() > 0.5 else Color(1.0, 0.95, 0.8)
 
 
 func _draw() -> void:
@@ -154,7 +170,9 @@ func _draw() -> void:
 	var g := CUBE
 	var c := size / 2.0
 	var radius := int(minf(size.x, size.y) / 2.0 / g) - 2     # radio de la rueda en cubitos
-	var k := Draw.default_corruption
+	var k: float = th.corruption
+	var orn: int = th.ornament
+	var shine: int = th.shine
 	var origin := c - Vector2(0.5, 0.5) * g
 	draw_circle(c + Vector2(g * 0.8, g * 1.2), (radius + 1) * g, Color(0, 0, 0, 0.5))   # sombra dura de la rueda
 	for j in range(-radius - 1, radius + 2):
@@ -167,14 +185,23 @@ func _draw() -> void:
 			if d > radius - 0.5:  # aro exterior de madera
 				if n < k * 0.10:
 					continue
-				var wood := Color(0.34, 0.2, 0.09).lightened(0.12 * float((i + j) & 1))
+				var wood: Color = (th.wood as Color).lightened(0.12 * float((i + j) & 1))
+				if orn >= 1 and (i * 3 + j * 5) % 4 == 0:   # tachuelas de metal en el aro (y gemas en los niveles altos)
+					wood = th.gold
+					if orn >= 2 and (i + j) % 8 == 0:
+						wood = Color(0.9, 0.2, 0.28) if orn == 2 else Color(0.35, 0.8, 1.0)
 				Draw.cube(self, pos, g, wood if n > k * 0.30 else Draw.corrupt_color(n), true)
 				continue
 			if d > radius - 1.6:  # aro dorado
-				Draw.cube(self, pos, g, Color(0.88, 0.68, 0.26) if n > k * 0.25 else Draw.corrupt_color(n), true)
+				var ring: Color = th.gold
+				if shine >= 2:   # algunos cubitos del aro brillan y se apagan
+					var tw := Draw.noise(i + 40, j + 40, int(_anim * 3.0) + 7)
+					if tw > 0.93:
+						ring = ring.lightened(0.55)
+				Draw.cube(self, pos, g, ring if n > k * 0.25 else Draw.corrupt_color(n), true)
 				continue
 			if d < 2.2:  # el centro
-				Draw.cube(self, pos, g, Color(0.88, 0.68, 0.26), true)
+				Draw.cube(self, pos, g, th.gold, true)
 				continue
 			var p := pocket_at(float(i), float(j))
 			var col := pocket_color(p)
@@ -193,7 +220,7 @@ func _draw() -> void:
 		for s in range(3, steps + 2):
 			var pt := c + Vector2.from_angle(a0) * (s * g)
 			var cell := Vector2(roundf((pt.x - c.x) / g), roundf((pt.y - c.y) / g))
-			Draw.cube(self, origin + cell * g, g, Color(0.30, 0.18, 0.08), true)
+			Draw.cube(self, origin + cell * g, g, th.divider, true)
 			if p == result or p == (result + 1) % Roulette.POCKETS:
 				var lit := Color.WHITE
 				if win_t >= 0.0 and int(win_t * 8.0) % 2 == 1:
@@ -206,7 +233,7 @@ func _draw() -> void:
 		var txt := str(p)
 		var l := VFont.layout([txt])
 		var tsize := Vector2(l.size) * 3.0
-		var col := Color(0.85, 0.65, 1.0) if p == 0 else (Color(1.0, 0.95, 0.8) if covered.has(p) else Color(0.22, 0.10, 0.04))
+		var col := Color(0.85, 0.65, 1.0) if p == 0 else (Color(1.0, 0.95, 0.8) if covered.has(p) else number_color(p))
 		Draw.text_cells(self, lp - tsize / 2.0, l.cells, l.size.y, 3.0, col, 0.0, p, true)
 		if covered.has(p):  # ficha: una pila de cubitos dorados y brillantes sobre la casilla oscurecida
 			var cp := c + Vector2.from_angle(mid) * float(radius) * g * 0.52
@@ -217,11 +244,29 @@ func _draw() -> void:
 			for h in 3:
 				var base := cp - Vector2(cs * 0.5, cs * 0.5 + h * cs * 0.55 + lift)
 				draw_rect(Rect2(base + Vector2(2, 3), Vector2(cs, cs)), Color(0, 0, 0, 0.55))
-				Draw.cube(self, base, cs, Color(1.0, 0.86, 0.25).lightened(0.12 * h), true)
+				Draw.cube(self, base, cs, (th.chip as Color).lightened(0.12 * h), true)
+				if shine >= 2 and h == 2 and int(_anim * 4.0 + float(p)) % 5 == 0:   # destello sobre la ficha
+					draw_rect(Rect2(base + Vector2(cs * 0.6, 1), Vector2(3, 3)), Color(1, 1, 0.9))
 			draw_rect(Rect2(cp - Vector2(cs * 0.5, cs * 0.5 + 2 * cs * 0.55), Vector2(cs, 2)), Color(1, 1, 0.85))
 	# marcador (flecha de cubitos) y bola, fijos arriba
 	var top := c + Vector2(0, -(radius + 1) * g - kick * g * 0.9)
 	for step in 3:
 		for w in (3 - step):
-			Draw.cube(self, top + Vector2((w - (2 - step) * 0.5 - 0.5) * g, -(3 - step) * g), g, Color(1.0, 0.82, 0.2), true)
-	Draw.cube(self, c + Vector2(-g * 0.5, (-(radius - 2.5) + ball_off) * g), g, Color.WHITE, true)
+			Draw.cube(self, top + Vector2((w - (2 - step) * 0.5 - 0.5) * g, -(3 - step) * g), g, th.marker, true)
+	if orn >= 2:   # gema en la punta del marcador
+		Draw.cube(self, top + Vector2(-g * 0.5, -3.0 * g), g, Color(0.9, 0.2, 0.28) if orn == 2 else Color(0.35, 0.8, 1.0), true)
+	var ball_pos := c + Vector2(-g * 0.5, (-(radius - 2.5) + ball_off) * g)
+	Draw.cube(self, ball_pos, g, th.ball, true)
+	if shine >= 2:   # reflejo de la bola
+		draw_rect(Rect2(ball_pos + Vector2(g * 0.2, g * 0.2), Vector2(g * 0.25, g * 0.25)), Color(1, 1, 1))
+	# adorno del centro: una gema en el casino y una corona de cubitos en el gran casino
+	if orn >= 2:
+		var cc := c - Vector2(g * 0.5, g * 0.5)
+		if orn == 2:
+			Draw.cube(self, cc, g, Color(0.9, 0.2, 0.28).lightened(0.2 * sin(_anim * 3.0)), true)
+		else:
+			for x in range(-2, 3):
+				Draw.cube(self, cc + Vector2(x, 0.6) * g, g, th.marker, true)
+			for x in [-2, 0, 2]:
+				Draw.cube(self, cc + Vector2(x, -0.5) * g, g, th.marker.lightened(0.15), true)
+			Draw.cube(self, cc + Vector2(0, 0.6) * g, g, Color(0.35, 0.8, 1.0).lightened(0.25 * sin(_anim * 4.0)), true)
