@@ -41,18 +41,50 @@ const ALL: Array[Dictionary] = [
 		"desc": "Cada etapa arrancás con 20 de claridad."},
 	{"id": "freno", "name": "Freno", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 100,
 		"desc": "Pausa la caída de la fila base durante 5 movimientos."},
-	{"id": "catapulta_de_bolsillo", "name": "Catapulta de bolsillo", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 110,
-		"desc": "Convierte el bloque que tenés enfrente en una catapulta."},
 	{"id": "desarmar", "name": "Desarmar", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90,
 		"desc": "Desactiva una bomba a la vista."},
+	# ---- conversores: uno por tipo de bloque; se elige con el mouse el bloque que se cambia ----
+	{"id": "conv_roca", "name": "Polvo de roca", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
+		"desc": "Convierte cualquier bloque en roca (un bloque común). Se elige con el mouse."},
+	{"id": "conv_hielo", "name": "Escarcha", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
+		"desc": "Convierte cualquier bloque en hielo. Se elige con el mouse."},
+	{"id": "conv_agrietado", "name": "Grieta", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
+		"desc": "Convierte cualquier bloque en uno agrietado (se rompe al bajarte de él). Se elige con el mouse."},
+	{"id": "conv_trampa", "name": "Cebo", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
+		"desc": "Convierte cualquier bloque en una trampa (se desarma al pisarla). Se elige con el mouse."},
+	{"id": "conv_pinchos", "name": "Espinas", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
+		"desc": "Convierte cualquier bloque en pinchos (no se pueden pisar). Se elige con el mouse."},
+	{"id": "conv_pesado", "name": "Plomo", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90, "target": true,
+		"desc": "Convierte cualquier bloque en uno pesado (no se empuja ni se tira). Se elige con el mouse."},
+	{"id": "conv_bomba", "name": "Pólvora", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90, "target": true,
+		"desc": "Convierte cualquier bloque en una bomba con cuenta de 6. Se elige con el mouse."},
+	{"id": "conv_catapulta", "name": "Resorte", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 100, "target": true,
+		"desc": "Convierte cualquier bloque en una catapulta. Se elige con el mouse."},
+	# ---- otros consumibles ----
+	{"id": "escudo", "name": "Escudo", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 110, "passive": true,
+		"desc": "Si explota una bomba, no te afecta; el escudo se rompe. Se gasta solo."},
+	{"id": "doble_salto", "name": "Doble salto", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 110,
+		"desc": "Tu próximo salto sube 2 bloques en vez de 1."},
+	{"id": "totem", "name": "Tótem", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200, "passive": true,
+		"desc": "Si morís, reintentás la torre sin costo. Se gasta solo."},
+	{"id": "teletransporte", "name": "Teletransporte", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 190, "target": true,
+		"desc": "Elegí con el mouse un bloque a 5 cubos o menos de vos y aparecés encima."},
 	# ---- consumibles baratos y bolsas de claridad ----
 	{"id": "bolsa_de_luz", "name": "Bolsa de luz", "type": Type.CLARITY, "tier": Tier.CONSUMIBLE, "weight": 6, "mult": 1.4,
 		"desc": "Devuelve 1,4 veces lo que pagaste por la ficha, en claridad."},
-	{"id": "hielo_a_roca", "name": "Hielo a roca", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 2, "value": 70,
-		"desc": "Convierte un bloque de hielo cercano en un bloque normal."},
 	{"id": "ancla_chica", "name": "Ancla chica", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 2, "value": 70,
 		"desc": "Un bloque de tu elección no cae aunque pierda sus vecinos (una etapa)."},
 ]
+
+
+## ¿El consumible se usa eligiendo un bloque con el mouse?
+static func needs_target(id: String) -> bool:
+	return bool(get_item(id).get("target", false))
+
+
+## ¿Se usa solo (no se aprieta su tecla)?
+static func is_passive(id: String) -> bool:
+	return bool(get_item(id).get("passive", false))
 
 
 static func get_item(id: String) -> Dictionary:

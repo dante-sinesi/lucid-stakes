@@ -49,7 +49,7 @@ func _init() -> void:
 ## Todo premio del catálogo (menos las bolsas de claridad) tiene su efecto conectado.
 func test_catalogue() -> void:
 	var boosts := ["segundo_aliento", "madrugada", "luz_propia", "mano_de_oro", "pies_de_luz", "paso_firme", "reflejos", "racha_larga", "aire_extra", "ojo_de_hielo", "ahorro", "bolsillo_hondo", "mente_abierta"]
-	var consumables := ["freno", "catapulta_de_bolsillo", "desarmar", "hielo_a_roca", "ancla_chica"]
+	var consumables := ["freno", "desarmar", "ancla_chica", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta", "escudo", "doble_salto", "totem", "teletransporte"]
 	var ok := true
 	for it in Items.ALL:
 		if it.type == Items.Type.BOOST:
@@ -185,19 +185,19 @@ func test_consumables() -> void:
 	check(t.use_item("desarmar").ok and not t.bomb_timer.has(near) and t.bomb_timer.has(far), "Desarmar: desactiva la bomba mas cercana")
 	# Hielo a roca
 	t = fresh()
-	check(not t.use_item("hielo_a_roca").ok, "Hielo a roca sin hielo no se puede usar")
+	check(not t.use_item_at("conv_roca", Vector3i(3, 1, 2)).ok, "el Polvo de roca sobre un lugar sin bloque no se puede usar")
 	t.add_block(Vector3i(3, 1, 2), false, ICE)
 	var zob_before: int = t.zob
-	check(t.use_item("hielo_a_roca").ok and t.kind_at(Vector3i(3, 1, 2)) == TowerLogic.Kind.NORMAL, "Hielo a roca: el hielo cercano pasa a ser normal")
+	check(t.use_item_at("conv_roca", Vector3i(3, 1, 2)).ok and t.kind_at(Vector3i(3, 1, 2)) == TowerLogic.Kind.NORMAL, "Polvo de roca: el bloque elegido (de hielo) pasa a ser normal")
 	var check_zob: int = t.zob
 	t.recompute_zob()
 	check(check_zob == t.zob and zob_before != t.zob, "...y la huella del estado queda al dia")
 	# Catapulta de bolsillo
 	t = fresh()
 	t.facing = E
-	check(not t.use_item("catapulta_de_bolsillo").ok, "Catapulta de bolsillo sin bloque enfrente no se puede usar")
+	check(not t.use_item_at("conv_catapulta", Vector3i(3, 1, 2)).ok, "el Resorte sin bloque ahí no se puede usar")
 	t.add_block(Vector3i(3, 1, 2))
-	check(t.use_item("catapulta_de_bolsillo").ok and t.kind_at(Vector3i(3, 1, 2)) == TowerLogic.Kind.CATAPULT, "Catapulta de bolsillo: el bloque de enfrente pasa a ser catapulta")
+	check(t.use_item_at("conv_catapulta", Vector3i(3, 1, 2)).ok and t.kind_at(Vector3i(3, 1, 2)) == TowerLogic.Kind.CATAPULT, "Resorte: el bloque elegido pasa a ser catapulta")
 	# Ancla chica
 	t = fresh()
 	t.facing = E

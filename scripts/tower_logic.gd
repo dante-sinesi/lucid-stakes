@@ -124,6 +124,10 @@ var row_platforms := {}
 var platform_row := {}
 var reached_row := 0
 var _fixed_shared := false   # `fixed` se comparte entre copias (casi nunca cambia): se duplica recién al escribir
+var shield := false           # Escudo: la próxima bomba que explote no te afecta (la lógica lo gasta y avisa con shield_used)
+var shield_used := false
+var double_jump := false      # Doble salto armado: el próximo salto hacia arriba sube 2 bloques
+var jump_used := false
 var lazy_settle := false     # el solucionador y el generador lo prenden: sólo se revisa qué bloques caen cuando algún bloque se movió o se sacó (ver _settle_blocks)
 var _blocks_dirty := true    # hay que revisar el apoyo de los bloques (cambió algo desde la última revisión)
 var _maps_shared := false    # blocks, positions, kind_of, bomb_timer y purified se comparten con otra copia hasta que una escribe (ver _own_maps)
@@ -233,6 +237,8 @@ func try_action(dir: Vector3i, mode: Mode = Mode.MOVE) -> Dictionary:
 	removed_ids.clear()
 	last_purified.clear()
 	last_gain = 0
+	jump_used = false
+	shield_used = false
 	perk_msg = ""
 	trap_broke = false
 	exploded = false
@@ -273,6 +279,8 @@ func clone() -> RefCounted:
 	c.perks = perks
 	c.anchored = anchored
 	c.collapse_pause = collapse_pause
+	c.shield = shield
+	c.double_jump = double_jump
 	c.lazy_settle = lazy_settle
 	c._blocks_dirty = _blocks_dirty
 	c.blocks = blocks
@@ -323,6 +331,13 @@ func _act_walk(d: Vector3i) -> Dictionary:
 		return _fail("Borde de la torre")
 	if blocks.has(t):
 		if blocks.has(t + UP) or blocks.has(player + UP):
+			if double_jump and blocks.has(t + UP) and not blocks.has(player + UP) and not blocks.has(player + UP * 2) and not blocks.has(t + UP * 2):
+				double_jump = false   # Doble salto: se sube un pilar de 2
+				jump_used = true
+				_climbed = true
+				_set_player(t + UP * 2)
+				_arrive(d)
+				return _ok()
 			return _fail("Bloqueado (Shift: empujar)")
 		_climbed = true
 		_set_player(t + UP)
@@ -660,6 +675,11 @@ func _tick_bombs() -> void:
 func _explode(id := -1) -> void:
 	exploded = true
 	explosion_cell = positions.get(id, player)
+	if shield and positions.has(id):   # Escudo: la bomba estalla sola, sin llevarse la torre ni al jugador
+		shield = false
+		shield_used = true
+		_remove_block(positions[id])
+		return
 	for c in blocks.keys():
 		_remove_block(c)
 	lost = true
@@ -843,29 +863,6 @@ func use_item(id: String) -> Dictionary:
 			_own_maps()
 			bomb_timer.erase(best)
 			return {"ok": true, "msg": "Bomba desarmada"}
-		"hielo_a_roca":
-			var near := Vector3i.ZERO
-			var near_d := 1 << 30
-			var found := false
-			for c in blocks:
-				if kind_at(c) != Kind.ICE:
-					continue
-				var dv: Vector3i = (c - player).abs()
-				var dist := dv.x + dv.y + dv.z
-				if dist <= 6 and dist < near_d:
-					near_d = dist
-					near = c
-					found = true
-			if not found:
-				return {"ok": false, "msg": "No hay hielo cerca"}
-			_set_kind(near, Kind.NORMAL)
-			return {"ok": true, "msg": "El hielo se volvió roca"}
-		"catapulta_de_bolsillo":
-			var front := player + facing
-			if not blocks.has(front) or fixed.has(front):
-				return {"ok": false, "msg": "No hay un bloque enfrente"}
-			_set_kind(front, Kind.CATAPULT)
-			return {"ok": true, "msg": "El bloque de enfrente es ahora una catapulta"}
 		"ancla_chica":
 			var target := player + facing
 			if not blocks.has(target):
@@ -874,7 +871,87 @@ func use_item(id: String) -> Dictionary:
 				return {"ok": false, "msg": "No hay un bloque para anclar"}
 			anchored[blocks[target]] = true
 			return {"ok": true, "msg": "Bloque anclado: no cae en esta etapa"}
+		"doble_salto":
+			if double_jump:
+				return {"ok": false, "msg": "Ya tenés el doble salto listo"}
+			double_jump = true
+			return {"ok": true, "msg": "Doble salto listo: el próximo salto sube 2 bloques"}
+		"escudo", "totem":
+			return {"ok": false, "msg": "Se usa solo cuando hace falta"}
+		"teletransporte", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta":
+			return {"ok": false, "msg": "Elegí un bloque con el mouse"}
 	return {"ok": false, "msg": "Consumible desconocido"}
+
+
+## Los conversores: a qué tipo de bloque convierte cada uno. La bomba nueva empieza con esta cuenta.
+const CONVERTERS := {"conv_roca": Kind.NORMAL, "conv_hielo": Kind.ICE, "conv_agrietado": Kind.CRACKED, "conv_trampa": Kind.TRAP, "conv_pinchos": Kind.SPIKES,
+		"conv_pesado": Kind.HEAVY, "conv_bomba": Kind.BOMB, "conv_catapulta": Kind.CATAPULT}
+const NEW_BOMB_FUSE := 6
+const TELEPORT_RANGE := 5.0
+
+
+## Por qué no se puede usar un consumible con objetivo sobre ese bloque ("" si se puede).
+func target_error(id: String, cell: Vector3i) -> String:
+	if not blocks.has(cell):
+		return "No hay un bloque ahí"
+	if id == "teletransporte":
+		var land := cell + UP
+		if cell == player + DOWN and hang_dir == Vector3i.ZERO:
+			return "Ya estás sobre ese bloque"
+		if Vector3(cell - player).length() > TELEPORT_RANGE:
+			return "Está a más de 5 cubos"
+		if blocks.has(land) or not in_bounds(land):
+			return "No hay lugar encima de ese bloque"
+		if kind_at(cell) == Kind.SPIKES:
+			return "No se puede pisar"
+		return ""
+	if not CONVERTERS.has(id):
+		return "Consumible desconocido"
+	if fixed.has(cell):
+		return "Ese bloque no se puede cambiar"
+	if hang_dir == Vector3i.ZERO and cell == player + DOWN:
+		return "No podés cambiar el bloque en el que estás parado"
+	if hang_dir != Vector3i.ZERO and cell == player + hang_dir:
+		return "No podés cambiar el bloque del que te colgás"
+	if kind_at(cell) == CONVERTERS[id]:
+		return "Ya es de ese tipo"
+	return ""
+
+
+## Usa un consumible sobre el bloque `cell` (conversores y teletransporte). No gasta un movimiento. Devuelve {ok, msg}.
+func use_item_at(id: String, cell: Vector3i) -> Dictionary:
+	if won or lost:
+		return {"ok": false, "msg": ""}
+	var err := target_error(id, cell)
+	if err != "":
+		return {"ok": false, "msg": err}
+	if id == "teletransporte":
+		var old := player
+		var land := cell + UP
+		trail.clear()
+		trail.append(old)
+		player = land
+		trail.append(land)
+		hang_dir = Vector3i.ZERO
+		_settle()
+		_hazards()
+		if lost:
+			return {"ok": true, "msg": "Teletransporte"}
+		if hang_dir == Vector3i.ZERO and blocks.has(player + DOWN):
+			last_safe = player
+		_purify_trail()
+		if _on_goal():
+			won = true
+		return {"ok": true, "msg": "Teletransporte"}
+	var kind: int = CONVERTERS[id]
+	var bid: int = blocks[cell]
+	_own_maps()
+	if kind_at(cell) == Kind.BOMB:
+		bomb_timer.erase(bid)   # (ya no es una bomba)
+	_set_kind(cell, kind)
+	if kind == Kind.BOMB:
+		bomb_timer[bid] = NEW_BOMB_FUSE
+	return {"ok": true, "msg": "Bloque convertido"}
 
 
 # --- guardado -----------------------------------------------------------------------------------------------------

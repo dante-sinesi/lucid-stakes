@@ -63,22 +63,26 @@ func next_trial_text(from_stage: int) -> String:
 	return Loc.f("Próxima prueba: %s (en %d etapa%s)", [Loc.t(n.trial.name), n.left, "" if n.left == 1 else "s"])
 
 
-func restart_cost() -> int:
-	if insurance:
+## `dead`: se reintenta después de morir (el Tótem, si lo tenés, lo hace gratis); el seguro vale siempre.
+func restart_cost(dead := false) -> int:
+	if insurance or (dead and consumables.has("totem")):
 		return 0
 	var base := (RESTART_BASE + maxi(stage - 1, 0)) * (1 + tower_retries)
 	return maxi(int(round(base * (1.0 - restart_discount))), 1)
 
 
-## Anota un reintento de la torre (el seguro, si había, se gasta).
-func note_retry() -> void:
+## Anota un reintento de la torre. Si fue gratis se gasta el seguro o, si no había, el Tótem (sólo al reintentar después de morir).
+func note_retry(dead := false) -> void:
 	retries += 1
 	tower_retries += 1
-	insurance = false
+	if insurance:
+		insurance = false
+	elif dead and consumables.has("totem"):
+		use_consumable("totem")
 
 
-func can_afford_restart() -> bool:
-	return can_afford(restart_cost())
+func can_afford_restart(dead := false) -> bool:
+	return can_afford(restart_cost(dead))
 
 
 func can_afford(n: int) -> bool:
@@ -169,7 +173,8 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	for id in d.get("boosts", []):
 		r.boosts.append(str(id))
 	for id in d.get("consumables", []):
-		r.consumables.append(str(id))
+		var cid := str(id)
+		r.consumables.append({"hielo_a_roca": "conv_roca", "catapulta_de_bolsillo": "conv_catapulta"}.get(cid, cid))   # (consumibles que se reemplazaron)
 	r.casino_spent = int(d.get("casino_spent", 0))
 	r.casino_won = int(d.get("casino_won", 0))
 	r.retries = int(d.get("retries", 0))

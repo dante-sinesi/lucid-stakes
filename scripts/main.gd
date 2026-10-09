@@ -139,6 +139,9 @@ var _trial_msg := ""         # resultado de la prueba superada (se muestra al ll
 var _gen_failures := 0
 var lost_screen              # pantalla de derrota: Reintentar o Salir al menú
 var dice_always := true      # los dados del tabernero se ven en toda pantalla de carga, aunque la torre ya esté lista (las pruebas lo apagan)
+var targeting := {}          # consumible con objetivo en uso ({id, slot}): se elige un bloque con el mouse (conversores y teletransporte)
+var _target_box: MeshInstance3D   # marca el bloque bajo el mouse mientras se elige (verde si sirve, rojo si no)
+var _press_pos := Vector2.ZERO
 var casino_balance := true   # al salir del casino se ve el balance (las pruebas lo apagan: salir pasa directo a la torre)
 var balance_layer: CanvasLayer   # donde vive el balance mientras se ve
 var _tick_t := 0.0           # tic-tac de las bombas a la vista
@@ -553,6 +556,7 @@ func _cancel_jobs() -> void:
 
 ## Vuelve a la torre generada tal como empezó.
 func restart() -> void:
+	cancel_targeting()
 	if lost_screen != null:
 		lost_screen.hide_screen()
 	Music.play("torre")
@@ -580,6 +584,7 @@ func restart() -> void:
 	if trial.get("no_streak", false):
 		perks.append("sin_racha")
 	logic.apply_perks(perks)
+	logic.shield = run.consumables.has("escudo")   # Escudo: protege de la próxima bomba que explote
 	if run.collapse_bonus > 0:   # mejora permanente "Aire de más"
 		logic.collapse_every += run.collapse_bonus
 		logic.moves_to_collapse += run.collapse_bonus
@@ -880,11 +885,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	if in_menu:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ESCAPE or Controls.hit(event, "pausa")):
+		if not targeting.is_empty():
+			cancel_targeting()   # Esc primero cancela la elección de un bloque
+			return
 		pause_game()
 		return
 	if casino != null:  # en el casino manda su propia escena
 		return
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
+		if not targeting.is_empty() and event is InputEventMouseButton:
+			_targeting_click(event)
 		_camera_mouse(event)
 		return
 	if not (event is InputEventKey) or not event.pressed or event.echo:
@@ -1077,6 +1087,7 @@ func _set_depth_mode(mode: int) -> void:
 
 ## Cada cuadro: dónde está el personaje respecto de la cámara (referencia de las ayudas de profundidad).
 func _process(delta: float) -> void:
+	_update_target_box()
 	_poll_hint()
 	juice.process(delta)
 	_bomb_ticking(delta)
@@ -1135,6 +1146,11 @@ func _apply(dir: Vector3i, mode: int) -> void:
 		player_node.rotation.y = atan2(dir.x, dir.z)
 		_flash(res.msg)
 		return
+	if logic.shield_used:   # el Escudo absorbió una bomba: se rompe
+		run.use_consumable("escudo")
+		logic.shield_used = false
+		_flash(Loc.t("¡El escudo te salvó de la bomba!"))
+		Sfx.play("item")
 	var face: Vector3i = logic.hang_dir if logic.hang_dir != Vector3i.ZERO else dir
 	player_node.rotation.y = atan2(face.x, face.z)
 	_action_sound(mode, was_y)
@@ -1360,7 +1376,7 @@ func _on_anim_done() -> void:
 	elif logic.lost and trial.get("no_retry", false) and not training:
 		end_run(false, Loc.f("Fallaste la prueba «%s»: %s.", [Loc.t(trial.name), Loc.t(logic.lost_reason).to_lower()]))
 	elif logic.lost:
-		var cost := run.restart_cost()
+		var cost := run.restart_cost(true)   # (con un Tótem, reintentar después de morir es gratis)
 		lost_screen.show_loss(Loc.t(logic.lost_reason), cost, run.can_afford(cost), training)
 		# Registro para reproducir el caso (queda en el archivo de log de Godot): semilla, etapa y todas las acciones.
 		print("PERDIDA (%s): semilla=%d etapa=%d acciones=%s" % [logic.lost_reason, seed_value, stage_number, ";".join(action_log)])
@@ -1721,14 +1737,16 @@ func request_restart() -> void:
 	if trial.get("no_retry", false):
 		_flash(Loc.f("Prueba «%s»: no hay reintentos", [Loc.t(trial.name)]))
 		return
-	var cost := run.restart_cost()
+	var dead: bool = logic.lost
+	var cost := run.restart_cost(dead)
 	if not run.can_afford(cost):
 		end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost]))
 		return
+	var free_by: String = "totem" if (cost == 0 and dead and not run.insurance) else "seguro"
 	run.spend(cost)
-	run.note_retry()
+	run.note_retry(dead)
 	restart()
-	_flash(Loc.f("Reintento: −%d de claridad", [cost]) if cost > 0 else Loc.t("Reintento gratis: el seguro lo cubre"))
+	_flash(Loc.f("Reintento: −%d de claridad", [cost]) if cost > 0 else (Loc.t("Reintento gratis: el Tótem te dio otra vida") if free_by == "totem" else Loc.t("Reintento gratis: el seguro lo cubre")))
 
 
 ## Termina el run y muestra el resumen.
@@ -2019,6 +2037,14 @@ func use_consumable_slot(slot: int) -> void:
 		_flash(Loc.f("Prueba «%s»: no se pueden usar consumibles", [Loc.t(trial.name)]))
 		return
 	var id: String = run.consumables[slot]
+	if not targeting.is_empty():   # volver a apretar la tecla del mismo consumible cancela la elección
+		var same: bool = targeting.slot == slot
+		cancel_targeting()
+		if same:
+			return
+	if Items.needs_target(id):
+		_begin_targeting(id, slot)
+		return
 	var bombs_before: Array = logic.bomb_timer.keys()
 	var res: Dictionary = logic.use_item(id)
 	_check_defused(bombs_before)
@@ -2029,6 +2055,117 @@ func use_consumable_slot(slot: int) -> void:
 		attempt_dirty = true
 		_refresh()
 		save_game()
+
+
+# --- consumibles con objetivo (conversores y teletransporte) ------------------------------------------------------
+
+const NO_CELL := Vector3i(-999, -999, -999)
+
+
+## Empieza a elegir el bloque sobre el que se usa el consumible: se marca el que está bajo el mouse y un clic lo elige (Esc o apretar de nuevo la tecla cancelan).
+func _begin_targeting(id: String, slot: int) -> void:
+	targeting = {"id": id, "slot": slot}
+	if _target_box == null:
+		_target_box = MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3.ONE * 1.06
+		_target_box.mesh = bm
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.4, 1.0, 0.5, 0.45)
+		_target_box.material_override = mat
+		_target_box.visible = false
+		add_child(_target_box)
+	_flash(Loc.t("Elegí un bloque (clic). Esc cancela."))
+
+
+func cancel_targeting() -> void:
+	targeting = {}
+	if _target_box != null:
+		_target_box.visible = false
+
+
+## El bloque que está bajo un punto de la pantalla (el más cercano a la cámara que cruza el rayo), o NO_CELL.
+func pick_block(screen_pos: Vector2) -> Vector3i:
+	if cam == null or logic == null:
+		return NO_CELL
+	var origin := cam.project_ray_origin(screen_pos)
+	var dir := cam.project_ray_normal(screen_pos)
+	var best_t := INF
+	var best := NO_CELL
+	for c in logic.blocks:
+		var id: int = logic.blocks[c]
+		var n: Node3D = block_nodes.get(id)
+		if n != null and not n.visible:
+			continue
+		var t := _ray_box(origin, dir, Vector3(c), Vector3(c) + Vector3.ONE)
+		if t >= 0.0 and t < best_t:
+			best_t = t
+			best = c
+	return best
+
+
+## Distancia a la que el rayo entra en la caja (o -1 si no la cruza).
+static func _ray_box(o: Vector3, d: Vector3, lo: Vector3, hi: Vector3) -> float:
+	var t0 := -INF
+	var t1 := INF
+	for i in 3:
+		if absf(d[i]) < 0.000001:
+			if o[i] < lo[i] or o[i] > hi[i]:
+				return -1.0
+		else:
+			var a := (lo[i] - o[i]) / d[i]
+			var b := (hi[i] - o[i]) / d[i]
+			t0 = maxf(t0, minf(a, b))
+			t1 = minf(t1, maxf(a, b))
+	return t0 if t1 >= maxf(t0, 0.0) else -1.0
+
+
+func _update_target_box() -> void:
+	if targeting.is_empty() or _target_box == null or logic == null:
+		return
+	var c := pick_block(get_viewport().get_mouse_position())
+	_target_box.visible = c != NO_CELL
+	if c != NO_CELL:
+		_target_box.position = _w(c)
+		var ok: bool = logic.target_error(targeting.id, c) == ""
+		(_target_box.material_override as StandardMaterial3D).albedo_color = Color(0.4, 1.0, 0.5, 0.45) if ok else Color(1.0, 0.35, 0.3, 0.45)
+
+
+## Un clic (sin arrastrar) elige el bloque; un clic derecho sin arrastrar cancela.
+func _targeting_click(event: InputEventMouseButton) -> void:
+	if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.pressed:
+			_press_pos = event.position
+		elif _press_pos.distance_to(event.position) < 6.0:
+			if event.button_index == MOUSE_BUTTON_RIGHT:
+				cancel_targeting()
+			else:
+				confirm_target(pick_block(event.position))
+
+
+## Usa el consumible sobre el bloque elegido. Si no sirve, avisa y se sigue eligiendo.
+func confirm_target(cell: Vector3i) -> void:
+	if targeting.is_empty() or logic == null or busy or generating:
+		return
+	var id: String = targeting.id
+	if cell == NO_CELL:
+		return
+	var res: Dictionary = logic.use_item_at(id, cell)
+	if res.get("msg", "") != "":
+		_flash(res.msg)
+	if not res.get("ok", false):
+		return
+	cancel_targeting()
+	run.use_consumable(id)
+	attempt_dirty = true
+	Sfx.play("item")
+	if id == "teletransporte":
+		_animate()
+	else:
+		_refresh()
+	save_game()
 
 
 # --- modo dev ---------------------------------------------------------------------------------------------------

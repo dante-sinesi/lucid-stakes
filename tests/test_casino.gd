@@ -40,15 +40,15 @@ func test_items() -> void:
 		ids[it.id] = true
 		ok = ok and (it.type == Items.Type.CLARITY and it.has("mult") or it.has("value"))
 	check(ok, "cada premio tiene id unico, nombre, descripcion, peso y valor (o multiplicador)")
-	check(Items.by_tier(Items.Tier.EPICO).size() == 4 and Items.by_tier(Items.Tier.RARO).size() == 6, "4 premios epicos y 6 raros")
+	check(Items.by_tier(Items.Tier.EPICO).size() == 4 and Items.by_tier(Items.Tier.RARO).size() == 8, "4 premios epicos y 8 raros (6 boosts, el Totem y el Teletransporte)")
 	var epic_boosts := true
 	for it in Items.by_tier(Items.Tier.EPICO):
 		epic_boosts = epic_boosts and it.type == Items.Type.BOOST
 	check(epic_boosts, "los premios epicos son todos boosts")
 	check(Items.get_item("aire_extra").name == "Aire extra" and Items.get_item("no_existe").is_empty(), "get_item busca por id")
-	# La catapulta de bolsillo es el consumible que describio Dante
-	var cat := Items.get_item("catapulta_de_bolsillo")
-	check(cat.type == Items.Type.CONSUMABLE and cat.desc.contains("catapulta"), "existe la catapulta de bolsillo (convertir un bloque en catapulta)")
+	# Los conversores: uno por tipo de bloque (el Resorte convierte en catapulta)
+	var cat := Items.get_item("conv_catapulta")
+	check(cat.type == Items.Type.CONSUMABLE and cat.desc.contains("catapulta") and Items.needs_target("conv_catapulta"), "existe el conversor de catapulta (se elige el bloque con el mouse)")
 	# el valor medio sube con el nivel
 	check(Items.mean_value(Items.Tier.CONSUMIBLE, 50) < Items.mean_value(Items.Tier.COMUN, 50) \
 			and Items.mean_value(Items.Tier.COMUN, 50) < Items.mean_value(Items.Tier.RARO, 50) \

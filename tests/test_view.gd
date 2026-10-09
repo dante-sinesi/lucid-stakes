@@ -443,18 +443,20 @@ func test_perks_view(main) -> void:
 	t.player = Vector3i(2, 1, 2)
 	main.stage_start = t
 	main.run.boosts.assign(["aire_extra"])
-	main.run.consumables.assign(["freno", "hielo_a_roca"])
+	main.run.consumables.assign(["freno", "conv_roca"])
 	main.restart()
 	check(main.logic.collapse_every == 7 and main.logic.perks.has("aire_extra"), "al empezar la etapa se aplican los boosts del run")
 	check(main.left_bar.slots.size() == 4 and main.right_bar.slots.size() == 5, "las barras tienen 4 casilleros de consumibles y 5 de boosts")
-	check(main.left_bar.slots[0].item_id == "freno" and main.left_bar.slots[1].item_id == "hielo_a_roca" and main.left_bar.slots[2].is_empty() and main.right_bar.slots[0].item_id == "aire_extra", "cada item esta en su casillero")
+	check(main.left_bar.slots[0].item_id == "freno" and main.left_bar.slots[1].item_id == "conv_roca" and main.left_bar.slots[2].is_empty() and main.right_bar.slots[0].item_id == "aire_extra", "cada item esta en su casillero")
 	main.use_consumable_slot(0)
-	check(main.logic.collapse_pause == 5 and main.run.consumables == ["hielo_a_roca"], "la tecla 1 usa el primer consumible y lo gasta")
-	check(main.left_bar.slots[0].item_id == "hielo_a_roca" and main.left_bar.slots[1].is_empty(), "...y la barra se actualiza")
+	check(main.logic.collapse_pause == 5 and main.run.consumables == ["conv_roca"], "la tecla 1 usa el primer consumible y lo gasta")
+	check(main.left_bar.slots[0].item_id == "conv_roca" and main.left_bar.slots[1].is_empty(), "...y la barra se actualiza")
 	var ice_id: int = main.logic.blocks[Vector3i(3, 1, 2)]
 	check(main.block_nodes[ice_id].get_meta("kind") == TowerLogic.Kind.ICE, "el bloque de hielo se ve como hielo")
-	main.use_consumable_slot(0)
-	check(main.logic.kind_at(Vector3i(3, 1, 2)) == TowerLogic.Kind.NORMAL and main.run.consumables.is_empty(), "Hielo a roca se usa y se gasta")
+	main.use_consumable_slot(0)   # el Polvo de roca se usa eligiendo el bloque
+	check(not main.targeting.is_empty() and main.run.consumables == ["conv_roca"], "un consumible con objetivo pide elegir un bloque (todavía no se gasta)")
+	main.confirm_target(Vector3i(3, 1, 2))
+	check(main.logic.kind_at(Vector3i(3, 1, 2)) == TowerLogic.Kind.NORMAL and main.run.consumables.is_empty() and main.targeting.is_empty(), "Polvo de roca se usa sobre el bloque elegido y se gasta")
 	check(main.block_nodes[ice_id].get_meta("kind") == TowerLogic.Kind.NORMAL and main.block_nodes[ice_id].get_meta("model_kind") == TowerLogic.Kind.NORMAL, "...y el bloque cambia de aspecto")
 	main.use_consumable_slot(0)  # sin consumibles: no pasa nada
 	check(main.run.consumables.is_empty(), "sin consumibles las teclas no hacen nada")
