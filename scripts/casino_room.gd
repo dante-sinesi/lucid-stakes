@@ -155,9 +155,44 @@ static func height_of(c: Vector2i, lay := {}) -> int:
 
 ## Colores del casino según la etapa (1..27): de un sótano sucio y casi sin luz a un salón de mármol claro.
 ## `corruption`: fracción de minibloques sucios o rotos (baja a casi nada).
-static func look(stage: int) -> Dictionary:
+## Para probar paletas (muestras de diseño): si no está vacío, pisa los colores de `look`.
+static var palette_override := {}
+
+
+## Paleta de la sala. La taberna y el salón (niveles 0 y 1) se aclaran de a poco con las etapas; el casino y el gran casino (niveles 2 y 3) tienen una paleta
+## propia, de "mármol cálido": claros de valor medio (arena, marfil, pizarra) con contraste, para que los detalles se lean y la sala no se queme.
+static func look(stage: int, tier := -1) -> Dictionary:
 	var t := clampf((stage - 1) / 26.0, 0.0, 1.0)
 	var e := t * t * (3.0 - 2.0 * t)   # suave: los extremos cambian despacio
+	var level := tier_of(stage) if tier < 0 else tier
+	var base := _base_look(t, e) if level < 2 else _warm_look(level, stage)
+	base.merge(palette_override, true)
+	return base
+
+
+## Mármol cálido del casino (nivel 2) y del gran casino (nivel 3). Dentro de cada nivel hay un cambio mínimo de etapa a etapa.
+static func _warm_look(level: int, stage: int) -> Dictionary:
+	var start := 14 if level == 2 else 21
+	var p := clampf(float(stage - start) / 6.0, 0.0, 1.0)
+	var k := lerpf(0.96, 1.04, p)
+	var d: Dictionary
+	if level == 2:
+		d = {"floor_a": Color(0.80, 0.72, 0.58), "floor_b": Color(0.42, 0.36, 0.30), "wall": Color(0.70, 0.60, 0.46), "wall_dark": Color(0.52, 0.43, 0.32),
+				"gold": Color(0.62, 0.46, 0.19), "wood": Color(0.32, 0.19, 0.11), "plank": Color(0.42, 0.26, 0.15), "stone": Color(0.58, 0.54, 0.48),
+				"felt": Color(0.10, 0.36, 0.28), "carpet": Color(0.52, 0.20, 0.20), "lamp": Color(1.0, 0.82, 0.55), "pillar": Color(0.88, 0.82, 0.70)}
+	else:
+		d = {"floor_a": Color(0.88, 0.82, 0.70), "floor_b": Color(0.36, 0.38, 0.46), "wall": Color(0.76, 0.66, 0.50), "wall_dark": Color(0.58, 0.48, 0.36),
+				"gold": Color(0.66, 0.48, 0.19), "wood": Color(0.34, 0.20, 0.12), "plank": Color(0.44, 0.28, 0.17), "stone": Color(0.62, 0.58, 0.52),
+				"felt": Color(0.10, 0.40, 0.34), "carpet": Color(0.62, 0.28, 0.22), "lamp": Color(1.0, 0.86, 0.6), "pillar": Color(0.93, 0.88, 0.78)}
+	for key in ["floor_a", "floor_b", "wall", "wall_dark", "stone", "pillar"]:
+		var c: Color = d[key]
+		d[key] = Color(minf(c.r * k, 1.0), minf(c.g * k, 1.0), minf(c.b * k, 1.0))
+	d["t"] = clampf((stage - 1) / 26.0, 0.0, 1.0)
+	d["corruption"] = 0.0
+	return d
+
+
+static func _base_look(t: float, e: float) -> Dictionary:
 	return {
 		"t": t,
 		"floor_a": Color(0.23, 0.19, 0.19).lerp(Color(0.93, 0.91, 0.87), e),
@@ -337,7 +372,7 @@ static func _pilaster(wall: Dictionary, u: int, west: bool, H: int, L: Dictionar
 
 static func build_voxels(stage := 14, tier_override := -1) -> Dictionary:
 	var lay := layout(stage, tier_override)
-	var L := look(stage)
+	var L := look(stage, int(lay.tier))
 	var cor: float = L.corruption
 	var tier: int = lay.tier
 	var cells: Vector2i = lay.cells

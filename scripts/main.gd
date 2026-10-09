@@ -73,7 +73,11 @@ const BG_DARK := Color(0.05, 0.04, 0.09)
 const BG_LIGHT := Color(0.80, 0.84, 0.95)
 const AMBIENT_TOWER := 0.7        # luz ambiente de las torres (el aclarado por etapa va en el tinte de los bloques)
 const AMBIENT_CASINO_EARLY := 1.0  # luz ambiente del casino en la primera etapa (una taberna en penumbra, pero que se lee)
-const AMBIENT_CASINO_LATE := 1.5   # luz ambiente del casino en la última etapa
+const AMBIENT_CASINO_LATE := 1.5   # luz ambiente del casino en la última etapa (el salón; el casino y el gran casino usan la luz cálida de abajo)
+const AMBIENT_COLOR_TOWER := Color(0.55, 0.55, 0.7)
+const CASINO_BG_WARM := Color(0.055, 0.048, 0.045)
+const CASINO_AMBIENT_WARM := 1.0
+const CASINO_SUN_WARM := 0.6
 const TALL_TOWER := 16         # desde esta altura la cámara sigue al personaje en vez de mirar el centro de la torre
 const PACE_NAMES := {"fast": "rápido", "normal": "normal", "slow": "lento"}
 ## Generación al jugar: búsqueda más liviana que la completa (tarda menos; las etapas difíciles se generan fuera de línea).
@@ -669,12 +673,26 @@ func _stage_tint() -> Color:
 func _apply_stage_look() -> void:
 	env.background_color = BG_DARK.lerp(BG_LIGHT, stage_tone())
 	env.ambient_light_energy = AMBIENT_TOWER
+	env.ambient_light_color = AMBIENT_COLOR_TOWER   # (el casino de nivel alto usa una luz más cálida: se restablece al volver a la torre)
+	if _sun != null:
+		_sun.light_energy = 1.0
 
 
 ## El casino se ilumina más a medida que avanza el run (sucio y en penumbra al principio, de mármol luminoso al final).
 func _apply_casino_light() -> void:
+	var tier: int = int(casino.lay.tier) if casino != null and not casino.lay.is_empty() else 0
+	if tier >= 2:   # casino y gran casino: mármol cálido con luz contenida (si no, los claros se queman y se pierden los detalles)
+		env.background_color = CASINO_BG_WARM if tier == 2 else CASINO_BG_WARM.darkened(0.1)
+		env.ambient_light_energy = CASINO_AMBIENT_WARM
+		env.ambient_light_color = Color(0.95, 0.9, 0.85)
+		if _sun != null:
+			_sun.light_energy = CASINO_SUN_WARM
+		return
 	env.background_color = BG_DARK.lerp(BG_LIGHT, stage_tone())
 	env.ambient_light_energy = lerpf(AMBIENT_CASINO_EARLY, AMBIENT_CASINO_LATE, stage_tone())
+	env.ambient_light_color = AMBIENT_COLOR_TOWER
+	if _sun != null:
+		_sun.light_energy = 1.0
 
 
 func _make_block(c: Vector3i) -> MeshInstance3D:

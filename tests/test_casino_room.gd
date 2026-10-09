@@ -148,11 +148,20 @@ func test_voxels() -> void:
 func test_look() -> void:
 	var lum := func(c: Color) -> float: return c.get_luminance()
 	var early := Room.look(1)
-	var mid := Room.look(14)
-	var late := Room.look(27)
+	var salon := Room.look(13)
+	var casino := Room.look(14)
+	var gran := Room.look(27)
 	for key in ["floor_a", "floor_b", "wall", "wall_dark", "gold", "wood", "felt", "carpet", "lamp", "pillar"]:
-		check(lum.call(early[key]) < lum.call(mid[key]) and lum.call(mid[key]) < lum.call(late[key]), "el casino se aclara con las etapas: %s" % key)
-	check(early.corruption > mid.corruption and mid.corruption > late.corruption and late.corruption < 0.01 and early.corruption > 0.1, "el casino se limpia: la corrupcion baja a casi nada")
+		check(lum.call(early[key]) < lum.call(salon[key]), "la taberna se aclara hasta el salón: %s" % key)
+	check(early.corruption > salon.corruption and salon.corruption > 0.0 and casino.corruption == 0.0 and gran.corruption == 0.0, "la suciedad baja con los niveles y el casino y el gran casino no tienen")
+	# el casino y el gran casino: mármol cálido con valores medios y buen contraste (nada se quema hasta el blanco)
+	for lk in [casino, gran, Room.look(20), Room.look(21)]:
+		for key in ["floor_a", "wall", "pillar", "stone"]:
+			check(lum.call(lk[key]) < 0.93, "el casino de nivel alto no se quema: %s (%.2f)" % [key, lum.call(lk[key])])
+		check(lum.call(lk.floor_a) - lum.call(lk.floor_b) > 0.25, "el damero del piso tiene contraste (%.2f)" % (lum.call(lk.floor_a) - lum.call(lk.floor_b)))
+		check(lum.call(lk.wall) > lum.call(lk.wall_dark) and lum.call(lk.pillar) > lum.call(lk.wall), "las columnas se distinguen de la pared")
+	check(Room.look(1, 3).floor_a == Room.look(27, 3).floor_a or absf(lum.call(Room.look(1, 3).floor_a) - lum.call(Room.look(27, 3).floor_a)) < 0.12, "con el escenario Gran Casino la paleta es la del gran casino aunque la etapa sea baja")
+	check(Room.look(14, 3).gold != Room.look(14, 2).gold, "el gran casino y el casino tienen paletas propias")
 
 
 func test_tiers() -> void:
