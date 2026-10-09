@@ -34,6 +34,9 @@ var restart_discount := 0.0
 var collapse_bonus := 0
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
 var casino_visit := {}    # estado de la visita al casino actual (casino_rules.gd); no se guarda
+var vault := 0            # claridad guardada en la caja fuerte (casino_services.gd); se cobra con interés en el casino siguiente
+var vault_stage := 0      # etapa del casino en el que se guardó
+var insurance := false    # seguro contratado: el primer reintento de la próxima torre sale gratis
 
 ## Reintentar la torre cuesta claridad: la mitad de la ficha de la ruleta de la etapa, y un poco más por cada reintento
 ## que ya hiciste en esta misma torre (el primero cuesta 1 vez, el segundo 2 veces, etc.).
@@ -61,8 +64,17 @@ func next_trial_text(from_stage: int) -> String:
 
 
 func restart_cost() -> int:
+	if insurance:
+		return 0
 	var base := (RESTART_BASE + maxi(stage - 1, 0)) * (1 + tower_retries)
 	return maxi(int(round(base * (1.0 - restart_discount))), 1)
+
+
+## Anota un reintento de la torre (el seguro, si había, se gasta).
+func note_retry() -> void:
+	retries += 1
+	tower_retries += 1
+	insurance = false
 
 
 func can_afford_restart() -> bool:
@@ -139,7 +151,8 @@ func to_dict() -> Dictionary:
 			"casino_spent": casino_spent, "casino_won": casino_won, "retries": retries, "tower_retries": tower_retries,
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "collapse_bonus": collapse_bonus,
-			"scenario_id": scenario_id, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad}
+			"scenario_id": scenario_id, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad,
+			"vault": vault, "vault_stage": vault_stage, "insurance": insurance}
 
 
 func _schedule_out() -> Dictionary:
@@ -172,6 +185,9 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.scenario_id = str(d.get("scenario_id", "pesadilla"))
 	r.price_mult = float(d.get("price_mult", 1.0))
 	r.dice_claridad = int(d.get("dice_claridad", 0))
+	r.vault = int(d.get("vault", 0))
+	r.vault_stage = int(d.get("vault_stage", 0))
+	r.insurance = bool(d.get("insurance", false))
 	for st in d.get("trial_schedule", {}):
 		r.trial_schedule[int(st)] = str(d.trial_schedule[st])
 	return r

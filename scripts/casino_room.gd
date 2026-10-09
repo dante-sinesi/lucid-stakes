@@ -55,18 +55,18 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 			machines.assign([Vector2i(0, 1), Vector2i(0, 3)])
 			obstacles.assign([Vector2i(0, 0), Vector2i(6, 0), Vector2i(6, 5), Vector2i(0, 2)])
 			return {"tier": 0, "cells": Vector2i(7, 6), "entry": Vector2i(0, 4), "exit": Vector2i(5, 0), "table": Rect2i(2, 2, 3, 2),
-					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [Rect2i(5, 3, 2, 2)] as Array[Rect2i], "obstacles": obstacles,
+					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [Rect2i(5, 3, 2, 2)] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "rumores", "cell": Vector2i(1, 5)},
 					"heights": heights, "table_h": 0, "cam_size": 9.5}
 		1:   # salón: más espacio, dos tragamonedas y una mesa de cartas
 			machines.assign([Vector2i(0, 1), Vector2i(0, 3)])
 			obstacles.assign([Vector2i(8, 0), Vector2i(8, 6)])
 			return {"tier": 1, "cells": Vector2i(9, 7), "entry": Vector2i(0, 5), "exit": Vector2i(6, 0), "table": Rect2i(3, 3, 3, 2),
-					"dealer": Vector2i(4, 2), "machines": machines, "card_tables": [Rect2i(7, 2, 2, 2)] as Array[Rect2i], "obstacles": obstacles,
+					"dealer": Vector2i(4, 2), "machines": machines, "card_tables": [Rect2i(7, 2, 2, 2)] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "taller", "cell": Vector2i(1, 6)},
 					"heights": heights, "table_h": 0, "cam_size": 13.0}
 		2:   # casino
 			machines.assign(MACHINES)
 			return {"tier": 2, "cells": CELLS, "entry": ENTRY, "exit": EXIT, "table": TABLE, "dealer": DEALER, "machines": machines,
-					"card_tables": [CARD_TABLE] as Array[Rect2i], "obstacles": obstacles, "heights": heights, "table_h": 0, "cam_size": 15.0}
+					"card_tables": [CARD_TABLE] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "caja", "cell": Vector2i(9, 7)}, "heights": heights, "table_h": 0, "cam_size": 15.0}
 		_:   # gran casino: la ruleta está sobre una tarima con dos escalones
 			machines.assign([Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 6)])
 			obstacles.assign([Vector2i(2, 2), Vector2i(2, 8), Vector2i(9, 8), Vector2i(11, 1)])   # columnas de mármol
@@ -80,7 +80,7 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 					heights[Vector2i(x, z)] = 4 if maxi(dx, dz) <= 1 else 2
 			return {"tier": 3, "cells": Vector2i(13, 11), "entry": Vector2i(0, 9), "exit": Vector2i(9, 0), "table": table,
 					"dealer": Vector2i(6, 3), "machines": machines, "card_tables": [Rect2i(10, 3, 2, 2), Rect2i(10, 6, 2, 2)] as Array[Rect2i],
-					"obstacles": obstacles, "heights": heights, "table_h": 4, "cam_size": 19.0}
+					"obstacles": obstacles, "station": {"id": "seguro", "cell": Vector2i(11, 9)}, "heights": heights, "table_h": 4, "cam_size": 19.0}
 
 
 ## La distribución por omisión (la del nivel 2) para quien no pasa una.
@@ -108,6 +108,8 @@ static func blocked_cells(lay := {}) -> Dictionary:
 				out[Vector2i(x, z)] = true
 	for o in l.obstacles:
 		out[o] = true
+	if l.has("station"):
+		out[l.station.cell] = true
 	return out
 
 
@@ -536,6 +538,10 @@ static func build_voxels(stage := 14, tier_override := -1) -> Dictionary:
 		glow[Vector3i(int(ccx) + 2, 7, int(ccz) + 2)] = L.gold   # fichas
 		glow[Vector3i(int(ccx) + 2, 8, int(ccz) + 2)] = L.gold
 
+	# Estación de servicio del nivel (Rumores, Taller, Caja fuerte o Seguro): un mueble con su forma propia.
+	if lay.has("station"):
+		_station(solid, glow, lay.station, L)
+
 	# Obstáculos decorativos: barriles (taberna), plantas (salón) y columnas de mármol (gran casino).
 	for o in lay.obstacles:
 		var ox: int = o.x * CELL_VOX
@@ -599,6 +605,43 @@ static func build_voxels(stage := 14, tier_override := -1) -> Dictionary:
 	all_glow.merge(gn)
 	return {"solid": all_solid, "glow": all_glow,
 			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
+
+
+## El mueble de una estación de servicio, en su celda: pizarra de rumores, yunque del taller, caja fuerte o escritorio del seguro.
+static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dictionary) -> void:
+	var ox: int = st.cell.x * CELL_VOX
+	var oz: int = st.cell.y * CELL_VOX
+	var wood: Color = L.wood
+	match str(st.id):
+		"rumores":   # pizarra con tiza sobre dos patas
+			_box(solid, ox + 1, 2, oz + 2, ox + 2, 7, oz + 3, wood.darkened(0.2))
+			_box(solid, ox + 3, 2, oz + 2, ox + 4, 7, oz + 3, wood.darkened(0.2))
+			_box(solid, ox, 7, oz + 2, ox + 5, 13, oz + 3, wood)
+			_box(solid, ox + 1, 8, oz + 3, ox + 4, 12, oz + 4, Color(0.07, 0.12, 0.11))
+			for r in 3:
+				_box(solid, ox + 1, 9 + r, oz + 4, ox + 1 + 3 - (r % 2), 10 + r, oz + 5, Color(0.92, 0.92, 0.85))
+			glow[Vector3i(ox + 2, 13, oz + 2)] = L.lamp
+		"taller":   # yunque con un brasero al lado
+			_box(solid, ox + 1, 2, oz + 1, ox + 4, 4, oz + 4, Color(0.22, 0.22, 0.26))
+			_box(solid, ox + 2, 4, oz + 2, ox + 3, 6, oz + 3, Color(0.28, 0.28, 0.32))
+			_box(solid, ox, 6, oz + 1, ox + 5, 8, oz + 4, Color(0.4, 0.4, 0.45))
+			_box(solid, ox - 1, 7, oz + 2, ox, 8, oz + 3, Color(0.4, 0.4, 0.45))   # la punta
+			glow[Vector3i(ox + 3, 8, oz + 2)] = Color(1.0, 0.5, 0.15)
+			glow[Vector3i(ox + 2, 8, oz + 3)] = Color(1.0, 0.7, 0.25)
+		"caja":   # caja fuerte de acero con la puerta al frente y un dial dorado
+			_box(solid, ox, 2, oz, ox + 5, 10, oz + 5, Color(0.36, 0.38, 0.42))
+			_box(solid, ox + 1, 3, oz + 5, ox + 4, 9, oz + 6, Color(0.28, 0.3, 0.34))
+			_box(solid, ox + 4, 5, oz + 5, ox + 5, 7, oz + 6, L.gold)   # manija
+			glow[Vector3i(ox + 2, 6, oz + 6)] = L.gold
+			glow[Vector3i(ox + 2, 7, oz + 6)] = L.gold
+		_:   # seguro: escritorio con un contrato, el sello rojo y una lámpara
+			_box(solid, ox, 5, oz, ox + 5, 6, oz + 5, wood)
+			for p in [[0, 0], [4, 0], [0, 4], [4, 4]]:
+				_box(solid, ox + p[0], 2, oz + p[1], ox + p[0] + 1, 5, oz + p[1] + 1, wood.darkened(0.25))
+			_box(solid, ox + 1, 6, oz + 1, ox + 3, 7, oz + 4, Color(0.95, 0.9, 0.75))
+			solid[Vector3i(ox + 3, 6, oz + 3)] = Color(0.7, 0.1, 0.12)
+			_box(solid, ox + 4, 6, oz + 1, ox + 5, 8, oz + 2, L.gold)
+			glow[Vector3i(ox + 4, 8, oz + 1)] = L.lamp
 
 
 ## Posición en el mundo del centro de una celda (a la altura del piso de esa celda).

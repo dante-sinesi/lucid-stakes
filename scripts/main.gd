@@ -1690,10 +1690,9 @@ func request_restart() -> void:
 		end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost]))
 		return
 	run.spend(cost)
-	run.retries += 1
-	run.tower_retries += 1
+	run.note_retry()
 	restart()
-	_flash(Loc.f("Reintento: −%d de claridad", [cost]))
+	_flash(Loc.f("Reintento: −%d de claridad", [cost]) if cost > 0 else Loc.t("Reintento gratis: el seguro lo cubre"))
 
 
 ## Termina el run y muestra el resumen.
@@ -2315,8 +2314,7 @@ func continue_game() -> void:
 			end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost]))
 			return
 		run.spend(cost)
-		run.retries += 1
-		run.tower_retries += 1
+		run.note_retry()
 	restart()
 	_prefetch_next_stage()
 	save_game()

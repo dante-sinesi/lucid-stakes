@@ -21,7 +21,10 @@ const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ItemBar := preload("res://scripts/item_bar.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
+const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
+const Services := preload("res://scripts/casino_services.gd")
+const ServiceScreens := preload("res://scripts/casino_service_screens.gd")
 
 signal left
 signal roulette_opened
@@ -84,8 +87,10 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	rng = random
 	lay = Room.layout(run.stage, int(run.scenario().get("casino_tier", -1)))
 	cell = lay.entry
+	var vault_paid := 0
 	if not story:
 		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
+		vault_paid = Services.enter(run)   # expira el seguro sin usar y se paga la caja fuerte del casino anterior
 	_build_room()
 	_build_player()
 	_build_camera()
@@ -93,7 +98,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	if story:
 		hud_layer.visible = false
 	_place_player()
-	_flash(DEALER_LINES[rng.randi() % DEALER_LINES.size()])
+	_flash(DEALER_LINES[rng.randi() % DEALER_LINES.size()] if vault_paid <= 0 else Loc.f("Caja fuerte: cobrás %d de claridad (con interés).", [vault_paid]))
 	_refresh_hud()
 
 
@@ -327,6 +332,12 @@ func _bump(n: Vector2i) -> String:
 			return "blocked"
 		open_slots()
 		return "slots"
+	if lay.has("station") and n == lay.station.cell:
+		if story:
+			story_message.emit(preload("res://scripts/story.gd").BLOCKED_TABLE)
+			return "blocked"
+		open_service()
+		return "service"
 	for ct in lay.card_tables:
 		if ct.has_point(n):
 			if story:
@@ -342,7 +353,7 @@ func interact() -> String:
 	if busy or leaving or input_locked:
 		return "blocked"
 	var n := cell + facing
-	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n):
+	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell):
 		return _bump(n)
 	for ct in lay.card_tables:
 		if ct.has_point(n):
@@ -357,6 +368,11 @@ func open_roulette() -> void:
 
 func open_slots() -> void:
 	_open_screen(SlotsScreen.new())
+
+
+## Abre la estación de servicio de la sala (Rumores, Taller, Caja fuerte o Seguro).
+func open_service() -> void:
+	_open_screen(ServiceScreens.make(str(lay.station.id)))
 
 
 func open_blackjack() -> void:
