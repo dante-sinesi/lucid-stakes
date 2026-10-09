@@ -6,7 +6,7 @@ const Loc := preload("res://scripts/loc.gd")
 const AudioHub := preload("res://scripts/audio_hub.gd")
 
 ## Resoluciones de ventana que se ofrecen (se filtran por el tamaño de la pantalla del jugador).
-const RESOLUTIONS: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
+const RESOLUTIONS: Array[Vector2i] = [Vector2i(854, 480), Vector2i(960, 540), Vector2i(1024, 576), Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
 const VOLUME_STEPS := 10
 
 static var path := "user://settings.json"

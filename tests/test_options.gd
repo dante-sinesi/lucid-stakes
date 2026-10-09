@@ -103,8 +103,13 @@ func test_screen() -> void:
 	check(Settings.resolution() == Vector2i(1366, 768) and o.res_label.text == "1366 x 768", "la flecha cambia la resolución")
 	o.res_prev.pressed.emit()
 	check(Settings.resolution() == Vector2i(1280, 720), "y la otra la devuelve")
-	o.res_prev.pressed.emit()
-	check(Settings.resolution() == Vector2i(1280, 720), "no pasa del primero")
+	for i in 6:
+		o.res_prev.pressed.emit()
+	check(Settings.resolution() == Vector2i(854, 480), "no pasa del primero (hay resoluciones menores a 1280 para equipos flojos)")
+	o.res_next.pressed.emit()
+	o.res_next.pressed.emit()
+	o.res_next.pressed.emit()
+	check(Settings.resolution() == Vector2i(1280, 720), "y se vuelve a subir de a una")
 	o.vol_minus.pressed.emit()
 	o.vol_minus.pressed.emit()
 	check(Settings.get_value("volume") == Settings.VOLUME_STEPS - 2 and o.vol_label.text == "80%", "el volumen baja de a un paso")
@@ -151,14 +156,12 @@ func test_graphics() -> void:
 	check(Graphics.preset() == "custom", "tocar un ajuste suelto pasa a Personalizada")
 	Graphics.set_value("shadows", "off")
 	check(Graphics.preset() == "baja", "si los valores vuelven a coincidir con un preajuste, se lo nombra")
-	Graphics.set_value("show_fps", true)
-	check(Graphics.preset() == "baja" and Graphics.value("show_fps"), "mostrar FPS no cambia el preajuste")
 	Graphics.cycle("scale", 1)
 	check(Graphics.value("scale") == 80 and Graphics.preset() == "custom", "cycle avanza una opción")
 	Graphics.set_value("scale", 12345)
 	check(Graphics.value("scale") == 100, "un valor inválido vuelve al de fábrica")
 	Graphics.reset()
-	check(Graphics.preset() == "alta" and not Graphics.value("show_fps"), "reset vuelve a lo de fábrica")
+	check(Graphics.preset() == "alta", "reset vuelve a lo de fábrica")
 
 
 func test_controls() -> void:

@@ -145,7 +145,6 @@ var dice                      # los dados del tabernero: el minijuego de la pant
 var _model: Node3D          # el animalito (y su copia de silueta): se vuelve a armar cuando cambia el personaje o la ropa
 var _ghost: Node3D
 var _sun: DirectionalLight3D
-var _fps_label: Control
 var dialogue                 # cuadro de diálogo del tabernero (historia y consejos del tutorial)
 var story_kind := ""         # "intro" o "outro" mientras se está en una sala de historia del tutorial
 var tutorial_label: Control # cartel con la lección
@@ -222,15 +221,8 @@ func apply_graphics() -> void:
 		Graphics.apply_to_sun(_sun)
 	if _ghost != null and is_instance_valid(_ghost):
 		_ghost.visible = bool(Graphics.value("silhouette"))
-	if _fps_label != null:
-		_fps_label.visible = bool(Graphics.value("show_fps"))
 	if logic != null:
 		_refresh()   # las partículas de los bloques cambian con el ajuste
-
-
-func _process_fps() -> void:
-	if _fps_label != null and _fps_label.visible:
-		_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 
 
 func _build_hud() -> void:
@@ -290,12 +282,6 @@ func _build_hud() -> void:
 	hud.position += Vector2(16, -110)
 	hud.plate_alpha = 0.55
 	hud.visible = false
-	_fps_label = _label(layer, 2, Color(0.8, 1.0, 0.8))   # contador de FPS (Opciones > Gráficos)
-	_fps_label.localize = false
-	_fps_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_fps_label.position += Vector2(-110, 8)
-	_fps_label.plate_alpha = 0.55
-	_fps_label.visible = false
 	compass = Compass.new()
 	compass.name = "rosa_vientos"
 	compass.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -1058,7 +1044,6 @@ func _set_depth_mode(mode: int) -> void:
 
 ## Cada cuadro: dónde está el personaje respecto de la cámara (referencia de las ayudas de profundidad).
 func _process(delta: float) -> void:
-	_process_fps()
 	_poll_hint()
 	juice.process(delta)
 	_bomb_ticking(delta)

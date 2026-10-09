@@ -177,7 +177,6 @@ func _build_graphics(page: Control) -> void:
 	_choice("silhouette", Loc.t("Silueta tras las paredes"), [[true, Loc.t("Sí")], [false, Loc.t("No")]])
 	_choice("effects", Loc.t("Destellos y temblores"), [[true, Loc.t("Sí")], [false, Loc.t("No")]])
 	_choice("fps_cap", Loc.t("Límite de FPS"), [[30, "30"], [60, "60"], [144, "144"], [0, Loc.t("Sin límite")]])
-	_choice("show_fps", Loc.t("Mostrar FPS"), [[true, Loc.t("Sí")], [false, Loc.t("No")]])
 
 
 ## Una fila de opciones excluyentes: `options` = [[valor, texto], ...]; los botones se llaman "<ajuste>_<valor>".

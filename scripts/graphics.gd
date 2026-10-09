@@ -35,7 +35,6 @@ static var applies := 0   # las pruebas cuentan cuántas veces se puso en marcha
 static func defaults() -> Dictionary:
 	var d: Dictionary = PRESET_VALUES.alta.duplicate()
 	d["preset"] = "alta"
-	d["show_fps"] = false
 	return d
 
 
@@ -60,7 +59,6 @@ static func _sanitize(d: Dictionary) -> Dictionary:
 			d[k] = int(d[k])
 	d.silhouette = bool(d.silhouette)
 	d.effects = bool(d.effects)
-	d.show_fps = bool(d.show_fps)
 	return d
 
 
@@ -77,7 +75,7 @@ static func _store(d: Dictionary) -> void:
 	apply_global()
 
 
-## Elige un preajuste (alta, media o baja): pisa todos los ajustes sueltos menos "mostrar FPS".
+## Elige un preajuste (alta, media o baja): pisa todos los ajustes sueltos.
 static func set_preset(name: String) -> void:
 	if not PRESET_VALUES.has(name):
 		return
@@ -87,19 +85,18 @@ static func set_preset(name: String) -> void:
 	_store(d)
 
 
-## Cambia un ajuste suelto; el preajuste pasa a "Personalizada" (salvo "mostrar FPS", que no es parte de ningún preajuste).
+## Cambia un ajuste suelto; el preajuste pasa a "Personalizada" (o toma el nombre del preajuste si los valores coinciden justo).
 static func set_value(key: String, v) -> void:
 	var d := current()
 	d[key] = v
-	if key != "show_fps":
-		d.preset = "custom"
-		for p in PRESETS:   # si los valores coinciden justo con un preajuste, se lo nombra
-			var same := true
-			for k in PRESET_VALUES[p]:
-				if d[k] != PRESET_VALUES[p][k]:
-					same = false
-			if same:
-				d.preset = p
+	d.preset = "custom"
+	for p in PRESETS:   # si los valores coinciden justo con un preajuste, se lo nombra
+		var same := true
+		for k in PRESET_VALUES[p]:
+			if d[k] != PRESET_VALUES[p][k]:
+				same = false
+		if same:
+			d.preset = p
 	_store(_sanitize(d))
 
 
