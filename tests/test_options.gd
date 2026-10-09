@@ -4,6 +4,9 @@ extends SceneTree
 
 const Loc := preload("res://scripts/loc.gd")
 const Settings := preload("res://scripts/settings.gd")
+const Graphics := preload("res://scripts/graphics.gd")
+const Controls := preload("res://scripts/controls.gd")
+const PadBridge := preload("res://scripts/pad_bridge.gd")
 
 var fails := 0
 
@@ -17,6 +20,9 @@ func check(cond: bool, label: String) -> void:
 func _init() -> void:
 	test_loc()
 	test_settings()
+	test_graphics()
+	test_controls()
+	await test_tabs()
 	await test_screen()
 	await test_menus_follow_language()
 	Loc.set_lang("es")
@@ -133,3 +139,95 @@ func test_menus_follow_language() -> void:
 	await process_frame
 	check(main.main_menu.buttons["nueva"].text == "Nueva partida", "y de vuelta en español")
 	main.queue_free()
+
+
+func test_graphics() -> void:
+	Graphics.reset()
+	check(Graphics.preset() == "alta" and Graphics.value("shadows") == "soft", "por defecto la calidad es Alta")
+	Graphics.set_preset("baja")
+	check(Graphics.value("shadows") == "off" and Graphics.value("particles") == "none" and Graphics.value("scale") == 70 and Graphics.value("aa") == 0, "Baja: sin sombras, sin partículas, escala 70 % y sin suavizado")
+	check(Graphics.block_particles_radius() < 0 and Graphics.particle_factor() == 0.0, "Baja apaga las partículas")
+	Graphics.set_value("shadows", "hard")
+	check(Graphics.preset() == "custom", "tocar un ajuste suelto pasa a Personalizada")
+	Graphics.set_value("shadows", "off")
+	check(Graphics.preset() == "baja", "si los valores vuelven a coincidir con un preajuste, se lo nombra")
+	Graphics.set_value("show_fps", true)
+	check(Graphics.preset() == "baja" and Graphics.value("show_fps"), "mostrar FPS no cambia el preajuste")
+	Graphics.cycle("scale", 1)
+	check(Graphics.value("scale") == 80 and Graphics.preset() == "custom", "cycle avanza una opción")
+	Graphics.set_value("scale", 12345)
+	check(Graphics.value("scale") == 100, "un valor inválido vuelve al de fábrica")
+	Graphics.reset()
+	check(Graphics.preset() == "alta" and not Graphics.value("show_fps"), "reset vuelve a lo de fábrica")
+
+
+func test_controls() -> void:
+	Controls.reset_all()
+	check(Controls.key_of("mover_adelante") == KEY_W and Controls.key_of("empujar") == KEY_SHIFT, "las teclas de fábrica")
+	var e := InputEventKey.new()
+	e.keycode = KEY_W
+	e.pressed = true
+	check(Controls.action_of(e) == "mover_adelante", "una tecla se reconoce como su acción")
+	var swapped := Controls.rebind_key("mover_adelante", KEY_UP)
+	check(swapped == "camara_arriba" and Controls.key_of("camara_arriba") == KEY_W and Controls.key_of("mover_adelante") == KEY_UP, "reasignar a una tecla en uso intercambia las dos")
+	check(Controls.rebind_key("pista", KEY_H) == "" and Controls.key_of("pista") == KEY_H, "reasignar a una tecla libre")
+	var saved: Dictionary = Settings.get_value("bindings")
+	check(saved.has("pista") and int(saved.pista.key) == KEY_H, "el cambio se guarda en los ajustes")
+	Controls._loaded = false
+	check(Controls.key_of("pista") == KEY_H, "y se vuelve a leer de los ajustes")
+	check(Controls.pad_of("mover_adelante") == {"axis": Controls.AXIS_LY, "sign": -1} and Controls.pads_of("mover_adelante").size() == 2, "el mando de fábrica: stick y cruceta")
+	var keys := Controls.keys_for_pad({"button": JOY_BUTTON_DPAD_UP})
+	check(keys == [KEY_UP], "la cruceta arriba manda la tecla de Mover adelante (reasignada)")
+	check(Controls.keys_for_pad({"button": JOY_BUTTON_A}) == [KEY_ENTER], "A confirma (Enter)")
+	check(Controls.rebind_pad("pista", {"button": JOY_BUTTON_A}) == "" and Controls.keys_for_pad({"button": JOY_BUTTON_A}) == [KEY_H], "reasignar un botón cambia la tecla que produce")
+	Controls.reset_action("pista")
+	check(Controls.key_of("pista") == KEY_P, "reset_action vuelve una sola acción a lo de fábrica")
+	Controls.reset_all()
+	check(Controls.key_of("mover_adelante") == KEY_W and (Settings.get_value("bindings") as Dictionary).is_empty(), "reset_all vuelve todo a lo de fábrica")
+
+
+func test_tabs() -> void:
+	var OptionsScreen = load("res://scripts/options_screen.gd")
+	var o: Control = OptionsScreen.new()
+	root.add_child(o)
+	o.visible = true
+	await process_frame
+	check(o.tab == "general" and o.pages.general.visible and not o.pages.graficos.visible, "arranca en General")
+	o.tab_buttons.graficos.pressed.emit()
+	check(o.tab == "graficos" and o.pages.graficos.visible and not o.pages.general.visible, "las pestañas se alternan")
+	check(o.pages.graficos is ScrollContainer, "Gráficos se puede desplazar")
+	o.preset_buttons.baja.pressed.emit()
+	check(Graphics.preset() == "baja" and o.preset_buttons.baja.selected and o.gfx_buttons.shadows["off"].selected, "elegir Baja la marca y mueve los ajustes sueltos")
+	o.gfx_buttons.shadows["soft"].pressed.emit()
+	check(o.preset_buttons.custom.selected and not o.preset_buttons.baja.selected, "tocar uno suelto marca Personalizada")
+	o.reset_button.pressed.emit()
+	check(Graphics.preset() == "alta" and o.preset_buttons.alta.selected, "Restablecer en Gráficos vuelve a Alta")
+	o.tab_buttons.controles.pressed.emit()
+	o.bind_buttons.pista.key.pressed.emit()
+	check(o.capturing == "pista" and Controls.capturing, "apretar una tecla de la lista espera la nueva")
+	var e := InputEventKey.new()
+	e.keycode = KEY_J
+	e.pressed = true
+	o._input(e)
+	check(o.capturing == "" and not Controls.capturing and Controls.key_of("pista") == KEY_J, "la tecla apretada se asigna")
+	o.bind_buttons.pista.key.pressed.emit()
+	var esc := InputEventKey.new()
+	esc.keycode = KEY_ESCAPE
+	esc.pressed = true
+	o._input(esc)
+	check(o.capturing == "" and Controls.key_of("pista") == KEY_J, "Esc cancela sin cambiar nada")
+	o.bind_buttons.mover_derecha.key.pressed.emit()
+	var e2 := InputEventKey.new()
+	e2.keycode = KEY_J
+	e2.pressed = true
+	o._input(e2)
+	check(Controls.key_of("pista") == KEY_D and o.bind_message.text != "", "una tecla en uso se intercambia y se avisa")
+	o.bind_buttons.empujar.pad.pressed.emit()
+	var jb := InputEventJoypadButton.new()
+	jb.button_index = JOY_BUTTON_RIGHT_SHOULDER
+	jb.pressed = true
+	o._input(jb)
+	check(Controls.pad_of("empujar") == {"button": JOY_BUTTON_RIGHT_SHOULDER}, "un botón del mando se asigna")
+	o.reset_button.pressed.emit()
+	check(Controls.key_of("pista") == KEY_P, "Restablecer en Controles vuelve a lo de fábrica")
+	o.queue_free()

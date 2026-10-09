@@ -18,6 +18,7 @@ const Story := preload("res://scripts/story.gd")
 const Tutorial := preload("res://scripts/tutorial.gd")
 const RouletteScreen := preload("res://scripts/roulette_screen.gd")
 const SlotsScreen := preload("res://scripts/slots_screen.gd")
+const Controls := preload("res://scripts/controls.gd")
 const BlackjackScreen := preload("res://scripts/blackjack_screen.gd")
 
 var fails := 0
@@ -79,6 +80,12 @@ func test_catalog() -> void:
 		if l.has("text"):
 			need(l.text, "texto de lección " + l.id)
 	need(Story.SPEAKER, "nombre del tabernero")
+	for a in Controls.ACTIONS:
+		need(a.name, "acción de controles")
+		need(a.group, "grupo de controles")
+	for b in Controls.BUTTON_NAMES.values() + Controls.AXIS_NAMES.values():
+		if b.begins_with("Cruceta") or b.begins_with("Stick"):
+			need(b, "botón del mando")
 
 
 ## Cada Loc.t("...") y Loc.f("...", ...) del código tiene su traducción.
@@ -111,7 +118,7 @@ func test_screens() -> void:
 	await process_frame
 	main.open_main_menu()
 	main.main_menu.set_continue(5)
-	for p in ["escenarios", "despertar", "cosmeticos", "opciones", "creditos", "principal"]:
+	for p in ["escenarios", "despertar", "cosmeticos", "opciones", "creditos", "licencias", "principal"]:
 		main.main_menu.show_panel(p)
 		await process_frame
 	for id in [Scenarios.TUTORIAL.id] + Scenarios.ALL.map(func(s): return s.id):

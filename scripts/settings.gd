@@ -32,6 +32,8 @@ static func defaults() -> Dictionary:
 		"volume": VOLUME_STEPS,   # en pasos de 0 a VOLUME_STEPS
 		"music": VOLUME_STEPS,    # música (se multiplica por el volumen general)
 		"sfx": VOLUME_STEPS,      # efectos de sonido
+		"bindings": {},           # controles que el jugador cambió (ver controls.gd)
+		"graphics": {},           # gráficos que el jugador cambió (ver graphics.gd)
 	}
 
 
@@ -58,6 +60,10 @@ static func _sanitize() -> void:
 	data.volume = clampi(int(data.volume), 0, VOLUME_STEPS)
 	data.music = clampi(int(data.music), 0, VOLUME_STEPS)
 	data.sfx = clampi(int(data.sfx), 0, VOLUME_STEPS)
+	if not data.bindings is Dictionary:
+		data.bindings = {}
+	if not data.graphics is Dictionary:
+		data.graphics = {}
 	var r = data.resolution
 	if not (r is Array and r.size() == 2 and int(r[0]) >= 640 and int(r[1]) >= 360):
 		data.resolution = [1280, 720]

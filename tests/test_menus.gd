@@ -44,7 +44,12 @@ func test_start() -> void:
 	cb.pressed.emit()
 	check(main.main_menu.credits.visible and not cb.visible and not main.main_menu.column.get_parent().visible, "Creditos abre la ventana y esconde el menu")
 	var ctext: String = main.main_menu.credits.find_child("texto_creditos", true, false).text
-	check(ctext.contains("Godot Engine") and ctext.contains("MIT") and ctext.contains("Permission is hereby granted") and ctext.contains("Juan Linietsky"), "los creditos incluyen el aviso de copyright y la licencia MIT de Godot")
+	check(ctext.contains("Godot Engine") and not ctext.contains("Permission is hereby granted") and ctext.length() < 400, "los creditos son cortos: nombran a Godot pero no traen las licencias")
+	main.main_menu.credits.find_child("licencias", true, false).pressed.emit()
+	var ltext: String = main.main_menu.licenses.find_child("texto_licencias", true, false).text
+	check(main.main_menu.licenses.visible and not main.main_menu.credits.visible and ltext.contains("MIT") and ltext.contains("Permission is hereby granted") and ltext.contains("Juan Linietsky"), "la pantalla de licencias trae el aviso de copyright y la licencia MIT de Godot")
+	main.main_menu.licenses.find_child("volver_licencias", true, false).pressed.emit()
+	check(main.main_menu.credits.visible and not main.main_menu.licenses.visible, "Volver de las licencias vuelve a los creditos")
 	main.main_menu.credits.find_child("volver_creditos", true, false).pressed.emit()
 	check(not main.main_menu.credits.visible and cb.visible and main.main_menu.column.get_parent().visible, "Volver cierra los creditos")
 	# Entrar al juego: etapa 1 con torre de 25 pisos

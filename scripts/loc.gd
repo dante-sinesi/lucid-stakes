@@ -66,6 +66,12 @@ static func auto(text: String) -> String:
 	return text
 
 
+## Un texto que no se traduce (nombre de una tecla, por ejemplo): se muestra tal cual sin anotarlo como faltante.
+static func literal(text: String) -> String:
+	_outputs[text] = true
+	return text
+
+
 static var _spec: RegEx
 
 

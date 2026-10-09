@@ -3,6 +3,8 @@ extends RefCounted
 ## destellos de pantalla al ganar o perder, rebote de los bloques empujados y pulsos de la interfaz.
 ## Todo es cosmético: nada de esto toca la lógica de la torre.
 
+const Graphics := preload("res://scripts/graphics.gd")
+
 var main: Node
 var shake := 0.0            # intensidad actual del temblor (se apaga sola)
 var body: Node3D            # cuerpo del personaje, con el pivote en los pies (para estirar y aplastar)
@@ -52,6 +54,8 @@ func process(delta: float) -> void:
 
 
 func add_shake(amount: float) -> void:
+	if not bool(Graphics.value("effects")):
+		return
 	shake = minf(maxf(shake, amount), 0.9)
 
 
@@ -174,7 +178,7 @@ func spin_fall(node: Node3D) -> void:
 # ---- pantalla e interfaz --------------------------------------------------------------------------------------------
 
 func flash(color: Color, peak := 0.35, time := 0.45) -> void:
-	if flash_rect == null:
+	if flash_rect == null or not bool(Graphics.value("effects")):
 		return
 	if _flash_tween:
 		_flash_tween.kill()

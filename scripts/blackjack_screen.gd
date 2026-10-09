@@ -351,7 +351,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				deal()
 			else:
 				stand()
-		KEY_D:
+		KEY_D, KEY_C:
 			double_down()
 		_:
 			return

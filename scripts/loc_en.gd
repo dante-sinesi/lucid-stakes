@@ -2,7 +2,7 @@ extends RefCounted
 ## Inglés: {frase en español: traducción}. Ver loc.gd.
 
 ## La tabla completa es la suma de varios archivos, uno por área, para que cada uno se pueda revisar por separado.
-const PARTS: Array[Script] = [preload("res://scripts/loc_en_data.gd"), preload("res://scripts/loc_en_story.gd"), preload("res://scripts/loc_en_ui.gd")]
+const PARTS: Array[Script] = [preload("res://scripts/loc_en_data.gd"), preload("res://scripts/loc_en_story.gd"), preload("res://scripts/loc_en_ui.gd"), preload("res://scripts/loc_en_options.gd")]
 static var TABLE: Dictionary = _build()
 
 const MENUS := {

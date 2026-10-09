@@ -9,6 +9,9 @@ const PATH_STEP_TIME := 0.07  # segundos por celda cuando el recorrido tiene var
 const PATH_MAX_TIME := 1.3
 const SILHOUETTE_SHADER := preload("res://shaders/silhouette.gdshader")
 const RunState := preload("res://scripts/run_state.gd")
+const Controls := preload("res://scripts/controls.gd")
+const Graphics := preload("res://scripts/graphics.gd")
+const PadBridge := preload("res://scripts/pad_bridge.gd")
 const CasinoScene := preload("res://scripts/casino_scene.gd")
 const MainMenu := preload("res://scripts/main_menu.gd")
 const PauseMenu := preload("res://scripts/pause_menu.gd")
@@ -141,6 +144,8 @@ var lab_signs: Array[Node3D] = []
 var dice                      # los dados del tabernero: el minijuego de la pantalla de carga
 var _model: Node3D          # el animalito (y su copia de silueta): se vuelve a armar cuando cambia el personaje o la ropa
 var _ghost: Node3D
+var _sun: DirectionalLight3D
+var _fps_label: Control
 var dialogue                 # cuadro de diálogo del tabernero (historia y consejos del tutorial)
 var story_kind := ""         # "intro" o "outro" mientras se está en una sala de historia del tutorial
 var tutorial_label: Control # cartel con la lección
@@ -172,11 +177,17 @@ func _ready() -> void:
 	Settings.apply()   # idioma, ventana, resolución y volumen del jugador
 	AudioHub.instance()   # el audio (efectos y música) se prepara desde el arranque
 	_register_globals()
+	var pad_bridge := PadBridge.new()   # el mando se traduce a las teclas de cada acción
+	pad_bridge.nav_mode = func() -> bool:
+		return in_menu or get_tree().paused or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible)
+	add_child(pad_bridge)
+	add_to_group("graphics")
 	_set_depth_mode(depth_mode)
 	_build_environment()
 	_build_hud()
 	_build_fx_assets()
 	_build_menus()
+	Graphics.apply_global()   # sombras, escala de render, antialiasing y tope de cuadros del jugador
 	_build_dev_console()
 	if test_mode:
 		SaveGame.path = "user://test_save.json"   # las pruebas no tocan la partida real
@@ -201,8 +212,24 @@ func _build_environment() -> void:
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55, -30, 0)
-	sun.shadow_enabled = true
 	add_child(sun)
+	_sun = sun
+
+
+## Pone en marcha los gráficos del jugador en lo que es de esta escena (grupo "graphics"; ver graphics.gd).
+func apply_graphics() -> void:
+	if _sun != null:
+		Graphics.apply_to_sun(_sun)
+	if _ghost != null and is_instance_valid(_ghost):
+		_ghost.visible = bool(Graphics.value("silhouette"))
+	if _fps_label != null:
+		_fps_label.visible = bool(Graphics.value("show_fps"))
+	_refresh()   # las partículas de los bloques cambian con el ajuste
+
+
+func _process_fps() -> void:
+	if _fps_label != null and _fps_label.visible:
+		_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 
 
 func _build_hud() -> void:
@@ -262,6 +289,12 @@ func _build_hud() -> void:
 	hud.position += Vector2(16, -110)
 	hud.plate_alpha = 0.55
 	hud.visible = false
+	_fps_label = _label(layer, 2, Color(0.8, 1.0, 0.8))   # contador de FPS (Opciones > Gráficos)
+	_fps_label.localize = false
+	_fps_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_fps_label.position += Vector2(-110, 8)
+	_fps_label.plate_alpha = 0.55
+	_fps_label.visible = false
 	compass = Compass.new()
 	compass.name = "rosa_vientos"
 	compass.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -611,6 +644,7 @@ func _apply_skin() -> void:
 	_ghost = Characters.build(Profile.character(), Profile.equipped_hat(), Profile.equipped_outfit(), true)
 	juice.body.add_child(_model)
 	juice.body.add_child(_ghost)
+	_ghost.visible = bool(Graphics.value("silhouette"))
 
 
 func _mat(color: Color) -> StandardMaterial3D:
@@ -767,7 +801,7 @@ func _play_purify(node: MeshInstance3D, id: int) -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var b := CPUParticles3D.new()
 	b.one_shot = true
-	b.amount = 14
+	b.amount = maxi(int(14 * Graphics.particle_factor()), 1)
 	b.lifetime = 0.8
 	b.explosiveness = 1.0
 	b.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
@@ -780,7 +814,7 @@ func _play_purify(node: MeshInstance3D, id: int) -> void:
 	b.mesh = _mesh_light
 	add_child(b)
 	b.position = node.position + Vector3(0, 0.5, 0)
-	b.emitting = true
+	b.emitting = Graphics.particle_factor() > 0.0
 	get_tree().create_timer(1.2).timeout.connect(b.queue_free)
 
 
@@ -825,7 +859,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if in_menu:
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+	if event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ESCAPE or Controls.hit(event, "pausa")):
 		pause_game()
 		return
 	if casino != null:  # en el casino manda su propia escena
@@ -836,38 +870,42 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	var mode: int = TowerLogic.Mode.MOVE
-	if event.shift_pressed:
+	if Controls.modifier_held(event, "empujar"):
 		mode = TowerLogic.Mode.GRAB
-	elif Input.is_key_pressed(KEY_SPACE):
+	elif Controls.held("colgarse"):
 		mode = TowerLogic.Mode.HANG
-	match event.keycode:
-		KEY_Q: _reset_view(1)
-		KEY_E: _reset_view(-1)
-		KEY_R: request_restart()
-		KEY_N:
-			if tutorial_index >= 0:
-				_tutorial_next()
-			elif dev_console != null:   # (sólo en compilaciones de desarrollo)
-				new_tower(randi() % 100000)
-		KEY_ENTER, KEY_KP_ENTER:
-			if tutorial_index >= 0 and logic != null and logic.won:
-				_tutorial_next()
-		KEY_BRACKETRIGHT:
-			if dev_console != null:
-				_change_stage(1)
-		KEY_BRACKETLEFT:
-			if dev_console != null:
-				_change_stage(-1)
-		KEY_V: _set_depth_mode((depth_mode + 1) % 3)
-		KEY_P: toggle_hint()
-		KEY_1: use_consumable_slot(0)
-		KEY_2: use_consumable_slot(1)
-		KEY_3: use_consumable_slot(2)
-		KEY_4: use_consumable_slot(3)
-		KEY_W: _act(1, 1, mode)
-		KEY_D: _act(1, -1, mode)
-		KEY_S: _act(-1, -1, mode)
-		KEY_A: _act(-1, 1, mode)
+	match Controls.action_of(event):
+		"vista_izquierda": _reset_view(1)
+		"vista_derecha": _reset_view(-1)
+		"reintentar": request_restart()
+		"profundidad": _set_depth_mode((depth_mode + 1) % 3)
+		"pista": toggle_hint()
+		"consumible_1": use_consumable_slot(0)
+		"consumible_2": use_consumable_slot(1)
+		"consumible_3": use_consumable_slot(2)
+		"consumible_4": use_consumable_slot(3)
+		"zoom_mas": zoom_view(1.0 / ZOOM_FACTOR)
+		"zoom_menos": zoom_view(ZOOM_FACTOR)
+		"mover_adelante": _act(1, 1, mode)
+		"mover_derecha": _act(1, -1, mode)
+		"mover_atras": _act(-1, -1, mode)
+		"mover_izquierda": _act(-1, 1, mode)
+		_:
+			match event.keycode:
+				KEY_N:
+					if tutorial_index >= 0:
+						_tutorial_next()
+					elif dev_console != null:   # (sólo en compilaciones de desarrollo)
+						new_tower(randi() % 100000)
+				KEY_ENTER, KEY_KP_ENTER:
+					if tutorial_index >= 0 and logic != null and logic.won:
+						_tutorial_next()
+				KEY_BRACKETRIGHT:
+					if dev_console != null:
+						_change_stage(1)
+				KEY_BRACKETLEFT:
+					if dev_console != null:
+						_change_stage(-1)
 
 
 ## Cambia de etapa (1..27) y genera una torre nueva con su dificultad, ritmo de caída y mecánicas.
@@ -940,8 +978,8 @@ func _camera_mouse(event: InputEvent) -> void:
 func _arrow_camera(delta: float) -> void:
 	if in_menu or casino != null or console_open or pivot == null or logic == null or get_tree().paused:
 		return
-	var ax := int(Input.is_key_pressed(KEY_RIGHT)) - int(Input.is_key_pressed(KEY_LEFT))
-	var ay := int(Input.is_key_pressed(KEY_DOWN)) - int(Input.is_key_pressed(KEY_UP))
+	var ax := int(Controls.held("camara_derecha")) - int(Controls.held("camara_izquierda"))
+	var ay := int(Controls.held("camara_abajo")) - int(Controls.held("camara_arriba"))
 	if ax != 0 or ay != 0:
 		orbit_view(Vector2(ax, ay) * ARROW_SPEED * delta / MOUSE_SENS)
 
@@ -1019,6 +1057,7 @@ func _set_depth_mode(mode: int) -> void:
 
 ## Cada cuadro: dónde está el personaje respecto de la cámara (referencia de las ayudas de profundidad).
 func _process(delta: float) -> void:
+	_process_fps()
 	_poll_hint()
 	juice.process(delta)
 	_bomb_ticking(delta)
@@ -1152,7 +1191,7 @@ func _play_explosion(cell: Vector3i) -> void:
 	tw.chain().tween_callback(flash.queue_free)
 	for spec in [[70, Color(1.0, 0.75, 0.2), 0.14, 6.0], [40, Color(0.25, 0.1, 0.1), 0.2, 4.0]]:   # llamas y escombros oscuros
 		var p := CPUParticles3D.new()
-		p.amount = int(spec[0])
+		p.amount = maxi(int(float(spec[0]) * Graphics.particle_factor()), 1)
 		p.one_shot = true
 		p.explosiveness = 1.0
 		p.lifetime = 0.9
@@ -1171,7 +1210,7 @@ func _play_explosion(cell: Vector3i) -> void:
 		p.mesh = box
 		p.position = pos
 		add_child(p)
-		p.emitting = true
+		p.emitting = Graphics.particle_factor() > 0.0
 		get_tree().create_timer(1.5).timeout.connect(p.queue_free)
 	juice.flash(Color(1.0, 0.6, 0.2), 0.5, 0.5)
 	juice.add_shake(1.2)
@@ -1418,7 +1457,8 @@ func _refresh() -> void:
 			tile.visible = is_top
 		# Partículas: sólo en los bloques con la cara de arriba libre y cerca del jugador.
 		var fx: CPUParticles3D = node.get_node("fx")
-		fx.emitting = node.visible and absi(pos.y - logic.player.y) <= 6 and not logic.blocks.has(pos + Vector3i(0, 1, 0))
+		var fx_radius := Graphics.block_particles_radius()
+		fx.emitting = fx_radius >= 0 and node.visible and absi(pos.y - logic.player.y) <= fx_radius and not logic.blocks.has(pos + Vector3i(0, 1, 0))
 		var want_mesh: SphereMesh = _mesh_light if logic.purified.has(id) else _mesh_corrupt
 		if fx.mesh != want_mesh:
 			fx.mesh = want_mesh

@@ -20,6 +20,7 @@ signal language_changed
 
 var buttons := {}
 var credits: Control
+var licenses: Control
 var scenarios: Control   # selector de escenario (al tocar Nueva partida)
 var cosmetics: Control   # pantalla de cosméticos
 var meta: Control   # pantalla del Despertar (meta-progresión)
@@ -55,8 +56,10 @@ func _init() -> void:
 	_button("cosmeticos", Loc.t("Personaje"), false, func(): show_panel("cosmeticos"))
 	_button("opciones", Loc.t("Opciones"), false, func(): show_panel("opciones"))
 	_button("salir", Loc.t("Salir"), false, func(): quit_game.emit())
-	credits = UI.make_credits_panel(func(): show_panel("principal"))
+	credits = UI.make_credits_panel(func(): show_panel("principal"), func(): show_panel("licencias"))
 	add_child(credits)
+	licenses = UI.make_licenses_panel(func(): show_panel("creditos"))
+	add_child(licenses)
 	scenarios = ScenarioScreen.new()
 	scenarios.back.connect(func(): show_panel("principal"))
 	scenarios.chosen.connect(func(id):   # la primera tarjeta es el tutorial
@@ -104,10 +107,11 @@ func set_continue(stage_saved: int) -> void:
 	buttons["continuar"].primary = stage_saved > 0
 
 
-## Muestra una sola pantalla: "principal", "escenarios", "despertar", "cosmeticos", "opciones" o "creditos".
+## Muestra una sola pantalla: "principal", "escenarios", "despertar", "cosmeticos", "opciones", "creditos" o "licencias".
 func show_panel(which: String) -> void:
 	main_center.visible = which == "principal"
 	credits.visible = which == "creditos"
+	licenses.visible = which == "licencias"
 	scenarios.visible = which == "escenarios"
 	if which == "escenarios":
 		scenarios.refresh()
@@ -140,6 +144,9 @@ func show_panel(which: String) -> void:
 		"creditos":
 			panel = credits
 			credits.find_child("volver_creditos", true, false).grab_focus()
+		"licencias":
+			panel = licenses
+			licenses.find_child("volver_licencias", true, false).grab_focus()
 	MenuAnim.stagger(MenuAnim.buttons_in(panel), 0.05, 0.28, 0.05)
 
 

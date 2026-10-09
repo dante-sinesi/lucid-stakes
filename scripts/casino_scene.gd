@@ -7,6 +7,7 @@ extends Node3D
 ##  - Q / E giran la cámara; las paredes que quedan entre la cámara y la sala se ocultan.
 ## Uso: crear, add_child, setup(run, rng). Emite `left` al irse por el portal.
 
+const Controls := preload("res://scripts/controls.gd")
 const Room := preload("res://scripts/casino_room.gd")
 const VoxelMesh := preload("res://scripts/voxel_mesh.gd")
 const RouletteScreen := preload("res://scripts/roulette_screen.gd")
@@ -465,8 +466,8 @@ func show_exit_arrow(on: bool) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	if screen == null and pivot != null:   # las flechas giran (izquierda y derecha) e inclinan (arriba y abajo) la cámara, como en la torre
-		var ax := int(Input.is_key_pressed(KEY_RIGHT)) - int(Input.is_key_pressed(KEY_LEFT))
-		var ay := int(Input.is_key_pressed(KEY_DOWN)) - int(Input.is_key_pressed(KEY_UP))
+		var ax := int(Controls.held("camara_derecha")) - int(Controls.held("camara_izquierda"))
+		var ay := int(Controls.held("camara_abajo")) - int(Controls.held("camara_arriba"))
 		if ax != 0 or ay != 0:
 			orbit_view(Vector2(ax, ay) * ARROW_SPEED * delta / MOUSE_SENS)
 	if _arrow != null:
@@ -491,11 +492,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			orbit_view(event.relative)
 	if input_locked or not (event is InputEventKey) or not event.pressed or event.echo or screen != null:
 		return
-	match event.keycode:
-		KEY_Q: rotate_camera(1)
-		KEY_E: rotate_camera(-1)
-		KEY_SPACE, KEY_ENTER, KEY_KP_ENTER: interact()
-		KEY_W: step(_dir_for_screen(1, 1))
-		KEY_D: step(_dir_for_screen(1, -1))
-		KEY_S: step(_dir_for_screen(-1, -1))
-		KEY_A: step(_dir_for_screen(-1, 1))
+	match Controls.action_of(event):
+		"vista_izquierda": rotate_camera(1)
+		"vista_derecha": rotate_camera(-1)
+		"zoom_mas": zoom_view(1.0 / ZOOM_FACTOR)
+		"zoom_menos": zoom_view(ZOOM_FACTOR)
+		"mover_adelante": step(_dir_for_screen(1, 1))
+		"mover_derecha": step(_dir_for_screen(1, -1))
+		"mover_atras": step(_dir_for_screen(-1, -1))
+		"mover_izquierda": step(_dir_for_screen(-1, 1))
+		_:
+			if event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+				interact()

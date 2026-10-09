@@ -45,12 +45,15 @@ static func button(text: String, primary := false, cube := 3.0, min_cells_w := 0
 	return b
 
 
-## Texto de los créditos: los del juego, el aviso de Godot y su licencia MIT y la lista de componentes de terceros que trae el motor.
-## Todo sale de lo que el propio motor informa (Engine.get_license_text / get_copyright_info), así queda al día con la versión usada.
+## Texto de los créditos: breve (los del juego y el motor). Las licencias van aparte, en la pantalla de Licencias.
 static func credits_text() -> String:
-	var t := Loc.t(CREDITS_GAME) + "\n\n"
-	t += Loc.t("Hecho con Godot Engine - https://godotengine.org\n")
-	t += Loc.t("Godot Engine se distribuye bajo la licencia MIT.\n\n")
+	return Loc.t(CREDITS_GAME) + "\n\n" + Loc.t("Hecho con Godot Engine - https://godotengine.org\n")
+
+
+## Texto de las licencias: el aviso de Godot y su licencia MIT y la lista de componentes de terceros que trae el motor.
+## Todo sale de lo que el propio motor informa (Engine.get_license_text / get_copyright_info), así queda al día con la versión usada.
+static func licenses_text() -> String:
+	var t := Loc.t("Godot Engine se distribuye bajo la licencia MIT.\n\n")
 	t += Engine.get_license_text().strip_edges() + "\n\n"
 	t += Loc.t("Componentes de terceros incluidos en el motor (nombre: licencias):\n")
 	for comp in Engine.get_copyright_info():
@@ -62,10 +65,34 @@ static func credits_text() -> String:
 	return t.replace("©", "(c)").replace("\r", "")
 
 
-## Panel de créditos con desplazamiento (rueda del mouse) y un botón para volver (oculto al crearlo).
-static func make_credits_panel(on_back: Callable) -> Control:
+## Panel de créditos (corto) con un botón a las licencias y otro para volver (oculto al crearlo).
+static func make_credits_panel(on_back: Callable, on_licenses: Callable) -> Control:
+	var panel := _text_panel("creditos", "Créditos", credits_text(), "texto_creditos", 300)
+	var col: VBoxContainer = panel.find_child("columna", true, false)
+	var lic := button("Licencias", false, 2.2, 0, false)
+	lic.name = "licencias"
+	lic.pressed.connect(on_licenses)
+	col.add_child(lic)
+	var back := button("Volver", true)
+	back.name = "volver_creditos"
+	back.pressed.connect(on_back)
+	col.add_child(back)
+	return panel
+
+
+## Panel con las licencias de terceros, con desplazamiento (rueda del mouse).
+static func make_licenses_panel(on_back: Callable) -> Control:
+	var panel := _text_panel("licencias", "Licencias", licenses_text(), "texto_licencias", 560)
+	var back := button("Volver", true)
+	back.name = "volver_licencias"
+	back.pressed.connect(on_back)
+	panel.find_child("columna", true, false).add_child(back)
+	return panel
+
+
+static func _text_panel(panel_name: String, title_text: String, body: String, body_name: String, height: int) -> Control:
 	var panel := Control.new()
-	panel.name = "creditos"
+	panel.name = panel_name
 	panel.visible = false
 	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
@@ -76,22 +103,19 @@ static func make_credits_panel(on_back: Callable) -> Control:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	panel.add_child(center)
 	var col := VBoxContainer.new()
+	col.name = "columna"
 	col.add_theme_constant_override("separation", 14)
 	center.add_child(col)
-	var title := label(col, "Créditos", 5, GOLD)
+	var title := label(col, title_text, 5, GOLD)
 	title.dance = true
 	var scroll := ScrollContainer.new()
 	scroll.name = "desplazamiento"
-	scroll.custom_minimum_size = Vector2(1180, 560)
+	scroll.custom_minimum_size = Vector2(1180, height)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)
 	var txt := label(null, "", 2, Draw.MARBLE, false, 1140)
-	txt.name = "texto_creditos"
-	txt.localize = false   # el texto ya viene traducido (y es larguísimo)
-	txt.text = credits_text()
+	txt.name = body_name
+	txt.localize = false   # el texto ya viene traducido (y las licencias son larguísimas)
+	txt.text = body
 	scroll.add_child(txt)
-	var back := button("Volver", true)
-	back.name = "volver_creditos"
-	back.pressed.connect(on_back)
-	col.add_child(back)
 	return panel
