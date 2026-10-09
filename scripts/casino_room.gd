@@ -51,16 +51,17 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 	var heights := {}
 	var tier := tier_of(stage) if tier_override < 0 else tier_override
 	match tier:
-		0:   # taberna: lo justo para jugar
+		0:   # taberna: chica pero con las tres mesas (ruleta, una tragamonedas y una mesa de cartas)
+			machines.assign([Vector2i(0, 1), Vector2i(0, 3)])
 			obstacles.assign([Vector2i(0, 0), Vector2i(6, 0), Vector2i(6, 5), Vector2i(0, 2)])
 			return {"tier": 0, "cells": Vector2i(7, 6), "entry": Vector2i(0, 4), "exit": Vector2i(5, 0), "table": Rect2i(2, 2, 3, 2),
-					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [] as Array[Rect2i], "obstacles": obstacles,
+					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [Rect2i(5, 3, 2, 2)] as Array[Rect2i], "obstacles": obstacles,
 					"heights": heights, "table_h": 0, "cam_size": 9.5}
-		1:   # salón: más espacio y las primeras tragamonedas
+		1:   # salón: más espacio, dos tragamonedas y una mesa de cartas
 			machines.assign([Vector2i(0, 1), Vector2i(0, 3)])
 			obstacles.assign([Vector2i(8, 0), Vector2i(8, 6)])
 			return {"tier": 1, "cells": Vector2i(9, 7), "entry": Vector2i(0, 5), "exit": Vector2i(6, 0), "table": Rect2i(3, 3, 3, 2),
-					"dealer": Vector2i(4, 2), "machines": machines, "card_tables": [] as Array[Rect2i], "obstacles": obstacles,
+					"dealer": Vector2i(4, 2), "machines": machines, "card_tables": [Rect2i(7, 2, 2, 2)] as Array[Rect2i], "obstacles": obstacles,
 					"heights": heights, "table_h": 0, "cam_size": 13.0}
 		2:   # casino
 			machines.assign(MACHINES)
