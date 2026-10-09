@@ -12,7 +12,7 @@ const PRESET_NAMES := {"alta": "Alta", "media": "Media", "baja": "Baja", "custom
 ## Valores de cada preajuste. fps_cap: 0 = sin límite.
 const PRESET_VALUES := {
 	"alta": {"shadows": "soft", "particles": "all", "scale": 100, "aa": 4, "silhouette": true, "effects": true, "fps_cap": 0},
-	"media": {"shadows": "hard", "particles": "few", "scale": 85, "aa": 2, "silhouette": true, "effects": true, "fps_cap": 60},
+	"media": {"shadows": "hard", "particles": "few", "scale": 80, "aa": 2, "silhouette": true, "effects": true, "fps_cap": 60},
 	"baja": {"shadows": "off", "particles": "none", "scale": 70, "aa": 0, "silhouette": true, "effects": true, "fps_cap": 60},
 }
 
@@ -123,9 +123,19 @@ static func apply_global() -> void:
 	if tree == null or DisplayServer.get_name() == "headless":
 		return
 	var root := tree.root
-	root.scaling_3d_scale = float(int(d.scale)) / 100.0
+	root.scaling_3d_scale = float(int(d.scale)) / 100.0 * _fullscreen_factor()
 	root.msaa_3d = {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X}[int(d.aa)]
 	tree.call_group("graphics", "apply_graphics")
+
+
+## En pantalla completa la resolución elegida es la del render: el juego se dibuja a esa altura y se estira a la pantalla.
+static func _fullscreen_factor() -> float:
+	if not bool(Settings.get_value("fullscreen")):
+		return 1.0
+	var screen := DisplayServer.screen_get_size()
+	if screen.y <= 0:
+		return 1.0
+	return clampf(float(Settings.resolution().y) / float(screen.y), 0.25, 1.0)
 
 
 ## ¿Se dibujan las partículas de las "chispas" de cada bloque? ("few": sólo las cercanas)

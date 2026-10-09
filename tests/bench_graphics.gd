@@ -8,16 +8,18 @@ func _init() -> void:
 	main.quit_game_override = true
 	root.add_child(main)
 	for i in 20: await process_frame
-	main.start_tutorial(0, true)
+	main.dev_lab("")
 	for i in 60: await process_frame
 	Settings.set_value("vsync", false)
-	for p in ["alta", "media", "baja", "alta"]:
-		Graphics.set_preset(p)
+	for p in ["alta", "media", "baja", "minimo"]:
+		Graphics.set_preset("baja" if p == "minimo" else p)
+		if p == "minimo":
+			Graphics.set_value("scale", 50)
 		Graphics.set_value("fps_cap", 0)
 		for i in 60: await process_frame
 		var t0 := Time.get_ticks_usec()
 		var n := 240
 		for i in n: await process_frame
-		print("%s: %.1f FPS (shadow=%s scale=%.2f msaa=%d max_fps=%d)" % [p, n * 1e6 / float(Time.get_ticks_usec() - t0), Graphics.value("shadows"), root.scaling_3d_scale, root.msaa_3d, Engine.max_fps])
+		print("%s: %.1f FPS (shadow=%s scale=%.2f msaa=%d max_fps=%d vsync=%d proc=%.1fms draws=%d)" % [p, n * 1e6 / float(Time.get_ticks_usec() - t0), Graphics.value("shadows"), root.scaling_3d_scale, root.msaa_3d, Engine.max_fps, DisplayServer.window_get_vsync_mode(), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)])
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	quit()

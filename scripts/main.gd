@@ -224,7 +224,8 @@ func apply_graphics() -> void:
 		_ghost.visible = bool(Graphics.value("silhouette"))
 	if _fps_label != null:
 		_fps_label.visible = bool(Graphics.value("show_fps"))
-	_refresh()   # las partículas de los bloques cambian con el ajuste
+	if logic != null:
+		_refresh()   # las partículas de los bloques cambian con el ajuste
 
 
 func _process_fps() -> void:

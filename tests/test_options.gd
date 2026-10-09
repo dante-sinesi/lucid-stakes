@@ -96,9 +96,9 @@ func test_screen() -> void:
 	o.lang_buttons.es.pressed.emit()
 	check(Settings.lang() == "es" and langs[0] == 2, "y se puede volver al español")
 	o.mode_buttons.fullscreen.pressed.emit()
-	check(Settings.get_value("fullscreen") and o.res_prev.disabled and o.res_next.disabled, "pantalla completa se guarda y apaga la resolución")
+	check(Settings.get_value("fullscreen") and not o.res_next.disabled, "pantalla completa se guarda y deja elegir la resolución (la del render)")
 	o.mode_buttons.window.pressed.emit()
-	check(not Settings.get_value("fullscreen") and not o.res_next.disabled, "ventana vuelve a permitir elegir resolución")
+	check(not Settings.get_value("fullscreen") and not o.res_next.disabled, "ventana también permite elegir resolución")
 	o.res_next.pressed.emit()
 	check(Settings.resolution() == Vector2i(1366, 768) and o.res_label.text == "1366 x 768", "la flecha cambia la resolución")
 	o.res_prev.pressed.emit()
@@ -192,7 +192,7 @@ func test_tabs() -> void:
 	root.add_child(o)
 	o.visible = true
 	await process_frame
-	check(o.tab == "general" and o.pages.general.visible and not o.pages.graficos.visible, "arranca en General")
+	check(o.tab == "general" and o.pages.general.visible and not o.pages.graficos.visible and not o.reset_button.visible, "arranca en General (sin Restablecer: sólo está el idioma)")
 	o.tab_buttons.graficos.pressed.emit()
 	check(o.tab == "graficos" and o.pages.graficos.visible and not o.pages.general.visible, "las pestañas se alternan")
 	check(o.pages.graficos is ScrollContainer, "Gráficos se puede desplazar")

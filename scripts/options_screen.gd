@@ -118,7 +118,11 @@ func _build_general(page: Control) -> void:
 	var group := ButtonGroup.new()
 	for code in Loc.LANG_ORDER:
 		lang_buttons[code] = _toggle(row, Loc.LANGS[code], group, "idioma_" + code, _on_lang.bind(code))
-	row = _row(Loc.t("Pantalla"))
+
+
+func _build_display() -> void:
+	var group: ButtonGroup
+	var row := _row(Loc.t("Pantalla"))
 	group = ButtonGroup.new()
 	mode_buttons["window"] = _toggle(row, Loc.t("Ventana"), group, "modo_ventana", _on_mode.bind(false))
 	mode_buttons["fullscreen"] = _toggle(row, Loc.t("Pantalla completa"), group, "modo_completa", _on_mode.bind(true))
@@ -153,6 +157,7 @@ func _build_sound(page: Control) -> void:
 
 func _build_graphics(page: Control) -> void:
 	_page = page
+	_build_display()
 	var row := _row(Loc.t("Calidad"))
 	var group := ButtonGroup.new()
 	for p in Graphics.PRESETS:
@@ -255,6 +260,7 @@ func show_tab(t: String) -> void:
 		return
 	cancel_capture()
 	tab = t
+	reset_button.visible = t != "general"   # (en General sólo está el idioma, que no se restablece)
 	for k in pages:
 		pages[k].visible = k == t
 		tab_buttons[k].selected = k == t
@@ -265,11 +271,10 @@ func show_tab(t: String) -> void:
 func reset_tab() -> void:
 	cancel_capture()
 	match tab:
-		"general":
+		"graficos":
 			Settings.set_value("fullscreen", false)
 			Settings.set_value("resolution", [1280, 720])
 			Settings.set_value("vsync", true)
-		"graficos":
 			Graphics.reset()
 		"sonido":
 			for key in ["volume", "music", "sfx"]:
@@ -289,8 +294,8 @@ func refresh() -> void:
 	mode_buttons.fullscreen.selected = fs
 	var res := Settings.resolution()
 	res_label.text = "%d x %d" % [res.x, res.y]
-	res_prev.disabled = fs
-	res_next.disabled = fs
+	res_prev.disabled = false
+	res_next.disabled = false
 	var vs: bool = Settings.get_value("vsync")
 	vsync_buttons.on.selected = vs
 	vsync_buttons.off.selected = not vs
@@ -401,6 +406,7 @@ func _on_lang(code: String) -> void:
 
 func _on_mode(fullscreen: bool) -> void:
 	Settings.set_value("fullscreen", fullscreen)
+	Graphics.apply_global()   # en pantalla completa la resolución es la del render
 	refresh()
 
 
@@ -409,6 +415,7 @@ func _on_res(dir: int) -> void:
 	var i := list.find(Settings.resolution())
 	i = clampi((i if i >= 0 else 0) + dir, 0, list.size() - 1)
 	Settings.set_value("resolution", [list[i].x, list[i].y])
+	Graphics.apply_global()
 	refresh()
 
 
