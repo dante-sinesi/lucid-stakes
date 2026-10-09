@@ -642,14 +642,20 @@ func _draw_die(i: int) -> void:
 		var arrow := Color(1.0, 0.85, 0.3) if i == selected else Color(0.6, 0.55, 0.72)
 		draw_colored_polygon(PackedVector2Array([c + Vector2(-16, -66), c + Vector2(16, -66), c + Vector2(0, -84)]), arrow)
 		draw_colored_polygon(PackedVector2Array([c + Vector2(-16, 70), c + Vector2(16, 70), c + Vector2(0, 88)]), arrow)
-	var pick_text := str(picks[i])
-	var l: Dictionary = VFont.layout([pick_text])
-	var cs := 4.0
-	var tsize := Vector2(l.size) * cs
 	var col := Color(0.9, 0.85, 1.0)
 	if is_revealed:
 		col = Color(0.6, 1.0, 0.7) if hit else Color(1.0, 0.6, 0.6)
-	Draw.text_cells(self, c + Vector2(-tsize.x * 0.5, 100.0), l.cells, l.size.y, cs, col, 0.0, i, true)
+	if picking or phase == Phase.IDLE:   # mientras se elige, el número de la cara pedida
+		var l: Dictionary = VFont.layout([str(picks[i])])
+		var cs := 4.0
+		var tsize := Vector2(l.size) * cs
+		Draw.text_cells(self, c + Vector2(-tsize.x * 0.5, 100.0), l.cells, l.size.y, cs, col, 0.0, i, true)
+	else:   # después, la predicción como un dadito debajo (verde si acertó, rojo si falló), para no olvidar qué se pidió
+		var m := 40.0
+		var top_left := c + Vector2(-m * 0.5, 96.0)
+		draw_rect(Rect2(top_left, Vector2(m, m)), Color(col, 0.28))
+		draw_rect(Rect2(top_left, Vector2(m, m)), col, false, 2.0)
+		_pips(top_left, Vector2(m, 0), Vector2(0, m), picks[i], col)
 
 
 ## ¿El dado `i` ya muestra su resultado? (los ocultos ruedan; al volver a tirar, los retenidos siguen a la vista)
