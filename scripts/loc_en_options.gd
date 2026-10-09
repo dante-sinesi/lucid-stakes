@@ -38,6 +38,11 @@ Thanks for playing.",
 	"Apretá una tecla...": "Press a key...",
 	"Apretá un botón...": "Press a button...",
 	"Ya la usaba «%s»: se intercambiaron.": "«%s» was already using it: they were swapped.",
+	# dados
+	"Elegí qué cara va a salir en cada dado. Tenés 3 tiradas: los que acierten quedan retenidos.": "Pick which face will come up on each die. You get 3 throws: the dice that hit are held.",
+	"Verdes retenidos. Tirá los demás: te quedan %d tiradas.": "Green dice held. Throw the rest: %d throws left.",
+	"Verdes retenidos. Tirá los demás: última tirada.": "Green dice held. Throw the rest: last throw.",
+	"Se acabaron las tiradas. ¡Gracias por jugar!": "No throws left. Thanks for playing!",
 	# acciones
 	"Movimiento": "Movement",
 	"Acciones": "Actions",

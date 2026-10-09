@@ -501,9 +501,9 @@ func _on_dice_prize(info: Dictionary) -> void:
 	if int(info.get("luz", 0)) > 0:
 		Profile.add_luz(int(info.luz))
 	var weights: Dictionary = info.get("cosmetic", {})
-	if not weights.is_empty():   # el cosmético sale con la rareza que toca (y que todavía no tengas)
-		var rng := RandomNumberGenerator.new()
-		rng.randomize()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	if not weights.is_empty() and rng.randf() < float(info.get("cosmetic_chance", 1.0)):   # el cosmético sale con la rareza que toca (y que todavía no tengas)
 		var c := Cosmetics.roll(weights, Profile.owned_cosmetics(), rng)
 		if c.is_empty():   # ya los tiene todos: claridad grande en su lugar
 			if run != null:

@@ -24,7 +24,7 @@ func _init() -> void:
 	await test_game()
 	test_odds()
 	test_white_dice()
-	test_trap()
+	test_hold()
 	test_cosmetics()
 	await test_main()
 	await test_loading_screen()
@@ -49,18 +49,20 @@ func wait_tower(main: Node) -> void:
 
 
 func test_prizes() -> void:
-	check(DiceGame.prize_for(0).claridad == 0 and DiceGame.prize_for(1).claridad == 2 and DiceGame.prize_for(2).claridad == 8, "premios de 0 a 2 aciertos: nada, 2 y 8 de claridad (sin Luz)")
+	check(DiceGame.prize_for(0).claridad == 0 and DiceGame.prize_for(1).claridad == 0 and DiceGame.prize_for(2).claridad == 8, "premios: con 0 o 1 acierto nada, con 2 +8 de claridad")
 	check(DiceGame.prize_for(0).luz == 0 and DiceGame.prize_for(1).luz == 0 and DiceGame.prize_for(2).luz == 0, "con 2 aciertos o menos no hay Luz")
 	var three := DiceGame.prize_for(3)
 	check(three.claridad == 25 and three.luz == 1 and three.cosmetic.is_empty(), "3 aciertos: claridad y 1 de Luz, sin cosmetico")
 	var four := DiceGame.prize_for(4)
 	check(four.claridad == 80 and four.luz == 2 and four.cosmetic.has("comun") and four.cosmetic.has("raro") and not four.cosmetic.has("epico") and four.cosmetic.comun > four.cosmetic.raro, "4 aciertos: Luz y un cosmetico comun (a veces raro)")
+	check(is_equal_approx(float(four.cosmetic_chance), 0.15), "con 4 aciertos el cosmetico sale con 15 % de chance")
 	var five := DiceGame.prize_for(5)
 	check(five.luz == 5 and five.claridad == 150 and five.cosmetic.has("raro") and five.cosmetic.has("epico") and not five.cosmetic.has("comun") and five.cosmetic.raro > five.cosmetic.epico, "5 aciertos: mas Luz y un cosmetico raro (a veces epico)")
+	check(is_equal_approx(float(five.cosmetic_chance), 1.0), "con 5 aciertos el cosmetico es seguro")
 	check(DiceGame.prize_for(-3).claridad == 0 and DiceGame.prize_for(99).luz == 5, "los aciertos fuera de rango se acotan")
 	for n in 6:
 		check(DiceGame.LINES.has(n) and DiceGame.LINES[n].size() >= 3, "el tabernero tiene varias frases para %d aciertos" % n)
-	check(DiceGame.THROWS == 3 and DiceGame.DICE == 5 and DiceGame.REROLL_COST == 1 and DiceGame.MAX_REROLLS == 2, "3 tiros de 5 dados; volver a tirar cuesta 1 de Luz por dado y hay 2 re-tiradas")
+	check(DiceGame.THROWS == 3 and DiceGame.DICE == 5, "una predicción de 5 dados y 3 tiradas para cumplirla")
 	# copias independientes
 	var a := DiceGame.prize_for(4)
 	a.cosmetic["comun"] = 0.0
@@ -75,7 +77,7 @@ func test_game() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	g.open(rng)
-	check(g.visible and g.phase == DiceGame.Phase.PICK and g.throws_left == 3 and g.can_throw(), "al abrir hay 3 tiros y se puede elegir")
+	check(g.visible and g.phase == DiceGame.Phase.PICK and g.throws_left == 3 and g.can_throw(), "al abrir hay 3 tiradas y se puede elegir")
 	for i in 5:
 		check(g.picks[i] >= 1 and g.picks[i] <= 6, "la cara elegida del dado %d esta entre 1 y 6" % i)
 	g.set_pick(0, 6)
@@ -85,11 +87,12 @@ func test_game() -> void:
 	check(g.picks[0] == 6, "y del 1 al 6")
 	g.set_pick(2, 99)
 	check(g.picks[2] == 6, "la cara se acota a 6")
-	# un tiro: se guardan los resultados y el premio sale por la senal
+	# con una predicción y 3 tiradas (fast: se resuelven todas de golpe): los acertados se retienen y sólo se vuelven a tirar los que fallaron
 	var got := []
 	g.prize.connect(func(info): got.append(info.duplicate()))
 	g.throw_dice()
-	check(got.size() == 1 and g.throws_left == 2 and g.phase == DiceGame.Phase.RESULT, "un tiro gasta un tiro, se resuelve y muestra el resultado")
+	check(got.size() == 1 and g.phase == DiceGame.Phase.RESULT, "se tira, se resuelve y se muestra el resultado (un solo premio por carga)")
+	check(g.throws_left == 0 or g.hits() == 5, "se usan las 3 tiradas, salvo que se acierten los 5 antes")
 	var expected := 0
 	for i in 5:
 		check(g.rolls[i] >= 1 and g.rolls[i] <= 6, "el dado %d salio entre 1 y 6" % i)
@@ -97,21 +100,17 @@ func test_game() -> void:
 			expected += 1
 	check(got[0].hits == expected and g.hits() == expected, "los aciertos cuentan los dados que salieron como se pidio")
 	check(not g.can_throw() and g.throw_button.disabled, "mientras se muestra el resultado no se puede tirar")
-	# Forzar una tirada con 4 y con 5 aciertos
+	# Forzar 4 y 5 aciertos
 	for i in 5:
 		g.rolls[i] = g.picks[i]
 	check(g.hits() == 5, "si todos coinciden son 5 aciertos")
 	g.rolls[4] = g.picks[4] % 6 + 1
 	check(g.hits() == 4, "uno distinto son 4")
-	# Los tres tiros y despues nada mas
+	# no hay una segunda carga de premio ni una cuarta tirada
 	g.phase = DiceGame.Phase.PICK
+	g.throws_left = 0
 	g.throw_dice()
-	g.phase = DiceGame.Phase.PICK
-	g.throw_dice()
-	check(g.throws_left == 0 and got.size() == 3, "sólo hay 3 tiros por carga")
-	g.phase = DiceGame.Phase.PICK
-	g.throw_dice()
-	check(got.size() == 3 and g.throws_left == 0 and not g.can_throw(), "no hay un cuarto tiro")
+	check(got.size() == 1 and not g.can_throw(), "no hay una tirada más después de las 3")
 	# Cerrar
 	var closed_count := [0]
 	g.closed.connect(func(): closed_count[0] += 1)
@@ -120,7 +119,7 @@ func test_game() -> void:
 	check(not g.visible and closed_count[0] == 1, "terminados los tiros se cierra")
 	# Se vuelve a abrir con tiros nuevos
 	g.open(rng)
-	check(g.throws_left == 3 and g.total_claridad == 0 and g.visible, "cada carga empieza con 3 tiros nuevos")
+	check(g.throws_left == 3 and g.total_claridad == 0 and g.visible, "cada carga empieza con una predicción nueva y 3 tiradas")
 	g.queue_free()
 	await process_frame
 	# Modo normal: los dados se revelan de a uno y el cierre espera al tiro en curso
@@ -147,24 +146,31 @@ func test_game() -> void:
 	await process_frame
 
 
-## Probabilidades: acertar los 5 es 1 en 7.776 y el promedio de claridad por tiro es chico.
+## Probabilidades: cada dado se acierta con 1/6 por tirada y, con 3 tiradas y los aciertos retenidos, con 1 - (5/6)^3 = 42 %.
 func test_odds() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2024
 	var counts := [0, 0, 0, 0, 0, 0]
 	var n := 30000
 	var claridad := 0
+	var cosmetics := 0
 	for t in n:
 		var hits := 0
 		for i in 5:
-			if (1 + rng.randi() % 6) == (1 + rng.randi() % 6):
-				hits += 1
+			for throw in 3:
+				if rng.randi() % 6 == 0:
+					hits += 1
+					break
 		counts[hits] += 1
 		claridad += int(DiceGame.prize_for(hits).claridad)
-	check(absf(counts[0] / float(n) - 0.402) < 0.02 and absf(counts[1] / float(n) - 0.402) < 0.02 and absf(counts[2] / float(n) - 0.161) < 0.015, "la distribucion de aciertos es la esperada (%s)" % str(counts))
-	check(counts[5] <= 12, "acertar los 5 es rarisimo (%d en %d tiros)" % [counts[5], n])
+		if hits == 5 or (hits == 4 and rng.randf() < 0.15):
+			cosmetics += 1
+	check(absf(counts[0] / float(n) - 0.065) < 0.01 and absf(counts[2] / float(n) - 0.344) < 0.02 and absf(counts[4] / float(n) - 0.091) < 0.012, "la distribucion de aciertos es la esperada (%s)" % str(counts))
+	check(counts[5] / float(n) > 0.008 and counts[5] / float(n) < 0.02, "acertar los 5 pasa ~1,3 %% de las veces (%d en %d)" % [counts[5], n])
+	var rate := cosmetics / float(n)
+	check(rate > 0.015 and rate < 0.035, "un cosmetico sale en ~2,7 %% de las cargas (%.3f)" % rate)
 	var avg := claridad / float(n)
-	check(avg > 2.0 and avg < 4.5, "el promedio de claridad por tiro es chico (%.2f)" % avg)
+	check(avg > 14.0 and avg < 22.0, "el promedio de claridad por carga es ~18 (%.2f)" % avg)
 
 
 func test_cosmetics() -> void:
@@ -247,6 +253,7 @@ func test_main() -> void:
 	main._on_dice_prize(info2)
 	check(info2.granted == 5 and main.run.dice_claridad == RunState.DICE_CAP, "la claridad de los dados tiene tope por partida")
 	var info3 := DiceGame.prize_for(4)
+	info3["cosmetic_chance"] = 1.0   # (acá se prueba el cosmético: en el juego sale con 15 % de chance)
 	var before: int = main.run.claridad
 	main._on_dice_prize(info3)
 	check(info3.granted == 0 and main.run.claridad == before and Profile.luz() == 3, "con el tope lleno ya no da claridad, pero la Luz se da igual")
@@ -275,6 +282,14 @@ func test_main() -> void:
 	# y en el casino
 	main.enter_casino()
 	check(main.casino.model.get_node_or_null("prenda") != null and main.casino.model.get_node_or_null("gorro") == null, "tambien el del casino")
+	Profile.reset()
+	var no_cosmetic := 0
+	for k in 40:
+		var info4 := DiceGame.prize_for(4)
+		main._on_dice_prize(info4)
+		if not info4.has("cosmetic_name"):
+			no_cosmetic += 1
+	check(no_cosmetic > 20 and no_cosmetic < 40, "con 4 aciertos el cosmetico sale solo a veces (%d de 40 sin cosmetico)" % no_cosmetic)
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
@@ -436,10 +451,9 @@ func test_cosmetics_screen() -> void:
 	Profile.reset()
 
 
-func test_trap() -> void:
+func test_hold() -> void:
 	Profile.path = "user://test_profile.json"
 	Profile.reset()
-	Profile.add_luz(30)
 	var g := DiceGame.new()
 	root.add_child(g)
 	var rng := RandomNumberGenerator.new()
@@ -448,112 +462,79 @@ func test_trap() -> void:
 	var got := []
 	g.prize.connect(func(info): got.append(info.duplicate(true)))
 	g.picks = [1, 2, 3, 4, 5]
+	g.throw_dice()
+	check(g.phase == DiceGame.Phase.ROLLING and g.throws_left == 2 and g.unrevealed.size() == 5 and not g.reroll_round, "la primera tirada rueda los 5 dados")
+	# se fuerza el resultado: acierta el 1 y el 2
 	g.rolls = [1, 2, 6, 6, 6]
-	g.revealed = 5
-	g.throws_left = 2
-	g.phase = DiceGame.Phase.REVEAL
-	g._after_reveal()
-	check(g.phase == DiceGame.Phase.FIX and g.misses() == [2, 3, 4] and g.hits() == 2, "con Luz, tras ver el tiro se puede elegir qué volver a tirar")
-	check(g.marked == [false, false, true, true, true] and g.marks_count() == 3 and g.reroll_cost() == 3 and g.rerolls_left == DiceGame.MAX_REROLLS, "por defecto se marcan todos los que fallaron (1 de Luz cada uno)")
-	check(g.throw_button.text.contains("Tirar de nuevo") and g.throw_button.text.contains("3") and not g.throw_button.disabled and g.collect_button.visible, "el boton pasa a Tirar de nuevo con su costo y aparece Cobrar")
-	check(g.toggle_mark(3) and not g.marked[3] and g.reroll_cost() == 2, "tocar un dado marcado lo retiene (cuesta menos volver a tirar)")
-	check(not g.toggle_mark(0) and not g.marked[0], "un dado que ya acerto no se marca: queda retenido solo")
-	check(g.can_reroll() and g.reroll(), "se vuelve a tirar")
-	check(Profile.luz() == 28 and g.luz_spent == 2 and g.rerolls_left == 1 and g.phase == DiceGame.Phase.ROLLING and g.reroll_round, "se pagan 2 de Luz (1 por dado) y queda una re-tirada")
-	check(g.unrevealed == [2, 4] and g.rolls[0] == 1 and g.rolls[1] == 2 and g.rolls[3] == 6, "sólo ruedan los marcados: los demas quedan como estaban")
-	check(g._is_revealed(0) and g._is_revealed(3) and not g._is_revealed(2) and not g._is_revealed(4), "mientras ruedan, los retenidos siguen a la vista y los marcados no")
-	# se fuerza el resultado de los dos que volvieron a rodar: uno acierta y el otro no (el dado 4 tiene 5 pedido)
-	g.rolls[2] = 3
-	g.rolls[4] = 1
 	g._phase_t = DiceGame.ROLL_TIME
 	g._process(0.0)
-	check(g.phase == DiceGame.Phase.REVEAL, "después de rodar se revelan de a uno")
-	g._phase_t = DiceGame.REVEAL_STEP * 3.0
+	g._phase_t = DiceGame.REVEAL_STEP * 6.0
 	g._process(0.0)
-	check(g.unrevealed.is_empty() and g.revealed == 5, "se revelan los dos")
-	g._phase_t = DiceGame.REVEAL_STEP * 2.5
-	g._process(0.0)
-	check(g.phase == DiceGame.Phase.FIX and g.hits() == 3 and g.marked == [false, false, false, true, true], "si todavia fallan y quedan re-tiradas y Luz, se vuelve a elegir (por defecto los que fallaron)")
-	check(g.reroll() and Profile.luz() == 26 and g.rerolls_left == 0 and g.luz_spent == 4, "la segunda re-tirada cuesta 2 mas y es la ultima")
-	g.rolls[3] = 4
-	g.rolls[4] = 5
+	check(g.phase == DiceGame.Phase.HOLD and g.hits() == 2 and g.misses() == [2, 3, 4], "con tiradas por delante, los acertados quedan retenidos y se espera la próxima tirada")
+	check(g.throw_button.text.contains("Tirar de nuevo") and not g.throw_button.disabled and g.can_throw(), "el botón pasa a Tirar de nuevo")
+	check(g.message.contains("2 tiradas") and g.message.contains("Verdes"), "el mensaje explica que los verdes quedan retenidos")
+	g.picks = [1, 2, 3, 4, 5]
+	g.throw_dice()
+	check(g.phase == DiceGame.Phase.ROLLING and g.throws_left == 1 and g.reroll_round, "la segunda tirada gasta una tirada")
+	check(g.unrevealed == [2, 3, 4] and g.rolls[0] == 1 and g.rolls[1] == 2, "sólo ruedan los que fallaron: los acertados quedan como estaban")
+	check(g._is_revealed(0) and g._is_revealed(1) and not g._is_revealed(2) and not g._is_revealed(4), "mientras ruedan, los retenidos siguen a la vista y los demás no")
+	# resultado forzado: acierta el 3
+	g.rolls = [1, 2, 3, 6, 6]
 	g._phase_t = DiceGame.ROLL_TIME
 	g._process(0.0)
-	g._phase_t = DiceGame.REVEAL_STEP * 3.0
+	g._phase_t = DiceGame.REVEAL_STEP * 5.0
 	g._process(0.0)
-	g._phase_t = DiceGame.REVEAL_STEP * 2.5
-	g._process(0.0)
-	check(g.phase == DiceGame.Phase.RESULT and got.size() == 1 and got[0].hits == 5 and got[0].luz_spent == 4 and got[0].luz == 5, "con los cinco acertados se cobra solo el premio de los 5 aciertos")
-	# sin re-tiradas no hay mas eleccion: se cobra
-	Profile.reset()
-	Profile.add_luz(30)
-	g.open(rng)
-	g.picks = [1, 2, 3, 4, 5]
-	g.rolls = [6, 6, 6, 6, 6]
-	g.revealed = 5
-	g.rerolls_left = 0
-	g.phase = DiceGame.Phase.REVEAL
-	got.clear()
-	g._after_reveal()
-	check(g.phase == DiceGame.Phase.RESULT and got.size() == 1, "sin re-tiradas disponibles se cobra enseguida")
-	# sin Luz suficiente: no se puede marcar ni volver a tirar, y se cobra solo
-	Profile.reset()
-	g.open(rng)
-	g.picks = [1, 2, 3, 4, 5]
-	g.rolls = [6, 6, 6, 6, 6]
-	g.revealed = 5
-	g.phase = DiceGame.Phase.REVEAL
-	got.clear()
-	g._after_reveal()
-	check(g.phase == DiceGame.Phase.RESULT and got.size() == 1, "sin Luz se cobra enseguida")
-	# con poca Luz, por defecto se marcan sólo los que alcanzan
-	Profile.add_luz(2)
-	g.open(rng)
-	g.picks = [1, 2, 3, 4, 5]
-	g.rolls = [6, 6, 6, 6, 6]
-	g.revealed = 5
-	g.phase = DiceGame.Phase.REVEAL
-	g._after_reveal()
-	check(g.phase == DiceGame.Phase.FIX and g.marks_count() == 2 and g.reroll_cost() == 2, "con 2 de Luz se marcan 2 dados (los que alcanzan)")
-	var third := g.misses()[2]
-	check(not g.toggle_mark(third) and not g.marked[third], "no se puede marcar uno más que la Luz")
-	# teclado: A y D eligen un dado que falló, W lo marca o lo suelta, Enter vuelve a tirar, C cobra
+	check(g.phase == DiceGame.Phase.HOLD and g.hits() == 3 and g.throws_left == 1 and g.message.contains("última"), "queda una tirada: el aviso dice que es la última")
+	# teclado: Enter tira de nuevo
 	var k := InputEventKey.new()
 	k.pressed = true
-	g.selected = 0
-	k.keycode = KEY_D
-	g._unhandled_input(k)
-	check(g.selected in g.misses(), "el teclado elige entre los dados que fallaron")
-	g.selected = g.misses()[0]
-	var was: bool = g.marked[g.selected]
-	k.keycode = KEY_W
-	g._unhandled_input(k)
-	check(g.marked[g.selected] != was, "W marca o suelta el dado elegido")
 	k.keycode = KEY_ENTER
-	var luz_before := Profile.luz()
 	g._unhandled_input(k)
-	check(g.phase == DiceGame.Phase.ROLLING and Profile.luz() < luz_before, "Enter vuelve a tirar los marcados")
-	# C cobra; y el boton Empezar durante la eleccion cobra lo que hay
-	Profile.add_luz(10)
+	check(g.phase == DiceGame.Phase.ROLLING and g.throws_left == 0, "Enter tira de nuevo los que fallaron")
+	g.rolls = [1, 2, 3, 6, 6]   # no aciertan
+	g._phase_t = DiceGame.ROLL_TIME
+	g._process(0.0)
+	g._phase_t = DiceGame.REVEAL_STEP * 4.0
+	g._process(0.0)
+	check(g.phase == DiceGame.Phase.RESULT and got.size() == 1 and got[0].hits == 3 and got[0].luz == 1, "sin tiradas se cobra solo con lo que haya (3 aciertos)")
+	g._phase_t = DiceGame.RESULT_TIME
+	g._process(0.0)
+	check(g.phase == DiceGame.Phase.DONE and not g.can_throw() and not g.throw_button.visible, "después del premio se terminó: una sola predicción por carga")
+	# si se acierta todo antes, se cobra enseguida y quedan tiradas sin usar
 	g.open(rng)
 	g.picks = [1, 2, 3, 4, 5]
-	g.rolls = [6, 6, 6, 6, 6]
-	g.revealed = 5
-	g.phase = DiceGame.Phase.REVEAL
-	g._after_reveal()
+	g.throw_dice()
+	g.rolls = [1, 2, 3, 4, 5]
 	got.clear()
-	k.keycode = KEY_C
-	g._unhandled_input(k)
-	check(g.phase == DiceGame.Phase.RESULT and got.size() == 1 and got[0].hits == 0, "C cobra lo que hay")
+	g._phase_t = DiceGame.ROLL_TIME
+	g._process(0.0)
+	g._phase_t = DiceGame.REVEAL_STEP * 6.0
+	g._process(0.0)
+	check(g.phase == DiceGame.Phase.RESULT and got.size() == 1 and got[0].hits == 5 and g.throws_left == 2, "si se aciertan los 5 se cobra enseguida")
+	# pedir Empezar mientras se espera la próxima tirada cobra lo que hay
 	g.open(rng)
 	g.picks = [1, 2, 3, 4, 5]
+	g.throw_dice()
 	g.rolls = [6, 6, 6, 6, 6]
-	g.revealed = 5
-	g.phase = DiceGame.Phase.REVEAL
-	g._after_reveal()
+	g._phase_t = DiceGame.ROLL_TIME
+	g._process(0.0)
+	g._phase_t = DiceGame.REVEAL_STEP * 6.0
+	g._process(0.0)
+	check(g.phase == DiceGame.Phase.HOLD and g.hits() == 0, "con 0 aciertos también se espera la próxima tirada")
 	got.clear()
 	g.request_close()
-	check(got.size() == 1 and g.closing, "si pedis empezar mientras elegis, se cobra y despues se cierra")
+	check(got.size() == 1 and g.closing, "si pedís empezar mientras esperás la próxima tirada, se cobra y después se cierra")
+	# pedir Empezar mientras ruedan: al terminar de revelar se cobra directo (no queda esperando)
+	g.open(rng)
+	g.picks = [1, 2, 3, 4, 5]
+	g.throw_dice()
+	g.rolls = [6, 6, 6, 6, 6]
+	g.request_close()
+	g._phase_t = DiceGame.ROLL_TIME
+	g._process(0.0)
+	g._phase_t = DiceGame.REVEAL_STEP * 6.0
+	g._process(0.0)
+	check(g.phase != DiceGame.Phase.HOLD, "si ya se pidió cerrar, la tirada en curso se cobra sin esperar otra")
 	g.queue_free()
 	Profile.reset()
 

@@ -28,7 +28,7 @@ const Sfx := preload("res://scripts/sfx.gd")
 signal prize(info: Dictionary)   ## el tiro terminó: {hits, claridad, luz, cosmetic}; quien lo recibe puede agregar `granted` (lo que de verdad se dio) y `cosmetic_name`
 signal closed
 
-const THROWS := 3
+const THROWS := 3            # tiradas para cumplir la predicción: los dados acertados quedan retenidos y sólo se vuelven a tirar los que fallaron
 const DICE := 5
 const ROLL_TIME := 1.5       # segundos que ruedan los dados antes de empezar a mostrarse
 const REVEAL_STEP := 0.6     # segundos entre un dado y el siguiente
@@ -37,22 +37,18 @@ const DIE := 30.0            # lado de un dado, en píxeles
 const SLOT := 150.0          # separación entre dados
 const SHIFT := 110.0         # el juego se corre a la izquierda para dejar lugar al botón "Empezar" a la derecha
 
-enum Phase { IDLE, PICK, ROLLING, REVEAL, FIX, RESULT, DONE }   # FIX: se pueden retener los dados y volver a tirar los que fallaron
+enum Phase { IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE }   # HOLD: los dados acertados quedan retenidos y se espera la próxima tirada de los que fallaron
 
-## Premios por cantidad de aciertos.
-## `cosmetic`: las probabilidades de cada rareza del cosmético que se da ({} = ninguno).
+## Premios por cantidad de aciertos al terminar las tiradas (una sola predicción y hasta THROWS tiradas para cumplirla).
+## `cosmetic`: las probabilidades de cada rareza del cosmético que se da ({} = ninguno); `cosmetic_chance`: con qué probabilidad se da (1 = siempre).
 const PRIZES := {
 	0: {"claridad": 0, "luz": 0, "cosmetic": {}},
-	1: {"claridad": 2, "luz": 0, "cosmetic": {}},
+	1: {"claridad": 0, "luz": 0, "cosmetic": {}},
 	2: {"claridad": 8, "luz": 0, "cosmetic": {}},
 	3: {"claridad": 25, "luz": 1, "cosmetic": {}},
-	4: {"claridad": 80, "luz": 2, "cosmetic": {"comun": 0.85, "raro": 0.15}},
-	5: {"claridad": 150, "luz": 5, "cosmetic": {"raro": 0.7, "epico": 0.3}},
+	4: {"claridad": 80, "luz": 2, "cosmetic": {"comun": 0.85, "raro": 0.15}, "cosmetic_chance": 0.15},
+	5: {"claridad": 150, "luz": 5, "cosmetic": {"raro": 0.7, "epico": 0.3}, "cosmetic_chance": 1.0},
 }
-## Volver a tirar (con Luz): después de ver un tiro, los dados que acertaron quedan retenidos y de los que fallaron se elige cuáles volver a
-## tirar; cada dado que se vuelve a tirar cuesta REROLL_COST de Luz y acierta con probabilidad 1/6 (no hay garantía). Hasta MAX_REROLLS veces por tiro.
-const REROLL_COST := 1
-const MAX_REROLLS := 2
 
 ## Lo que dice el tabernero según los aciertos.
 const LINES := {
@@ -88,15 +84,11 @@ var status_label: Control
 var message_label: Control
 var throw_button: Button
 var unrevealed: Array[int] = []    # los dados que todavía no se revelaron, en el orden en que se van a mostrar
-var marked: Array[bool] = [false, false, false, false, false]   # los que se van a volver a tirar (sólo entre los que fallaron)
-var rerolls_left := 0          # cuántas veces más se puede volver a tirar en este tiro
 var reroll_round := false      # se está volviendo a tirar (los dados retenidos siguen a la vista)
-var luz_spent := 0             # Luz gastada en volver a tirar en este tiro
-var collect_button: Button
 var _round_total := 0          # cuántos dados se revelan en esta ronda (el primer tiro: 5)
 var _round_done := 0
 var _reveal_t := [-99.0, -99.0, -99.0, -99.0, -99.0]   # cuándo se reveló cada dado (para su saltito)
-var luz_counter                # la Luz que tenés (para saber si alcanza para volver a tirar)
+var luz_counter                # la Luz que tenés
 var selected := 0              # dado elegido con el teclado
 var closing := false
 var tower_ready := false       # la torre ya se generó: se puede empezar
@@ -183,11 +175,6 @@ func _init() -> void:
 	buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button_row.add_child(buttons)
 	buttons.add_child(throw_button)
-	collect_button = UI.button("Cobrar", false, 3.2, 22)
-	collect_button.name = "cobrar"
-	collect_button.visible = false
-	collect_button.pressed.connect(collect)
-	buttons.add_child(collect_button)
 	add_child(button_row)
 	# "Empezar", a la derecha: gris y con una espiral de carga hasta que la torre está lista
 	var start_box := CenterContainer.new()
@@ -222,7 +209,7 @@ func set_status(text: String) -> void:
 	status_label.text = text
 
 
-## Abre el minijuego con 3 tiros nuevos.
+## Abre el minijuego: una predicción nueva y 3 tiradas para cumplirla.
 func open(random: RandomNumberGenerator = null) -> void:
 	if random != null:
 		rng = random
@@ -240,7 +227,7 @@ func open(random: RandomNumberGenerator = null) -> void:
 	last_hits = 0
 	picks = [1 + rng.randi() % 6, 1 + rng.randi() % 6, 1 + rng.randi() % 6, 1 + rng.randi() % 6, 1 + rng.randi() % 6]
 	selected = 0
-	message = "Elegí qué cara va a salir en cada dado."
+	message = "Elegí qué cara va a salir en cada dado. Tenés 3 tiradas: los que acierten quedan retenidos."
 	message_label.text = message
 	_show_prize({})
 	phase = Phase.PICK
@@ -257,13 +244,10 @@ func set_ready(ready: bool) -> void:
 		request_close()
 
 
-## Deja el tiro como recién empezado: nada retenido, ningún dado oculto, todas las re-tiradas disponibles.
+## Deja la ronda como recién empezada: ningún dado oculto ni retenido.
 func _reset_round() -> void:
 	unrevealed.clear()
-	marked = [false, false, false, false, false]
-	rerolls_left = MAX_REROLLS
 	reroll_round = false
-	luz_spent = 0
 	_round_total = 0
 	_round_done = 0
 	_reveal_t = [-99.0, -99.0, -99.0, -99.0, -99.0]
@@ -272,7 +256,7 @@ func _reset_round() -> void:
 ## Pide cerrar: si hay un tiro en curso se espera a que termine (unos segundos como mucho); si no, se cierra enseguida.
 func request_close() -> void:
 	closing = true
-	if phase == Phase.FIX:   # si estaba eligiendo qué volver a tirar, se cobra lo que hay
+	if phase == Phase.HOLD:   # si esperaba la próxima tirada, se cobra lo que hay
 		_finish_throw()
 	_try_close()
 
@@ -299,30 +283,42 @@ func cycle_pick(i: int, dir: int) -> void:
 
 
 func can_throw() -> bool:
-	return phase == Phase.PICK and throws_left > 0
+	return (phase == Phase.PICK or phase == Phase.HOLD) and throws_left > 0
 
 
-## Tira los 5 dados. Los resultados salen al azar; se muestran de a uno.
+## Tira los dados: la primera vez los 5 y después sólo los que fallaron (los acertados quedan retenidos). Los resultados salen al azar
+## y se muestran de a uno.
 func throw_dice() -> void:
 	if not can_throw():
 		return
+	var first := phase == Phase.PICK
 	throws_left -= 1
 	Sfx.play("dice")
+	var again: Array[int] = []
 	for i in DICE:
-		rolls[i] = 1 + rng.randi() % 6
-	_reset_round()
-	unrevealed.assign([0, 1, 2, 3, 4])
-	_round_total = DICE
-	revealed = 0
+		if first or rolls[i] != picks[i]:
+			rolls[i] = 1 + rng.randi() % 6
+			again.append(i)
+	unrevealed = again
+	_round_total = again.size()
+	_round_done = 0
+	reroll_round = not first
+	if first:
+		revealed = 0
 	phase = Phase.ROLLING
 	_phase_t = 0.0
 	message = ""
 	message_label.text = ""
 	_show_prize({})
 	_update_button()
-	if fast:
+	if fast:   # (pruebas) se resuelven todas las tiradas de golpe
 		unrevealed.clear()
 		revealed = DICE
+		while hits() < DICE and throws_left > 0:
+			throws_left -= 1
+			for i in DICE:
+				if rolls[i] != picks[i]:
+					rolls[i] = 1 + rng.randi() % 6
 		_finish_throw()
 
 
@@ -340,25 +336,7 @@ static func prize_for(n: int) -> Dictionary:
 	return (PRIZES[clampi(n, 0, DICE)] as Dictionary).duplicate(true)
 
 
-## Cuánto cuesta volver a tirar los dados marcados.
-func reroll_cost() -> int:
-	return marks_count() * REROLL_COST
-
-
-func marks_count() -> int:
-	var n := 0
-	for m in marked:
-		if m:
-			n += 1
-	return n
-
-
-## ¿Se puede volver a tirar ahora? (hay una fase de elegir, quedan re-tiradas, hay algo marcado y alcanza la Luz)
-func can_reroll() -> bool:
-	return phase == Phase.FIX and rerolls_left > 0 and marks_count() > 0 and Profile.luz() >= reroll_cost()
-
-
-## Los dados que fallaron (los que se pueden volver a tirar).
+## Los dados que fallaron (los que se vuelven a tirar).
 func misses() -> Array[int]:
 	var out: Array[int] = []
 	for i in DICE:
@@ -367,84 +345,21 @@ func misses() -> Array[int]:
 	return out
 
 
-## Marca (o desmarca) un dado que falló para volver a tirarlo; el resto queda retenido. Sólo se marcan los que alcanza la Luz.
-func toggle_mark(i: int) -> bool:
-	if phase != Phase.FIX or i < 0 or i >= DICE or rolls[i] == picks[i]:
-		return false
-	if marked[i]:
-		marked[i] = false
-	elif (marks_count() + 1) * REROLL_COST <= Profile.luz():
-		marked[i] = true
-	else:
-		Sfx.play("miss")
-		return false
-	Sfx.play("chip")
-	_refresh_fix_message()
-	_update_button()
-	return true
-
-
-## Vuelve a tirar los dados marcados: paga la Luz y esos dados ruedan de nuevo (los demás quedan quietos). Devuelve false si no se puede.
-func reroll() -> bool:
-	if not can_reroll():
-		return false
-	var cost := reroll_cost()
-	Profile.add_luz(-cost)
-	luz_spent += cost
-	luz_counter.value = Profile.luz()
-	Sfx.play("coin")
-	var again: Array[int] = []
-	for i in DICE:
-		if marked[i]:
-			rolls[i] = 1 + rng.randi() % 6
-			again.append(i)
-	unrevealed = again
-	_round_total = again.size()
-	_round_done = 0
-	marked = [false, false, false, false, false]
-	rerolls_left -= 1
-	reroll_round = true
-	phase = Phase.ROLLING
-	_phase_t = 0.0
-	message = ""
-	message_label.text = ""
-	Sfx.play("dice")
-	_update_button()
-	return true
-
-
-func _refresh_fix_message() -> void:
-	message = Loc.f("Elegí qué dados volver a tirar (%d Luz cada uno). Quedan %d.", [REROLL_COST, rerolls_left])
-	message_label.text = message
-
-
-## Cobra el tiro tal como quedó.
-func collect() -> void:
-	if phase == Phase.FIX:
-		_finish_throw()
-
-
 func _on_main_button() -> void:
-	if phase == Phase.FIX:
-		reroll()
-	else:
-		throw_dice()
+	throw_dice()
 
 
-## Terminó de revelarse el tiro: si hay dados que fallaron, quedan re-tiradas y alcanza la Luz, se espera a que decidas (por defecto se marcan
-## todos los que fallaron, hasta donde alcance la Luz); si no, se cobra.
+## Terminó de revelarse la tirada: si hay dados que fallaron y quedan tiradas, los acertados quedan retenidos y se espera la próxima tirada; si no,
+## se cobra.
 func _after_reveal() -> void:
 	revealed = DICE - unrevealed.size()
-	if hits() < DICE and rerolls_left > 0 and Profile.luz() >= REROLL_COST and not fast:
-		phase = Phase.FIX
+	if hits() < DICE and throws_left > 0 and not fast and not closing:
+		phase = Phase.HOLD
 		_phase_t = 0.0
 		var m := misses()
-		marked = [false, false, false, false, false]
-		var afford := mini(m.size(), Profile.luz() / REROLL_COST)
-		for k in afford:
-			marked[m[k]] = true
 		selected = m[0]
-		_refresh_fix_message()
+		message = Loc.f("Verdes retenidos. Tirá los demás: te quedan %d tiradas.", [throws_left]) if throws_left > 1 else Loc.t("Verdes retenidos. Tirá los demás: última tirada.")
+		message_label.text = message
 		_update_button()
 	else:
 		_finish_throw()
@@ -459,7 +374,6 @@ func _finish_throw() -> void:
 	last_hits = hits()
 	prize_info = prize_for(last_hits)
 	prize_info["hits"] = last_hits
-	prize_info["luz_spent"] = luz_spent
 	prize.emit(prize_info)   # el juego lo aplica y puede completar `granted` y `cosmetic_name`
 	var granted: int = int(prize_info.get("granted", prize_info.claridad))
 	total_claridad += granted
@@ -488,14 +402,9 @@ func _show_prize(info: Dictionary) -> void:
 
 
 func _update_button() -> void:
-	var fixing := phase == Phase.FIX
-	if fixing:
-		throw_button.set_label(Loc.f("Tirar de nuevo (−%d Luz)", [reroll_cost()]) if marks_count() > 0 else Loc.t("Tirar de nuevo"))
-	else:
-		throw_button.set_label("Tirar")
-	throw_button.disabled = not (can_throw() or (fixing and can_reroll()))
-	throw_button.visible = throws_left > 0 or phase != Phase.DONE
-	collect_button.visible = fixing
+	throw_button.set_label(Loc.t("Tirar de nuevo") if phase == Phase.HOLD else Loc.t("Tirar"))
+	throw_button.disabled = not can_throw()
+	throw_button.visible = phase != Phase.DONE and phase != Phase.RESULT
 
 
 func _process(delta: float) -> void:
@@ -523,15 +432,9 @@ func _process(delta: float) -> void:
 				_after_reveal()
 		Phase.RESULT:
 			if _phase_t >= RESULT_TIME:
-				if throws_left > 0:
-					phase = Phase.PICK
-					message = Loc.f("Elegí otra vez. Quedan %d tiro%s.", [throws_left, "" if throws_left == 1 else "s"])
-					message_label.text = message
-					_show_prize({})
-				else:
-					phase = Phase.DONE
-					message = "Se acabaron los tiros. ¡Gracias por jugar!"
-					message_label.text = message
+				phase = Phase.DONE
+				message = "Se acabaron las tiradas. ¡Gracias por jugar!"
+				message_label.text = message
 				_phase_t = 0.0
 				_update_button()
 		_:
@@ -560,13 +463,6 @@ func _hit_test(p: Vector2) -> Vector2i:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if phase == Phase.FIX and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var fix_hit := _hit_test(event.position)
-		if fix_hit.x >= 0:
-			selected = fix_hit.x
-			toggle_mark(fix_hit.x)
-			accept_event()
-		return
 	if phase != Phase.PICK or not (event is InputEventMouseButton) or not event.pressed:
 		return
 	var hit := _hit_test(event.position)
@@ -588,24 +484,10 @@ func _gui_input(event: InputEvent) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
-	if phase == Phase.FIX:   # volver a tirar: A y D eligen un dado que falló, W o Espacio lo marcan, Enter vuelve a tirar los marcados, C cobra
-		var m := misses()
+	if phase == Phase.HOLD:   # esperando la próxima tirada: Enter o Espacio tiran los dados que fallaron
 		match event.keycode:
-			KEY_LEFT, KEY_A:
-				if not m.is_empty():
-					selected = m[(maxi(m.find(selected), 0) + m.size() - 1) % m.size()]
-			KEY_RIGHT, KEY_D:
-				if not m.is_empty():
-					selected = m[(maxi(m.find(selected), 0) + 1) % m.size()]
-			KEY_UP, KEY_W, KEY_SPACE:
-				toggle_mark(selected)
-			KEY_ENTER, KEY_KP_ENTER:
-				if can_reroll():
-					reroll()
-				else:
-					collect()
-			KEY_C:
-				collect()
+			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+				throw_dice()
 			KEY_E:
 				if tower_ready:
 					request_close()
@@ -715,8 +597,6 @@ func _draw_die(i: int) -> void:
 	var tint := Color(1, 1, 1)
 	if is_revealed:
 		tint = Color(0.62, 1.0, 0.7) if hit else Color(1.0, 0.62, 0.62)
-		if phase == Phase.FIX and not hit and not marked[i]:
-			tint = Color(0.72, 0.8, 1.0)   # retenido (no se vuelve a tirar): azulado
 	elif picking and i == selected:
 		tint = Color(1.0, 0.97, 0.78)
 	var squash: float = mo.squash
@@ -751,22 +631,12 @@ func _draw_die(i: int) -> void:
 			var sp := Vector2(cos(ang) * d, sin(ang) * d * 0.7 - 14.0)
 			var al: float = 1.0 - float(mo.age) / 0.8
 			draw_rect(Rect2(c + sp - Vector2(3, 3), Vector2(6, 6)), Color(1.0, 0.92, 0.45, al))
-	# Volver a tirar: los dados que fallaron muestran si se vuelven a tirar (cuánta Luz cuesta, con el sol) o si quedan retenidos (un candado);
-	# el elegido lleva una flecha
-	if phase == Phase.FIX and not hit:
-		if marked[i]:
-			var cost_text := str(REROLL_COST)
-			var cl: Dictionary = VFont.layout([cost_text])
-			var cp := c + Vector2(-float(cl.size.x) * 3.0 * 0.5 - 12.0, -118.0)
-			Draw.text_cells(self, cp, cl.cells, cl.size.y, 3.0, Color(1.0, 0.95, 0.7), 0.0, i, true)
-			LuzIcon.draw_sun(self, c + Vector2(float(cl.size.x) * 3.0 * 0.5 + 12.0, -104.0), 2.2, _t)
-		else:   # retenido: un candado
-			var lc := c + Vector2(0, -108.0)
-			draw_rect(Rect2(lc + Vector2(-11, -2), Vector2(22, 16)), Color(0.72, 0.8, 1.0))
-			draw_rect(Rect2(lc + Vector2(-11, -2), Vector2(22, 4)), Color(0.85, 0.9, 1.0))
-			draw_polyline(PackedVector2Array([lc + Vector2(-7, -2), lc + Vector2(-7, -12), lc + Vector2(7, -12), lc + Vector2(7, -2)]), Color(0.72, 0.8, 1.0), 3.0)
-		var arrow2 := Color(1.0, 0.85, 0.3) if i == selected else Color(0.6, 0.55, 0.72)
-		draw_colored_polygon(PackedVector2Array([c + Vector2(-14, -80), c + Vector2(14, -80), c + Vector2(0, -66)]), arrow2)
+	# Retenido: los dados acertados llevan un candado mientras se espera la próxima tirada
+	if phase == Phase.HOLD and hit:
+		var lc := c + Vector2(0, -108.0)
+		draw_rect(Rect2(lc + Vector2(-11, -2), Vector2(22, 16)), Color(0.6, 1.0, 0.7))
+		draw_rect(Rect2(lc + Vector2(-11, -2), Vector2(22, 4)), Color(0.8, 1.0, 0.85))
+		draw_polyline(PackedVector2Array([lc + Vector2(-7, -2), lc + Vector2(-7, -12), lc + Vector2(7, -12), lc + Vector2(7, -2)]), Color(0.6, 1.0, 0.7), 3.0)
 	# Flechas de elegir y lo pedido
 	if picking:
 		var arrow := Color(1.0, 0.85, 0.3) if i == selected else Color(0.6, 0.55, 0.72)
@@ -786,7 +656,7 @@ func _draw_die(i: int) -> void:
 func _is_revealed(i: int) -> bool:
 	if unrevealed.has(i):
 		return false
-	return phase == Phase.REVEAL or phase == Phase.FIX or phase == Phase.RESULT or phase == Phase.DONE or (phase == Phase.ROLLING and reroll_round)
+	return phase == Phase.REVEAL or phase == Phase.HOLD or phase == Phase.RESULT or phase == Phase.DONE or (phase == Phase.ROLLING and reroll_round)
 
 
 ## Los puntos de una cara: `origin` es una esquina de la cara y `u`, `v` sus dos ejes (hacia el otro lado).
