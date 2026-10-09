@@ -16,8 +16,19 @@ const TowerLogic := preload("res://scripts/tower_logic.gd")
 const MODES := [TowerLogic.Mode.MOVE, TowerLogic.Mode.GRAB, TowerLogic.Mode.HANG]
 
 
+## Tiempo total (µs) que se pasó resolviendo (para medir cuánto de la generación es del solucionador; ver tests/bench).
+static var total_usec := 0
+
+
 ## Devuelve {status: "solved"|"unsolvable"|"limit", moves, path: Array[Dictionary(dir, mode)], states, state}.
 static func solve(start, target_y: int, opts: Dictionary = {}) -> Dictionary:
+	var t0 := Time.get_ticks_usec()
+	var res := _solve(start, target_y, opts)
+	total_usec += Time.get_ticks_usec() - t0
+	return res
+
+
+static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 	var max_states: int = opts.get("max_states", 300000)
 	var use_collapse: bool = opts.get("use_collapse", false)
 	var use_h: bool = opts.get("heuristic", true)
@@ -97,6 +108,7 @@ static func solve(start, target_y: int, opts: Dictionary = {}) -> Dictionary:
 static func _prepare(start, target_y: int, use_collapse: bool):
 	var s = start.clone()
 	s.won = false
+	s.lazy_settle = true   # los estados del solucionador sólo cambian bloques a través de la lógica: se evita revisar el apoyo de todos en cada paso
 	s.track_purify = false  # la claridad no cambia la dinámica (sí desactivar bombas, que se sigue haciendo)
 	s.goal_y = target_y
 	if target_y != start.goal_y:

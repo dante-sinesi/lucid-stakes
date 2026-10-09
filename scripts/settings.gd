@@ -8,6 +8,8 @@ const AudioHub := preload("res://scripts/audio_hub.gd")
 ## Resoluciones de ventana que se ofrecen (se filtran por el tamaño de la pantalla del jugador).
 const RESOLUTIONS: Array[Vector2i] = [Vector2i(854, 480), Vector2i(960, 540), Vector2i(1024, 576), Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
 const VOLUME_STEPS := 10
+## Tamaños de interfaz que se ofrecen (porcentaje; 100 es el de siempre). Escala todo lo 2D: menús, HUD y pantallas de juego.
+const UI_SCALES: Array[int] = [80, 90, 100, 110, 125]
 
 static var path := "user://settings.json"
 static var data := {}
@@ -29,6 +31,7 @@ static func defaults() -> Dictionary:
 		"fullscreen": false,
 		"resolution": [1280, 720],
 		"vsync": true,
+		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
 		"volume": VOLUME_STEPS,   # en pasos de 0 a VOLUME_STEPS
 		"music": VOLUME_STEPS,    # música (se multiplica por el volumen general)
 		"sfx": VOLUME_STEPS,      # efectos de sonido
@@ -57,6 +60,8 @@ static func _sanitize() -> void:
 		data.lang = "es"
 	data.fullscreen = bool(data.fullscreen)
 	data.vsync = bool(data.vsync)
+	var us := int(data.ui_scale)
+	data.ui_scale = us if UI_SCALES.has(us) else 100
 	data.volume = clampi(int(data.volume), 0, VOLUME_STEPS)
 	data.music = clampi(int(data.music), 0, VOLUME_STEPS)
 	data.sfx = clampi(int(data.sfx), 0, VOLUME_STEPS)
@@ -97,6 +102,8 @@ static func set_value(key: String, value) -> void:
 			apply("audio")
 		"vsync":
 			apply("vsync")
+		"ui_scale":
+			apply("ui")
 		_:
 			apply("window")
 
@@ -150,6 +157,10 @@ static func apply(what := "all") -> void:
 		_set_bus("Master", vol)
 		_set_bus(AudioHub.BUS_MUSIC, float(int(data.music)) / float(VOLUME_STEPS))
 		_set_bus(AudioHub.BUS_SFX, float(int(data.sfx)) / float(VOLUME_STEPS))
+	if what == "all" or what == "ui":
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree != null:
+			tree.root.content_scale_factor = float(int(data.ui_scale)) / 100.0
 	if what == "all" or what == "window":
 		window_applies += 1
 	if DisplayServer.get_name() == "headless":

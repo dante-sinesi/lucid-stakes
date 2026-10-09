@@ -224,6 +224,8 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 	# Durante la generación la simulación no gana por llegar alto: un camino puede pasar por encima de la altura final
 	# (por escalones sobrantes) y volver a bajar a la plataforma de su fila.
 	var sim0 = tower.clone()
+	sim0.lazy_settle = true   # (sólo se tocan bloques con add_block y con las acciones: ver TowerLogic._settle_blocks)
+	sim0._blocks_dirty = true
 	sim0.goal_y = BIG
 	var st := {"tower": tower, "sim": sim0, "path": [], "row_moves": [] as Array[int], "shapes": [] as Array[String],
 			"infos": [], "reserved": {Vector3i(start.x, 1, start.y): true}, "states": 0}

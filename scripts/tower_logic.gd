@@ -124,6 +124,9 @@ var row_platforms := {}
 var platform_row := {}
 var reached_row := 0
 var _fixed_shared := false   # `fixed` se comparte entre copias (casi nunca cambia): se duplica recién al escribir
+var lazy_settle := false     # el solucionador y el generador lo prenden: sólo se revisa qué bloques caen cuando algún bloque se movió o se sacó (ver _settle_blocks)
+var _blocks_dirty := true    # hay que revisar el apoyo de los bloques (cambió algo desde la última revisión)
+var _maps_shared := false    # blocks, positions, kind_of, bomb_timer y purified se comparten con otra copia hasta que una escribe (ver _own_maps)
 
 
 func in_bounds(c: Vector3i) -> bool:
@@ -151,6 +154,8 @@ func recompute_zob() -> void:
 
 
 func add_block(c: Vector3i, is_fixed := false, kind: int = Kind.NORMAL, timer := 0) -> void:
+	_own_maps()
+	_blocks_dirty = true
 	zob ^= zob_hash(c, kind)
 	blocks[c] = _next_id
 	positions[_next_id] = c
@@ -174,6 +179,7 @@ func kind_at(c: Vector3i) -> int:
 func generate(seed_value: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
+	_own_maps()
 	blocks.clear()
 	positions.clear()
 	removed_ids.clear()
@@ -267,14 +273,18 @@ func clone() -> RefCounted:
 	c.perks = perks
 	c.anchored = anchored
 	c.collapse_pause = collapse_pause
-	c.blocks = blocks.duplicate()
+	c.lazy_settle = lazy_settle
+	c._blocks_dirty = _blocks_dirty
+	c.blocks = blocks
 	c.fixed = fixed
 	c._fixed_shared = true
 	_fixed_shared = true
-	c.kind_of = kind_of.duplicate()
-	c.bomb_timer = bomb_timer.duplicate()
-	c.positions = positions.duplicate()
-	c.purified = purified.duplicate()
+	c.kind_of = kind_of
+	c.bomb_timer = bomb_timer
+	c.positions = positions
+	c.purified = purified
+	c._maps_shared = true
+	_maps_shared = true
 	c.claridad = claridad
 	c.streak = streak
 	c.best_streak = best_streak
@@ -615,9 +625,12 @@ func _purify_trail() -> void:
 			continue
 		seen[b] = true
 		var id: int = blocks[b]
-		bomb_timer.erase(id)  # purificada, una bomba deja de contar
+		if bomb_timer.has(id):
+			_own_maps()
+			bomb_timer.erase(id)  # purificada, una bomba deja de contar
 		if not track_purify or purified.has(id):
 			continue
+		_own_maps()
 		purified[id] = true
 		last_purified.append(id)
 		base += clarity_at(b) + (1 if perks.has("pies_de_luz") else 0)
@@ -637,6 +650,7 @@ func _purify_trail() -> void:
 func _tick_bombs() -> void:
 	for id in bomb_timer.keys():
 		if positions[id].y == player.y:
+			_own_maps()
 			bomb_timer[id] -= 1
 			if bomb_timer[id] <= 0:
 				_explode(id)
@@ -660,6 +674,18 @@ func _collapse_bottom() -> void:
 	floor_y += 1
 
 
+## Las copias (clone) comparten los diccionarios de bloques hasta que una escribe: la mayoría de las acciones (caminar, trepar, colgarse) no
+## cambian ningún bloque y así el solucionador no copia cientos de entradas por cada estado que prueba. Toda escritura pasa antes por acá.
+func _own_maps() -> void:
+	if _maps_shared:
+		blocks = blocks.duplicate()
+		positions = positions.duplicate()
+		kind_of = kind_of.duplicate()
+		bomb_timer = bomb_timer.duplicate()
+		purified = purified.duplicate()
+		_maps_shared = false
+
+
 func _own_fixed() -> void:
 	if _fixed_shared:
 		fixed = fixed.duplicate()
@@ -667,6 +693,8 @@ func _own_fixed() -> void:
 
 
 func _move_block(from: Vector3i, to: Vector3i) -> void:
+	_own_maps()
+	_blocks_dirty = true
 	var id: int = blocks[from]
 	var k: int = kind_of.get(id, 0)
 	zob ^= zob_hash(from, k) ^ zob_hash(to, k)
@@ -676,6 +704,8 @@ func _move_block(from: Vector3i, to: Vector3i) -> void:
 
 
 func _remove_block(c: Vector3i) -> void:
+	_own_maps()
+	_blocks_dirty = true
 	var id: int = blocks[c]
 	zob ^= zob_hash(c, kind_of.get(id, 0))
 	blocks.erase(c)
@@ -712,8 +742,11 @@ func _settle() -> void:
 
 ## Bloques sin ningún vecino (ni apoyo por arista) caen hasta tocar algo; si no hay nada, caen al vacío.
 func _settle_blocks() -> bool:
+	if lazy_settle and not _blocks_dirty:
+		return false   # ningún bloque cambió desde que todo estaba firme: no hay nada que revisar (caminar, trepar o colgarse no mueven bloques)
 	var moved := false
 	var again := true
+	var skipped := false   # algún bloque sin vecinos se sostiene sólo por el jugador: hay que volver a mirarlo cuando éste se mueva
 	while again:
 		again = false
 		var cells := blocks.keys()
@@ -723,6 +756,7 @@ func _settle_blocks() -> bool:
 				continue
 			var below: Vector3i = c + DOWN
 			if below == player:
+				skipped = true
 				continue  # apoyado sobre el jugador
 			if c.y <= floor_y:
 				_remove_block(c)
@@ -730,6 +764,7 @@ func _settle_blocks() -> bool:
 				_move_block(c, below)
 			again = true
 			moved = true
+	_blocks_dirty = skipped
 	return moved
 
 
@@ -769,6 +804,7 @@ func apply_perks(boost_ids: Array) -> void:
 		moves_to_collapse = int(round(float(moves_to_collapse) * every / collapse_every))
 		collapse_every = every
 	if perks.has("reflejos"):  # las bombas empiezan 3 movimientos más altas
+		_own_maps()
 		for id in bomb_timer:
 			bomb_timer[id] += 3
 	if perks.has("ahorro"):  # cada etapa se arranca con 20 de claridad
@@ -777,6 +813,7 @@ func apply_perks(boost_ids: Array) -> void:
 
 ## Cambia el tipo de un bloque (mantiene la huella del estado al día).
 func _set_kind(c: Vector3i, kind: int) -> void:
+	_own_maps()
 	var id: int = blocks[c]
 	zob ^= zob_hash(c, kind_of.get(id, 0)) ^ zob_hash(c, kind)
 	if kind == Kind.NORMAL:
@@ -803,6 +840,7 @@ func use_item(id: String) -> Dictionary:
 					best = bid
 			if best < 0:
 				return {"ok": false, "msg": "No hay bombas para desarmar"}
+			_own_maps()
 			bomb_timer.erase(best)
 			return {"ok": true, "msg": "Bomba desarmada"}
 		"hielo_a_roca":

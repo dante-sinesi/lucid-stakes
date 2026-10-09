@@ -23,6 +23,7 @@ func _init() -> void:
 	test_graphics()
 	test_controls()
 	await test_tabs()
+	await test_ui_scale()
 	await test_screen()
 	await test_menus_follow_language()
 	Loc.set_lang("es")
@@ -195,7 +196,7 @@ func test_tabs() -> void:
 	root.add_child(o)
 	o.visible = true
 	await process_frame
-	check(o.tab == "general" and o.pages.general.visible and not o.pages.graficos.visible and not o.reset_button.visible, "arranca en General (sin Restablecer: sólo está el idioma)")
+	check(o.tab == "general" and o.pages.general.visible and not o.pages.graficos.visible and o.reset_button.visible, "arranca en General")
 	o.tab_buttons.graficos.pressed.emit()
 	check(o.tab == "graficos" and o.pages.graficos.visible and not o.pages.general.visible, "las pestañas se alternan")
 	check(o.pages.graficos is ScrollContainer, "Gráficos se puede desplazar")
@@ -233,4 +234,31 @@ func test_tabs() -> void:
 	check(Controls.pad_of("empujar") == {"button": JOY_BUTTON_RIGHT_SHOULDER}, "un botón del mando se asigna")
 	o.reset_button.pressed.emit()
 	check(Controls.key_of("pista") == KEY_P, "Restablecer en Controles vuelve a lo de fábrica")
+	o.queue_free()
+
+
+func test_ui_scale() -> void:
+	var OptionsScreen = load("res://scripts/options_screen.gd")
+	var o: Control = OptionsScreen.new()
+	root.add_child(o)
+	o.visible = true
+	await process_frame
+	check(Settings.get_value("ui_scale") == 100 and o.ui_label.text == "100%", "el tamaño de la interfaz es 100 % por defecto")
+	o.ui_next.pressed.emit()
+	check(Settings.get_value("ui_scale") == 110 and o.ui_label.text == "110%" and is_equal_approx(root.content_scale_factor, 1.1), "subir un paso: 110 % y se aplica a toda la interfaz")
+	o.ui_next.pressed.emit()
+	o.ui_next.pressed.emit()
+	check(Settings.get_value("ui_scale") == 125 and o.ui_next.disabled, "tiene tope")
+	for i in 6:
+		o.ui_prev.pressed.emit()
+	check(Settings.get_value("ui_scale") == 80 and o.ui_prev.disabled and is_equal_approx(root.content_scale_factor, 0.8), "y piso")
+	o.reset_button.pressed.emit()
+	check(Settings.get_value("ui_scale") == 100 and is_equal_approx(root.content_scale_factor, 1.0), "Restablecer en General vuelve a 100 %")
+	var applies_before := Settings.window_applies
+	o.ui_next.pressed.emit()
+	check(Settings.window_applies == applies_before, "cambiar el tamaño de la interfaz no toca la ventana")
+	Settings.data.ui_scale = 777
+	Settings._sanitize()
+	check(Settings.get_value("ui_scale") == 100, "un valor que no es una opción vuelve a 100 %")
+	Settings.set_value("ui_scale", 100)
 	o.queue_free()

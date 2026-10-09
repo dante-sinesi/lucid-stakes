@@ -20,6 +20,9 @@ var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
 var vsync_buttons := {}     # "on" / "off"
 var res_prev: Button
+var ui_prev: Button
+var ui_next: Button
+var ui_label: Control
 var res_next: Button
 var res_label: Control
 var vol_minus: Button
@@ -53,12 +56,17 @@ func _init() -> void:
 	bg.color = Color(0.05, 0.03, 0.09, 0.96)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
+	var margin := MarginContainer.new()   # la pantalla ocupa todo el espacio que hay (con interfaz grande entra menos) y la pestaña se desplaza
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, 20)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	add_child(margin)
 	_col = VBoxContainer.new()
 	_col.add_theme_constant_override("separation", 9)
-	center.add_child(_col)
+	_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	margin.add_child(_col)
 	var title := UI.label(_col, Loc.t("Opciones"), 5, UI.GOLD)
 	title.dance = true
 	var tabs := HBoxContainer.new()
@@ -72,7 +80,9 @@ func _init() -> void:
 		tabs.add_child(b)
 		tab_buttons[t] = b
 	var holder := Control.new()   # las pestañas comparten el mismo lugar (se alterna cuál se ve)
-	holder.custom_minimum_size = Vector2(1060, 440)
+	holder.custom_minimum_size = Vector2(960, 160)
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_col.add_child(holder)
 	var inner := {}
 	for t in TABS:
@@ -118,6 +128,18 @@ func _build_general(page: Control) -> void:
 	var group := ButtonGroup.new()
 	for code in Loc.LANG_ORDER:
 		lang_buttons[code] = _toggle(row, Loc.LANGS[code], group, "idioma_" + code, _on_lang.bind(code))
+	_build_interface()
+
+
+func _build_interface() -> void:
+	var row := _row(Loc.t("Tamaño de la interfaz"))
+	ui_prev = _small(row, "<", "ui_menos", _on_ui_scale.bind(-1))
+	ui_label = UI.label(null, "", 2.5, Draw.MARBLE)
+	ui_label.custom_minimum_size = Vector2(120, 0)
+	ui_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ui_label.align = ui_label.Align.CENTER
+	row.add_child(ui_label)
+	ui_next = _small(row, ">", "ui_mas", _on_ui_scale.bind(1))
 
 
 func _build_display() -> void:
@@ -259,7 +281,6 @@ func show_tab(t: String) -> void:
 		return
 	cancel_capture()
 	tab = t
-	reset_button.visible = t != "general"   # (en General sólo está el idioma, que no se restablece)
 	for k in pages:
 		pages[k].visible = k == t
 		tab_buttons[k].selected = k == t
@@ -270,6 +291,8 @@ func show_tab(t: String) -> void:
 func reset_tab() -> void:
 	cancel_capture()
 	match tab:
+		"general":   # (el idioma no se toca)
+			Settings.set_value("ui_scale", 100)
 		"graficos":
 			Settings.set_value("fullscreen", false)
 			Settings.set_value("resolution", [1280, 720])
@@ -295,6 +318,10 @@ func refresh() -> void:
 	res_label.text = "%d x %d" % [res.x, res.y]
 	res_prev.disabled = false
 	res_next.disabled = false
+	var us: int = Settings.get_value("ui_scale")
+	ui_label.text = "%d%%" % us
+	ui_prev.disabled = us <= Settings.UI_SCALES[0]
+	ui_next.disabled = us >= Settings.UI_SCALES[Settings.UI_SCALES.size() - 1]
 	var vs: bool = Settings.get_value("vsync")
 	vsync_buttons.on.selected = vs
 	vsync_buttons.off.selected = not vs
@@ -415,6 +442,13 @@ func _on_res(dir: int) -> void:
 	i = clampi((i if i >= 0 else 0) + dir, 0, list.size() - 1)
 	Settings.set_value("resolution", [list[i].x, list[i].y])
 	Graphics.apply_global()
+	refresh()
+
+
+func _on_ui_scale(dir: int) -> void:
+	var i := Settings.UI_SCALES.find(int(Settings.get_value("ui_scale")))
+	i = clampi((i if i >= 0 else 2) + dir, 0, Settings.UI_SCALES.size() - 1)
+	Settings.set_value("ui_scale", Settings.UI_SCALES[i])
 	refresh()
 
 
