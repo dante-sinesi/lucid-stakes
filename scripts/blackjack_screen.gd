@@ -11,6 +11,8 @@ const Draw := preload("res://scripts/voxel_draw.gd")
 const VFont := preload("res://scripts/voxel_font.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Loc := preload("res://scripts/loc.gd")
+const RuleUI := preload("res://scripts/casino_rule_ui.gd")
+const Rules := preload("res://scripts/casino_rules.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 
 signal resolved
@@ -31,6 +33,8 @@ var player_views: Array = []
 var dealer_views: Array = []
 var player_total: Control
 var dealer_total: Control
+var rule_label: Control
+var stake_ui := {}
 var message: Control
 var bet_counter
 var claridad_counter
@@ -85,6 +89,7 @@ func _build() -> void:
 	center.add_child(col)
 	var title := UI.label(col, "Blackjack", 4, UI.GOLD)
 	title.dance = true
+	rule_label = RuleUI.make_status(col, 900)
 
 	UI.label(col, "Crupier", 2.5, Color(0.8, 0.76, 0.92))
 	dealer_box = HBoxContainer.new()
@@ -137,6 +142,7 @@ func _build() -> void:
 	bet_counter = ClarityCounter.new(3.0)
 	bet_counter.name = "apuesta"
 	bet_row.add_child(bet_counter)
+	stake_ui = RuleUI.make_stake_row(col, run, _refresh)
 
 	flash_rect = ColorRect.new()
 	flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -258,7 +264,7 @@ func _show_result() -> void:
 			Sfx.play("lose")
 	var net: int = int(r.net)
 	var tail := Loc.f("+%d de claridad.", [net]) if net > 0 else (Loc.f("−%d de claridad.", [-net]) if net < 0 else Loc.t("Sin cambios."))
-	_say(Loc.f("%s  %s", [Loc.t(Blackjack.outcome_text(o)), tail]), color)
+	_say(Loc.f("%s  %s", [Loc.t(Blackjack.outcome_text(o)), tail]) + RuleUI.notes(r), color)
 
 
 func _say(text: String, color: Color) -> void:
@@ -310,7 +316,10 @@ func _refresh_totals() -> void:
 func _refresh() -> void:
 	claridad_counter.value = run.claridad
 	var showing_bet: bool = game.bet > 0 and game.phase != Blackjack.Phase.IDLE
-	bet_counter.value = game.bet if showing_bet else Roulette.run_price(run)
+	bet_counter.value = game.bet if showing_bet else Roulette.run_price(run) * Rules.stake(run)
+	rule_label.text = RuleUI.status(run)
+	rule_label.visible = rule_label.text != ""
+	RuleUI.refresh_stake(stake_ui, run, can_deal())
 	deal_button.visible = game.phase != Blackjack.Phase.PLAYER
 	deal_button.disabled = not can_deal()
 	deal_button.set_label(Loc.t("Repartir") if game.phase == Blackjack.Phase.IDLE else Loc.t("Otra mano"))

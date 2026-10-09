@@ -47,7 +47,7 @@ static func stagger(nodes: Array, step := 0.05, dur := 0.26, first_delay := 0.0)
 ## Botones (visibles) dentro de un árbol de controles, en orden.
 static func buttons_in(root: Node) -> Array:
 	var out: Array = []
-	if root is Button and root.visible:
+	if root is Button and root.is_visible_in_tree():
 		out.append(root)
 	for ch in root.get_children():
 		out.append_array(buttons_in(ch))

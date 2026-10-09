@@ -10,6 +10,7 @@ extends RefCounted
 const Items := preload("res://scripts/items.gd")
 const RunState := preload("res://scripts/run_state.gd")
 const Loc := preload("res://scripts/loc.gd")
+const Rules := preload("res://scripts/casino_rules.gd")
 
 const POCKETS := 13          # casillas 0..12
 const HOUSE := 0             # la casa
@@ -81,7 +82,7 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 	var res := {"ok": true, "error": "", "pocket": pocket, "won": pockets.has(pocket), "price": cost,
 			"prize": {}, "converted": false, "claridad_delta": -cost}
 	if not res.won:
-		return res
+		return _with_rules(run, res, cost, 0, bet)
 	var prize := Items.pick(BETS[bet].tier, rng)
 	res.prize = prize
 	var reward := 0
@@ -94,4 +95,12 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 	run.gain(reward)
 	run.casino_won += reward
 	res.claridad_delta = reward - cost
+	return _with_rules(run, res, cost, reward, bet)
+
+
+## Aplica la regla de la sala (casino_rules.gd) al resultado: devolución del fiado, extra de racha o pozo del jackpot.
+static func _with_rules(run, res: Dictionary, cost: int, reward: int, bet: int) -> Dictionary:
+	var rules: Dictionary = Rules.settle(run, cost, reward, res.won, res.won and bet == Bet.PLENO)
+	res["rules"] = rules
+	res.claridad_delta = reward + int(rules.total) - cost
 	return res

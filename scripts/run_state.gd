@@ -33,6 +33,7 @@ var meta_consumable_slots := 0   # mejoras permanentes del Despertar (ver profil
 var restart_discount := 0.0
 var collapse_bonus := 0
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
+var casino_visit := {}    # estado de la visita al casino actual (casino_rules.gd); no se guarda
 
 ## Reintentar la torre cuesta claridad: la mitad de la ficha de la ruleta de la etapa, y un poco más por cada reintento
 ## que ya hiciste en esta misma torre (el primero cuesta 1 vez, el segundo 2 veces, etc.).

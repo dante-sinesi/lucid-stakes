@@ -20,6 +20,8 @@ const Roulette := preload("res://scripts/roulette.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ItemBar := preload("res://scripts/item_bar.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
+const Rules := preload("res://scripts/casino_rules.gd")
+const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 
 signal left
 signal roulette_opened
@@ -64,6 +66,7 @@ var left_bar
 var right_bar
 var clarity_counter
 var price_counter
+var rule_label: Control      # la regla de la casa de esta sala y cómo viene
 var item_tip: Control
 var overlay: CanvasLayer
 var screen
@@ -81,6 +84,8 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	rng = random
 	lay = Room.layout(run.stage, int(run.scenario().get("casino_tier", -1)))
 	cell = lay.entry
+	if not story:
+		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
 	_build_room()
 	_build_player()
 	_build_camera()
@@ -199,6 +204,9 @@ func _build_hud() -> void:
 	price_counter.name = "ficha"
 	price_counter.plate_alpha = 0.55
 	counters.add_child(price_counter)
+	rule_label = _label(layer, 2, RuleUI.COLOR)
+	rule_label.position = Vector2(26, 76)
+	rule_label.plate_alpha = 0.55
 	item_tip = _label(layer, 2, Color(0.95, 0.93, 0.88))
 	item_tip.wrap_px = 460
 	item_tip.plate_alpha = 0.85
@@ -250,6 +258,8 @@ func _refresh_hud() -> void:
 	next_label.visible = nt != ""
 	clarity_counter.value = run.claridad
 	price_counter.value = Roulette.run_price(run)
+	rule_label.text = RuleUI.status(run)
+	rule_label.visible = rule_label.text != ""
 
 
 func _flash(msg: String) -> void:

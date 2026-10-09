@@ -13,6 +13,7 @@ const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const PrizesWindow := preload("res://scripts/prizes_window.gd")
 const Juice := preload("res://scripts/juice.gd")
 const Loc := preload("res://scripts/loc.gd")
+const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 
 signal spun(result: Dictionary)
@@ -33,6 +34,7 @@ var selected: Array = []   # casillas elegidas (en orden de elección)
 
 var wheel
 var claridad_counter       # [ícono] claridad del run
+var rule_label: Control
 var price_counter          # [ícono] precio de la ficha
 var bet_buttons := {}
 var spin_button: Button
@@ -103,6 +105,7 @@ func _build() -> void:
 	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	col.add_theme_constant_override("separation", 6)
 	row.add_child(col)
+	rule_label = RuleUI.make_status(col, 350)
 	result_label = UI.label(col, "", 2, Color(0.9, 0.86, 1.0), false, 350)
 	result_label.custom_minimum_size = Vector2(350, 112)
 	result_label.plate_alpha = 0.0
@@ -280,7 +283,7 @@ func _show_result(res: Dictionary) -> void:
 			txt = Loc.f("¡Cayó el %d! Ganaste %s: %s", [res.pocket, Loc.t(prize.name), Loc.t(prize.desc)])
 		color = Color(1.0, 0.9, 0.45)
 	result_label.cube = 2.0
-	result_label.text = txt
+	result_label.text = txt + RuleUI.notes(res)
 	result_label.color = color
 	if not fast:
 		Juice.pop(result_label, 1.2)
@@ -288,6 +291,8 @@ func _show_result(res: Dictionary) -> void:
 
 func _refresh() -> void:
 	var price: int = Roulette.run_price(run)
+	rule_label.text = RuleUI.status(run)
+	rule_label.visible = rule_label.text != ""
 	claridad_counter.value = shown_claridad if state == State.SPINNING else run.claridad
 	price_counter.value = price
 	for b in bet_buttons:

@@ -8,6 +8,7 @@ extends RefCounted
 
 const Roulette := preload("res://scripts/roulette.gd")
 const Loc := preload("res://scripts/loc.gd")
+const Rules := preload("res://scripts/casino_rules.gd")
 
 enum Phase { IDLE, PLAYER, DONE }
 enum Outcome { NONE, BLACKJACK, WIN, PUSH, LOSE, BUST }
@@ -22,6 +23,7 @@ var deck: Array[Vector2i] = []        # (rango 1..13, palo 0..3)
 var player: Array[Vector2i] = []
 var dealer: Array[Vector2i] = []
 var bet := 0
+var stake := 1                        # fichas apostadas (sólo más de una con la regla "Apuesta libre")
 var doubled := false
 var hole_hidden := true               # la segunda carta del crupier está boca abajo mientras se juega
 var outcome := Outcome.NONE
@@ -77,7 +79,8 @@ func _shuffle() -> void:
 func deal(forced_deck: Array = []) -> Dictionary:
 	if phase == Phase.PLAYER:
 		return {"ok": false, "error": Loc.t("Ya hay una mano en curso")}
-	bet = Roulette.run_price(run)
+	stake = Rules.stake(run)
+	bet = Roulette.run_price(run) * stake
 	if not run.can_afford(bet):
 		return {"ok": false, "error": Loc.f("No alcanza la claridad (la ficha cuesta %d)", [bet])}
 	run.spend(bet)
@@ -164,7 +167,8 @@ func _settle() -> void:
 	var reward := int(round(back * bet))
 	run.gain(reward)
 	run.casino_won += reward
-	result = {"ok": true, "outcome": outcome, "player": pv, "dealer": dv, "bet": bet, "claridad": reward, "net": reward - bet}
+	var rules: Dictionary = Rules.settle(run, bet, reward, outcome == Outcome.WIN or outcome == Outcome.BLACKJACK, outcome == Outcome.BLACKJACK)
+	result = {"ok": true, "outcome": outcome, "player": pv, "dealer": dv, "bet": bet, "claridad": reward, "net": reward - bet + int(rules.total), "rules": rules}
 
 
 static func outcome_text(o: int) -> String:

@@ -15,7 +15,7 @@ func _init() -> void:
 		for i in 5: await process_frame
 	for t in ["general", "graficos", "sonido", "controles"]:
 		main.main_menu.options.show_tab(t)
-		for i in 40: await process_frame
+		for i in 60: await process_frame
 		root.get_texture().get_image().save_png(args[0] + "_" + t + ".png")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
 	quit()
