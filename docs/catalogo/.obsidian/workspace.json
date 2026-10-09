@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "habilidades_persistentes.md",
+                "file": "bloques.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "habilidades_persistentes"
+              "title": "bloques"
             }
           }
         ]
@@ -190,6 +190,8 @@
   },
   "active": "4af3d808d953a8ee",
   "lastOpenFiles": [
+    "habilidades_persistentes.md",
+    "boosts_y_consumibles.md",
     "escenarios.md",
     "LEEME.md",
     "bloques.md"
