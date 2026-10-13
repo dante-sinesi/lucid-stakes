@@ -49,6 +49,7 @@ const IDEAS := {
 	"campo_trampas": {"tier": 2, "unlock": "trap", "base": 8, "grab": false, "punish": true, "twists": ["fino", "ancho"]},
 	"cuenta_bomba": {"tier": 3, "unlock": "bomb", "base": 8, "grab": false, "punish": true, "twists": ["justa", "holgada"]},
 	"chica": {"h": 5, "tier": 1, "unlock": "none", "base": 14, "grab": true, "punish": false, "twists": ["baja", "alta"]},
+	"mediana": {"h": 8, "tier": 1, "unlock": "none", "base": 16, "grab": true, "punish": false, "twists": ["baja", "media", "alta"]},
 	"taller": {"h": 2, "tier": 1, "unlock": "none", "base": 12, "grab": true, "punish": false, "twists": ["una_caja", "dos_cajas", "tres_cajas"]},
 	"reja": {"tier": 1, "unlock": "none", "base": 20, "grab": true, "punish": false, "twists": ["baja", "alta", "pesados", "pinchos"]},
 	"trampolin": {"tier": 3, "unlock": "catapult", "base": 8, "grab": true, "punish": false, "twists": ["simple", "con_topes"]},
@@ -92,7 +93,7 @@ static func catalog(scenario_id: String, difficulty: float) -> Array:
 		return SCENARIO_IDEAS[scenario_id].duplicate()
 	var out: Array = []
 	for name in IDEAS:
-		if difficulty >= unlock_at(IDEAS[name].unlock) and (name != "reja" or OS.get_environment("REJA") != "") and ((name != "taller" and name != "chica") or difficulty >= REJA_FROM):
+		if difficulty >= unlock_at(IDEAS[name].unlock) and (name != "reja" or OS.get_environment("REJA") != "") and (not _puzzle(name) or difficulty >= REJA_FROM):
 			out.append(name)
 	return out
 
@@ -125,15 +126,15 @@ static func plan(rng: RandomNumberGenerator, rooms: int, difficulty: float, idea
 		var run := 0   # salas de cajas seguidas y en total: una torre de sólo acertijos cansa (hasta 3 seguidas y 7 en total; en el medio, lo de antes de respiro)
 		var total := 0
 		for r in out:
-			total += 1 if (r.idea == "taller" or r.idea == "chica") else 0
+			total += 1 if _puzzle(r.idea) else 0
 		for j in range(out.size() - 1, -1, -1):
-			if out[j].idea != "taller" and out[j].idea != "chica":
+			if not _puzzle(out[j].idea):
 				break
 			run += 1
 		if (run >= 3 or total >= 7) and pool.size() > 1:
-			pool.erase("taller")
-			pool.erase("chica")
-		if pool.size() > 1 and not out.is_empty() and out[out.size() - 1].idea != "taller" and out[out.size() - 1].idea != "chica":   # (los acertijos de cajas pueden ir seguidos: cada uno es distinto)
+			for pz in ["taller", "chica", "mediana"]:
+				pool.erase(pz)
+		if pool.size() > 1 and not out.is_empty() and not _puzzle(out[out.size() - 1].idea):   # (los acertijos de cajas pueden ir seguidos: cada uno es distinto)
 			pool.erase(out[out.size() - 1].idea)
 		if difficulty > 0.2 and plain_rooms >= 1 and ideas.size() > 3:   # las ideas que se resuelven caminando salen a lo sumo una vez por torre (el resto, salas donde hay que mover bloques)
 			var movers: Array = []
@@ -144,7 +145,7 @@ static func plan(rng: RandomNumberGenerator, rooms: int, difficulty: float, idea
 				pool = movers
 		var weighted: Array = []   # las ideas que piden mover bloques salen más (3 a 1) a medida que sube la dificultad: las que se resuelven caminando son el respiro de la torre
 		for name in pool:
-			for _w in ((1 + int(maxf(difficulty - 0.2, 0.0) * 120.0)) if (name == "taller" or name == "chica") else ((1 + int(clampf(difficulty * 6.0, 0.0, 2.0))) if _grabby(name, difficulty) else 1)):
+			for _w in ((1 + int(maxf(difficulty - 0.2, 0.0) * 120.0)) if _puzzle(name) else ((1 + int(clampf(difficulty * 6.0, 0.0, 2.0))) if _grabby(name, difficulty) else 1)):
 				weighted.append(name)
 		var idea: String = weighted[rng.randi_range(0, weighted.size() - 1)]
 		var twists: Array = IDEAS[idea].twists.duplicate()
@@ -158,10 +159,17 @@ static func plan(rng: RandomNumberGenerator, rooms: int, difficulty: float, idea
 	return out
 
 
+## ¿Es una sala de acertijo de bloques (las que traen su solución ya calculada)?
+static func _puzzle(name: String) -> bool:
+	return name == "taller" or name == "chica" or name == "mediana"
+
+
 ## Pisos de la sala de una idea (2 las de pared, trampas y agrietado; 4 las de hielo, bomba y catapulta).
 static func _room_h(name: String, twist := "") -> int:
 	if name == "chica":
 		return 4 if twist == "baja" else 5   # (las salas chicas con altura: 4 o 5 pisos)
+	if name == "mediana":
+		return {"baja": 8, "media": 9}.get(twist, 10)   # (dos salas verticales una encima de la otra)
 	return int(IDEAS[name].get("h", ROOM))
 
 
@@ -377,7 +385,7 @@ static func _attempt(st: Dictionary, ey: int, h: int, rng: RandomNumberGenerator
 	var ctx := {"idea": name, "rng": rng, "st": st, "ey": ey, "h": h, "arrival": Vector2i(sim.player.x, sim.player.z), "cells": cells, "cellset": cellset, "twist": twist, "d": difficulty, "strict": strict}
 	var t0 := Time.get_ticks_msec()
 	var start_calls: int = st.solves
-	var want := 1 if (name == "respiro" or name == "reja" or final or difficulty < 0.3) else (2 if difficulty < 0.7 else 3)   # cuanto más difícil, entre más salas válidas se elige la más exigente
+	var want := 1 if (name == "respiro" or name == "reja" or _puzzle(name) or final or difficulty < 0.3) else (2 if difficulty < 0.7 else 3)   # cuanto más difícil, entre más salas válidas se elige la más exigente
 	ctx["pick"] = want
 	var base: Dictionary = _snapshot(st) if want > 1 else {}
 	var best: Dictionary = {}
@@ -575,6 +583,8 @@ static func _candidate(name: String, ctx: Dictionary) -> Dictionary:
 			return _c_taller(ctx)
 		"chica":
 			return _c_chica(ctx)
+		"mediana":
+			return _c_mediana(ctx)
 	return {}
 
 
@@ -1185,8 +1195,6 @@ static func _far_states(t0, arrival: Vector2i, allowed: Dictionary, goal_stand_y
 				nodes[nk] = n
 				order.append(nk)
 	work_ctx["work"] = int(work_ctx.get("work", 0)) + order.size()
-	if OS.get_environment("IDEA_LOG") != "":
-		print("     explora: %d estados, %d mirados, %d metas" % [order.size(), qi, goals.size()])
 	if goals.is_empty():
 		return []
 	var dist := {}
@@ -1274,35 +1282,10 @@ static func _vert_s0(free: Array[Vector2i], pillar: Vector2i, ph: int, rng: Rand
 	return cols
 
 
-## ¿La posición `pos` (coordenadas de la arena sola) es de una columna pesada de la sala resuelta `s0`? (las columnas pesadas no se mueven: quedan donde están)
-static func _is_heavy_col(s0: Dictionary, pos: Vector3i) -> bool:
-	var c := Vector2i(pos.x, pos.z)
-	return s0.has(c) and s0[c].kind == K.HEAVY
-
-
-static func _chica_result(ctx: Dictionary, best: Dictionary, explicit: Array, pillar: Vector2i, ph: int, all_cells: Array[Vector2i], w: int, dp: int) -> Dictionary:
-	var floors := {}
-	for c in all_cells:
-		floors[c] = K.NORMAL
-	if OS.get_environment("IDEA_LOG") != "":
-		print("     chica %dx%d de %d pisos (exploración): %d movimientos, %d agarres, %d bloques distintos" % [w, dp, ph, best.dist, best.grabs, best.moved])
-	var cols := {pillar: {"h": ph, "kind": K.HEAVY}}   # (sólo para la huella: los bloques salen de `explicit`)
-	return {"cols": cols, "goal": pillar, "floor_kinds": floors, "margin": 0, "taller": true, "solution": best.path, "explicit": explicit}
-
-
-## Sala chica con altura (4 o 5 pisos, arena de 3x3 a 3x5): cada celda es una columna de bloques de altura distinta (más algún pilar pesado) y la salida es una columna fija alta en una esquina. Para subir hay que
-## armar una escalera redistribuyendo bloques (uno de arriba que se empuja sobre una columna más baja la sube), o tirarlos desde arriba. Se busca con el solucionador completo: se parte de
-## disposiciones al azar que se puedan resolver y se mejora la mejor (se pasa un bloque de una columna a otra) mientras pida más bloques movidos.
-static func _c_chica(ctx: Dictionary) -> Dictionary:
-	var ph: int = ctx.h
-	if ph != (4 if ctx.twist == "baja" else 5) or int(ctx.get("work", 0)) > TALLER_WORK:
-		return {}
+## Dónde cabe una sala vertical: una arena de un tamaño de `shapes` ({w, dp}) con el camino que la une a la llegada. {} si no hay lugar. {w, dp, all_cells (arena y camino), cset}.
+static func _vert_site(ctx: Dictionary, shapes: Array) -> Dictionary:
 	var rng: RandomNumberGenerator = ctx.rng
-	var env: Array = []
-	for c in ctx.st.sim.blocks:
-		if c.y >= ctx.ey - 1 and c.y <= ctx.ey + ph:
-			env.append(Vector3i(c.x, c.y - ctx.ey + 1, c.z))
-	var shapes: Array = [[3, 3], [3, 4], [4, 3], [3, 5], [5, 3], [3, 3], [3, 4], [4, 3]]
+	shapes = shapes.duplicate()
 	var w := 0
 	var dp := 0
 	var origins: Array[Vector2i] = []
@@ -1314,10 +1297,9 @@ static func _c_chica(ctx: Dictionary) -> Dictionary:
 			dp = sh[1]
 			break
 	if origins.is_empty():
-		_why("chica: sin lugar 1")
+		_why("vertical: sin lugar 1")
 		return {}
 	var o := Vector2i(-9, -9)
-	var cells: Array[Vector2i] = []
 	var cset := {}
 	var corridor: Array[Vector2i] = []
 	for _try in mini(6, origins.size()):
@@ -1334,49 +1316,47 @@ static func _c_chica(ctx: Dictionary) -> Dictionary:
 		corridor = path
 		break
 	if o.x < -1:
-		_why("chica: sin lugar 2")
+		_why("vertical: sin lugar 2")
 		return {}
+	var all_cells: Array[Vector2i] = []
 	for x in w:
 		for z in dp:
-			cells.append(o + Vector2i(x, z))
-	var all_cells: Array[Vector2i] = cells.duplicate()
+			all_cells.append(o + Vector2i(x, z))
 	for c in corridor:
 		all_cells.append(c)
 		cset[c] = true
-	var corners: Array[Vector2i] = [o, o + Vector2i(w - 1, 0), o + Vector2i(0, dp - 1), o + Vector2i(w - 1, dp - 1)]
-	var open_corners: Array[Vector2i] = []   # (la sala que sigue arranca desde la cima de la salida: tiene que tener a dónde)
-	for c in corners:
-		var outs := 0
-		for d in DIRS4:
-			var n: Vector2i = c + d
-			if not cset.has(n) and n != ctx.arrival and ctx.cellset.has(n) and _free(ctx.st, n, ctx.ey, ctx.ey + 1):
-				outs += 1
-		if outs >= 1 and _free(ctx.st, c, ctx.ey, ctx.ey + ph):
-			open_corners.append(c)
-	if open_corners.is_empty():
-		_why("chica: sin lugar 3")
-		return {}
-	var pillar: Vector2i = open_corners[rng.randi_range(0, open_corners.size() - 1)]
-	var free: Array[Vector2i] = []   # celdas donde puede haber columnas (libres en toda la altura y no pegadas a la llegada)
-	for c in all_cells:
-		if c != pillar and (c - ctx.arrival).length() >= 1.5 and _free(ctx.st, c, ctx.ey, ctx.ey + ph - 1):
-			free.append(c)
-	if free.size() < 4:
-		_why("chica: sin lugar 4")
-		return {}
+	return {"w": w, "dp": dp, "o": o, "all_cells": all_cells, "cset": cset}
+
+
+## Los bloques de un estado de una arena vertical (coordenadas de la arena sola, la capa 1 es la de la sala): la salida primero, después las columnas y los pilares. Lo fijo (piso, entorno) no va.
+static func _module_blocks(t) -> Array:
+	var out: Array = []
+	var goal: Vector3i = t.positions[t.goal_ids.keys()[0]]
+	out.append({"p": goal, "kind": K.NORMAL, "fixed": true})
+	for id in t.positions:
+		var pos: Vector3i = t.positions[id]
+		if pos.y < 1 or t.fixed.has(pos):
+			continue
+		out.append({"p": pos, "kind": int(t.kind_of.get(id, K.NORMAL)), "fixed": false})
+	return out
+
+
+## Una sala vertical resuelta por separado: la arena `cells` (con el piso), la `arrival` de donde se sale, el `pillar` de `ph` pisos y las columnas. Se parte de la sala resuelta, se exploran los estados que se alcanzan
+## con movimientos que se pueden deshacer y se comprueba con el solucionador completo cuánto cuestan de verdad (sin atajos que no muevan bloques); si no sale nada bueno, se prueban disposiciones al azar y se mejora la mejor.
+## {path, dist, grabs, moved, blocks (ver `_module_blocks`)} o {} si no salió una que pida lo suficiente.
+static func _vert_module(cells: Array[Vector2i], arrival: Vector2i, pillar: Vector2i, free: Array[Vector2i], ph: int, env: Array, ctx: Dictionary) -> Dictionary:
+	var rng: RandomNumberGenerator = ctx.rng
 	var maxh := ph - 1
 	var n_heavy := 0 if ctx.d < 0.4 else (1 if ctx.d < 0.75 else 2)
 	var best := {}
-	var best_cols := {}
-	var best_explicit: Array = []
+	var best_t = null
 	var target := 6 + int(ctx.d * 6.0)
 	var min_grabs := 4 + int(ctx.d * 2.0)
 	var min_moved := 2 + int(ctx.d * 2.0)
 	if OS.get_environment("TALLER_MIN") != "":
 		min_grabs = int(OS.get_environment("TALLER_MIN"))
-	# 1) se parte de la sala resuelta y se mira todo lo que se alcanza con movimientos reversibles: los estados lejanos son todos resolubles; el solucionador completo dice cuánto cuestan de verdad
-	var allowed := {ctx.arrival: true}
-	for c in all_cells:
+	var allowed := {arrival: true}
+	for c in cells:
 		allowed[c] = true
 	for _try in TALLER_S0:
 		if int(ctx.get("work", 0)) > TALLER_WORK:
@@ -1384,7 +1364,7 @@ static func _c_chica(ctx: Dictionary) -> Dictionary:
 		var s0 := _vert_s0(free, pillar, ph, rng, n_heavy)
 		if s0.is_empty():
 			continue
-		var t0 = _vert_mini(all_cells, ctx.arrival, pillar, ph, s0, env)
+		var t0 = _vert_mini(cells, arrival, pillar, ph, s0, env)
 		var walk: Dictionary = Solver.solve(t0.clone(), ph + 1, {"max_states": 3000, "goal_ids": t0.goal_ids, "no_grab": true})
 		ctx["work"] = int(ctx.get("work", 0)) + int(walk.states)
 		if walk.status != "solved":
@@ -1394,17 +1374,13 @@ static func _c_chica(ctx: Dictionary) -> Dictionary:
 			if s0[c].kind == K.NORMAL:
 				for y in range(1, int(s0[c].h) + 1):
 					movable.append(t0.blocks[Vector3i(c.x, y, c.y)])
-		var cands: Array = _far_states(t0, ctx.arrival, allowed, ph + 1, movable, rng, TALLER_STATES, 30, ctx)
-		if OS.get_environment("IDEA_LOG") != "":
-			print("     explora: %d candidatos" % cands.size())
+		var cands: Array = _far_states(t0, arrival, allowed, ph + 1, movable, rng, TALLER_STATES, 30, ctx)
 		for cd in cands:
 			var st = cd.state
 			var tt = st.clone()
 			tt.hang_dir = Vector3i.ZERO
 			var res: Dictionary = Solver.solve(tt, ph + 1, {"max_states": VERT_CAP, "goal_ids": tt.goal_ids})
 			ctx["work"] = int(ctx.get("work", 0)) + int(res.states)
-			if OS.get_environment("IDEA_LOG") != "":
-				print("       cand dist=%d gr=%d -> %s %d mov" % [cd.dist, cd.grabs, res.status, int(res.get("moves", -1))])
 			if res.status != "solved":
 				continue
 			var plain: Dictionary = Solver.solve(st.clone(), ph + 1, {"max_states": VERT_CAP, "goal_ids": tt.goal_ids, "no_grab": true})
@@ -1418,36 +1394,22 @@ static func _c_chica(ctx: Dictionary) -> Dictionary:
 			var moved := _moved_blocks(st, res.path)
 			var score := 10 * moved + 4 * grabs + int(res.moves)
 			if best.is_empty() or score > best.score:
-				best = {"ok": true, "dist": res.moves, "grabs": grabs, "moved": moved, "path": res.path, "states": res.states, "score": score}
-				best_cols = {}
-				best_explicit = []
-				var gid: int = st.goal_ids.keys()[0]
-				var lst: Array = []
-				for c in all_cells + [ctx.arrival]:
-					pass
-				# los bloques de la sala (el pilar, la salida y las columnas) tal como quedaron: coordenadas de la torre real
-				best_explicit.append({"c": Vector3i(st.positions[gid].x, st.positions[gid].y - 1 + ctx.ey, st.positions[gid].z), "kind": K.NORMAL, "fixed": true, "timer": 0})
-				for y in range(1, ph):
-					best_explicit.append({"c": Vector3i(pillar.x, y - 1 + ctx.ey, pillar.y), "kind": K.HEAVY, "fixed": false, "timer": 0})
-				for id in st.positions:
-					if id == gid or not (movable.has(id) or _is_heavy_col(s0, st.positions[id])):
-						continue
-					var pos: Vector3i = st.positions[id]
-					best_explicit.append({"c": Vector3i(pos.x, pos.y - 1 + ctx.ey, pos.z), "kind": int(st.kind_of.get(id, K.NORMAL)), "fixed": false, "timer": 0})
+				best = {"dist": res.moves, "grabs": grabs, "moved": moved, "path": res.path, "score": score}
+				best_t = st
 		if not best.is_empty() and best.grabs >= target:
 			break
 	if not best.is_empty() and best.grabs >= min_grabs and best.moved >= min_moved:
-		return _chica_result(ctx, best, best_explicit, pillar, ph, all_cells, w, dp)
-	# 2) si no salió nada bueno, la búsqueda al azar de antes (más corta)
+		best["blocks"] = _module_blocks(best_t)
+		return best
+	# si no salió nada bueno, la búsqueda al azar de antes (más corta)
 	best = {}
-	best_cols = {}
+	var best_cols := {}
 	for _try in 8:
 		if int(ctx.get("work", 0)) > TALLER_WORK:
 			break
 		var cols := {}
-		var pool := free.duplicate()
 		var heavies := 0
-		for c in pool:
+		for c in free:
 			var hh := rng.randi_range(0, maxh)
 			if hh == 0:
 				continue
@@ -1455,12 +1417,12 @@ static func _c_chica(ctx: Dictionary) -> Dictionary:
 			if heavy:
 				heavies += 1
 			cols[c] = {"h": hh, "kind": K.HEAVY if heavy else K.NORMAL}
-		var ev := _vert_eval(all_cells, ctx.arrival, pillar, ph, cols, env, ctx)
+		var ev := _vert_eval(cells, arrival, pillar, ph, cols, env, ctx)
 		if ev.ok and (best.is_empty() or ev.score > best.score):
 			best = ev
 			best_cols = cols
 	if best.is_empty():
-		_why("chica: sin lugar 5")
+		_why("vertical: sin lugar 5")
 		return {}
 	for _it in TALLER_CLIMB:
 		if best.grabs >= target or int(ctx.get("work", 0)) > TALLER_WORK:
@@ -1483,41 +1445,211 @@ static func _c_chica(ctx: Dictionary) -> Dictionary:
 			nc[b].h = int(nc[b].h) + 1
 		else:
 			nc[b] = {"h": 1, "kind": K.NORMAL}
-		var ev2 := _vert_eval(all_cells, ctx.arrival, pillar, ph, nc, env, ctx)
+		var ev2 := _vert_eval(cells, arrival, pillar, ph, nc, env, ctx)
 		if ev2.ok and ev2.score >= best.score:
 			best = ev2
 			best_cols = nc
 	if best.grabs < min_grabs or best.moved < min_moved:
 		if OS.get_environment("IDEA_LOG") != "":
-			print("     chica fácil: %d agarres, %d bloques (pide %d y %d)" % [best.grabs, best.moved, min_grabs, min_moved])
-		_why("chica: sin lugar 6")
+			print("     vertical fácil: %d agarres, %d bloques (pide %d y %d)" % [best.grabs, best.moved, min_grabs, min_moved])
+		_why("vertical: sin lugar 6")
 		return {}
-	var cols_out := {pillar: {"h": ph, "kind": K.HEAVY}}
-	for c in best_cols:
-		cols_out[c] = {"h": best_cols[c].h, "kind": best_cols[c].kind}
+	best["blocks"] = _module_blocks(_vert_mini(cells, arrival, pillar, ph, best_cols, env))
+	return best
+
+
+## Las celdas con bloques de la arena sola, en coordenadas de la torre: la capa 1 de la arena es `ey` (la sala). Primero la salida. `lift` sube todo (para una sala que arranca encima de otra).
+static func _module_explicit(blocks: Array, ey: int) -> Array:
+	var out: Array = []
+	for b in blocks:
+		var p: Vector3i = b.p
+		out.append({"c": Vector3i(p.x, p.y - 1 + ey, p.z), "kind": int(b.kind), "fixed": bool(b.fixed), "timer": 0})
+	return out
+
+
+## El entorno de la torre que toca una arena vertical, en coordenadas de la arena sola (la capa 1 es `ey`).
+static func _module_env(ctx: Dictionary, ey: int, ph: int) -> Array:
+	var env: Array = []
+	for c in ctx.st.sim.blocks:
+		if c.y >= ey - 1 and c.y <= ey + ph:
+			env.append(Vector3i(c.x, c.y - ey + 1, c.z))
+	return env
+
+
+## Sala chica con altura (4 o 5 pisos, arena de 3x3 a 3x5): cada celda es una columna de bloques de altura distinta (más algún pilar pesado) y la salida es una columna fija alta en una esquina. Para subir hay que
+## armar una escalera redistribuyendo bloques (uno de arriba que se empuja sobre una columna más baja la sube), o tirarlos desde arriba. Ver `_vert_module`.
+static func _c_chica(ctx: Dictionary) -> Dictionary:
+	var ph: int = ctx.h
+	if ph != (4 if ctx.twist == "baja" else 5) or int(ctx.get("work", 0)) > TALLER_WORK:
+		return {}
+	var rng: RandomNumberGenerator = ctx.rng
+	var site := _vert_site(ctx, [[3, 3], [3, 4], [4, 3], [3, 5], [5, 3], [3, 3], [3, 4], [4, 3]])
+	if site.is_empty():
+		return {}
+	var w: int = site.w
+	var dp: int = site.dp
+	var o: Vector2i = site.o
+	var all_cells: Array[Vector2i] = site.all_cells
+	var cset: Dictionary = site.cset
+	var corners: Array[Vector2i] = [o, o + Vector2i(w - 1, 0), o + Vector2i(0, dp - 1), o + Vector2i(w - 1, dp - 1)]
+	var open_corners: Array[Vector2i] = []   # (la sala que sigue arranca desde la cima de la salida: tiene que tener a dónde)
+	for c in corners:
+		var outs := 0
+		for d in DIRS4:
+			var n: Vector2i = c + d
+			if not cset.has(n) and n != ctx.arrival and ctx.cellset.has(n) and _free(ctx.st, n, ctx.ey, ctx.ey + 1):
+				outs += 1
+		if outs >= 1 and _free(ctx.st, c, ctx.ey, ctx.ey + ph):
+			open_corners.append(c)
+	if open_corners.is_empty():
+		_why("chica: sin lugar 3")
+		return {}
+	var pillar: Vector2i = open_corners[rng.randi_range(0, open_corners.size() - 1)]
+	var free: Array[Vector2i] = []   # celdas donde puede haber columnas (libres en toda la altura y no pegadas a la llegada)
+	for c in all_cells:
+		if c != pillar and (c - ctx.arrival).length() >= 1.5 and _free(ctx.st, c, ctx.ey, ctx.ey + ph - 1):
+			free.append(c)
+	if free.size() < 4:
+		_why("chica: sin lugar 4")
+		return {}
+	var mod := _vert_module(all_cells, ctx.arrival, pillar, free, ph, _module_env(ctx, ctx.ey, ph), ctx)
+	if mod.is_empty():
+		return {}
+	if OS.get_environment("IDEA_LOG") != "":
+		print("     chica %dx%d de %d pisos: %d movimientos, %d agarres, %d bloques distintos" % [w, dp, ph, mod.dist, mod.grabs, mod.moved])
 	var floors := {}
 	for c in all_cells:
 		floors[c] = K.NORMAL
+	return {"cols": {pillar: {"h": ph, "kind": K.HEAVY}}, "goal": pillar, "floor_kinds": floors, "margin": 0, "taller": true, "solution": mod.path, "explicit": _module_explicit(mod.blocks, ctx.ey)}
+
+
+## Sala mediana (8 a 10 pisos): dos salas verticales una encima de la otra, cada una resuelta y comprobada por separado. La segunda arranca en la cima de la salida de la primera (su piso, fijo, está a esa altura)
+## y se extiende a un costado. La solución es la de la primera seguida de la de la segunda.
+static func _c_mediana(ctx: Dictionary) -> Dictionary:
+	var hh: int = ctx.h
+	if hh < 8 or hh > 10 or int(ctx.get("work", 0)) > TALLER_WORK:
+		return {}
+	var rng: RandomNumberGenerator = ctx.rng
+	var ey: int = ctx.ey
+	var pa := 4
+	if hh == 10 or (hh == 9 and rng.randf() < 0.5):
+		pa = 5
+	var pb := hh - pa
+	var site := _vert_site(ctx, [[3, 3], [3, 4], [4, 3], [3, 3], [3, 4], [4, 3]])
+	if site.is_empty():
+		return {}
+	var w: int = site.w
+	var dp: int = site.dp
+	var o: Vector2i = site.o
+	var all_a: Array[Vector2i] = site.all_cells
+	var cset: Dictionary = site.cset
+	var corners: Array[Vector2i] = [o, o + Vector2i(w - 1, 0), o + Vector2i(0, dp - 1), o + Vector2i(w - 1, dp - 1)]
+	var pillars: Array[Vector2i] = []
+	for c in corners:
+		if _free(ctx.st, c, ey, ey + hh):
+			pillars.append(c)
+	for c in all_a:
+		if not _free(ctx.st, c, ey, ey + hh):
+			_why("mediana: sin lugar 1")
+			return {}
+	if pillars.is_empty():
+		_why("mediana: sin lugar 2")
+		return {}
+	var pill_a: Vector2i = pillars[rng.randi_range(0, pillars.size() - 1)]
+	# el sitio de la segunda: pegado a la columna de salida de la primera 
+	var near_a := {ctx.arrival: true}
+	for c in all_a:
+		near_a[c] = true
+	var shapes_b: Array = [[3, 3], [3, 4], [4, 3], [3, 5], [5, 3]]
+	var spots: Array = []
+	for sh in shapes_b:
+		for ox in range(0, SIZE - sh[0] + 1):
+			for oz in range(0, SIZE - sh[1] + 1):
+				var cells_b: Array[Vector2i] = []
+				var ok := true
+				var touch := false
+				for x in sh[0]:
+					for z in sh[1]:
+						var c := Vector2i(ox + x, oz + z)
+						if near_a.has(c) or not ctx.cellset.has(c) or not _addable(ctx.st, c, ey) or not _free(ctx.st, c, ey, ey + hh):
+							ok = false
+						cells_b.append(c)
+				if not ok:
+					continue
+				for c in cells_b:
+					for d in DIRS4:
+						var n: Vector2i = c + d
+						if n == pill_a:
+							touch = true
+				if ok and touch:
+					spots.append(cells_b)
+	if spots.is_empty():
+		_why("mediana: sin lugar 3")
+		return {}
+	var cells_b: Array[Vector2i] = spots[rng.randi_range(0, spots.size() - 1)]
+	var all_cells := {}
+	for c in all_a:
+		all_cells[c] = true
+	for c in cells_b:
+		all_cells[c] = true
+	var pill_b: Vector2i = Vector2i(-9, -9)   # la salida de la segunda: una esquina con a dónde ir
+	var opts: Array[Vector2i] = []
+	for c in cells_b:
+		var cn := 0
+		for d in DIRS4:
+			if cells_b.has(c + d):
+				cn += 1
+		if cn > 2 or (c - pill_a).length() < 1.5:
+			continue   # (esquinas de la arena, lejos de la entrada)
+		var outs := 0
+		for d in DIRS4:
+			var n: Vector2i = c + d
+			if not all_cells.has(n) and ctx.cellset.has(n) and _free(ctx.st, n, ey, ey + 1):
+				outs += 1
+		if outs >= 1:
+			opts.append(c)
+	if opts.is_empty():
+		_why("mediana: sin lugar 4")
+		return {}
+	pill_b = opts[rng.randi_range(0, opts.size() - 1)]
+	# primera sala
+	var free_a: Array[Vector2i] = []
+	for c in all_a:
+		if c != pill_a and (c - ctx.arrival).length() >= 1.5:
+			free_a.append(c)
+	if free_a.size() < 4:
+		_why("mediana: sin lugar 5")
+		return {}
+	var mod_a := _vert_module(all_a, ctx.arrival, pill_a, free_a, pa, _module_env(ctx, ey, pa), ctx)
+	if mod_a.is_empty():
+		return {}
+	# segunda sala: su piso es la capa de la cima de la primera
+	var ey_b := ey + pa
+	var free_b: Array[Vector2i] = []
+	for c in cells_b:
+		if c != pill_b and (c - pill_a).length() >= 1.5:
+			free_b.append(c)
+	if free_b.size() < 4:
+		_why("mediana: sin lugar 6")
+		return {}
+	ctx["work"] = 0   # (cada sala tiene su propio presupuesto de trabajo)
+	var mod_b := _vert_module(cells_b, pill_a, pill_b, free_b, pb, _module_env(ctx, ey_b, pb), ctx)
+	if mod_b.is_empty():
+		return {}
 	if OS.get_environment("IDEA_LOG") != "":
-		print("     chica %dx%d de %d pisos: %d movimientos, %d agarres, %d bloques distintos, %d estados" % [w, dp, ph, best.dist, best.grabs, best.moved, best.states])
-	if OS.get_environment("SHOW_TALLER") != "":
-		print("   sala chica %dx%d de %d pisos: %d movimientos, %d agarres (A = llegada, G = salida, número = altura de la columna, H = columna pesada)" % [w, dp, ph, best.dist, best.grabs])
-		for zz in 8:
-			var row := ""
-			for xx in 8:
-				var c := Vector2i(xx, zz)
-				if c == ctx.arrival:
-					row += "A "
-				elif c == pillar:
-					row += "G "
-				elif best_cols.has(c):
-					row += ("H" if best_cols[c].kind == K.HEAVY else "") + str(best_cols[c].h) + (" " if best_cols[c].kind == K.NORMAL else "")
-				elif all_cells.has(c):
-					row += ". "
-				else:
-					row += "  "
-			print("      " + row)
-	return {"cols": cols_out, "goal": pillar, "floor_kinds": floors, "margin": 0, "taller": true, "solution": best.path}
+		print("     mediana de %d pisos (%d + %d): %d + %d agarres, %d + %d bloques distintos" % [hh, pa, pb, mod_a.grabs, mod_b.grabs, mod_a.moved, mod_b.moved])
+	var blocks_b := _module_explicit(mod_b.blocks, ey_b)   # (la salida de la segunda va primero: es la de la sala)
+	var explicit: Array = blocks_b
+	for c in cells_b:   # el piso de la segunda: fijo, a la altura de la cima de la primera
+		explicit.append({"c": Vector3i(c.x, ey_b - 1, c.y), "kind": K.NORMAL, "fixed": true, "timer": 0})
+	for b in _module_explicit(mod_a.blocks, ey):
+		explicit.append(b)
+	var floors := {}
+	for c in all_cells:
+		floors[c] = K.NORMAL
+	var path: Array = mod_a.path.duplicate()
+	path.append_array(mod_b.path)
+	return {"cols": {pill_b: {"h": hh, "kind": K.HEAVY}}, "goal": pill_b, "floor_kinds": floors, "margin": 0, "taller": true, "solution": path, "explicit": explicit}
 
 
 ## Reja: un muro denso de cubos comunes (como las paredes de Catherine) alrededor de la escalera de salida. Se arma la sala ya resuelta y se desordena con movimientos reales
@@ -2796,7 +2928,7 @@ static func _uses_idea(name: String, lg, path: Array, ey: int, cand: Dictionary)
 		if replay.player.y - before.y >= 3:
 			launches += 1
 	match name:
-		"reja", "taller", "chica":
+		"reja", "taller", "chica", "mediana":
 			return 1
 		"campo_trampas":
 			if cand.get("gate", false):   # la puerta tiene que haberse movido
