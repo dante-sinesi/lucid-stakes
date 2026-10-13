@@ -40,7 +40,7 @@ func test_items() -> void:
 		ids[it.id] = true
 		ok = ok and (it.type == Items.Type.CLARITY and it.has("mult") or it.has("value"))
 	check(ok, "cada premio tiene id unico, nombre, descripcion, peso y valor (o multiplicador)")
-	check(Items.by_tier(Items.Tier.EPICO).size() == 4 and Items.by_tier(Items.Tier.RARO).size() == 8, "4 premios epicos y 8 raros (6 boosts, el Totem y el Teletransporte)")
+	check(Items.by_tier(Items.Tier.EPICO).size() == 4 and Items.by_tier(Items.Tier.RARO).size() == 9, "4 premios epicos y 9 raros (6 boosts, el Totem, la Vida extra y el Teletransporte)")
 	var epic_boosts := true
 	for it in Items.by_tier(Items.Tier.EPICO):
 		epic_boosts = epic_boosts and it.type == Items.Type.BOOST
@@ -97,14 +97,14 @@ func test_roulette_rules() -> void:
 			and Roulette.BETS[Roulette.Bet.TERNA].tier > Roulette.BETS[Roulette.Bet.MITAD].tier \
 			and Roulette.BETS[Roulette.Bet.MITAD].tier > Roulette.BETS[Roulette.Bet.RANGO].tier, "menos casillas cubiertas, mejor premio")
 	# precio por etapa
-	check(Roulette.price(1) == 50 and Roulette.price(2) == 52 and Roulette.price(3) == 54 and Roulette.price(11) == 70 and Roulette.price(27) == 102 and Roulette.price(0) == 50, "el precio de la ficha sube con la etapa (50 -> 102)")
+	check(Roulette.price(1) == 50 and Roulette.price(2) == 54 and Roulette.price(3) == 58 and Roulette.price(11) == 90 and Roulette.price(15) == 106 and Roulette.price(0) == 50, "el precio de la ficha sube con la etapa (50 -> 106)")
 	# balance: las cuatro apuestas rinden casi igual y con una pequeña ventaja de la casa
 	var line := ""
 	for b in Roulette.BETS:
 		var ratio := Roulette.expected_ratio(b, 1)
 		line += "%s %.3f  " % [Roulette.BETS[b].name, ratio]
 		check(ratio >= 0.9 and ratio <= 1.0, "%s: rendimiento esperado %.3f entre 0.90 y 1.00 (ventaja chica de la casa)" % [Roulette.BETS[b].name, ratio])
-		for st in [14, 27]:  # los premios valen proporcionalmente a la ficha: el rendimiento no se desbalancea con las etapas
+		for st in [8, 15]:  # los premios valen proporcionalmente a la ficha: el rendimiento no se desbalancea con las etapas
 			var r_st := Roulette.expected_ratio(b, st)
 			check(r_st >= 0.9 and r_st <= 1.0, "%s etapa %d: rendimiento esperado %.3f" % [Roulette.BETS[b].name, st, r_st])
 	print("rendimiento esperado por ficha, etapa 1: ", line)

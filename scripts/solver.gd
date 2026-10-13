@@ -178,7 +178,32 @@ static func _h(s, target_y: int, use_h: bool, gain: int, xz_goal := false) -> in
 				var p: Vector3i = s.positions[id]
 				best = mini(best, maxi(absi(p.x - s.player.x), absi(p.z - s.player.z)))
 		h = maxi(h, best)
+	if not s.goal_ids.is_empty():
+		h += _goal_deficit(s)   # (bloques que todavía hay que sumar a una columna pegada a la meta: acciones de empujar o tirar, distintas de las de caminar y trepar que ya cuenta h)
 	return h
+
+
+## Cota inferior de los empujes y tirones que faltan: para pararse en la meta (un bloque en lo alto de la columna `gy`) hay que llegar a una celda pegada con la columna a `gy - 1` de alto (o más).
+## Cada acción de empujar o tirar suma como mucho un bloque a una columna dada, así que faltan al menos tantas como bloques le falten a la columna vecina más alta.
+## (No es una cota exacta —hay otras maneras de llegar, como colgarse—, pero sirve para guiar la búsqueda: sin esto el solucionador casi no sabe hacia dónde mover los bloques.)
+static func _goal_deficit(s) -> int:
+	var best := 1000
+	for id in s.goal_ids:
+		if not s.positions.has(id):
+			continue
+		var p: Vector3i = s.positions[id]
+		for d in TowerLogic.DIRS:
+			var n: Vector3i = p + d
+			var top := p.y - 1   # (alto de la columna vecina: capas contiguas desde el piso, contando hasta p.y - 1)
+			var y := p.y - 1
+			var missing := 0
+			while y >= 0 and missing <= 12:
+				if s.blocks.has(Vector3i(n.x, y, n.z)):
+					break
+				missing += 1
+				y -= 1
+			best = mini(best, missing)
+	return 0 if best >= 1000 else best
 
 
 ## Cuánto puede subir el jugador en una sola acción: trepar (1) o, con catapultas, trepar a la
@@ -209,6 +234,11 @@ static func _path(idx: int, parents: PackedInt32Array, actions: PackedInt32Array
 static func _enc(c: Vector3i) -> int:
 	# Los bloques empujados pueden salir de la huella (x, z negativas o mayores que el tamaño): por eso el desplazamiento.
 	return (c.x + 8) + 64 * ((c.z + 8) + 64 * (c.y + 64))
+
+
+## La identidad de un estado (bloques, tipos, bombas y jugador), sin la cuenta de la caída.
+static func state_key(s) -> Vector3i:
+	return _key(s, false)
 
 
 static func _key(s, use_collapse: bool) -> Vector3i:

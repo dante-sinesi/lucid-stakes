@@ -1,7 +1,7 @@
 extends Control
 ## Cuadro de diálogo de cubitos, abajo en la pantalla: la cara de quien habla a la izquierda, su nombre y el texto que va apareciendo
 ## letra por letra. Dos modos:
-##  - bloqueante (historias): hay que avanzar con Enter, Espacio, E o un clic; Esc salta todo lo que queda.
+##  - bloqueante (historias): hay que avanzar con Enter, Espacio, E o un clic (Esc no la corta: abre la pausa y la charla sigue donde estaba).
 ##  - de consejo (lecciones del tutorial): el texto se escribe solo, se queda mientras jugás y no pide nada.
 ## Cada línea es un texto o {text, icon}: con `icon` ("luz" o "claridad") se muestra ese ícono animado al costado, para hablar de la
 ## moneda sin escribir su nombre.
@@ -31,6 +31,7 @@ const FACE_PAL := {"k": Color(0.07, 0.07, 0.09), "r": Color(0.72, 0.1, 0.16), "s
 
 var speaker := "Tabernero"
 var blocking := true
+var any_key := false      # cualquier tecla avanza (el tutorial: el tabernero cuenta y con una tecla se va); si no, sólo Enter, Espacio y E
 var lines: Array = []
 var index := -1
 var name_label: Control
@@ -78,10 +79,11 @@ func is_active() -> bool:
 
 
 ## Muestra una serie de líneas. `block`: si hay que avanzarlas (historias) o se escriben solas (consejos).
-func show_lines(new_lines: Array, who := "Tabernero", block := true) -> void:
+func show_lines(new_lines: Array, who := "Tabernero", block := true, any := false) -> void:
 	lines = new_lines
 	speaker = who
 	blocking = block
+	any_key = any
 	index = -1
 	_active = true
 	visible = true
@@ -179,9 +181,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_E:
 			advance()
 			get_viewport().set_input_as_handled()
-		KEY_ESCAPE:
-			skip_all()
-			get_viewport().set_input_as_handled()
+		_:
+			if any_key:
+				advance()
+				get_viewport().set_input_as_handled()
 
 
 func _draw() -> void:

@@ -22,6 +22,7 @@ func _init() -> void:
 	await test_end_screen()
 	await test_stats()
 	await test_prefetch()
+	await test_prefetch_ahead()
 	print("tests del run terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -43,16 +44,16 @@ func wait_tower(main: Node) -> void:
 func test_cost() -> void:
 	var r := RunState.new()
 	check(r.restart_cost() == 25, "etapa 1: reintentar cuesta 25 (la mitad de la ficha)")
-	r.stage = 10
-	check(r.restart_cost() == 34, "etapa 10: 25 + 9")
-	r.stage = 27
-	check(r.restart_cost() == 51, "etapa 27: 51 (la mitad de la ficha de 102)")
+	r.stage = 8
+	check(r.restart_cost() == 39, "etapa 8: 25 + 2 por etapa")
+	r.stage = 15
+	check(r.restart_cost() == 53, "etapa 15: 53 (la mitad de la ficha de 106)")
 	r.tower_retries = 2
-	check(r.restart_cost() == 153, "cada reintento de la misma torre cuesta mas: el tercero sale 3 veces el basico")
-	r.claridad = 152
-	check(not r.can_afford_restart(), "con 152 no alcanza para 153")
-	r.claridad = 153
-	check(r.can_afford_restart(), "con 153 si")
+	check(r.restart_cost() == 159, "cada reintento de la misma torre cuesta mas: el tercero sale 3 veces el basico")
+	r.claridad = 158
+	check(not r.can_afford_restart(), "con 158 no alcanza para 159")
+	r.claridad = 159
+	check(r.can_afford_restart(), "con 159 si")
 
 
 func test_restart_flow() -> void:
@@ -153,16 +154,17 @@ func test_end_screen() -> void:
 	r.retries = 3
 	r.moves = 987
 	r.boosts.assign(["freno_inexistente"])
+	check(RunState.rows_for(1) == 25 and RunState.rows_for(5) == 25 and RunState.rows_for(8) == 31 and RunState.rows_for(15) == 41, "las torres crecen con la etapa: 25 filas hasta la 5, hasta 41")
 	var rows := RunEnd.summary_rows(r, false)
-	check(rows[0] == ["Etapa alcanzada", "7 / 27", false] and rows[1][1] == "6" and rows[2][1] == "1234" and rows[3][1] == "300" and rows[4][1] == "450" and rows[5][1] == "3" and rows[6][1] == "987", "el resumen trae etapa, torres, claridad, ruleta, reintentos y movimientos")
-	check(RunEnd.summary_rows(r, true)[0][1] == "27 / 27", "si escapaste figura 27 / 27")
+	check(rows[0] == ["Etapa alcanzada", "7 / 15", false] and rows[1][1] == "6" and rows[2][1] == "1234" and rows[3][1] == "300" and rows[4][1] == "450" and rows[5][1] == "3" and rows[6][1] == "987", "el resumen trae etapa, torres, claridad, ruleta, reintentos y movimientos")
+	check(RunEnd.summary_rows(r, true)[0][1] == "15 / 15", "si escapaste figura 15 / 15")
 	var main := make_main()
 	await wait_tower(main)
 	main.run.towers_cleared = 4
 	main.run.take(load("res://scripts/items.gd").get_item("aire_extra"))
 	main.end_run(true)
 	await process_frame
-	check(main.run_end.visible and main.run_end.title.text.contains("Escapaste") and main.run_end.reason_label.text.contains("27"), "ganar el run muestra el titulo de victoria")
+	check(main.run_end.visible and main.run_end.title.text.contains("Escapaste") and main.run_end.reason_label.text.contains("15"), "ganar el run muestra el titulo de victoria")
 	check(main.run_end.stats_box.get_child_count() == 7 and main.run_end.items_row.get_child_count() == 1, "se arman las 7 filas del resumen y los iconos de los boosts")
 	check(not main.hud_layer.visible and main.in_menu, "se oculta la interfaz de la torre")
 	main.run_end.menu_button.pressed.emit()
@@ -216,6 +218,30 @@ func test_prefetch() -> void:
 	while main.generating:
 		await process_frame
 	check(main.logic != null and main.stage_number == 7, "al cruzar el portal se usa la torre que ya venia generandose")
+	main._cancel_jobs()
+	main.queue_free()
+	await process_frame
+
+
+## Con anticipación: terminada la torre de la etapa siguiente se empieza la de dos etapas adelante (un trabajo por vez, y nunca más de dos por delante).
+func test_prefetch_ahead() -> void:
+	var main := make_main()
+	main.test_mode_jobs = true
+	await wait_tower(main)
+	var st: int = main.stage_number
+	check(not main._find_job(st + 1).is_empty() and main._find_job(st + 2).is_empty(), "al empezar la etapa sólo se genera la siguiente")
+	main._prefetch_next_stage()
+	check(main._find_job(st + 2).is_empty(), "mientras una sigue generándose no se arranca otra encima")
+	var first: Dictionary = main._find_job(st + 1)
+	while main._job_alive(first):
+		await process_frame
+	main._prefetch_next_stage()
+	check(not main._find_job(st + 2).is_empty(), "al terminar la siguiente se empieza la de dos etapas adelante")
+	var second: Dictionary = main._find_job(st + 2)
+	while main._job_alive(second):
+		await process_frame
+	main._prefetch_next_stage()
+	check(main._find_job(st + 3).is_empty() and main._jobs.size() == 2, "nunca más de dos torres por delante")
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame

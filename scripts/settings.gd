@@ -4,6 +4,7 @@ extends RefCounted
 
 const Loc := preload("res://scripts/loc.gd")
 const AudioHub := preload("res://scripts/audio_hub.gd")
+const VDraw := preload("res://scripts/voxel_draw.gd")
 
 ## Resoluciones de ventana que se ofrecen (se filtran por el tamaño de la pantalla del jugador).
 const RESOLUTIONS: Array[Vector2i] = [Vector2i(854, 480), Vector2i(960, 540), Vector2i(1024, 576), Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
@@ -31,7 +32,10 @@ static func defaults() -> Dictionary:
 		"fullscreen": false,
 		"resolution": [1280, 720],
 		"vsync": true,
+		"reading_mode": false,    # modo de lectura: letras más claras y con contorno (ver voxel_draw.gd)
+		"high_contrast": false,   # alto contraste: cartas oscuras de borde claro y la escena con más contraste y color
 		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
+		"compass": true,          # rosa de los vientos (la que indica a qué eje va cada tecla)
 		"volume": VOLUME_STEPS,   # en pasos de 0 a VOLUME_STEPS
 		"music": VOLUME_STEPS,    # música (se multiplica por el volumen general)
 		"sfx": VOLUME_STEPS,      # efectos de sonido
@@ -60,6 +64,9 @@ static func _sanitize() -> void:
 		data.lang = "es"
 	data.fullscreen = bool(data.fullscreen)
 	data.vsync = bool(data.vsync)
+	data.reading_mode = data.reading_mode is bool and data.reading_mode
+	data.high_contrast = data.high_contrast is bool and data.high_contrast
+	data.compass = not (data.compass is bool) or data.compass
 	var us := int(data.ui_scale)
 	data.ui_scale = us if UI_SCALES.has(us) else 100
 	data.volume = clampi(int(data.volume), 0, VOLUME_STEPS)
@@ -102,10 +109,27 @@ static func set_value(key: String, value) -> void:
 			apply("audio")
 		"vsync":
 			apply("vsync")
-		"ui_scale":
+		"compass":
+			pass   # (la rosa de los vientos lee el ajuste cada cuadro)
+		"ui_scale", "reading_mode", "high_contrast":
 			apply("ui")
 		_:
 			apply("window")
+
+
+## Modo de lectura: letras más claras con contorno. Alto contraste: cartas y escena con más contraste. (El tamaño de la interfaz es aparte.)
+
+
+static func reading_mode() -> bool:
+	return bool(get_value("reading_mode"))
+
+
+static func high_contrast() -> bool:
+	return bool(get_value("high_contrast"))
+
+
+static func compass_on() -> bool:
+	return bool(get_value("compass"))
 
 
 static func lang() -> String:
@@ -161,6 +185,9 @@ static func apply(what := "all") -> void:
 		var tree := Engine.get_main_loop() as SceneTree
 		if tree != null:
 			tree.root.content_scale_factor = float(int(data.ui_scale)) / 100.0
+			VDraw.reading = reading_mode()
+			VDraw.high_contrast = high_contrast()
+			tree.call_group("graphics", "apply_graphics")
 	if what == "all" or what == "window":
 		window_applies += 1
 	if DisplayServer.get_name() == "headless":

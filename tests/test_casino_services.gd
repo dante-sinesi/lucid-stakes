@@ -41,7 +41,7 @@ func make_run(stage := 5, claridad := 1000) -> RunState:
 func test_layout() -> void:
 	var ids := []
 	check(not Room.layout(1).has("station") and Services.service_for_tier(0) == "", "la taberna no tiene estación de servicio")
-	for st in [8, 16, 24]:
+	for st in [5, 9, 13]:
 		var lay := Room.layout(st)
 		ids.append(lay.station.id)
 		check(Services.service_for_tier(lay.tier) == lay.station.id, "la estación de la etapa %d es la de su nivel" % st)
@@ -108,7 +108,7 @@ func test_vault() -> void:
 func test_insurance() -> void:
 	var run := make_run(5, 500)
 	var first := Services.first_retry_cost(run)
-	check(first == RunState.RESTART_BASE + 5 and Services.insurance_price(run) == int(round(first * 0.6)), "el seguro cuesta 60 % del primer reintento")
+	check(first == RunState.RESTART_BASE + 10 and Services.insurance_price(run) == int(round(first * 0.6)), "el seguro cuesta 60 % del primer reintento")
 	var bal := run.claridad
 	check(Services.buy_insurance(run).ok and run.insurance and run.claridad == bal - Services.insurance_price(run), "se contrata")
 	check(not Services.buy_insurance(run).ok, "no se contrata dos veces")

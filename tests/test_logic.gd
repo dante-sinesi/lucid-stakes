@@ -56,6 +56,7 @@ func _init() -> void:
 	test_walk_climb_push_pull()
 	test_support()
 	test_edge_support()
+	test_standing()
 	test_fixed()
 	test_ice()
 	test_bomb()
@@ -128,17 +129,79 @@ func test_support() -> void:
 	t.add_block(Vector3i(1, 5, 1))
 	t.add_block(Vector3i(2, 5, 1))
 	t._settle()
-	check(t.blocks.has(Vector3i(1, 5, 1)) and t.blocks.has(Vector3i(2, 5, 1)), "dos bloques que se tocan se sostienen")
+	check(not t.blocks.has(Vector3i(1, 5, 1)) and t.blocks.has(Vector3i(1, 1, 1)) and t.blocks.has(Vector3i(2, 1, 1)), "dos bloques que sólo se tocan entre sí (sin nada que los sostenga) caen juntos")
+	t = fresh()
+	t.add_block(Vector3i(1, 1, 1))   # un bloque en el piso: sostenido
+	t.add_block(Vector3i(0, 2, 1))   # y otro pegado de costado en lo alto (colgante): se sostiene de él
+	t._settle()
+	check(t.blocks.has(Vector3i(0, 2, 1)), "un bloque colgante pegado a uno sostenido se sostiene")
 
 	t = fresh()
 	t.add_block(Vector3i(3, 1, 2))
 	t.try_action(E, GRAB)  # (3,1,2) -> (4,1,2); sigue apoyado en la base
 	check(t.blocks.has(Vector3i(4, 1, 2)), "bloque empujado sobre la base se mantiene")
 
-	# Tirar de un bloque sin piso atrás no se puede (ver test_pull_hang).
+	# Tirar de un bloque sin piso atrás deja colgado del borde (ver test_pull_hang).
 	t = ledge()
 	t.add_block(Vector3i(1, 1, 2))
-	check(not t.try_action(E, GRAB).ok and t.hang_dir == Vector3i.ZERO, "tirar de un bloque sin piso atras no se puede")
+	check(t.try_action(E, GRAB).ok and t.hang_dir == W, "tirar de un bloque sin piso atras deja colgado del bloque donde estabas")
+
+
+## Un bloque que estaba apoyado sobre otro cae si le sacan el apoyo aunque tenga vecinos al costado; los que cuelgan desde el principio (plataformas) siguen sosteniéndose.
+func test_standing() -> void:
+	var t := TowerLogic.new()
+	t.size = Vector2i(6, 6)
+	t.collapse_every = 100000
+	t.moves_to_collapse = 100000
+	t.add_block(Vector3i(0, 0, 0))   # donde está parado el jugador
+	t.add_block(Vector3i(1, 0, 0))
+	t.add_block(Vector3i(1, 0, 4))   # un solo bloque de piso
+	for y in [1, 2, 3]:   # una columna apoyada en él
+		t.add_block(Vector3i(1, y, 4))
+	for y in [2, 3]:   # y una vecina pegada que cuelga de la primera (no tiene nada debajo)
+		t.add_block(Vector3i(2, y, 4))
+	t.player = Vector3i(0, 1, 0)
+	t.mark_standing()
+	check(not t.standing.has(t.blocks[Vector3i(2, 2, 4)]) and t.standing.has(t.blocks[Vector3i(1, 2, 4)]), "los bloques con algo debajo cuentan como apoyados; los que cuelgan, no")
+	check(t.try_action(E).ok and t.blocks.has(Vector3i(1, 3, 4)) and t.blocks.has(Vector3i(2, 3, 4)), "mientras nadie toca el apoyo, todo sigue en su lugar")
+	# se saca el bloque de abajo de la columna: cae entera (y arrastra a la vecina que colgaba de ella), aunque se tocaran
+	t._remove_block(Vector3i(1, 0, 4))
+	t._settle()
+	check(not t.blocks.has(Vector3i(1, 3, 4)) and not t.blocks.has(Vector3i(2, 3, 4)), "la columna a la que le sacan el bloque de abajo cae, aunque tenga una vecina al costado")
+	# una plataforma pegada al núcleo cuelga sin nada debajo; un grupo sin núcleo ni piso no se sostiene
+	var h := TowerLogic.new()
+	h.size = Vector2i(6, 6)
+	h.collapse_every = 100000
+	h.moves_to_collapse = 100000
+	for y in [0, 1, 2, 3]:
+		h.add_block(Vector3i(3, y, 1), true)   # núcleo
+	h.add_block(Vector3i(4, 3, 1))   # plataforma colgante pegada al núcleo
+	h.add_block(Vector3i(5, 3, 1))
+	h.add_block(Vector3i(0, 4, 4))   # grupo suelto (sólo se tocan entre ellos)
+	h.add_block(Vector3i(1, 4, 4))
+	h.player = Vector3i(2, 1, 1)
+	h.mark_standing()
+	h._settle()
+	check(h.blocks.has(Vector3i(4, 3, 1)) and h.blocks.has(Vector3i(5, 3, 1)), "la plataforma colgante pegada al núcleo se sostiene")
+	check(not h.blocks.has(Vector3i(0, 4, 4)) and not h.blocks.has(Vector3i(1, 4, 4)), "un grupo de bloques que sólo se sostienen entre sí cae")
+	# lo que se empujó de costado cuelga de sus vecinos (como las plataformas)
+	check(h.standing.is_empty() or not h.standing.has(h.blocks.get(Vector3i(4, 3, 1), -5)), "(las plataformas no cuentan como apoyadas)")
+	# pegado al núcleo, un bloque apoyado se sigue sosteniendo aunque le saquen el piso
+	var f := TowerLogic.new()
+	f.size = Vector2i(4, 4)
+	f.collapse_every = 100000
+	f.moves_to_collapse = 100000
+	for x in 3:
+		f.add_block(Vector3i(x, 0, 0))
+	for y in [0, 1, 2, 3]:
+		f.add_block(Vector3i(3, y, 0), true)   # núcleo
+	f.add_block(Vector3i(2, 1, 0))
+	f.add_block(Vector3i(2, 2, 0))
+	f.player = Vector3i(0, 1, 1)
+	f.mark_standing()
+	f._remove_block(Vector3i(2, 0, 0))
+	f._settle()
+	check(f.blocks.has(Vector3i(2, 1, 0)) and f.blocks.has(Vector3i(2, 2, 0)), "pegado al núcleo se sigue sosteniendo")
 
 
 func test_edge_support() -> void:
@@ -802,7 +865,7 @@ func test_push_out() -> void:
 	var id: int = t.blocks[Vector3i(4, 1, 2)]
 	check(t.try_action(E, GRAB).ok, "se puede empujar un bloque hacia fuera de la huella")
 	check(t.player == Vector3i(3, 1, 2), "el jugador no se mueve al empujar")
-	check(t.positions[id] == Vector3i(5, 1, 2) and not t.in_bounds(t.positions[id]), "el bloque sale de la huella y queda sostenido por la arista de la base")
+	check(t.positions[id] == Vector3i(5, 1, 2) and not t.in_footprint(t.positions[id]), "el bloque sale de la huella y queda sostenido por la arista de la base")
 
 	# Hacia el otro lado (coordenadas negativas).
 	t = fresh()
@@ -845,16 +908,23 @@ func test_push_out() -> void:
 
 
 func test_pull_hang() -> void:
-	# Tirar sin piso atrás no se puede: el bloque tirado quedaría encima del borde del que te agarrarías (no hay borde
-	# que agarrar entre dos cubos). Colgarse se hace a propósito, con Espacio + dirección.
+	# Tirar sin piso atrás (como en Catherine): el bloque tirado viene a donde estabas y quedás colgado del bloque en el que estabas parado, sin poder trepar de vuelta
+	# (el bloque tirado quedó encima del borde); hay que moverse de costado.
 	var t := ledge()
 	t.add_block(Vector3i(1, 1, 2))
-	var before_blocks: Dictionary = t.blocks.duplicate()
-	check(not t.try_action(E, GRAB).ok and t.player == Vector3i(2, 1, 2) and t.hang_dir == Vector3i.ZERO and t.blocks == before_blocks, "tirar sin piso atras no se puede y no mueve nada")
+	check(t.try_action(E, GRAB).ok, "tirar sin piso atras se puede")
+	check(t.blocks.has(Vector3i(2, 1, 2)) and not t.blocks.has(Vector3i(1, 1, 2)), "el bloque tirado viene a donde estabas")
+	check(t.player == Vector3i(3, 0, 2) and t.hang_dir == W, "y quedás colgado del bloque en el que estabas parado, un piso más abajo")
+	check(not t.try_action(W).ok and t.player == Vector3i(3, 0, 2), "no se puede trepar de vuelta: el bloque tirado quedó encima")
 	t = fresh()
 	t.player = Vector3i(4, 1, 2)
 	t.add_block(Vector3i(3, 1, 2))
-	check(not t.try_action(E, GRAB).ok and t.player == Vector3i(4, 1, 2) and t.blocks.has(Vector3i(3, 1, 2)), "tirar hacia fuera de la huella tampoco")
+	check(t.try_action(E, GRAB).ok and t.player == Vector3i(5, 0, 2) and t.hang_dir == W, "tirar hacia fuera de la huella también deja colgado (el mundo sigue más allá de la huella)")
+	t = fresh()   # un bloque de hielo no sirve de agarre
+	t.player = Vector3i(4, 1, 2)
+	t.add_block(Vector3i(3, 1, 2))
+	set_base_kind(t, 4, 2, ICE)
+	check(not t.try_action(E, GRAB).ok and t.hang_dir == Vector3i.ZERO, "sobre hielo no hay de dónde agarrarse al tirar")
 
 	# Un bloque fijo no se puede tirar, haya piso o no.
 	t = ledge()

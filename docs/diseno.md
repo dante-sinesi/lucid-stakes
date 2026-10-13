@@ -194,7 +194,7 @@ Decisiones de nuestro juego:
 - No implementado todavía (existe en Catherine): empujar varios bloques en fila de una vez; bloques pesados, trampas de pinchos y bloques que se desmoronan.
 
 ## 3d. Modo entrenamiento
-Se entra desde el menú principal y se elige la etapa (1–27, la dificultad). Es una torre de la etapa elegida sin casino ni etapa siguiente; al llegar a la cima se avisa y con N se genera otra. **P** muestra el mejor próximo movimiento ("W", "Shift + A", "Espacio + D"; con la cámara actual) y otra vez **P** lo oculta; la pista se recalcula tras cada movimiento (en un hilo). `scripts/hint.gd`: resuelve la fila que toca con el mismo solucionador del generador (llegar a la plataforma de esa fila; la torre guarda los ids de las plataformas por fila en `row_platforms`) y, si no se puede, cae a "subir k pisos".
+Se entra desde el menú principal y se elige la etapa (1–27, la dificultad). Es una torre de la etapa elegida sin casino ni etapa siguiente; al llegar a la cima se avisa y con N se genera otra. (La pista con P y `hint.gd` se eliminaron: ya no hay pistas.)
 
 ## 6d. Boosts, consumibles y economía (efectos conectados)
 - **Boosts** (duran todo el run; `TowerLogic.apply_perks` al empezar o reintentar cada etapa): Aire extra (+1 a la caída), Madrugada (la caída al doble), Paso firme (trepar/bajar no cuenta para la caída), Pies de luz (+1 por bloque purificado), Luz propia (purifica los vecinos), Mano de oro (racha de a 1,0), Racha larga (tope ×6), Reflejos (bombas +3), Ojo de hielo (frena una celda antes), Ahorro (+20 de claridad por etapa), Segundo aliento (una vez por etapa, si caés volvés a la última celda firme).
@@ -241,7 +241,7 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
 ## 11. Tutorial y cámara con flechas
 
 - El **modo entrenamiento se quitó**; en su lugar el menú principal tiene **Tutorial** (`scripts/tutorial.gd`): 10 lecciones, cada una una torre chica armada a mano que enseña una sola cosa: moverse (y la rosa de los vientos), trepar, empujar (un hueco que sólo se cruza empujando un bloque encima), tirar (se completa dejando el bloque en la casilla dorada), colgarse (una torre alta que no se baja caminando), hielo, pesado, agrietado, bomba, y una torre generada de verdad de 4 pisos. `tests/test_tutorial.gd` comprueba con el solucionador que cada lección se puede ganar y que empujar y colgarse son imprescindibles donde se enseñan.
-- Dentro del tutorial: cartel con la lección arriba, reintento gratis (R), pista con P, al completar una lección aparece un "¡Bien!" y a los ~1,3 s pasa sola a la siguiente (Enter o N la adelantan o saltan) y Esc pausa. No hay casino ni claridad en juego y no se guarda. La última lección vuelve al menú.
+- Dentro del tutorial: cartel con la lección arriba, reintento gratis (R), al completar una lección aparece un "¡Bien!" y a los ~1,3 s pasa sola a la siguiente (Enter o N la adelantan o saltan) y Esc pausa. No hay casino ni claridad en juego y no se guarda. La última lección vuelve al menú.
 - **Las flechas ahora giran la cámara** (izquierda y derecha giran, arriba y abajo inclinan, igual que arrastrar con el mouse); ya no mueven al personaje: el movimiento es sólo WASD.
 - `N` (torre nueva) y `[` `]` (cambiar de etapa) quedaron **sólo para compilaciones de desarrollo** (donde existe la consola F1): antes funcionaban en una partida normal y eran un truco.
 - Curva de mecánicas por etapa (según la dificultad `(etapa-1)/26`): 1 y 2 sólo bloques normales; hielo desde la 3; pesado desde la 5; agrietado desde la 8; bomba desde la 12.
@@ -373,7 +373,7 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
 
 - **Pantalla de Opciones** (menú principal y pausa): cuatro pestañas **General** (idioma), **Gráficos**, **Sonido** y **Controles** (Q/E o LB/RB cambian de pestaña). Cada una se desplaza con la rueda si no entra, y tiene su botón **Restablecer** (menos General). Todo se aplica y se guarda al instante en `user://settings.json`.
 - **Gráficos** (`graphics.gd`): arriba, pantalla (ventana o completa), resolución y sincronía vertical; después **Calidad** con preajustes Alta / Media / Baja y ajustes sueltos: sombras (no, duras, suaves), partículas de los bloques (no, pocas, todas), escala de render (50-100 %), suavizado de bordes (no, 2x, 4x), silueta del personaje tras las paredes, destellos y temblores, límite de FPS (30, 60, 144, sin límite). Tocar un ajuste suelto pasa a "Personalizada" (si los valores vuelven a coincidir con un preajuste, se lo nombra). "Baja": sin sombras, sin partículas, escala 70 %, sin suavizado. En pantalla completa la **resolución** es la del render (el juego se dibuja a esa altura y se estira a la pantalla).
-- **Controles** (`controls.gd`): todas las acciones del juego tienen nombre, tecla y entrada del mando, y se reasignan. Si la tecla o el botón ya los usaba otra acción, se **intercambian** y se avisa. Los cambios se guardan en la clave `bindings`. Mando de fábrica: stick izquierdo mueve (relativo a la cámara, como WASD), stick derecho gira e inclina la cámara, LT empujar/tirar, X colgarse, Y pista, RB/LB vista, Start pausa, Select reintentar; A confirma y B vuelve en los menús.
+- **Controles** (`controls.gd`): todas las acciones del juego tienen nombre, tecla y entrada del mando, y se reasignan. Si la tecla o el botón ya los usaba otra acción, se **intercambian** y se avisa. Los cambios se guardan en la clave `bindings`. Mando de fábrica: stick izquierdo mueve (relativo a la cámara, como WASD), stick derecho gira e inclina la cámara, LT empujar/tirar, X colgarse, RB/LB vista, Start pausa, Select reintentar; A confirma y B vuelve en los menús.
 - **Mando** (`pad_bridge.gd`): cada botón o eje del mando se traduce a la tecla de la acción que tiene asignada y se inyecta como evento de teclado; así todas las pantallas (torre, casino, dados, tragamonedas, blackjack, menús) funcionan igual con teclado y con mando. En menús y juegos del casino el stick izquierdo y la cruceta mueven con las flechas.
 - Limitación conocida: los textos de ayuda del tutorial todavía nombran las teclas por defecto (W, A, S, D...), no los botones del mando.
 - Medición (`tests/bench_graphics.gd`): en la máquina de desarrollo el juego va a la frecuencia de la pantalla en cualquier preajuste (la escena es liviana); lo que sí baja son las llamadas de dibujo (302 → 123 en Baja). Los preajustes están pensados para GPUs integradas, que no se pudieron medir todavía.
@@ -412,3 +412,95 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
 
 - El casino (nivel 2) y el gran casino (nivel 3) tenían una paleta que se aclaraba hasta casi blanco más una luz ambiente de 1,5: se quemaban y los detalles desaparecían. Ahora cada uno tiene una paleta propia de **mármol cálido** (`Room._warm_look`): paredes arena y crema, piso en damero marfil y pizarra (casino: arena y chocolate) con mucho contraste, columnas marfil, oro más oscuro, felpa verde o turquesa y alfombra terracota; dentro de cada nivel sólo hay un cambio mínimo de etapa a etapa (±4 %). La taberna y el salón no cambian.
 - **Luz**: en el casino y el gran casino la luz ambiente es 1,0 y cálida, el sol baja a 0,6 y el fondo es casi negro (`CASINO_AMBIENT_WARM`, `CASINO_SUN_WARM` en `main.gd`); se restablece al volver a la torre. `Room.look(stage, tier)` toma el nivel de la sala (también con el escenario Gran Casino).
+
+
+## 35. Consumibles nuevos, vidas, Dante y Gaby, Compromiso
+
+- **Consumibles**: 8 conversores (uno por tipo de bloque), Tótem (revive gratis), Escudo (absorbe la próxima bomba), Doble salto (sube un pilar de 2), Teletransporte (se elige con el mouse un cubo a ≤5 de distancia) y Vida extra. Se tiran con clic derecho (sin recuperar dinero).
+- **Vidas**: 3 corazones 3D abajo a la derecha; cada muerte con reintento gasta uno (4 con la habilidad *Corazón extra*). Vida extra sólo sirve si falta alguna.
+- **Personajes**: Dante y Gaby vienen desde el principio; el gatito (etapa 4) y el conejito (etapa 10) se desbloquean.
+- **Compromiso** (escenario): una sola vida, morir termina la partida, sin Tótems ni Vidas extra. Recompensa: la habilidad persistente *Corazón extra*.
+
+## 36. Prueba «Lluvia de meteoritos»
+
+- Cada movimiento del jugador destruye el bloque que estaba **marcado** (parpadea en rojo) y marca el siguiente; el meteorito se ve caer y chocar (`main._meteor_impact`).
+- **Camino garantizado** (`meteors.gd`): se repite la solución de la torre y se protegen los bloques que usa (donde pisa, de donde cuelga, los que mueve, los que se rompen y los que miran los deslizamientos). Además un bloque sólo se elige si, al caer, no mueve al jugador ni a un bloque protegido (`TowerLogic._meteor_safe`). La solución se guarda con la partida.
+- Está en los sorteos de La Pesadilla, Relojería, Compromiso y Gran Casino. Test: `tests/test_meteors.gd`.
+
+## 37. Modo de lectura y alto contraste
+
+- Opciones → General → *Modo de lectura*: letras sin corrupción, más claras y con contorno oscuro; no cambia el tamaño de la interfaz, que es otra opción (`VoxelDraw.reading`, `Settings.reading_mode`).
+- *Alto contraste* (aparte): cartas más oscuras con borde claro y sin ruido, y la escena con más contraste y saturación (`VoxelDraw.high_contrast`, `Settings.high_contrast`, `Main.apply_graphics`).
+
+## 38. Tutorial reducido a las mecánicas
+
+- **Flujo de cada lección**: el tabernero cuenta sólo lore (sin hablar de teclas; cualquier tecla cierra su ventana) y entonces aparece arriba, en su lugar, la **ayuda**: una frase simple con las teclas dibujadas adentro (`key_hint.gd`), por ejemplo «Mantené [Shift] y pulsá [W] [A] [S] [D]». Las teclas están grises y se doran al usarse bien (los nombres son los de los controles del jugador). Si se llega a la meta sin haber usado las teclas obligatorias no se avanza: la lección se reinicia conservando las doradas.
+- **Lecciones** (7, sólo mecánicas, sin hablar de tipos de bloque): 1 moverse (sendero en S que obliga a las 4 teclas), 2 cámara (flechas; la escalera tapa al personaje), 3 empujar (escalera armada empujando bloques), 4 tirar (un bloque suelto: alcanza con tirar de él una vez; empujarlo no cuenta, el tutorial distingue empujar de tirar con `TowerLogic.last_grab`), 2 cámara pasa a ser el personaje solo sobre un bloque que se completa al tocar las 4 flechas, 5 cornisa (S de columnas de hierro de 2 de alto que sólo se tocan en diagonal: hay que colgarse y desplazarse; plataforma de salida ancha para probar Espacio + cualquier dirección), 6 soltarse (la torre alta; se suelta con Espacio), 7 torre generada (el tabernero explica los dados mientras se genera).
+- **Colgado**: ir en la dirección contraria al bloque ya no suelta (sólo gira hacia el bloque); se suelta apretando Espacio (`TowerLogic.release_hang`, `release_with_opposite`). El solucionador conserva la regla vieja.
+- **Dados**: jugar es obligatorio; «Empezar» aparece al terminar las tiradas. Se eliminó el texto «Elegí qué cara…» (lo explica el tabernero en el tutorial).
+- **Guardado**: al morir se guarda al instante y al continuar cuenta como reintento después de morir (gasta una vida); Alt + F4 también guarda.
+
+## 39. Guía de bloques y descubrimiento
+
+- Como el tutorial ya no enseña tipos de bloque, hay una **guía de bloques** (menú principal y menú de pausa; `block_guide.gd`, `block_guide_screen.gd`) con el bloque en 3D girando (el mismo modelo de minibloques y el mismo shader que en la partida), nombre y descripción por tipo: bloque corrupto, hielo, pesado, agrietado, bomba, trampa, pinchos y catapulta.
+- **Descubrimiento**: un bloque se descubre la primera vez que el jugador llega a la altura de una fila que lo contiene (que exista en la torre no alcanza: `BlockGuide.newly_reached`). En ese momento el juego frena (cuadro de diálogo bloqueante) y el tabernero explica sus características; después se sigue. Se guarda en el perfil (`blocks_seen`) y vale para siempre; no se descubre nada en el tutorial ni en el laboratorio.
+- En la guía los bloques sin descubrir salen en gris y sin nombre ni descripción: sólo dicen «Por descubrir».
+
+## 40. Balanceo: 15 etapas, escalera de bloques y situaciones
+
+- **15 etapas** en todos los escenarios (`stages.gd`): salas 1-3 taberna, 4-7 salón, 8-11 casino, 12-15 gran casino; pruebas en 3, 6, 9, 12 y 15. Economía reescalada: ficha de la ruleta 50 → 106 (`PRICE_STEP` 4), reintento 25 + 2 por etapa, Luz 5 por torre y 20 por prueba, recompensa en claridad 40 + 18 por etapa.
+- **Escalera de bloques** (por dificultad `(etapa-1)/14`): hielo en la etapa 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7 (`ICE_FROM`... `BOMB_FROM` en `tower_gen.gd`).
+- **Situaciones** (`_feature_plan`, `_seed_featured`, `_kind_matters`): cada tipo desbloqueado tiene 1 a 2 filas donde tiene que importar; el más nuevo debuta en las primeras filas. Una fila «situación» siembra ese bloque (en la plataforma o en los accesos) y el generador sólo la acepta si el camino que se obtiene tratando ese bloque como común falla sobre la fila de verdad. Respeta el tope de especiales por fila. `opts.situations = false` las apaga.
+- **Comando de desarrollo** `tower <etapa 1-15> [escenario] [semilla]` (consola F1, también desde el menú principal): una partida nueva en esa etapa y escenario, sin pagar la entrada; con semilla se genera con un solo hilo y es reproducible. Sirve para probar el generador.
+
+## 41. Torres por situaciones (rooms.gd)
+
+- **`scripts/rooms.gd`** genera las torres del juego (el generador fila a fila, `tower_gen.gd`, queda para sus tests y utilidades: `_close_tower`, `_window`, perfiles de etapa). Una torre de `rows` pisos son `(rows - 1) / 4` **salas de 4 pisos** alrededor del core (fijo, de arriba a abajo), una atrás de la otra, más un tramo corto (1 a 4 pisos) hasta el portal (bloque fijo). Cada sala es una **idea** escrita a mano (una situación con premisa, técnica y giros) sobre su propia plataforma, con vacío alrededor: la torre sigue siendo una columna de bloques y plataformas.
+- **Orden tipo Spelunky**: primero se decide la secuencia de salas (`Rooms.plan`) y después se arma cada una (`place_room`): se sortea un candidato de la idea y su variante, se arma la plataforma que necesita (`_footprint`: lo que la idea usa, un margen para pararse y empujar y un camino a la llegada) y se lo verifica con el solucionador.
+- **Catálogo** (`Rooms.IDEAS`): muro simple (etapa 1, sólo bloques comunes), hielo y freno, pista de hielo (resbalones que terminan en precipicio), hielo y billar, pared pesada, cruce agrietado, pared de pinchos, campo de trampas, cuenta de bomba y trampolín. Cada una declara `tier`, bloque que la desbloquea (los mismos de la escalera de bloques), movimientos base, si exige empujar, si tiene que castigar el error y sus `twists` (giros).
+- **Escenarios**: cada escenario tiene su catálogo (`Rooms.SCENARIO_IDEAS`; el Glaciar usa sólo las de hielo desde la primera etapa). Los que no tienen uno propio (la Pesadilla, por ahora todos los demás) usan todas las ideas con la escalera de bloques: hielo en la etapa 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, catapulta 8. Para copiar la fórmula a otro escenario alcanza con agregarle su lista (y, si hace falta, ideas nuevas).
+- **Plan**: la primera sala es un respiro corto; las ideas suben de tier con la dificultad y con la altura en la torre; no se repite la idea de la sala anterior ni el mismo giro de una idea dos veces seguidas; si una idea no entra se prueban las otras (primero las que menos salieron) y, al final, un respiro.
+- **Filtro de calidad** (`_commit`): se resuelve en el rango de movimientos (`base + 3 * dificultad + sala / 4`, ancho 25); la solución usa lo que la idea promete (`_uses_idea`: mueve los pinchos, gasta el agrietado, mueve el freno y resbala, resbala el hielo contra los topes, dispara la catapulta, desactiva la bomba, mueve un bloque suelto del muro...); sin empujar ni tirar no se pasa (en las ideas que exigen mover); desde la dificultad 0,2 las ideas que castigan tienen que tener errores sin salida (`_error_cost`: de las alternativas en pasos repartidos de la solución, qué fracción pierde o queda sin salida); casi todo el recorrido se ve desde alguna diagonal de la cámara (`_visible_fraction`, nada de jaulas); nada de lo armado cae solo; el camino anterior sigue valiendo y la salida deja lugar para la sala que sigue.
+- Detalles de las ideas: la pista de hielo se arma de adelante para atrás siguiendo una secuencia de resbalones (con los topes que la hacen posible), así siempre tiene solución; la cuenta de la bomba se fija con lo que tarda el camino más corto por el laberinto (+2 o +3: la acción con que se llega ya cuenta una vez); el hielo y freno tiene el pasillo hundido en el piso, con paredes de 3 de alto (si no, parado sobre el freno se caminaría por arriba).
+- Medido (un hilo): torres de 25 pisos de 1 a 30 s; en el juego corren varias semillas y gana la primera.
+- **Pendiente**: reequilibrar la claridad, el contador de pisos (hay una plataforma por sala), el sesgo de bloques de otros escenarios y de las pruebas, ideas para los demás escenarios, y salas grandes (6 a 7 pisos).
+
+## 42. Portal de salida y peaje del duende
+
+- La salida de cada torre es un portal de ondas (`shaders/portal.gdshader`, dos paños cruzados) con un duende voxel (`scripts/goblin.gd`) al lado. Ya no hay rayo.
+- El duende cobra `RunState.toll_for(etapa)` (`40 + 4 × etapa`, ~¼ de lo que rinde el camino óptimo) para encender el portal. Se paga con la claridad que traés más la que juntaste en la torre (`TowerLogic.wallet + claridad`).
+- Si llegás al portal sin poder pagar, el portal sigue apagado (`toll_blocked`), un aviso dice cuánto falta y la torre sigue: hay que volver a juntar claridad o el suelo cae.
+- Al salir se descuenta el peaje de la claridad del run (`_bank_claridad`). El costo se ve en la ventana de la partida (torre) y, en el casino, el de la próxima torre.
+- En el tutorial, el laboratorio y las pruebas automáticas (`test_mode`) no se cobra (salvo `toll_in_tests`).
+- El hielo que sigue hasta el borde del tablero o hasta un hueco sin apoyo hace caer al jugador (`_slide`, `_settle_player`).
+
+## 43. Salas de cajas (taller)
+- Sala de **2 pisos** (`taller` en `scripts/rooms.gd`), desde dificultad 0,25. Una arena de 12 a 25 celdas (rectángulo de 4x3 a 5x5, a veces unido a la llegada por un pasillo de hasta 4 celdas)
+  con **muros pesados de 3 de alto** (no se trepan ni se mueven), **cajas** comunes (1 a 4) y un **pilar de 2** que es la salida: sólo se sube si hay una caja en su única celda libre `T`
+  (el tope del pilar es un bloque fijo). Hay que traer una caja hasta `T` empujando y tirando entre muros, sabiendo qué caja usar y en qué orden.
+- Se genera **mirando todo**: se arma la arena resuelta (caja en `T`, jugador en la cima del pilar), se exploran todos los estados que se alcanzan con movimientos que se pueden deshacer (hasta 6000)
+  y se elige el comienzo con el camino más corto más largo, con más agarres (Dijkstra exacto dentro de esos estados). Entre 12 disposiciones de muros/cajas se queda la mejor.
+  El camino se guarda (no se vuelve a buscar) y se comprueba rejugándolo en la torre real. Salen acertijos de 17 a 35 movimientos con 5 a 13 agarres por sala.
+- La arena se simula sola (`_taller_mini`) pero copiando lo que ya hay alrededor en la torre (el core, las salas de abajo) como paredes fijas; si no, el acertijo se arma sobre un mundo que no es el real.
+- Una torre a dificultad alta es ~65 % salas de cajas (hasta 12 seguidas, cada una distinta) y el resto las ideas de antes como respiro; 150–300 movimientos y 40–80 agarres en total.
+- Los topes de la generación son de trabajo (resoluciones, candidatos, estados), no de tiempo: la misma semilla da siempre la misma torre.
+- Herramientas: `tests/probe_validate.gd` (genera torres como en el juego y comprueba que el camino gana), `tests/probe_quality.gd`, `tests/probe_reja.gd` (capas en texto; `SHOW_TALLER=1` dibuja cada acertijo),
+  `tests/play_tower.gd` (juega la solución dentro del juego con capturas; `IDEA=taller|mix`).
+
+## 44. Tirar sin piso atrás, mundo más grande que la huella, deshacer
+- **Tirar sin piso atrás** (de Catherine): de pie al borde con un bloque en frente, tirar hacia atrás trae el bloque a donde estabas y te deja **colgado del bloque en el que estabas parado** (un piso más abajo), sin poder
+  trepar de vuelta (el bloque tirado quedó encima del borde): hay que moverse de costado por el borde. En hielo no hay de dónde agarrarse. Antes ese tirón fallaba ("no hay piso atrás").
+- **El mundo es más grande que la huella de 8x8** (`TowerLogic.OUTSIDE`, 5 celdas): se puede caminar y colgarse hasta donde llegan los bloques que se empujaron afuera. El hielo sigue deslizándose sólo hasta salir de la
+  huella y quien resbala fuera de ella se cae (`in_footprint`).
+- **Deshacer** (tecla Z, reasignable en Opciones): vuelve el estado de la torre antes del último movimiento (con la cuenta de la caída y la claridad juntada) y rehace la vista; hasta 600 pasos, se vacía al reintentar.
+- **Caída del suelo más permisiva** en las torres de acertijos: se elige el ritmo más apretado que todavía deja pasar un 33 % de movimientos de más repartidos y mucho titubeo concentrado al principio (donde hay menos colchón),
+  y la primera caída tarda el doble.
+
+## 45. Salas chicas con altura (`chica`)
+- Sala de **4 o 5 pisos** con una arena de 3x3 a 3x5 (más un pasillo de hasta 4 celdas desde la llegada): cada celda es una columna de bloques de altura distinta (0 a 3 o 4), a veces con una columna
+  pesada, y la salida es una columna fija alta en una esquina. Para subir hay que armar una escalera redistribuyendo bloques: uno de arriba que se empuja sobre una columna más baja la sube; también se
+  pueden tirar o dejar caer desde arriba. Todo con la mecánica de siempre (empujar, tirar, colgarse).
+- Se busca con el **solucionador completo** (todas las acciones) y se mide en **bloques movidos**: se parte de varias disposiciones al azar que se puedan resolver y se mejora la mejor pasando un bloque de una
+  columna a otra mientras pida más agarres. Salen acertijos de 14 a 32 movimientos con 5 a 9 agarres; cuesta ~20 s por sala.
+- Entra en el plan junto con las salas de cajas (cuentan juntas: hasta 2 seguidas y 5 por torre). Un acertijo sin colgarse no es lo mismo que uno con colgarse: el camino guardado puede usar Espacio para
+  soltarse (en el juego se suelta con Espacio).

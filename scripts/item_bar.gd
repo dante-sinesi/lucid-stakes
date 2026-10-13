@@ -20,6 +20,7 @@ var slots: Array = []
 var interactive := false
 var min_y := 4.0              # no sube más arriba de acá (para dejar lugar a otros textos del HUD)
 var edge := 0                # 0 = pegada a la izquierda de la pantalla, 1 = a la derecha
+var bottom := false          # pegada al borde de abajo (si no, centrada en vertical)
 var tip: Control            # descripción del ítem bajo el mouse (la agrega quien crea la barra, a la capa de la interfaz)
 var _tip_index := -1
 var _prompt: Control
@@ -30,6 +31,8 @@ func _process(_delta: float) -> void:
 	var vs := get_viewport_rect().size
 	var sz := get_combined_minimum_size()
 	var y := clampf(maxf((vs.y - sz.y) * 0.5, min_y), 4.0, maxf(vs.y - sz.y - 4.0, 4.0))
+	if bottom:
+		y = maxf(vs.y - sz.y - 14.0, 4.0)
 	position = Vector2(14.0 if edge == 0 else vs.x - sz.x - 14.0, y)
 
 

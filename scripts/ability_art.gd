@@ -31,6 +31,9 @@ const ART := {
 	"corazon": {   # una vida (el contador de vidas): un corazón
 		"pal": {"r": Color(0.92, 0.16, 0.27), "h": Color(1.0, 0.62, 0.68), "d": Color(0.62, 0.06, 0.16)},
 		"rows": ["..rr.rr..", ".rhrrrrr.", "rhrrrrrrr", "rrrrrrrrr", "rrrrrrrrr", ".rrrrrrd.", "..rrrrd..", "...rdd...", "....d...."]},
+	"corazon_extra": {   # un corazón con una cruz dorada: una vida de más
+		"pal": {"r": Color(0.92, 0.16, 0.27), "h": Color(1.0, 0.62, 0.68), "d": Color(0.62, 0.06, 0.16), "y": Color(1.0, 0.88, 0.3)},
+		"rows": ["..rr.rr..", ".rhrrrrr.", "rhrrryrrr", "rrrryyyrr", "rrrrryrrr", ".rrrrrrd.", "..rrrrd..", "...rdd...", "....d...."]},
 	"mecha_larga": {   # una bomba con la mecha larga
 		"pal": {"g": Color(0.22, 0.22, 0.26), "h": Color(0.5, 0.5, 0.56), "f": Color(0.6, 0.35, 0.12), "y": Color(1.0, 0.85, 0.2), "o": Color(1.0, 0.45, 0.1)},
 		"rows": [".....y..y", "......o..", ".....f...", "....f....", "..ggggg..", ".gghgggg.", ".ghgggggg", ".ggggggg.", "..ggggg.."]},

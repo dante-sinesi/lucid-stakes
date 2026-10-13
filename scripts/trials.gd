@@ -7,9 +7,10 @@ extends RefCounted
 ## Una prueba es un diccionario: {id, name, desc, pace ("" = el de la etapa), fog (sólo se ven
 ## los pisos cercanos), dark (sólo se ven los bloques cercanos), no_items (sin consumibles), no_retry (sin reintentos: si caés se
 ## termina el run), no_streak (la racha no sube el multiplicador), bias (sesgo del generador: ver TowerGen._bias)}.
-## `mult` (multiplicador de la claridad juntada) y `index` (0..8) se completan al sortear: las últimas pagan más.
+## `mult` (multiplicador de la claridad juntada) y `index` (0..4) se completan al sortear: las últimas pagan más.
 
 const Items := preload("res://scripts/items.gd")
+const Stages := preload("res://scripts/stages.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Loc := preload("res://scripts/loc.gd")
 const K := TowerLogic.Kind
@@ -30,25 +31,26 @@ const CATALOG := {
 			"bias": {"kinds": {K.ICE: 1.6}, "plat_ice": 0.35, "cap_bonus": 3}},
 	"quebradizo": {"name": "Quebradizo", "desc": "Casi todo se rompe al pisarlo o no se mueve.",
 			"bias": {"kinds": {K.CRACKED: 1.2, K.HEAVY: 0.8}, "cap_bonus": 3}},
+	"meteoritos": {"name": "Lluvia de meteoritos", "desc": "Cada vez que te movés cae un meteorito y destruye un bloque (se marca antes). Nunca te cierra el camino.", "meteors": true},
 	"polvorin": {"name": "Polvorín", "desc": "La torre está llena de bombas.",
 			"bias": {"kinds": {K.BOMB: 1.2}, "cap_bonus": 2}},
 }
 
 ## Sorteo por defecto (el de La Pesadilla): las pruebas que no necesitan un generador especial.
-const DEFAULT_POOL: Array[String] = ["niebla", "oscuridad", "prisa", "sin_ayudas", "todo_o_nada", "sin_racha"]
+const DEFAULT_POOL: Array[String] = ["niebla", "oscuridad", "prisa", "sin_ayudas", "todo_o_nada", "sin_racha", "meteoritos"]
 
 
 static func stages() -> Array[int]:
 	var out: Array[int] = []
 	var s := FIRST_STAGE
-	while s <= 27:
+	while s <= Stages.FINAL:
 		out.append(s)
 		s += EVERY
 	return out
 
 
 static func is_trial_stage(stage: int) -> bool:
-	return stage >= FIRST_STAGE and stage <= 27 and (stage - FIRST_STAGE) % EVERY == 0
+	return stage >= FIRST_STAGE and stage <= Stages.FINAL and (stage - FIRST_STAGE) % EVERY == 0
 
 
 ## Sortea las pruebas de una partida: {etapa: id}. Nunca repite la misma prueba dos veces seguidas.
@@ -76,7 +78,7 @@ static func for_stage(schedule: Dictionary, stage: int) -> Dictionary:
 	var index := (stage - FIRST_STAGE) / EVERY
 	t["id"] = id
 	t["index"] = index
-	t["mult"] = 1.5 + 0.15 * index    # 1,5 en la primera, 2,7 en la última
+	t["mult"] = 1.5 + 0.3 * index    # 1,5 en la primera, 2,7 en la última (son 5)
 	return t
 
 
@@ -102,7 +104,7 @@ static func visible_from(trial: Dictionary, pos: Vector3i, player: Vector3i) -> 
 static func reward(trial: Dictionary, stage: int, run, rng: RandomNumberGenerator) -> Dictionary:
 	if trial.is_empty():
 		return {"item": {}, "claridad": 0, "text": ""}
-	var tier: int = Items.Tier.EPICO if int(trial.index) >= 5 else Items.Tier.RARO
+	var tier: int = Items.Tier.EPICO if int(trial.index) >= 3 else Items.Tier.RARO
 	while tier >= Items.Tier.COMUN:
 		var pool: Array[Dictionary] = []
 		for it in Items.by_tier(tier):
@@ -112,5 +114,5 @@ static func reward(trial: Dictionary, stage: int, run, rng: RandomNumberGenerato
 			var it: Dictionary = pool[rng.randi() % pool.size()]
 			return {"item": it, "claridad": 0, "text": Loc.f("Recompensa: %s", [Loc.t(it.name)])}
 		tier -= 1
-	var bonus := 40 + 10 * stage
+	var bonus := 40 + 18 * stage
 	return {"item": {}, "claridad": bonus, "text": Loc.f("Recompensa: %d de claridad", [bonus])}

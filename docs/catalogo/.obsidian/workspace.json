@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "2645a53e853ddee7",
+        "id": "df2833453789f78d",
         "type": "tabs",
         "children": [
           {
-            "id": "4af3d808d953a8ee",
+            "id": "f329adf1bdfa2ba0",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "bloques.md",
+                "file": "Cosas a mejorar.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "bloques"
+              "title": "Cosas a mejorar"
             }
           }
         ]
@@ -188,12 +188,14 @@
       "bases:Crear nueva base": false
     }
   },
-  "active": "4af3d808d953a8ee",
+  "active": "f329adf1bdfa2ba0",
   "lastOpenFiles": [
+    "Cosas a mejorar.md",
+    "pruebas.md",
+    "bloques.md",
     "habilidades_persistentes.md",
     "boosts_y_consumibles.md",
     "escenarios.md",
-    "LEEME.md",
-    "bloques.md"
+    "LEEME.md"
   ]
 }

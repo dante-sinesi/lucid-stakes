@@ -2,6 +2,7 @@ extends Control
 ## Pantalla de fin de run: si escapaste (pasaste las 27 etapas) o si el run terminó antes, con el resumen (etapa alcanzada, torres,
 ## claridad, reintentos, movimientos y los boosts que tenías) y dos botones: Nueva partida y Menú principal.
 
+const Stages := preload("res://scripts/stages.gd")
 const UI := preload("res://scripts/menu_ui.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
@@ -10,7 +11,7 @@ const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const LuzCounter := preload("res://scripts/luz_counter.gd")
 const ItemSlot := preload("res://scripts/item_slot.gd")
 const Loc := preload("res://scripts/loc.gd")
-const FINAL_STAGE := 27
+const FINAL_STAGE := Stages.FINAL
 
 signal new_game
 signal to_menu

@@ -8,8 +8,8 @@ extends Control
 ##   5: +150, 5 de Luz y un cosmético raro (a veces épico)   (1 chance en 7.776 por tiro)
 ## La trampa: con los dados ya revelados, los que fallaron se pueden amañar pagando Luz (2 el primero, 3 el segundo, 4 el tercero...: sube
 ## con cada uno y vuelve a empezar en cada tiro); con Luz de sobra se pueden comprar los cinco.
-## No te saca del juego: cuando la torre está lista el minijuego se queda y a la derecha se habilita el botón "Empezar" (gris y con una
-## espiral de carga mientras se genera); al apretarlo, el tiro en curso termina (unos segundos como mucho) y se cierra.
+## No te saca del juego: jugarlo es obligatorio. Cuando se terminan las tiradas aparece a la derecha el botón "Empezar": gris y con una espiral
+## de carga si la torre se sigue generando, listo para apretar si ya está. Al apretarlo se cierra.
 ## El juego (main.gd) aplica los premios (con un tope de claridad por partida) al recibir la señal `prize`.
 
 const Draw := preload("res://scripts/voxel_draw.gd")
@@ -21,6 +21,7 @@ const UI := preload("res://scripts/menu_ui.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const LuzCounter := preload("res://scripts/luz_counter.gd")
+const CosmeticsScreen := preload("res://scripts/cosmetics_screen.gd")
 const DialogueBox := preload("res://scripts/dialogue_box.gd")
 const Loc := preload("res://scripts/loc.gd")
 const Sfx := preload("res://scripts/sfx.gd")
@@ -88,19 +89,16 @@ var reroll_round := false      # se está volviendo a tirar (los dados retenidos
 var _round_total := 0          # cuántos dados se revelan en esta ronda (el primer tiro: 5)
 var _round_done := 0
 var _reveal_t := [-99.0, -99.0, -99.0, -99.0, -99.0]   # cuándo se reveló cada dado (para su saltito)
-var luz_counter                # la Luz que tenés
 var selected := 0              # dado elegido con el teclado
 var closing := false
+var paused := false              # el tabernero está hablando encima: los dados no responden hasta que termine
 var tower_ready := false       # la torre ya se generó: se puede empezar
 var auto_start := false        # pruebas: apenas la torre está lista se cierra solo (sin esperar el botón)
 var start_button: Button
 var prize_info := {}
 var _t := 0.0
 var _phase_t := 0.0
-var _prize_row: HBoxContainer
-var _clarity_counter
-var _luz_counter
-var _cosmetic_label: Control
+var showcase                   # las recompensas en grande, al terminar las tiradas
 
 
 func _init() -> void:
@@ -136,31 +134,8 @@ func _init() -> void:
 	message_label.offset_right = 440 - SHIFT
 	message_label.name = "mensaje"
 	add_child(message_label)
-	_prize_row = HBoxContainer.new()
-	_prize_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_prize_row.add_theme_constant_override("separation", 30)
-	_prize_row.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_prize_row.offset_top = -126
-	_prize_row.offset_left = -400 - SHIFT
-	_prize_row.offset_right = 400 - SHIFT
-	_prize_row.name = "premio"
-	add_child(_prize_row)
-	_clarity_counter = ClarityCounter.new(3.0, Color(1.0, 0.97, 0.8))
-	_clarity_counter.visible = false
-	_prize_row.add_child(_clarity_counter)
-	_luz_counter = LuzCounter.new(3.0)
-	_luz_counter.visible = false
-	_prize_row.add_child(_luz_counter)
-	_cosmetic_label = UI.label(_prize_row, "", 3, Color(1.0, 0.9, 0.5), false)
-	_cosmetic_label.visible = false
-	luz_counter = LuzCounter.new(3.0)   # arriba a la derecha del panel: cuánta Luz tenés
-	luz_counter.name = "luz"
-	luz_counter.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	luz_counter.offset_left = -290
-	luz_counter.offset_right = -150
-	luz_counter.offset_top = 150
-	luz_counter.plate_alpha = 0.5
-	add_child(luz_counter)
+	showcase = _Showcase.new()
+	add_child(showcase)
 	throw_button = UI.button("Tirar", true, 4.0, 22)
 	throw_button.name = "tirar"
 	throw_button.pressed.connect(_on_main_button)
@@ -221,13 +196,13 @@ func open(random: RandomNumberGenerator = null) -> void:
 	closing = false
 	tower_ready = false
 	_reset_round()
-	luz_counter.value = Profile.luz()
 	start_button.disabled = true
+	start_button.visible = false
 	revealed = 0
 	last_hits = 0
 	picks = [1 + rng.randi() % 6, 1 + rng.randi() % 6, 1 + rng.randi() % 6, 1 + rng.randi() % 6, 1 + rng.randi() % 6]
 	selected = 0
-	message = "Elegí qué cara va a salir en cada dado. Tenés 3 tiradas: los que acierten quedan retenidos."
+	message = ""
 	message_label.text = message
 	_show_prize({})
 	phase = Phase.PICK
@@ -255,14 +230,21 @@ func _reset_round() -> void:
 
 ## Pide cerrar: si hay un tiro en curso se espera a que termine (unos segundos como mucho); si no, se cierra enseguida.
 func request_close() -> void:
+	if not rounds_over():
+		return
 	closing = true
 	if phase == Phase.HOLD:   # si esperaba la próxima tirada, se cobra lo que hay
 		_finish_throw()
 	_try_close()
 
 
+## ¿Ya se jugaron las tiradas? Recién entonces aparece "Empezar" y se puede cerrar (en las pruebas, que no esperan el botón, siempre).
+func rounds_over() -> bool:
+	return phase == Phase.RESULT or phase == Phase.DONE or fast or auto_start
+
+
 func _try_close() -> void:
-	if closing and visible and (phase == Phase.PICK or phase == Phase.DONE or phase == Phase.IDLE):
+	if closing and visible and (phase == Phase.PICK or phase == Phase.RESULT or phase == Phase.DONE or phase == Phase.IDLE):
 		visible = false
 		phase = Phase.IDLE
 		closing = false
@@ -320,6 +302,21 @@ func throw_dice() -> void:
 				if rolls[i] != picks[i]:
 					rolls[i] = 1 + rng.randi() % 6
 		_finish_throw()
+
+
+## Salta la animación del tiro en curso: los dados que faltaban se muestran de golpe y se sigue como si hubiera terminado. Devuelve true si había algo que saltear.
+func skip_animation() -> bool:
+	if phase != Phase.ROLLING and phase != Phase.REVEAL:
+		return false
+	for k in unrevealed:
+		_reveal_t[k] = _t
+	if not unrevealed.is_empty():
+		Sfx.play("ding") if hits() > 0 else Sfx.play("miss")
+	unrevealed.clear()
+	revealed = DICE
+	_round_done = _round_total
+	_after_reveal()
+	return true
 
 
 ## Cuántos dados salieron como se pidió.
@@ -387,24 +384,19 @@ func _finish_throw() -> void:
 	_update_button()
 
 
+## Al terminar las tiradas se muestran las recompensas en grande (claridad, Luz y, si salió, el cosmético puesto en el personaje); `{}` las oculta.
 func _show_prize(info: Dictionary) -> void:
-	var granted: int = int(info.get("granted", info.get("claridad", 0))) if not info.is_empty() else 0
-	_clarity_counter.visible = granted > 0
-	_clarity_counter.value = granted
-	_luz_counter.visible = int(info.get("luz", 0)) > 0
-	_luz_counter.value = int(info.get("luz", 0))
-	var cosmetic_name: String = str(info.get("cosmetic_name", ""))
-	_cosmetic_label.visible = cosmetic_name != ""
-	var rarity: String = str(info.get("cosmetic_rarity", "comun"))
-	var rinfo: Dictionary = Cosmetics.RARITIES.get(rarity, Cosmetics.RARITIES.comun)
-	_cosmetic_label.text = Loc.f("¡Cosmético %s nuevo: %s!", [Loc.t(str(rinfo.name)).to_lower(), Loc.t(cosmetic_name)]) if cosmetic_name != "" else ""
-	_cosmetic_label.color = rinfo.color
+	if info.is_empty():
+		showcase.hide_prize()
+	else:
+		showcase.show_prize(info)
 
 
 func _update_button() -> void:
 	throw_button.set_label(Loc.t("Tirar de nuevo") if phase == Phase.HOLD else Loc.t("Tirar"))
 	throw_button.disabled = not can_throw()
 	throw_button.visible = phase != Phase.DONE and phase != Phase.RESULT
+	start_button.visible = phase == Phase.RESULT or phase == Phase.DONE   # "Empezar" aparece cuando se terminaron las tiradas
 
 
 func _process(delta: float) -> void:
@@ -412,8 +404,6 @@ func _process(delta: float) -> void:
 		return
 	_t += delta
 	_phase_t += delta
-	if luz_counter.value != Profile.luz():
-		luz_counter.value = Profile.luz()
 	match phase:
 		Phase.ROLLING:
 			if _phase_t >= ROLL_TIME:
@@ -463,7 +453,7 @@ func _hit_test(p: Vector2) -> Vector2i:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if phase != Phase.PICK or not (event is InputEventMouseButton) or not event.pressed:
+	if paused or phase != Phase.PICK or not (event is InputEventMouseButton) or not event.pressed:
 		return
 	var hit := _hit_test(event.position)
 	if hit.x < 0:
@@ -482,15 +472,23 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or not (event is InputEventKey) or not event.pressed or event.echo:
+	if paused or not visible or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	var go: bool = event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
+	if go and (phase == Phase.ROLLING or phase == Phase.REVEAL):   # Espacio durante la animación: se saltea; si era la última tirada y la torre está lista, se entra
+		skip_animation()
+		if phase == Phase.RESULT and tower_ready:
+			request_close()
+		get_viewport().set_input_as_handled()
+		return
+	if go and (phase == Phase.RESULT or phase == Phase.DONE) and tower_ready:   # terminadas las tiradas, Espacio entra a la torre
+		request_close()
+		get_viewport().set_input_as_handled()
 		return
 	if phase == Phase.HOLD:   # esperando la próxima tirada: Enter o Espacio tiran los dados que fallaron
 		match event.keycode:
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				throw_dice()
-			KEY_E:
-				if tower_ready:
-					request_close()
 			_:
 				return
 		get_viewport().set_input_as_handled()
@@ -507,7 +505,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_DOWN, KEY_S:
 			cycle_pick(selected, -1)
 		KEY_E:
-			if tower_ready:
+			if tower_ready and start_button.visible:
 				request_close()
 		KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6:
 			set_pick(selected, event.keycode - KEY_0)
@@ -576,8 +574,10 @@ func _die_motion(i: int) -> Dictionary:
 			out.height = absf(sin(u * 10.0)) * 46.0 * exp(-u * 4.2)
 			out.squash = 0.22 * exp(-u * 14.0)
 			out.slide = (1.0 if i % 2 == 0 else -1.0) * 20.0 * exp(-u * 3.0) * (1.0 - float(i) * 0.1)
-			cycle = 24.0 * t_land + 10.0 * (1.0 - exp(-2.5 * u))
-		out.face = 1 + int(cycle + float(i) * 3.0) % 6
+		if t < t_land:
+			out.face = 1 + int(cycle + float(i) * 3.0) % 6   # en el aire gira mostrando caras al azar
+		else:
+			out.face = rolls[i]   # al pegar en la mesa ya muestra su número de verdad: no cambia después, al validarlo
 	elif is_revealed:
 		out.face = rolls[i]
 		out.age = maxf(_t - float(_reveal_t[i]), 0.0)
@@ -710,3 +710,97 @@ class _Spiral extends Control:
 			var p := c + Vector2(cos(ang), sin(ang)) * r
 			var sz := 2.0 + k * 4.0
 			draw_rect(Rect2(p - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), Color(0.85, 0.82, 0.95, 0.25 + 0.75 * k))
+
+
+## Las recompensas de la carga, en grande: encima de los dados, con la claridad y la Luz que se ganaron y, si salió un cosmético, cómo se ve puesto en el personaje.
+class _Showcase extends Control:
+	const UI := preload("res://scripts/menu_ui.gd")
+	const Draw := preload("res://scripts/voxel_draw.gd")
+	const ClarityCounter := preload("res://scripts/clarity_counter.gd")
+	const LuzCounter := preload("res://scripts/luz_counter.gd")
+	const CosmeticsScreen := preload("res://scripts/cosmetics_screen.gd")
+	const Cosmetics := preload("res://scripts/cosmetics.gd")
+	const Profile := preload("res://scripts/profile.gd")
+	const Loc := preload("res://scripts/loc.gd")
+
+	var title: Control
+	var row: HBoxContainer
+	var clarity
+	var luz
+	var cosmetic_box: VBoxContainer
+	var preview
+	var cosmetic_label: Control
+	var _card := Rect2()
+
+	func _init() -> void:
+		name = "recompensas"
+		visible = false
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var center := CenterContainer.new()
+		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		center.offset_left = -SHIFT * 2.0   # (centrado sobre el panel de los dados, que se corre a la izquierda)
+		center.offset_top = 90
+		center.offset_bottom = -110
+		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(center)
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 14)
+		col.alignment = BoxContainer.ALIGNMENT_CENTER
+		center.add_child(col)
+		title = UI.label(col, "", 7, Draw.GOLD)
+		title.name = "titulo"
+		row = HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 46)
+		col.add_child(row)
+		clarity = ClarityCounter.new(6.0, Color(1.0, 0.97, 0.8))
+		clarity.name = "claridad"
+		row.add_child(clarity)
+		luz = LuzCounter.new(6.0)
+		luz.name = "luz"
+		row.add_child(luz)
+		cosmetic_box = VBoxContainer.new()
+		cosmetic_box.alignment = BoxContainer.ALIGNMENT_CENTER
+		cosmetic_box.add_theme_constant_override("separation", 6)
+		col.add_child(cosmetic_box)
+		preview = CosmeticsScreen._Preview.new()
+		preview.custom_minimum_size = Vector2(250, 270)
+		preview.spin = true
+		preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		cosmetic_box.add_child(preview)
+		cosmetic_label = UI.label(cosmetic_box, "", 3.5, Color(1.0, 0.9, 0.5), true, 700)
+		cosmetic_label.name = "cosmetico"
+
+	func _draw() -> void:
+		var panel := Rect2(Vector2(size.x * 0.5 - SHIFT - 420.0, 126.0), Vector2(840.0, size.y - 126.0 - 206.0))
+		draw_rect(panel, Color(0.04, 0.025, 0.08, 1.0))
+		Draw.card(self, panel, 6.0, 0, 0.1, 778, false, -1.0)
+
+	func hide_prize() -> void:
+		visible = false
+
+	func show_prize(info: Dictionary) -> void:
+		var granted: int = int(info.get("granted", info.get("claridad", 0)))
+		var luz_n: int = int(info.get("luz", 0))
+		var cname: String = str(info.get("cosmetic_name", ""))
+		title.text = Loc.t("¡Recompensas!") if granted > 0 or luz_n > 0 or cname != "" else Loc.t("Sin recompensa esta vez")
+		clarity.visible = granted > 0
+		clarity.value = granted
+		luz.visible = luz_n > 0
+		luz.value = luz_n
+		row.visible = granted > 0 or luz_n > 0
+		cosmetic_box.visible = cname != ""
+		if cname != "":
+			var rarity: String = str(info.get("cosmetic_rarity", "comun"))
+			var rinfo: Dictionary = Cosmetics.RARITIES.get(rarity, Cosmetics.RARITIES.comun)
+			cosmetic_label.text = Loc.f("¡Cosmético %s nuevo: %s!", [Loc.t(str(rinfo.name)).to_lower(), Loc.t(cname)])
+			cosmetic_label.color = rinfo.color
+			var hat := Profile.equipped_hat()
+			var outfit := Profile.equipped_outfit()
+			if str(info.get("cosmetic_slot", "")) == "gorro":
+				hat = str(info.get("cosmetic_id", hat))
+			else:
+				outfit = str(info.get("cosmetic_id", outfit))
+			preview.show_model(Profile.character(), hat, outfit)
+		visible = true

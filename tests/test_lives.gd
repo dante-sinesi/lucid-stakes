@@ -4,9 +4,13 @@ extends SceneTree
 
 const RunState := preload("res://scripts/run_state.gd")
 const Items := preload("res://scripts/items.gd")
+const Abilities := preload("res://scripts/abilities.gd")
 const ItemIcons := preload("res://scripts/item_icons.gd")
 const LivesHud := preload("res://scripts/lives_hud.gd")
 const CasinoScene := preload("res://scripts/casino_scene.gd")
+const Profile := preload("res://scripts/profile.gd")
+const Scenarios := preload("res://scripts/scenarios.gd")
+const Roulette := preload("res://scripts/roulette.gd")
 
 var fails := 0
 
@@ -23,6 +27,8 @@ func _init() -> void:
 	test_hud()
 	await test_main()
 	await test_casino()
+	test_compromiso()
+	await test_compromiso_main()
 	print("tests de las vidas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -140,3 +146,83 @@ func test_casino() -> void:
 	c._refresh_hud()
 	check(c.lives_hud.lives == 3, "y se actualizan")
 	c.free()
+
+
+func test_compromiso() -> void:
+	Profile.path = "user://test_profile.json"
+	Profile.reset()
+	var scn := Scenarios.get_scenario("compromiso")
+	check(scn.id == "compromiso" and scn.entry > 0 and scn.lives == 1 and scn.permadeath and scn.no_totem and scn.no_extra_life, "existe el escenario Compromiso: una vida, sin segundas oportunidades, sin Tótems ni Vidas extra")
+	check(Scenarios.ability_ids(scn) == ["corazon_extra"], "y da el Corazón extra")
+	var a := Abilities.get_ability("corazon_extra")
+	check(not a.is_empty() and a.desc.contains("4"), "el Corazón extra existe (4 corazones)")
+	# en un escenario común el Corazón extra suma un corazón; en Compromiso sigue siendo una sola vida
+	var run := RunState.new()
+	Profile.grant_ability("corazon_extra")
+	Profile.apply_to_run(run)
+	check(run.max_lives() == 4 and run.lives == 4, "con el Corazón extra se empieza con 4 vidas")
+	check(run.add_life() == false, "y no se pasa de 4")
+	run.lives = 3
+	check(run.add_life() and run.lives == 4, "la Vida extra llega hasta 4")
+	var c := RunState.new()
+	c.scenario_id = "compromiso"
+	Profile.apply_to_run(c)
+	check(c.max_lives() == 1 and c.lives == 1 and c.permadeath() and not c.can_revive(), "en Compromiso: una sola vida y no se revive (aunque tengas el Corazón extra)")
+	c.consumables.assign(["totem", "vida_extra"])
+	check(c.item_blocked("totem") and c.item_blocked("vida_extra") and not c.item_blocked("freno"), "los Tótems y las Vidas extra no sirven")
+	check(not c.can_revive() and c.restart_cost(true) > 0, "ni el Tótem revive ni hace gratis el reintento")
+	c.lives = 0
+	check(not c.add_life(), "no se pueden recuperar vidas")
+	# la ruleta no regala lo que el escenario inhabilita
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	c.claridad = 100000
+	var blocked := 0
+	for i in 400:
+		var res := Roulette.resolve(c, Roulette.Bet.TERNA, [1, 2, 3], rng, 1)
+		if res.won and res.prize.has("id") and c.item_blocked(str(res.prize.id)):
+			blocked += 1
+	check(blocked == 0, "la ruleta nunca da un Tótem en Compromiso (%d)" % blocked)
+	# se guarda con el run
+	var back := RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict())))
+	check(back.bonus_lives == 1 and back.lives == 4 and back.max_lives() == 4, "los corazones de más se guardan con la partida")
+	var back2 := RunState.from_dict(JSON.parse_string(JSON.stringify(c.to_dict())))
+	check(back2.max_lives() == 1 and back2.lives == 0, "y las vidas de Compromiso también")
+	Profile.reset()
+
+
+func test_compromiso_main() -> void:
+	Profile.path = "user://test_profile.json"
+	Profile.reset()
+	Profile.grant_ability("corazon_extra")
+	var main = load("res://scenes/main.tscn").instantiate()
+	main.test_mode = true
+	main.quick_portal = true
+	root.add_child(main)
+	await process_frame
+	while main.generating or main.logic == null:
+		await process_frame
+	# el contador se adapta a la cantidad de corazones
+	main.run = RunState.new()
+	main.run.bonus_lives = 1
+	main.run.lives = 4
+	main._refresh()
+	check(main.lives_hud.max_lives == 4 and main.lives_hud.lives == 4, "con el Corazón extra el contador muestra 4 corazones")
+	# Compromiso: morir termina la partida de una
+	main.run = RunState.new()
+	main.run.scenario_id = "compromiso"
+	Profile.apply_to_run(main.run)
+	main._refresh()
+	check(main.lives_hud.max_lives == 1 and main.lives_hud.lives == 1, "en Compromiso se ve un solo corazón")
+	main.run.consumables.assign(["vida_extra", "totem"])
+	main.use_consumable_slot(0)
+	check(main.run.lives == 1 and main.run.consumables.size() == 2, "la Vida extra no funciona (y no se gasta)")
+	main.run.claridad = 1000
+	main.logic.lost = true
+	main.logic.lost_reason = "Caíste al vacío"
+	main.request_restart()
+	check(main.run_over, "morir en Compromiso termina la partida (con Tótem y todo)")
+	main._cancel_jobs()
+	main.queue_free()
+	await process_frame
+	Profile.reset()

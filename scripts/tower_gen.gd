@@ -27,9 +27,10 @@ extends RefCounted
 ##  - Las filas EXIGEN mover bloques (empujar o tirar): una fila "exige" mover bloques si, prohibiendo empujar y tirar,
 ##    no tiene solución o cuesta al menos 2 movimientos más. La mayoría de las filas lo exigen (60 % en dificultad 0,
 ##    hasta 100 % desde 0,5): sin eso, bastaba caminar y se podía pasar una torre casi sin tocar un bloque.
-##  - Las mecánicas se introducen de a una: hielo desde 0.05, bomba desde 0.4 (la catapulta no se genera: ver CATAPULTS_IN_TOWERS),
+##  - Las mecánicas se introducen de a una: hielo desde 0.05, bomba desde 0.42, catapulta desde 0.5 (ver CATAPULTS_IN_TOWERS),
 ##    con un tope de bloques especiales por fila.
 
+const Stages := preload("res://scripts/stages.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Solver := preload("res://scripts/solver.gd")
 const Loc := preload("res://scripts/loc.gd")
@@ -50,17 +51,19 @@ const SEG_TRIES := 4
 const BIG := 1 << 30
 const DIRS2: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 const ATTEMPTS := 4
-## Las catapultas no se generan en las torres por ahora: suben 4 en vertical y se agarran de un borde, y en una torre
-## generada casi nunca hay una pared alta con el borde libre al lado, así que no aportan nada a la solución y
-## encarecen mucho la búsqueda. El bloque sigue existiendo (reglas, solucionador, vista) para la tienda y los trucos.
-const CATAPULTS_IN_TOWERS := false
+## Las catapultas (trampolines) vuelven a generarse en las torres, desde CATAPULT_FROM. Ojo: suben 4 en vertical y se agarran de un borde, y en una fila de una sola capa casi nunca hay
+## una pared alta con el borde libre al lado: hasta que haya un motivo de varias capas (el trampolín con su pared) aparecen sueltas y rara vez cambian la solución.
+const CATAPULTS_IN_TOWERS := true
+const CATAPULT_FROM := 0.5   # etapa 8 de 15
 ## Probabilidad de que un obstáculo normal sea un pilar de 2. Un bloque suelto de una sola capa es un escalón
 ## más (se trepa y resuelve la fila); sólo un pilar es de verdad un obstáculo, porque no se puede trepar.
 const PILLAR_CHANCE := 0.6
 ## Dificultad desde la que aparecen los bloques pesados (no se mueven) y los agrietados (se rompen al bajarte).
-const HEAVY_FROM := 0.15
-const CRACKED_FROM := 0.25
-const TRAP_FROM := 0.3       # a partir de qué dificultad aparecen las trampas (celdas de plataforma que se desarman al pisarlas)
+const ICE_FROM := 0.05       # los tipos de bloque se presentan en escalera, uno por etapa: hielo en la 2, pesado en la 3, agrietado en la 4, trampa en la 5, pinchos en la 6 y bomba en la 7 (de 15)
+const HEAVY_FROM := 0.14
+const CRACKED_FROM := 0.21
+const BOMB_FROM := 0.42
+const TRAP_FROM := 0.28       # a partir de qué dificultad aparecen las trampas (celdas de plataforma que se desarman al pisarlas)
 const SPIKES_FROM := 0.35    # y los pinchos (bloques que no se pueden pisar: en las plataformas y como obstáculos)
 
 
@@ -130,14 +133,16 @@ static func profile_for_stage(stage: int, trial := {}, scenario := {}) -> Dictio
 		if str(src.get("pace", "")) != "":
 			pace = src.pace
 	var mechanics: Array[String] = []
-	if d >= 0.05:
+	if d >= ICE_FROM:
 		mechanics.append("hielo")
 	if d >= HEAVY_FROM:
 		mechanics.append("pesado")
 	if d >= CRACKED_FROM:
 		mechanics.append("agrietado")
-	if d >= 0.4:
+	if d >= BOMB_FROM:
 		mechanics.append("bomba")
+	if d >= CATAPULT_FROM and CATAPULTS_IN_TOWERS:
+		mechanics.append("catapulta")
 	if d >= TRAP_FROM:
 		mechanics.append("trampa")
 	if d >= SPIKES_FROM:
@@ -149,12 +154,12 @@ static func profile_for_stage(stage: int, trial := {}, scenario := {}) -> Dictio
 			bias.kinds[k] = float(bias.kinds.get(k, 0.0)) + float(src.kinds[k])
 		bias.plat_ice += float(src.get("plat_ice", 0.0))
 		bias.cap_bonus += int(src.get("cap_bonus", 0))
-	return {"stage": stage, "difficulty": d, "pace": pace, "combo": combo, "mechanics": mechanics, "bias": bias}
+	return {"stage": stage, "difficulty": d, "pace": pace, "combo": combo, "mechanics": mechanics, "bias": bias, "scenario": str(scenario.get("id", ""))}
 
 
-## Dificultad de una etapa (1..27) en 0..1.
+## Dificultad de una etapa (1..15) en 0..1.
 static func difficulty_for_stage(stage: int) -> float:
-	return clampf((stage - 1) / 26.0, 0.0, 1.0)
+	return Stages.ratio(stage)
 
 
 ## Banda objetivo de movimientos mínimos por fila para una dificultad 0..1.
@@ -184,27 +189,9 @@ static func generate_stage(seed_value: int, rows: int, difficulty: float, opts: 
 	return {"ok": false, "error": last_error}
 
 
-static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: Dictionary) -> Dictionary:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_value
-	var token = opts.get("cancel_token", null)
-	if token != null:
-		rng.set_meta("cancel", token)
-	rng.set_meta("bias", opts.get("bias", {}))   # sesgo de los escenarios y pruebas (ver _bias); va en el rng para no usar estado global entre hilos
-	var geo := geometry(opts.get("core", 2))
-	var tries: int = opts.get("tries", 10)
-	var max_states: int = opts.get("max_states", 8000)
-	var slack: float = opts.get("slack", 1.6)
-	var climb: float = opts.get("climb", 1.0)
-	var pace: Dictionary = PACES[opts.get("pace", "normal")]
-	var combo: float = opts.get("combo", 0.0)
-	var use_effort: bool = opts.get("effort", true)
-	var band := band_for(difficulty)
-	band = Vector2i(maxi(2, band.x + pace.band_shift), maxi(4, band.y + pace.band_shift))  # el ritmo corre la banda
-	# La fila se resuelve al llegar a su plataforma, así que el costo medido incluye caminar hasta ella (~1 movimiento más):
-	# la banda de búsqueda se corre 1 para que el esfuerzo percibido no cambie y la búsqueda no sea más profunda de lo necesario.
-	var row_band := Vector2i(maxi(2, band.x - 1), maxi(4, band.y - 1))
-
+## La torre vacía de una generación: el piso, el núcleo (fijo, de `rows + 1` pisos), la meta y el jugador al lado del núcleo; y la simulación con la que se va probando (no gana
+## por llegar alto: un camino puede pasar por encima de la altura final y volver a bajar a la plataforma de su fila). Devuelve {tower, sim, start}.
+static func _new_base(geo: Dictionary, rows: int) -> Dictionary:
 	var tower := TowerLogic.new()
 	tower.size = geo.foot
 	tower.collapse_every = BIG
@@ -219,15 +206,43 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 	tower.goal_y = rows + 1
 	var start := Vector2i(geo.core.position.x - 1, geo.core.position.y)
 	tower.player = Vector3i(start.x, 1, start.y)
-
-	# Estado de la generación: se guarda en un diccionario para poder volver al inicio de un tramo y rehacerlo.
-	# Durante la generación la simulación no gana por llegar alto: un camino puede pasar por encima de la altura final
-	# (por escalones sobrantes) y volver a bajar a la plataforma de su fila.
 	var sim0 = tower.clone()
 	sim0.lazy_settle = true   # (sólo se tocan bloques con add_block y con las acciones: ver TowerLogic._settle_blocks)
 	sim0._blocks_dirty = true
 	sim0.goal_y = BIG
-	var st := {"tower": tower, "sim": sim0, "path": [], "row_moves": [] as Array[int], "shapes": [] as Array[String],
+	return {"tower": tower, "sim": sim0, "start": start}
+
+
+static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: Dictionary) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var token = opts.get("cancel_token", null)
+	if token != null:
+		rng.set_meta("cancel", token)
+	rng.set_meta("bias", opts.get("bias", {}))   # sesgo de los escenarios y pruebas (ver _bias); va en el rng para no usar estado global entre hilos
+	var geo := geometry(opts.get("core", 2))
+	var idea_script = load("res://scripts/ideas.gd")
+	var ideas: Dictionary = idea_script.plan(rng, rows, difficulty) if opts.get("ideas", false) else {}   # torre armada con ideas (ver ideas.gd): piso donde empieza cada tramo
+	var idea_total := ideas.size()
+	var row_difficulty := maxf(difficulty - 0.3, 0.0) if not ideas.is_empty() else difficulty   # los respiros entre ideas son más fáciles
+	var featured_plan := _feature_plan(rng, rows, difficulty) if (opts.get("situations", true) and ideas.is_empty()) else {}   # fila -> tipo de bloque que esa fila tiene que "usar" (la situación)
+	var tries: int = opts.get("tries", 10)
+	var max_states: int = opts.get("max_states", 8000)
+	var slack: float = opts.get("slack", lerpf(1.6, 1.0, difficulty))   # cuanto más difícil, menos holgura: el suelo te alcanza antes si divagás
+	var climb: float = opts.get("climb", 1.0)
+	var pace: Dictionary = PACES[opts.get("pace", "normal")]
+	var combo: float = opts.get("combo", 0.0)
+	var use_effort: bool = opts.get("effort", true)
+	var band := band_for(difficulty)
+	band = Vector2i(maxi(2, band.x + pace.band_shift), maxi(4, band.y + pace.band_shift))  # el ritmo corre la banda
+	# La fila se resuelve al llegar a su plataforma, así que el costo medido incluye caminar hasta ella (~1 movimiento más):
+	# la banda de búsqueda se corre 1 para que el esfuerzo percibido no cambie y la búsqueda no sea más profunda de lo necesario.
+	var row_band := Vector2i(maxi(2, band.x - 1), maxi(4, band.y - 1))
+
+	var base := _new_base(geo, rows)
+	var tower = base.tower
+	var start: Vector2i = base.start
+	var st := {"tower": tower, "sim": base.sim, "path": [], "row_moves": [] as Array[int], "shapes": [] as Array[String],
 			"infos": [], "reserved": {Vector3i(start.x, 1, start.y): true}, "states": 0}
 	var row_budget: int = int(opts.get("budget_states", 0)) / maxi(rows, 1)  # trabajo de afinado por fila (0 = sin tope)
 	var seg_len: int = opts.get("seg", SEG_ROWS)
@@ -250,10 +265,19 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 			# En los reintentos se pide mover bloques con menos frecuencia: las compuertas son lo que más escalones regala.
 			var grab_scale := 1.0 - 0.3 * att
 			var failed := false
-			for yy in range(y, y_end + 1):
+			var yy := y
+			while yy <= y_end:
+				if ideas.has(yy):
+					var before := ideas.keys().filter(func(k): return k < yy).size()   # (cuántas ideas hay antes: de eso depende la dificultad que se le pide)
+					var sec: Dictionary = idea_script.place(st, yy, rng, before, idea_total, ideas[yy])
+					if sec.ok:
+						yy += int(sec.rows)
+						y_end = mini(maxi(y_end, yy - 1), rows)
+						continue
 				var shapes_now: Array = st.shapes
-				var row := _make_row(st.tower, st.sim, yy, rng, row_band, difficulty, tries, max_states, geo, st.reserved,
-						shapes_now[shapes_now.size() - 1] if not shapes_now.is_empty() else "", climb, combo, use_effort, st.path, grab_scale, row_budget)
+				var row := _make_row(st.tower, st.sim, yy, rng, row_band, row_difficulty, tries, max_states, geo, st.reserved,
+						shapes_now[shapes_now.size() - 1] if not shapes_now.is_empty() else "", climb, combo, use_effort, st.path, grab_scale, row_budget,
+						featured_plan.get(yy, -1))
 				if row.has("fail"):
 					failed = true
 					last_err = "no se pudo generar la fila %d (%s)" % [yy, row.fail]
@@ -266,6 +290,7 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 				st.shapes.append(row.shape)
 				st.infos.append(row.info)
 				st.states += row.states
+				yy += 1
 			var defects := (1 << 29) if failed else _segment_defects(st, y, y_end, rows, seg_len)
 			if defects < best_defects:
 				best_defects = defects
@@ -277,13 +302,13 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 		st = best
 		segments.append({"from": y, "to": y_end, "attempts": used, "defects": best_defects})
 		y = y_end + 1
-	tower = st.tower
-	var sim = st.sim
-	var path: Array = st.path
-	var row_moves: Array[int] = st.row_moves
-	var shapes: Array[String] = st.shapes
-	var infos: Array = st.infos
-	var states: int = st.states
+	return _close_tower(st.tower, st.sim, st.path, st.row_moves, st.shapes, st.infos, st.states, segments, opts, difficulty, pace, band, rows)
+
+
+## El final de una generación (la hace tanto el generador como el armado con secciones precalculadas): el paso de trepar al portal si la última fila termina colgado,
+## el portal, la comprobación de que el camino completo gana y el margen de la caída de la fila base. Devuelve el resultado ({ok, logic, rows, path, ...}).
+static func _close_tower(tower, sim, path: Array, row_moves: Array, shapes: Array, infos: Array, states: int, segments: Array, opts: Dictionary, difficulty: float, pace: Dictionary, band: Vector2i, rows: int) -> Dictionary:
+	var slack: float = opts.get("slack", 1.6)
 	# El portal exige estar PARADO sobre un bloque: si la última fila termina colgado del borde, se suma el paso de trepar.
 	if not sim.blocks.has(sim.player + Vector3i.DOWN) and sim.hang_dir != Vector3i.ZERO:
 		for d in [sim.hang_dir, Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
@@ -301,8 +326,8 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 				"debug": {"tower": tower, "path": path, "rows": row_moves, "infos": infos}}
 	var n_min := min_collapse_every(tower, path)
 	var avg_row := float(path.size()) / rows
-	var ratio: float = opts.get("ratio", maxf(1.8, lerpf(4.5, 2.6, difficulty) * pace.ratio))
-	var n := maxi(maxi(3, ceili(avg_row * ratio)), ceili(n_min * slack))
+	var ratio: float = opts.get("ratio", maxf(1.8, lerpf(4.5, 2.0, difficulty) * pace.ratio))
+	var n := maxi(maxi(3, ceili(avg_row * ratio * 0.45)), ceili(n_min * maxf(1.0, slack * lerpf(1.0, pace.ratio, 0.25))))   # (el ritmo cambia la holgura sólo a medias: la caída tiene que apretar de verdad)
 	while not _replay_wins(tower, path, n):
 		n += 1
 	_arm(tower, n)
@@ -312,6 +337,8 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 		kinds[tower.kind_of[id]] = kinds.get(tower.kind_of[id], 0) + 1
 	return {"ok": true, "logic": tower, "rows": row_moves, "path": path, "shapes": shapes,
 			"kinds": kinds, "infos": infos, "segments": segments, "grab_rows": _count_grab(infos), "n_min": n_min, "collapse_every": n, "states": states, "band": band}
+
+
 
 
 ## Copia independiente del estado de generación (la torre, la simulación y todo lo acumulado hasta ahora).
@@ -330,6 +357,8 @@ static func _segment_defects(st: Dictionary, y_from: int, y_to: int, rows: int, 
 	var defects := 0
 	var moves: Array = st.row_moves
 	for k in range(y_from - 1, y_to):
+		if k < st.shapes.size() and st.shapes[k] == "idea":
+			continue   # (los pisos de un tramo de idea no se miden por fila: los mide la idea)
 		if moves[k] <= 1:
 			defects += 10
 	return defects
@@ -344,7 +373,8 @@ static func _count_grab(infos: Array) -> int:
 
 
 static func _make_row(tower, sim, y: int, rng: RandomNumberGenerator, band: Vector2i, difficulty: float,
-		tries: int, max_states: int, geo: Dictionary, reserved: Dictionary, last_shape := "", climb := 1.0, combo := 0.0, use_effort := true, prefix: Array = [], grab_scale := 1.0, budget_states := 0) -> Dictionary:
+		tries: int, max_states: int, geo: Dictionary, reserved: Dictionary, last_shape := "", climb := 1.0, combo := 0.0, use_effort := true, prefix: Array = [], grab_scale := 1.0, budget_states := 0,
+		featured := -1) -> Dictionary:
 	var stat := {"states": 0}
 	# Trabajo máximo para AFINAR la fila (ascenso, variantes, enriquecimiento); encontrar una fila válida no tiene tope.
 	var over := func() -> bool: return budget_states > 0 and stat.states > budget_states
@@ -367,6 +397,8 @@ static func _make_row(tower, sim, y: int, rng: RandomNumberGenerator, band: Vect
 	var solved: Array = []
 	var want_grab := rng.randf() < clampf(0.6 + 0.8 * difficulty, 0.6, 1.0) * grab_scale  # ¿esta fila tiene que exigir mover bloques?
 	ctx["check_grab"] = want_grab
+	ctx["cap"] = 1 + int(difficulty * 3.0) + int(_bias(rng).get("cap_bonus", 0))   # tope de bloques especiales por fila (la situación no lo pasa)
+	ctx["featured"] = featured   # el tipo de bloque de la situación de esta fila (-1 = ninguno): ver _seed_featured y _eval
 	# Rondas 0-4: dificultad pedida, relajando la distancia mínima. Rondas 5-6: dificultad 0 (siempre produce algo).
 	for round_i in 7:
 		var d_eff := difficulty if round_i < 5 else 0.0
@@ -386,6 +418,8 @@ static func _make_row(tower, sim, y: int, rng: RandomNumberGenerator, band: Vect
 			var gated := want_grab and rng.randf() < 0.5
 			var cand := {"plat": plat, "kinds": _platform_kinds(rng, plat.size(), d_eff), "shape": shape,
 					"obs": _make_gate(plat, ctx) if gated else _make_obstacles(rng, plat, ctx, kmax, d_eff)}
+			if featured >= 0:
+				_seed_featured(rng, cand, ctx)
 			var res := _eval(cand, ctx, stat)
 			if not res.is_empty():
 				solved.append(res)
@@ -403,8 +437,10 @@ static func _make_row(tower, sim, y: int, rng: RandomNumberGenerator, band: Vect
 				var plat := _make_platform(rng, shape, ctx, difficulty)
 				if plat.is_empty():
 					continue
-				var res := _eval({"plat": plat, "kinds": _platform_kinds(rng, plat.size(), difficulty), "shape": shape,
-						"obs": _make_gate(plat, ctx)}, ctx, stat)
+				var gate_cand := {"plat": plat, "kinds": _platform_kinds(rng, plat.size(), difficulty), "shape": shape, "obs": _make_gate(plat, ctx)}
+				if featured >= 0:
+					_seed_featured(rng, gate_cand, ctx)
+				var res := _eval(gate_cand, ctx, stat)
 				if not res.is_empty():
 					solved.append(res)
 			if solved.any(func(c): return c.needs_grab):
@@ -490,6 +526,10 @@ static func _make_row(tower, sim, y: int, rng: RandomNumberGenerator, band: Vect
 		var needing: Array = pool.filter(func(c): return c.needs_grab)
 		if not needing.is_empty():
 			pool = needing
+	if featured >= 0:   # la situación: si hay candidatos donde el bloque de la fila importa (el camino "como si fuera común" falla), se elige entre ellos
+		var mattering: Array = pool.filter(func(c): return c.get("matters", false))
+		if not mattering.is_empty():
+			pool = mattering
 	var in_band: Array = pool.filter(func(s): return s.dist == 0)
 	var rest: Array = pool.filter(func(s): return s.dist > 0)
 	rest.sort_custom(func(a, b): return a.dist < b.dist)
@@ -554,7 +594,8 @@ static func _make_row(tower, sim, y: int, rng: RandomNumberGenerator, band: Vect
 		var done := {"sim": exec, "path": cand.path, "moves": cand.moves, "states": stat.states,
 				"reserve": reserve, "shape": cand.shape, "cand": cand,
 				"info": {"arrival": arrival, "plat": cand.plat, "obs": cand.obs, "kinds": cand.kinds,
-						"effort": cand.effort, "kinds_n": cand.kinds_n, "needs_grab": cand.needs_grab}}
+						"effort": cand.effort, "kinds_n": cand.kinds_n, "needs_grab": cand.needs_grab,
+						"featured": featured, "matters": cand.get("matters", false)}}
 		return _commit(tower, done, y)
 	if not fallback.is_empty():
 		return _commit(tower, fallback, y)
@@ -606,7 +647,7 @@ static func _path_consistent(tower, cand_blocks: Array, prefix: Array, cand_path
 
 ## Qué tan "enriquecida" está una fila: esfuerzo del solucionador, y (si toca combinar) mecánicas mezcladas.
 static func _score(c: Dictionary, want_combo: bool, want_grab := false) -> int:
-	return c.effort + (100000 * c.kinds_n if want_combo else 0) + (10000000 if want_grab and c.needs_grab else 0)
+	return c.effort + (100000 * c.kinds_n if want_combo else 0) + (10000000 if want_grab and c.needs_grab else 0) + (20000000 if c.get("matters", false) else 0)
 
 
 static func _commit(tower, done: Dictionary, y: int) -> Dictionary:
@@ -660,9 +701,121 @@ static func _eval(cand: Dictionary, ctx: Dictionary, stat: Dictionary) -> Dictio
 		var ng := Solver.solve(win, y + 1, {"max_states": 3000, "no_grab": true, "goal_ids": win.goal_ids})
 		stat.states += ng.states
 		needs = ng.status == "unsolvable" or (ng.status == "solved" and ng.moves >= res.moves + 2)
+	# La situación: ¿el bloque de la fila importa? Se resuelve la misma fila con ese tipo de bloque como si fuera común; si ese camino ya no sirve sobre la
+	# fila de verdad (el bloque lo frena, lo rompe, lo hace explotar o no se mueve), el bloque cambia la solución.
+	var matters := false
+	var featured: int = ctx.get("featured", -1)
+	if featured >= 0 and dist <= 2 and kinds.has(featured):
+		matters = _kind_matters(cand, ctx, stat, win, plat_ids, featured)
 	return {"blocks": blocks, "moves": res.moves, "path": res.path, "shape": cand.shape,
 			"plat": plat, "kinds": cand.kinds, "obs": cand.obs, "dist": dist,
-			"effort": res.states, "kinds_n": kinds.size(), "needs_grab": needs}
+			"effort": res.states, "kinds_n": kinds.size(), "needs_grab": needs, "matters": matters}
+
+
+## ¿El tipo de bloque `featured` cambia la solución de la fila? Se arma la misma fila con esos bloques comunes, se la resuelve y se repite ese camino sobre la fila con
+## los bloques de verdad: si falla (acción inválida, murió o no llega a la plataforma), el bloque especial importa.
+static func _kind_matters(cand: Dictionary, ctx: Dictionary, stat: Dictionary, real_win, plat_ids: Dictionary, featured: int) -> bool:
+	var y: int = ctx.y
+	var plat: Array = cand.plat
+	var neutral_blocks: Array = []
+	for j in plat.size():
+		neutral_blocks.append({"c": Vector3i(plat[j].x, y, plat[j].y), "kind": K.NORMAL if cand.kinds[j] == featured else cand.kinds[j], "timer": 0})
+	for o in cand.obs:
+		var oo: Dictionary = o.duplicate()
+		if oo.kind == featured:
+			oo.kind = K.NORMAL
+			oo.timer = 0
+		neutral_blocks.append(oo)
+	var trial = ctx.sim.clone()
+	var ids := {}
+	for j in plat.size():
+		ids[trial._next_id + j] = true
+	for b in neutral_blocks:
+		trial.add_block(b.c, false, b.kind, b.timer)
+	var win = _window(trial, y, ids)
+	var res := Solver.solve(win, y + 1, {"max_states": 3000, "goal_ids": win.goal_ids})
+	stat.states += res.states
+	if res.status != "solved":
+		return true   # sin el bloque especial ni se podría resolver con ese armado: el bloque cambia el problema
+	var exec = real_win.clone()
+	for a in res.path:
+		if not exec.try_action(a.dir, a.mode).ok or exec.lost:
+			return true
+	var on_plat: bool = plat_ids.has(exec.blocks.get(exec.player + Vector3i.DOWN, -2))
+	return not (exec.player.y == y + 1 and on_plat)
+
+
+## Siembra el bloque de la situación de la fila en el candidato: los que se pisan (trampa, pinchos, hielo) van en la plataforma o en los accesos; los que se
+## empujan o se trepan (agrietado, pesado, bomba, hielo) en las celdas pegadas a la plataforma, por donde hay que pasar.
+static func _seed_featured(rng: RandomNumberGenerator, cand: Dictionary, ctx: Dictionary) -> void:
+	var featured: int = ctx.featured
+	var plat: Array = cand.plat
+	var on_platform := featured == K.TRAP or featured == K.SPIKES or featured == K.CATAPULT or (featured == K.ICE and rng.randf() < 0.4)
+	if on_platform and not plat.is_empty():
+		cand.kinds[rng.randi_range(0, plat.size() - 1)] = featured
+		return
+	var used := {}
+	for o in cand.obs:
+		used[Vector2i(o.c.x, o.c.z)] = true
+	var access: Array = []
+	for c in ctx.floor_free:
+		if ctx.forbidden.has(c) or plat.has(c):
+			continue
+		for d in DIRS2:
+			if plat.has(c + d):
+				access.append(c)
+				break
+	if access.is_empty():
+		return
+	var timer := rng.randi_range(3, 8) if featured == K.BOMB else 0
+	var specials: Array = cand.obs.filter(func(o): return o.kind != K.NORMAL and o.c.y == ctx.y)
+	if specials.size() >= int(ctx.get("cap", 1)) and not specials.is_empty():   # ya hay el máximo de especiales: el de la situación toma el lugar de uno
+		var o: Dictionary = specials[rng.randi_range(0, specials.size() - 1)]
+		o.kind = featured
+		o.timer = timer
+		return
+	var pick: Vector2i = access[rng.randi_range(0, access.size() - 1)]
+	for o in cand.obs:   # si ya había un obstáculo ahí, se cambia su tipo
+		if Vector2i(o.c.x, o.c.z) == pick and o.c.y == ctx.y:
+			o.kind = featured
+			o.timer = timer
+			return
+	cand.obs.append({"c": Vector3i(pick.x, ctx.y, pick.y), "kind": featured, "timer": timer})
+
+
+## Las situaciones de una torre: {fila: tipo de bloque}. Cada tipo de bloque desbloqueado tiene que importar en 1 a 2 filas (más cuanto más difícil); el que se
+## desbloqueó más tarde (el nuevo para el jugador) se muestra en las primeras filas, así se presenta con una situación hecha a su medida.
+static func _feature_plan(rng: RandomNumberGenerator, rows: int, difficulty: float) -> Dictionary:
+	var unlocked: Array = []   # [umbral, tipo]
+	for e in [[ICE_FROM, K.ICE], [HEAVY_FROM, K.HEAVY], [CRACKED_FROM, K.CRACKED], [TRAP_FROM, K.TRAP], [SPIKES_FROM, K.SPIKES], [BOMB_FROM, K.BOMB], [CATAPULT_FROM, K.CATAPULT]]:
+		if difficulty >= e[0]:
+			unlocked.append(e)
+	var extra: Dictionary = _bias(rng).get("kinds", {})   # los tipos que un escenario o una prueba favorece también tienen su situación
+	for k in extra:
+		if float(extra[k]) > 0.0 and not unlocked.any(func(e): return e[1] == k) and k != K.NORMAL:
+			unlocked.append([0.0, k])
+	unlocked.sort_custom(func(a, b): return a[0] > b[0])   # el más nuevo primero
+	var plan := {}
+	if rows < 2 or unlocked.is_empty():
+		return plan
+	var next_row := 2
+	for e in unlocked:   # el debut: una fila por tipo, de la 2 en adelante, empezando por el nuevo
+		if next_row > rows:
+			break
+		plan[next_row] = e[1]
+		next_row += 1
+	var more := 1 if difficulty < 0.5 else 2   # presencias extra por tipo (dispersas por la torre)
+	var free_rows: Array = []
+	for y in range(next_row, rows + 1):
+		free_rows.append(y)
+	for e in unlocked:
+		for i in more:
+			if free_rows.is_empty():
+				break
+			var idx := rng.randi_range(0, free_rows.size() - 1)
+			plan[free_rows[idx]] = e[1]
+			free_rows.remove_at(idx)
+	return plan
 
 
 ## Una mutación: suma un obstáculo, cambia el tipo de uno, lo mueve, o cambia el tipo de una celda de la plataforma.
@@ -730,8 +883,8 @@ static func _capped_kind(rng: RandomNumberGenerator, difficulty: float, obs: Arr
 static func _obstacle_kind(rng: RandomNumberGenerator, difficulty: float) -> int:
 	var weights := [1.0,
 			0.0 if difficulty < 0.05 else 0.15 + 0.5 * difficulty,
-			0.0 if difficulty < 0.4 else 0.1 + 0.5 * (difficulty - 0.4),
-			0.0 if (difficulty < 0.25 or not CATAPULTS_IN_TOWERS) else 0.05 + 0.2 * (difficulty - 0.25),
+			0.0 if difficulty < BOMB_FROM else 0.1 + 0.5 * (difficulty - BOMB_FROM),
+			0.0 if (difficulty < CATAPULT_FROM or not CATAPULTS_IN_TOWERS) else 0.1 + 0.3 * (difficulty - CATAPULT_FROM),
 			0.0 if difficulty < CRACKED_FROM else 0.15 + 0.35 * (difficulty - CRACKED_FROM),
 			0.0 if difficulty < HEAVY_FROM else 0.15 + 0.35 * (difficulty - HEAVY_FROM),
 			0.0 if difficulty < SPIKES_FROM else 0.1 + 0.3 * (difficulty - SPIKES_FROM)]
@@ -867,7 +1020,7 @@ static func _finish(cells: Array[Vector2i], ctx: Dictionary, cap_min := 99) -> A
 static func _platform_kinds(rng: RandomNumberGenerator, n: int, difficulty: float) -> Array[int]:
 	var res: Array[int] = []
 	var p_ice := (0.0 if difficulty < 0.05 else 0.04 + 0.20 * difficulty) + float(_bias(rng).get("plat_ice", 0.0))
-	var p_tramp := 0.0 if (difficulty < 0.25 or not CATAPULTS_IN_TOWERS) else 0.02 + 0.06 * difficulty
+	var p_tramp := 0.0 if (difficulty < CATAPULT_FROM or not CATAPULTS_IN_TOWERS) else 0.03 + 0.06 * (difficulty - CATAPULT_FROM)
 	var ice_cap := 2 + int(difficulty * 2.0) + int(_bias(rng).get("cap_bonus", 0))  # tope de celdas de hielo por plataforma (lo más difícil de leer)
 	var ice := 0
 	# Trampas (celdas que se desarman al pisarlas) y pinchos: pocos por plataforma; el solucionador comprueba que siempre haya camino.
@@ -971,10 +1124,10 @@ static func _band_dist(moves: int, band: Vector2i) -> int:
 
 ## Recorte de la torre alrededor de la fila y: capas y-2 .. y+1 (lo único que influye en subir un
 ## nivel); si hay catapultas se suben las capas de arriba hasta donde pueden llegar los saltos.
-static func _window(src, y: int, goal_ids := {}):
-	var top := y + 1
+static func _window(src, y: int, goal_ids := {}, top_override := -1):
+	var top := y + 1 if top_override < 0 else top_override
 	for id in src.kind_of:
-		if src.kind_of[id] == K.CATAPULT and src.positions[id].y >= y - 2 and src.positions[id].y <= y + 1:
+		if top_override < 0 and src.kind_of[id] == K.CATAPULT and src.positions[id].y >= y - 2 and src.positions[id].y <= y + 1:
 			top = y + 7  # una catapulta sube hasta 4 (y 1 más al trepar a ella)
 			break
 	var w = TowerLogic.new()
@@ -996,10 +1149,18 @@ static func _window(src, y: int, goal_ids := {}):
 
 ## Menor N con el que el camino óptimo completo sobrevive a la caída de la fila base.
 static func min_collapse_every(tower, path: Array) -> int:
-	for n in range(1, path.size() + 2):
-		if _replay_wins(tower, path, n):
-			return n
-	return path.size() + 1
+	# Con un N más grande la fila de abajo cae menos veces: si el camino gana con N, gana con cualquier mayor. Se busca por bisección (antes se probaba de a uno, y cada prueba repite todo el camino).
+	var lo := 1
+	var hi := path.size() + 1
+	if not _replay_wins(tower, path, hi):
+		return hi
+	while lo < hi:
+		var mid := (lo + hi) / 2
+		if _replay_wins(tower, path, mid):
+			hi = mid
+		else:
+			lo = mid + 1
+	return lo
 
 
 ## Programa la caída de la fila base: cada n movimientos, y la primera tarda el doble (tiempo para explorar).

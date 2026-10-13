@@ -40,8 +40,43 @@ func _init() -> void:
 	test_fairness()
 	test_kind_weights()
 	test_profiles()
+	test_situations()
 	print("tests del generador terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
+
+
+## Las situaciones: cada tipo de bloque desbloqueado tiene filas donde importa (el camino "como si fuera común" falla), y el más nuevo debuta primero.
+func test_situations() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var plan := Gen._feature_plan(rng, 12, 0.07)
+	var only_ice := true
+	for y in plan:
+		only_ice = only_ice and plan[y] == K.ICE
+	check(not plan.is_empty() and only_ice, "con la dificultad de la etapa 2 sólo hay situaciones de hielo")
+	plan = Gen._feature_plan(rng, 14, 0.6)
+	var kinds := {}
+	for y in plan:
+		kinds[plan[y]] = true
+	check(kinds.size() == 6 and plan[2] == K.BOMB and plan[3] == K.SPIKES and plan[4] == K.TRAP, "a dificultad media están los 6 tipos y el más nuevo debuta primero (%s)" % str(plan))
+	check(Gen._feature_plan(rng, 12, 0.0).is_empty() and Gen._feature_plan(rng, 1, 0.9).is_empty(), "sin tipos desbloqueados (o sin filas) no hay situaciones")
+	var res := Gen.generate_stage(77, 6, 0.3, LIGHT)
+	check(res.ok, "se genera una torre con situaciones")
+	if res.ok:
+		var featured := 0
+		var matter := 0
+		for inf in res.infos:
+			if inf.get("featured", -1) >= 0:
+				featured += 1
+				if inf.matters:
+					matter += 1
+		check(featured >= 3 and matter * 10 >= featured * 7, "la mayoría de las filas con situación son realmente situaciones (%d de %d)" % [matter, featured])
+	var plain := Gen.generate_stage(77, 6, 0.3, {"tries": 6, "climb": 0.5, "budget_states": 25000, "max_states": 2000, "situations": false})
+	var none_featured := true
+	if plain.ok:
+		for inf in plain.infos:
+			none_featured = none_featured and inf.get("featured", -1) < 0
+	check(plain.ok and none_featured, "con situations: false no se arma ninguna")
 
 
 func test_geometry() -> void:
@@ -110,7 +145,7 @@ func test_variety() -> void:
 		distinct_shapes[sh] = true
 	check(distinct_shapes.size() >= 3, "al menos 3 formas de plataforma distintas (hay %d)" % distinct_shapes.size())
 	check(r.kinds.has(K.ICE), "hay hielo en una etapa dificil (tipos presentes: %s)" % str(r.kinds.keys()))
-	check(not r.kinds.has(K.CATAPULT) or Gen.CATAPULTS_IN_TOWERS, "las catapultas no se generan en las torres mientras CATAPULTS_IN_TOWERS sea falso")
+	check(Gen.CATAPULTS_IN_TOWERS, "las catapultas se generan en las torres")
 
 	# Cada bomba tiene una cuenta valida; los tipos son los conocidos.
 	var bombs_ok := true
@@ -232,13 +267,13 @@ func test_kind_weights() -> void:
 			var k: int = Gen._obstacle_kind(rng, d)
 			seen[k] = seen.get(k, 0) + 1
 		print("obstaculos d=", d, ": ", seen)
-		check(not seen.has(K.CATAPULT), "d=%.1f: la catapulta no sale de los obstaculos generados" % d)
+		check(not seen.has(K.CATAPULT) or d >= Gen.CATAPULT_FROM, "d=%.1f: la catapulta sólo sale de los obstáculos desde la dificultad que la desbloquea" % d)
 		if d == 0.0:
 			check(seen.keys() == [K.NORMAL], "d=0: solo obstaculos normales")
 		if d == 0.2:
 			check(seen.has(K.ICE) and not seen.has(K.BOMB), "d=0.2: hay hielo pero todavia no bombas")
 		if d == 0.8:
-			check(seen.has(K.ICE) and seen.has(K.BOMB) and seen.has(K.NORMAL), "d=0.8: hay normales, hielo y bombas")
+			check(seen.has(K.ICE) and seen.has(K.BOMB) and seen.has(K.NORMAL) and seen.has(K.CATAPULT), "d=0.8: hay normales, hielo, bombas y catapultas")
 	# Celdas de hielo por plataforma: con tope
 	var cap_ok := true
 	for i in 200:
@@ -247,9 +282,8 @@ func test_kind_weights() -> void:
 		for k in ks:
 			if k == K.ICE:
 				ice += 1
-			cap_ok = cap_ok and k != K.CATAPULT
 		cap_ok = cap_ok and ice <= 2 + int(0.8 * 2.0)
-	check(cap_ok, "una plataforma tiene a lo sumo %d celdas de hielo y ninguna catapulta" % (2 + int(0.8 * 2.0)))
+	check(cap_ok, "una plataforma tiene a lo sumo %d celdas de hielo" % (2 + int(0.8 * 2.0)))
 	var none := Gen._platform_kinds(rng, 14, 0.0)
 	check(none.count(K.NORMAL) == 14, "d=0: la plataforma es toda de bloques normales")
 
@@ -257,19 +291,20 @@ func test_kind_weights() -> void:
 ## Perfiles de etapa y ritmos de caida.
 func test_profiles() -> void:
 	var p1 := Gen.profile_for_stage(1)
-	var p27 := Gen.profile_for_stage(27)
-	check(is_equal_approx(p1.difficulty, 0.0) and is_equal_approx(p27.difficulty, 1.0), "la etapa 1 es la mas facil y la 27 la mas dificil")
+	var p27 := Gen.profile_for_stage(15)
+	check(is_equal_approx(p1.difficulty, 0.0) and is_equal_approx(p27.difficulty, 1.0), "la etapa 1 es la mas facil y la 15 la mas dificil")
 	check(Gen.profile_for_stage(1).pace == "normal" and Gen.profile_for_stage(2).pace == "normal", "las dos primeras etapas son de ritmo normal")
 	var paces := {}
-	for st in range(3, 28):
+	for st in range(3, 16):
 		paces[Gen.profile_for_stage(st).pace] = true
 	check(paces.has("fast") and paces.has("normal") and paces.has("slow"), "a lo largo de las etapas hay ritmos rapidos, normales y lentos")
-	check(Gen.profile_for_stage(5).combo == 0.0 and Gen.profile_for_stage(27).combo == 1.0 and Gen.profile_for_stage(20).combo > Gen.profile_for_stage(14).combo, "las mezclas de mecanicas empiezan tarde y crecen")
-	check(Gen.profile_for_stage(1).mechanics.is_empty() and "hielo" in Gen.profile_for_stage(4).mechanics and not ("bomba" in Gen.profile_for_stage(8).mechanics) and "bomba" in Gen.profile_for_stage(14).mechanics, "las mecanicas se introducen de a una: hielo, despues bombas")
+	check(Gen.profile_for_stage(5).combo == 0.0 and Gen.profile_for_stage(15).combo == 1.0 and Gen.profile_for_stage(12).combo > Gen.profile_for_stage(9).combo, "las mezclas de mecanicas empiezan tarde y crecen")
+	check(Gen.profile_for_stage(1).mechanics.is_empty() and Gen.profile_for_stage(2).mechanics == ["hielo"] and Gen.profile_for_stage(3).mechanics == ["hielo", "pesado"] and Gen.profile_for_stage(4).mechanics.size() == 3 and not ("bomba" in Gen.profile_for_stage(6).mechanics) and "bomba" in Gen.profile_for_stage(7).mechanics, "los tipos de bloque se presentan de a uno por etapa: hielo 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7")
 	check(Gen.profile_for_stage(deterministic_stage()).pace == Gen.profile_for_stage(deterministic_stage()).pace, "el perfil de una etapa es siempre el mismo")
 
 	# El ritmo cambia el margen de la caida: rapida < normal < lenta, con la misma semilla.
 	var ratios := {}
+	check(not ("catapulta" in Gen.profile_for_stage(7).mechanics) and "catapulta" in Gen.profile_for_stage(8).mechanics, "el trampolín (catapulta) se presenta en la etapa 8")
 	var avgs := {}
 	var bands := {}
 	for pace in ["fast", "normal", "slow"]:

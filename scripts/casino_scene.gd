@@ -27,12 +27,17 @@ const LivesHud := preload("res://scripts/lives_hud.gd")
 const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const Services := preload("res://scripts/casino_services.gd")
+const HudPanel := preload("res://scripts/hud_panel.gd")
+const Story := preload("res://scripts/story.gd")
+const RunState := preload("res://scripts/run_state.gd")
+const PORTAL_SHADER := preload("res://shaders/portal.gdshader")
 const ServiceScreens := preload("res://scripts/casino_service_screens.gd")
 
 signal left
 signal roulette_opened
 signal changed   ## el run cambió (se jugó una tirada): hay que guardar
 signal story_message(text: String)   ## en el modo historia (tutorial): algo que el tabernero tiene para decir
+signal keeper_talk(lines: Array)   ## se habló con el tabernero: lo que dice (el juego lo muestra en el cuadro de diálogo)
 
 const STEP_TIME := 0.14
 const PITCH := -35.264
@@ -42,11 +47,6 @@ const MOUSE_SENS := 0.28       # grados por píxel (igual que en la torre)
 const ARROW_SPEED := 110.0     # grados por segundo al girar con las flechas
 const ZOOM_FACTOR := 1.1
 const PLAYER_SCALE := 1.5  # el personaje se agranda un poco: la sala está hecha de minibloques y el crupier es alto
-const DEALER_LINES := [
-	"Crupier: «Sentate, soñador. Acá la claridad se juega, no se regala.»",
-	"Crupier: «Cada ficha es un pedazo de despertar. ¿Cuánto arriesgás?»",
-	"Crupier: «La casa siempre gana... salvo cuando te acordás de despertar.»",
-]
 
 var run
 var rng: RandomNumberGenerator
@@ -65,14 +65,13 @@ var pivot: Node3D
 var cam: Camera3D
 var walls := {}               # "west"/"north" -> [sólido, luces]
 var hud: Control
-var next_label: Control        # "Próxima prueba: Niebla (en 2 etapas)"
+var hud_panel                  # la ventana de la partida: corazones y claridad
 var toast: Control
 var hud_layer: CanvasLayer
 var left_bar
 var right_bar
 var clarity_counter
 var lives_hud
-var rule_label: Control      # la regla de la casa de esta sala y cómo viene
 var item_tip: Control
 var overlay: CanvasLayer
 var screen
@@ -80,9 +79,12 @@ var _walk_tween: Tween
 var _cam_tween: Tween
 var story := false            # modo historia (tutorial): la ruleta no se abre y no se ve la interfaz de juego
 var input_locked := false     # mientras habla el tabernero no se camina
+var portals: Array[MeshInstance3D] = []   # los portales de las paredes
 var _arrow: Node3D            # flecha que marca la puerta de salida
 var _t := 0.0
 var quick := false            # pruebas: sin animaciones
+var _vault_paid := 0          # lo que cobró la caja fuerte al entrar (lo comenta el tabernero)
+var _greeting := -1           # qué saludo toca ahora (el tabernero va variando)
 
 
 func setup(run_state, random: RandomNumberGenerator) -> void:
@@ -97,13 +99,16 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 		vault_paid = Services.enter(run)   # expira el seguro sin usar y se paga la caja fuerte del casino anterior
 		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
 	_build_room()
+	_build_portals()
 	_build_player()
 	_build_camera()
 	_build_hud()
 	if story:
 		hud_layer.visible = false
 	_place_player()
-	_flash(DEALER_LINES[rng.randi() % DEALER_LINES.size()] if vault_paid <= 0 else Loc.f("Caja fuerte: cobrás %d de claridad (con interés).", [vault_paid]))
+	_vault_paid = vault_paid
+	if vault_paid > 0:
+		_flash(Loc.f("Caja fuerte: cobrás %d de claridad (con interés).", [vault_paid]))
 	_refresh_hud()
 
 
@@ -150,6 +155,32 @@ func _build_room() -> void:
 		walls[side] = [_mesh_node(data[side].solid, _solid_material()), _mesh_node(data[side].glow, _glow_material())]
 
 
+## Los portales de las paredes (el de llegada, sólo estético, y el de salida): ondas que se mueven, como los de Minecraft. Se ocultan con su pared.
+func _build_portals() -> void:
+	var span := float(Room.CELL_VOX) * Room.VOXEL
+	for side in ["north", "west"]:
+		var is_exit: bool = side == "north"
+		var col := Room.portal_color(run.stage, is_exit)
+		var mat := ShaderMaterial.new()
+		mat.shader = PORTAL_SHADER
+		mat.set_shader_parameter("col_a", col.darkened(0.25))
+		mat.set_shader_parameter("col_b", col)
+		mat.set_shader_parameter("col_c", col.lightened(0.45))
+		var quad := QuadMesh.new()
+		quad.size = Vector2(span, 10.0 * Room.VOXEL)
+		var mi := MeshInstance3D.new()
+		mi.mesh = quad
+		mi.material_override = mat
+		add_child(mi)
+		if is_exit:   # pared norte: el vano corre por x, a la altura de las puertas (2 minibloques arriba del piso), en el medio del grosor de la pared
+			mi.position = Vector3((lay.exit.x * Room.CELL_VOX + Room.CELL_VOX * 0.5) * Room.VOXEL, 7.0 * Room.VOXEL, 1.0 * Room.VOXEL)
+		else:   # pared oeste: el vano corre por z
+			mi.position = Vector3(1.0 * Room.VOXEL, 7.0 * Room.VOXEL, (lay.entry.y * Room.CELL_VOX + Room.CELL_VOX * 0.5) * Room.VOXEL)
+			mi.rotation_degrees.y = 90.0
+		walls[side].append(mi)
+		portals.append(mi)
+
+
 func _build_player() -> void:
 	player_node = Node3D.new()
 	player_node.scale = Vector3.ONE * PLAYER_SCALE
@@ -188,12 +219,6 @@ func _build_hud() -> void:
 	add_child(layer)
 	hud = _label(layer, 3, Color(1.0, 0.92, 0.7))   # (el título "Casino" ya no se muestra)
 	hud.visible = false
-	next_label = _label(layer, 3, Color(0.88, 0.85, 0.98))
-	next_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	next_label.align = VoxelLabel.Align.RIGHT
-	next_label.margin = 190.0
-	next_label.y_offset = 22.0
-	next_label.plate_alpha = 0.6
 	# La rosa de los vientos (como en la torre): qué eje mueve cada tecla según como esté girada la cámara.
 	compass = Compass.new()
 	compass.name = "rosa_vientos"
@@ -203,17 +228,11 @@ func _build_hud() -> void:
 	compass.view_source = func(): return Vector2(pivot.rotation_degrees.y, pitch_node.rotation_degrees.x) if pivot != null and pitch_node != null else Vector2(45, PITCH)
 	compass.dir_source = func(sx, sy): return Vector3i(_dir_for_screen(sx, sy).x, 0, _dir_for_screen(sx, sy).y)
 	layer.add_child(compass)
-	var counters := HBoxContainer.new()   # la claridad que tenés: el ícono girando y el número
-	counters.position = Vector2(26, 20)
-	counters.add_theme_constant_override("separation", 22)
-	layer.add_child(counters)
-	clarity_counter = ClarityCounter.new(4.0)
-	clarity_counter.name = "claridad"
-	clarity_counter.plate_alpha = 0.55
-	counters.add_child(clarity_counter)
-	rule_label = _label(layer, 2, RuleUI.COLOR)
-	rule_label.position = Vector2(26, 76)
-	rule_label.plate_alpha = 0.55
+	hud_panel = HudPanel.new(false)   # la vida y la claridad (lo demás, la regla de la casa y la próxima prueba, lo cuenta el tabernero)
+	layer.add_child(hud_panel)
+	lives_hud = hud_panel.lives
+	clarity_counter = hud_panel.clarity
+	hud_panel.set_toll(RunState.toll_for(run.stage + 1))   # lo que va a cobrar el duende del portal de la próxima torre
 	item_tip = _label(layer, 2, Color(0.95, 0.93, 0.88))
 	item_tip.wrap_px = 460
 	item_tip.plate_alpha = 0.85
@@ -221,6 +240,7 @@ func _build_hud() -> void:
 	left_bar = ItemBar.new()
 	layer.add_child(left_bar)
 	left_bar.edge = 0
+	left_bar.bottom = true   # los consumibles van abajo a la izquierda
 	left_bar.tip = item_tip
 	left_bar.setup(run, ItemBar.Kind.CONSUMABLE, false)
 	left_bar.discarded.connect(_on_item_discarded)
@@ -228,8 +248,6 @@ func _build_hud() -> void:
 	layer.add_child(right_bar)
 	right_bar.edge = 1
 	right_bar.discarded.connect(_on_item_discarded)
-	lives_hud = LivesHud.new()
-	layer.add_child(lives_hud)
 	right_bar.tip = item_tip
 	right_bar.setup(run, ItemBar.Kind.BOOST, false)
 	toast = _label(layer, 2, Color(1.0, 0.95, 0.85))
@@ -268,17 +286,13 @@ func _on_item_discarded(_kind: int, id: String) -> void:
 
 func _refresh_hud() -> void:
 	if lives_hud != null:
+		lives_hud.max_lives = run.max_lives()
 		lives_hud.lives = run.lives
 	if left_bar != null:
 		left_bar.refresh()
 		right_bar.refresh()
 	hud.text = "Casino"
-	var nt: String = run.next_trial_text(run.stage + 1)   # la que toca después de este casino
-	next_label.text = nt
-	next_label.visible = nt != ""
 	clarity_counter.value = run.claridad
-	rule_label.text = RuleUI.status(run)
-	rule_label.visible = rule_label.text != ""
 
 
 func _flash(msg: String) -> void:
@@ -334,7 +348,13 @@ func _on_arrived() -> void:
 
 ## Chocar contra lo que no se camina: la mesa de la ruleta se abre; el resto avisa.
 func _bump(n: Vector2i) -> String:
-	if lay.table.has_point(n) or n == lay.dealer:
+	if n == lay.dealer:   # el tabernero: se habla con él (en el tutorial todavía no hay nada de qué hablar)
+		if story:
+			story_message.emit(Story.BLOCKED_TABLE)
+			return "blocked"
+		talk_to_keeper()
+		return "keeper"
+	if lay.table.has_point(n):
 		if story:   # en el tutorial no se apuesta todavía
 			story_message.emit(preload("res://scripts/story.gd").BLOCKED_TABLE)
 			return "blocked"
@@ -373,6 +393,20 @@ func interact() -> String:
 		if ct.has_point(n):
 			return _bump(n)
 	return "blocked"
+
+
+## Habla con el tabernero (el de detrás de la mesa): saluda, cuenta la regla de la casa de esta sala (que desde ahora rige en toda la visita) y la próxima prueba.
+## Emite `keeper_talk` con lo que dice (el juego lo muestra en el cuadro de diálogo) y lo devuelve.
+func talk_to_keeper() -> Array:
+	if _greeting < 0:
+		_greeting = rng.randi() % Story.GREETINGS.size()
+	else:
+		_greeting = (_greeting + 1) % Story.GREETINGS.size()
+	var rule := Rules.rule_of(int(lay.tier))
+	var lines := Story.keeper(rule, Rules.accepted(run), run.next_trial_info(run.stage + 1), _greeting, _vault_paid)
+	Rules.accept(run)
+	keeper_talk.emit(lines)
+	return lines
 
 
 func open_roulette() -> void:

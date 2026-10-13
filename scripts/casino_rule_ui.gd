@@ -9,20 +9,8 @@ const Loc := preload("res://scripts/loc.gd")
 const COLOR := Color(1.0, 0.86, 0.5)
 
 
-## El renglón de estado de la regla de la sala ("" si no hay visita: tutorial, entrenamiento).
-static func status(run) -> String:
-	var id := Rules.rule_id(run)
-	var v: Dictionary = run.casino_visit
-	match id:
-		"fiado":
-			return Loc.t("Fiado: ya lo usaste en esta visita.") if v.fiado_used else Loc.t("Fiado: tu primera pérdida de la visita devuelve la mitad.")
-		"racha":
-			var pct := int(round(Rules.streak_bonus(int(v.streak)) * 100.0))
-			return Loc.f("Racha de %d: +%d %% al próximo pago.", [v.streak, pct]) if int(v.streak) >= 2 else Loc.t("Racha: ganá seguido para sumar +10 % cada vez.")
-		"libre":
-			return Loc.f("Apuesta libre: ×%d fichas.", [Rules.stake(run)]) if Rules.stake(run) > 1 else Loc.t("Apuesta libre: podés apostar varias fichas juntas.")
-		"jackpot":
-			return Loc.f("Pozo del jackpot: %d de claridad.", [Rules.pool(run)])
+## (Ya no se muestra el estado de la regla: lo cuenta el tabernero cuando le hablás.) Devuelve siempre "".
+static func status(_run) -> String:
 	return ""
 
 

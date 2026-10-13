@@ -49,7 +49,7 @@ func _init() -> void:
 ## Todo premio del catálogo (menos las bolsas de claridad) tiene su efecto conectado.
 func test_catalogue() -> void:
 	var boosts := ["segundo_aliento", "madrugada", "luz_propia", "mano_de_oro", "pies_de_luz", "paso_firme", "reflejos", "racha_larga", "aire_extra", "ojo_de_hielo", "ahorro", "bolsillo_hondo", "mente_abierta"]
-	var consumables := ["freno", "desarmar", "ancla_chica", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta", "escudo", "doble_salto", "totem", "teletransporte"]
+	var consumables := ["freno", "desarmar", "ancla_chica", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta", "escudo", "doble_salto", "totem", "teletransporte", "vida_extra"]
 	var ok := true
 	for it in Items.ALL:
 		if it.type == Items.Type.BOOST:

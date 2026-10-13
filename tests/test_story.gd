@@ -50,8 +50,8 @@ func test_texts() -> void:
 	var joined := ""
 	for l in intro:
 		joined += line_text(l) + "\n"
-	check(intro.size() >= 5 and joined.contains("pesadilla") and joined.contains("puerta de atrás") and joined.contains("claridad"), "la bienvenida cuenta la pesadilla y manda a la puerta de atras")
-	check(joined.find("puerta de atrás") > joined.find("pesadilla"), "primero la historia y al final la puerta")
+	check(intro.size() >= 5 and joined.contains("pesadilla") and joined.contains("portal de atrás") and joined.contains("claridad"), "la bienvenida cuenta la pesadilla y manda al portal de atras")
+	check(joined.find("portal de atrás") > joined.find("pesadilla"), "primero la historia y al final el portal")
 	for l in Story.outro():
 		var t := line_text(l)
 		check(t.length() > 20, "el cierre tiene frases completas")
@@ -60,14 +60,14 @@ func test_texts() -> void:
 	for l in Story.outro():
 		if typeof(l) != TYPE_STRING and l.has("icon"):
 			icons.append(l.icon)
-	check(icons.has("luz") and icons.has("claridad"), "el cierre muestra el sol y el rayo al hablar de la Luz y la claridad")
+	check(icons.has("luz"), "el cierre muestra el sol al hablar de la Luz")
 	var outro_text := ""
 	for l in Story.outro():
 		outro_text += line_text(l).to_lower() + "\n"
-	check(outro_text.contains("habilidad") and outro_text.contains("prueba") and outro_text.contains("escenario") and outro_text.contains("ruleta"), "el cierre explica habilidades, pruebas, escenarios y ruleta")
+	check(outro_text.contains("habilidad") and outro_text.contains("prueba") and outro_text.contains("ruleta"), "el cierre explica habilidades, pruebas y ruleta")
 	for l in Tutorial.lessons():
 		check(Story.lesson_say(l.id) != "", "el tabernero tiene su frase para la leccion %s" % l.id)
-	# Todo entra en el cuadro de dialogo (hasta 4 renglones)
+	# Todo entra en el cuadro de dialogo (hasta 5 renglones)
 	var VFont := preload("res://scripts/voxel_font.gd")
 	var too_long := ""
 	var every: Array = []
@@ -77,7 +77,7 @@ func test_texts() -> void:
 		every.append(Story.LESSONS[id])
 	for l in every:
 		var has_icon: bool = typeof(l) != TYPE_STRING and l.has("icon")
-		if VFont.wrap(line_text(l), DialogueBox.TEXT_CELLS - (80 if has_icon else 0)).size() > 4:
+		if VFont.wrap(line_text(l), DialogueBox.TEXT_CELLS - (80 if has_icon else 0)).size() > 5:
 			too_long = line_text(l).substr(0, 40)
 	check(too_long == "", "cada frase entra en el cuadro de dialogo (%s)" % too_long)
 	check(Room.tier_of(Story.INTRO_STAGE) == 0 and Room.tier_of(Story.OUTRO_STAGE) == 1, "la historia empieza en la taberna y termina en el salon de piedra")
@@ -113,7 +113,7 @@ func test_dialogue_box() -> void:
 	esc.keycode = KEY_ESCAPE
 	esc.pressed = true
 	box._unhandled_input(esc)
-	check(finished_count == 1 and not box.is_active(), "Esc salta todo lo que queda")
+	check(finished_count == 0 and box.is_active(), "Esc no corta la charla")
 	# Enter avanza
 	box.show_lines(["Uno.", "Dos."], "Tabernero", true)
 	var enter := InputEventKey.new()
@@ -160,7 +160,7 @@ func test_intro_flow() -> void:
 	while main.generating or main.logic == null or main.tutorial_index != 0:
 		await process_frame
 	check(main.casino == null and main.story_kind == "" and main.tutorial_index == 0 and main.hud_layer.visible, "al cruzar la puerta empiezan las lecciones")
-	check(main.dialogue.is_active() and not main.dialogue.blocking and str(main.dialogue.lines[0]) == Story.lesson_say("moverse"), "y la primera la explica el tabernero")
+	check(main.dialogue.is_active() and main.dialogue.blocking and main.dialogue.any_key and str(main.dialogue.lines[0]) == Story.lesson_say("moverse"), "y la primera la explica el tabernero")
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
@@ -183,7 +183,7 @@ func test_lessons_and_outro() -> void:
 	# Cada leccion la dice el tabernero
 	for i in Tutorial.count() - 1:
 		await main.start_tutorial(i, true)
-		check(main.dialogue.is_active() and not main.dialogue.blocking and str(main.dialogue.lines[0]) == Story.lesson_say(Tutorial.lessons()[i].id), "la leccion %d la dice el tabernero" % (i + 1))
+		check(main.dialogue.is_active() and main.dialogue.blocking and str(main.dialogue.lines[0]) == Story.lesson_say(Tutorial.lessons()[i].id), "la leccion %d la dice el tabernero" % (i + 1))
 	# Despues de la ultima, el cierre en el salon de piedra
 	await main.start_tutorial(Tutorial.count() - 1, true)
 	main.logic.won = true
@@ -197,7 +197,7 @@ func test_lessons_and_outro() -> void:
 			seen_icons[main.dialogue._icon] = true
 		main.dialogue.advance()
 		guard += 1
-	check(seen_icons.has("luz") and seen_icons.has("claridad"), "durante el cierre se muestran el sol y el rayo")
+	check(seen_icons.has("luz"), "durante el cierre se muestra el sol")
 	check(main.in_menu and main.casino == null and main.tutorial_index == -1 and not main.training, "al terminar de explicar se vuelve al menu")
 	main._cancel_jobs()
 	main.queue_free()

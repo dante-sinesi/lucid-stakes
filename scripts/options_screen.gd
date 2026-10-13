@@ -18,6 +18,9 @@ const TAB_NAMES := {"general": "General", "graficos": "Gráficos", "sonido": "So
 
 var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
+var contrast_buttons := {}  # "on" / "off"
+var reading_buttons := {}   # "on" / "off"
+var compass_buttons := {}   # "on" / "off"
 var vsync_buttons := {}     # "on" / "off"
 var res_prev: Button
 var ui_prev: Button
@@ -129,6 +132,21 @@ func _build_general(page: Control) -> void:
 	for code in Loc.LANG_ORDER:
 		lang_buttons[code] = _toggle(row, Loc.LANGS[code], group, "idioma_" + code, _on_lang.bind(code))
 	_build_interface()
+	row = _row(Loc.t("Modo de lectura"))
+	group = ButtonGroup.new()
+	reading_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "lectura_si", _on_reading.bind(true))
+	reading_buttons["off"] = _toggle(row, Loc.t("No"), group, "lectura_no", _on_reading.bind(false))
+	UI.label(_page, Loc.t("Letras más claras y con contorno."), 2, Draw.MARBLE)
+	row = _row(Loc.t("Rosa de los vientos"))
+	group = ButtonGroup.new()
+	compass_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "rosa_si", _on_compass.bind(true))
+	compass_buttons["off"] = _toggle(row, Loc.t("No"), group, "rosa_no", _on_compass.bind(false))
+	UI.label(_page, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), 2, Draw.MARBLE)
+	row = _row(Loc.t("Alto contraste"))
+	group = ButtonGroup.new()
+	contrast_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "contraste_si", _on_contrast.bind(true))
+	contrast_buttons["off"] = _toggle(row, Loc.t("No"), group, "contraste_no", _on_contrast.bind(false))
+	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE)
 
 
 func _build_interface() -> void:
@@ -293,6 +311,9 @@ func reset_tab() -> void:
 	match tab:
 		"general":   # (el idioma no se toca)
 			Settings.set_value("ui_scale", 100)
+			Settings.set_value("reading_mode", false)
+			Settings.set_value("high_contrast", false)
+			Settings.set_value("compass", true)
 		"graficos":
 			Settings.set_value("fullscreen", false)
 			Settings.set_value("resolution", [1280, 720])
@@ -322,6 +343,15 @@ func refresh() -> void:
 	ui_label.text = "%d%%" % us
 	ui_prev.disabled = us <= Settings.UI_SCALES[0]
 	ui_next.disabled = us >= Settings.UI_SCALES[Settings.UI_SCALES.size() - 1]
+	var rm: bool = Settings.get_value("reading_mode")
+	reading_buttons.on.selected = rm
+	reading_buttons.off.selected = not rm
+	var cp: bool = Settings.get_value("compass")
+	compass_buttons.on.selected = cp
+	compass_buttons.off.selected = not cp
+	var hc: bool = Settings.get_value("high_contrast")
+	contrast_buttons.on.selected = hc
+	contrast_buttons.off.selected = not hc
 	var vs: bool = Settings.get_value("vsync")
 	vsync_buttons.on.selected = vs
 	vsync_buttons.off.selected = not vs
@@ -449,6 +479,21 @@ func _on_ui_scale(dir: int) -> void:
 	var i := Settings.UI_SCALES.find(int(Settings.get_value("ui_scale")))
 	i = clampi((i if i >= 0 else 2) + dir, 0, Settings.UI_SCALES.size() - 1)
 	Settings.set_value("ui_scale", Settings.UI_SCALES[i])
+	refresh()
+
+
+func _on_contrast(on: bool) -> void:
+	Settings.set_value("high_contrast", on)
+	refresh()
+
+
+func _on_compass(on: bool) -> void:
+	Settings.set_value("compass", on)
+	refresh()
+
+
+func _on_reading(on: bool) -> void:
+	Settings.set_value("reading_mode", on)
 	refresh()
 
 

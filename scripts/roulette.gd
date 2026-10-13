@@ -23,9 +23,9 @@ const BETS := {
 	Bet.RANGO: {"name": "Rango", "count": 9, "tier": Items.Tier.CONSUMIBLE},
 }
 const BASE_PRICE := 50
-## La ficha sube PRICE_STEP por etapa: 50 en la etapa 1 y 102 en la 27. Una torre da, siguiendo el camino mínimo, entre ~190 de
+## La ficha sube PRICE_STEP por etapa: 50 en la etapa 1 y 106 en la 15. Una torre da, siguiendo el camino mínimo, entre ~190 de
 ## claridad (etapa 1) y ~390 (etapas altas), así que cada tirada cuesta alrededor de un cuarto de lo que se junta en la etapa.
-const PRICE_STEP := 2
+const PRICE_STEP := 4
 
 
 ## Precio de la ficha en una etapa (igual para las cuatro apuestas).
@@ -84,6 +84,10 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 	if not res.won:
 		return _with_rules(run, res, cost, 0, bet)
 	var prize := Items.pick(BETS[bet].tier, rng)
+	var rerolls := 0
+	while run.item_blocked(str(prize.id)) and rerolls < 20:   # (lo que el escenario inhabilita no sale)
+		prize = Items.pick(BETS[bet].tier, rng)
+		rerolls += 1
 	res.prize = prize
 	var reward := 0
 	if prize.type == Items.Type.CLARITY:

@@ -33,6 +33,7 @@ var meta_consumable_slots := 0   # mejoras permanentes del Despertar (ver profil
 var restart_discount := 0.0
 var collapse_bonus := 0
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
+var bonus_lives := 0       # corazones de más que dan las habilidades persistentes (Corazón extra)
 var lives := MAX_LIVES    # vidas: cuántas veces se puede reintentar después de morir (3 por partida, sin importar la etapa)
 var casino_visit := {}    # estado de la visita al casino actual (casino_rules.gd); no se guarda
 var vault := 0            # claridad guardada en la caja fuerte (casino_services.gd); se cobra con interés en el casino siguiente
@@ -55,6 +56,21 @@ func trial_at(st: int) -> Dictionary:
 	return Trials.for_stage(trial_schedule, st)
 
 
+## Lo que cobra el duende para encender el portal de salida de la etapa `stage` (más caro cuanto más arriba; ronda el cuarto de la claridad que rinde una torre).
+static func toll_for(stage: int) -> int:
+	return 40 + 4 * stage
+
+
+## Filas (pisos) de la torre de la etapa `stage`: 25 hasta la 5 y dos más por etapa después, hasta 41 (la torre crece con la dificultad; cuesta más generarla).
+static func rows_for(stage: int) -> int:
+	return clampi(25 + 2 * maxi(stage - 5, 0), 25, 41)
+
+
+## La próxima prueba desde la etapa `from_stage`: {trial, left} ({} si no quedan); `left` son las etapas que faltan (0 = es la de `from_stage`).
+func next_trial_info(from_stage: int) -> Dictionary:
+	return Trials.next_from(trial_schedule, from_stage)
+
+
 ## Texto de la próxima prueba desde la etapa `from_stage`: "Próxima prueba: Niebla (en 2 etapas)" o "" si no quedan.
 func next_trial_text(from_stage: int) -> String:
 	var n := Trials.next_from(trial_schedule, from_stage)
@@ -67,9 +83,9 @@ func next_trial_text(from_stage: int) -> String:
 
 ## `dead`: se reintenta después de morir (el Tótem, si lo tenés, lo hace gratis); el seguro vale siempre.
 func restart_cost(dead := false) -> int:
-	if insurance or (dead and consumables.has("totem")):
+	if insurance or (dead and _totem_works()):
 		return 0
-	var base := (RESTART_BASE + maxi(stage - 1, 0)) * (1 + tower_retries)
+	var base := (RESTART_BASE + 2 * maxi(stage - 1, 0)) * (1 + tower_retries)   # (la mitad de la ficha de la ruleta de esa etapa)
 	return maxi(int(round(base * (1.0 - restart_discount))), 1)
 
 
@@ -79,7 +95,7 @@ func note_retry(dead := false) -> void:
 	retries += 1
 	tower_retries += 1
 	var saved_by_totem := false
-	if dead and consumables.has("totem"):
+	if dead and _totem_works():
 		use_consumable("totem")
 		saved_by_totem = true
 	elif insurance:
@@ -88,14 +104,34 @@ func note_retry(dead := false) -> void:
 		lives = maxi(lives - 1, 0)
 
 
-## ¿Se puede reintentar después de morir? (queda alguna vida o hay un Tótem)
+## Cuántas vidas se pueden tener a la vez: 3 más las de las habilidades (Corazón extra); un escenario puede fijarlas (Compromiso: 1).
+func max_lives() -> int:
+	var fixed := int(scenario().get("lives", -1))
+	return fixed if fixed > 0 else MAX_LIVES + bonus_lives
+
+
+## En este escenario morir es el final (no hay segundas oportunidades).
+func permadeath() -> bool:
+	return bool(scenario().get("permadeath", false))
+
+
+## ¿Este consumible no sirve en el escenario? (Compromiso inhabilita los Tótems y las Vidas extra.)
+func item_blocked(id: String) -> bool:
+	return (id == "totem" and bool(scenario().get("no_totem", false))) or (id == "vida_extra" and bool(scenario().get("no_extra_life", false)))
+
+
+func _totem_works() -> bool:
+	return consumables.has("totem") and not item_blocked("totem")
+
+
+## ¿Se puede reintentar después de morir? (queda alguna vida o hay un Tótem que sirva, y el escenario lo permite)
 func can_revive() -> bool:
-	return lives > 0 or consumables.has("totem")
+	return not permadeath() and (lives > 0 or _totem_works())
 
 
-## Suma una vida (máximo MAX_LIVES). false si ya están todas.
+## Suma una vida (hasta el máximo). false si ya están todas o el escenario no deja recuperarlas.
 func add_life() -> bool:
-	if lives >= MAX_LIVES:
+	if lives >= max_lives() or item_blocked("vida_extra"):
 		return false
 	lives += 1
 	return true
@@ -204,7 +240,7 @@ func to_dict() -> Dictionary:
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "collapse_bonus": collapse_bonus,
 			"scenario_id": scenario_id, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad,
-			"vault": vault, "vault_stage": vault_stage, "insurance": insurance, "lives": lives}
+			"vault": vault, "vault_stage": vault_stage, "insurance": insurance, "lives": lives, "bonus_lives": bonus_lives}
 
 
 func _schedule_out() -> Dictionary:
@@ -241,7 +277,8 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.vault = int(d.get("vault", 0))
 	r.vault_stage = int(d.get("vault_stage", 0))
 	r.insurance = bool(d.get("insurance", false))
-	r.lives = clampi(int(d.get("lives", MAX_LIVES)), 0, MAX_LIVES)
 	for st in d.get("trial_schedule", {}):
 		r.trial_schedule[int(st)] = str(d.trial_schedule[st])
+	r.bonus_lives = int(d.get("bonus_lives", 0))
+	r.lives = clampi(int(d.get("lives", r.max_lives())), 0, r.max_lives())
 	return r

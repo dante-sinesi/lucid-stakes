@@ -25,6 +25,7 @@ func _init() -> void:
 	test_file()
 	await test_flow_tower()
 	await test_flow_casino()
+	await test_death_saves()
 	await test_end_deletes()
 	await test_menu_button()
 	SaveGame.delete()
@@ -142,6 +143,47 @@ func test_flow_tower() -> void:
 	e.continue_game()
 	check(e.run_over and e.run_end.visible and not SaveGame.exists(), "si no alcanza para pagar el reintento al continuar, el run termina (y se borra el guardado)")
 	for m in [a, c, d, e]:
+		m._cancel_jobs()
+		m.queue_free()
+	await process_frame
+	SaveGame.delete()
+
+
+## Morir guarda al instante: si se sale al menú sin reintentar, al continuar ya cuenta la muerte (una vida menos). Alt + F4 también guarda.
+func test_death_saves() -> void:
+	var a := make_main()
+	await wait_tower(a)
+	a.run.claridad = 500
+	a.attempt_dirty = true
+	a.save_game()
+	check(SaveGame.read().dead == false, "vivo: el guardado no dice que murió")
+	var lives_before: int = a.run.lives
+	a.logic.lost = true
+	a.logic.lost_reason = "Caíste al vacío"
+	await a._on_anim_done()
+	check(SaveGame.read().dead == true and a.lost_screen.visible, "al morir se guarda al instante, marcando la muerte")
+	check(a.run.lives == lives_before, "(la vida se gasta recién al continuar o reintentar)")
+	var b := make_main()
+	await wait_tower(b)
+	a.save_game()
+	b.continue_game()
+	check(b.run.lives == lives_before - 1 and b.run.retries == 1, "salir sin reintentar y continuar: ya costó una vida")
+	check(not b.logic.lost and SaveGame.read().dead == false, "y la torre empieza de cero (vivo)")
+	# Sin vidas ni Tótem: al continuar el run termina
+	a.run.lives = 0
+	a.save_game()
+	var c := make_main()
+	await wait_tower(c)
+	a.save_game()
+	c.continue_game()
+	check(c.run_over, "si ya no te quedaban vidas, continuar después de morir termina el run")
+	# Alt + F4: guardado rápido
+	var d := make_main()
+	await wait_tower(d)
+	SaveGame.delete()
+	d.notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+	check(SaveGame.exists(), "al cerrar la ventana (Alt + F4) se guarda")
+	for m in [a, b, c, d]:
 		m._cancel_jobs()
 		m.queue_free()
 	await process_frame

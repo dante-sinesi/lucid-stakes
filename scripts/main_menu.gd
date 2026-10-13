@@ -10,6 +10,7 @@ const MetaScreen := preload("res://scripts/meta_screen.gd")
 const ScenarioScreen := preload("res://scripts/scenario_screen.gd")
 const CosmeticsScreen := preload("res://scripts/cosmetics_screen.gd")
 const OptionsScreen := preload("res://scripts/options_screen.gd")
+const BlockGuideScreen := preload("res://scripts/block_guide_screen.gd")
 const Loc := preload("res://scripts/loc.gd")
 
 signal new_game(scenario_id: String)
@@ -25,6 +26,7 @@ var scenarios: Control   # selector de escenario (al tocar Nueva partida)
 var cosmetics: Control   # pantalla de cosméticos
 var meta: Control   # pantalla del Despertar (meta-progresión)
 var options: Control   # pantalla de opciones
+var guide: Control   # guía de bloques
 var credits_button: Button
 var main_center: CenterContainer
 var column: VBoxContainer
@@ -54,6 +56,7 @@ func _init() -> void:
 	_button("nueva", Loc.t("Nueva partida"), false, func(): show_panel("escenarios"))
 	_button("despertar", Loc.t("Habilidades"), false, func(): show_panel("despertar"))
 	_button("cosmeticos", Loc.t("Personaje"), false, func(): show_panel("cosmeticos"))
+	_button("guia", Loc.t("Guía de bloques"), false, func(): show_panel("guia"))
 	_button("opciones", Loc.t("Opciones"), false, func(): show_panel("opciones"))
 	_button("salir", Loc.t("Salir"), false, func(): quit_game.emit())
 	credits = UI.make_credits_panel(func(): show_panel("principal"), func(): show_panel("licencias"))
@@ -74,6 +77,9 @@ func _init() -> void:
 	meta = MetaScreen.new()
 	meta.back.connect(func(): show_panel("principal"))
 	add_child(meta)
+	guide = BlockGuideScreen.new()
+	guide.back.connect(func(): show_panel("principal"))
+	add_child(guide)
 	options = OptionsScreen.new()
 	options.back.connect(func(): show_panel("principal"))
 	options.language_changed.connect(func(): language_changed.emit())
@@ -107,7 +113,7 @@ func set_continue(stage_saved: int) -> void:
 	buttons["continuar"].primary = stage_saved > 0
 
 
-## Muestra una sola pantalla: "principal", "escenarios", "despertar", "cosmeticos", "opciones", "creditos" o "licencias".
+## Muestra una sola pantalla: "principal", "escenarios", "despertar", "cosmeticos", "guia", "opciones", "creditos" o "licencias".
 func show_panel(which: String) -> void:
 	main_center.visible = which == "principal"
 	credits.visible = which == "creditos"
@@ -121,6 +127,9 @@ func show_panel(which: String) -> void:
 	options.visible = which == "opciones"
 	if which == "opciones":
 		options.refresh()
+	guide.visible = which == "guia"
+	if which == "guia":
+		guide.refresh()
 	meta.visible = which == "despertar"
 	if which == "despertar":
 		meta.refresh()
@@ -138,6 +147,9 @@ func show_panel(which: String) -> void:
 		"opciones":
 			panel = options
 			options.focus_default()
+		"guia":
+			panel = guide
+			guide.focus_default()
 		"despertar":
 			panel = meta
 			meta.back_button.grab_focus()

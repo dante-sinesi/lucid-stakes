@@ -41,7 +41,7 @@ func test_tiers() -> void:
 	check(CasinoTheme.for_tier(3).wood.get_luminance() > CasinoTheme.for_tier(0).wood.get_luminance(), "el aro de la rueda pasa de madera oscura a marfil")
 	# el nivel de una partida
 	var run := RunState.new()
-	run.stage = 8
+	run.stage = 5
 	check(CasinoTheme.tier_for(run) == 1, "sin visita, el nivel sale de la etapa")
 	Rules.enter(run, 3)
 	check(CasinoTheme.tier_for(run) == 3 and CasinoTheme.for_run(run).name == "gran_casino", "con visita, el de la sala")
@@ -57,7 +57,7 @@ func test_tiers() -> void:
 func test_screens() -> void:
 	for tier in 4:
 		var run := RunState.new()
-		run.stage = [1, 8, 16, 24][tier]
+		run.stage = [1, 5, 9, 13][tier]
 		run.claridad = 1000
 		Rules.enter(run, tier)
 		var expected := CasinoTheme.for_tier(tier)
@@ -95,7 +95,7 @@ func test_ui() -> void:
 	Draw.default_corruption = CasinoTheme.UI_DEFAULT
 	for tier in [1, 3]:
 		var run := RunState.new()
-		run.stage = [1, 8, 16, 24][tier]
+		run.stage = [1, 5, 9, 13][tier]
 		var c := CasinoScene.new()
 		root.add_child(c)
 		c.quick = true

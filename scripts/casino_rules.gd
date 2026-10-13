@@ -31,7 +31,7 @@ static func rule_of(tier: int) -> Dictionary:
 
 ## Estado nuevo de una visita a la sala de ese nivel.
 static func new_visit(tier: int) -> Dictionary:
-	return {"tier": tier, "fiado_used": false, "streak": 0, "max_streak": 0, "pool": 0, "stake": 1, "stats": {}, "claridad_in": 0, "best": 0, "best_game": ""}
+	return {"tier": tier, "accepted": false, "fiado_used": false, "streak": 0, "max_streak": 0, "pool": 0, "stake": 1, "stats": {}, "claridad_in": 0, "best": 0, "best_game": ""}
 
 
 ## Se entra a la sala: arma el estado de la visita en el run.
@@ -49,9 +49,19 @@ static func active(run) -> bool:
 	return not _visit(run).is_empty()
 
 
+## La regla rige sólo si se habló con el tabernero en esta visita (él la cuenta); si no, la visita no tiene regla.
+static func accepted(run) -> bool:
+	return bool(_visit(run).get("accepted", false))
+
+
+static func accept(run) -> void:
+	if not _visit(run).is_empty():
+		run.casino_visit["accepted"] = true
+
+
 static func rule_id(run) -> String:
 	var v := _visit(run)
-	return "" if v.is_empty() else str(rule_of(int(v.tier)).id)
+	return "" if v.is_empty() or not bool(v.get("accepted", false)) else str(rule_of(int(v.tier)).id)
 
 
 ## Cuántas fichas se apuestan (sólo cambia con "Apuesta libre").
@@ -85,7 +95,7 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 	if v.is_empty():
 		return out
 	var lost := (not win) and reward < wager
-	match str(rule_of(int(v.tier)).id):
+	match rule_id(run):
 		"fiado":
 			if lost and not v.fiado_used:
 				v.fiado_used = true

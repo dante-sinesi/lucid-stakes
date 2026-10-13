@@ -129,62 +129,55 @@ func test_voxels() -> void:
 	# Las dos puertas: portal en espiral dentro de un marco, mas claro a medida que pasan las etapas.
 	var ez := Room.ENTRY.y * Room.CELL_VOX
 	var sx := Room.EXIT.x * Room.CELL_VOX
-	check(glow.has(Vector3i(0, 6, ez + 2)) and not solid.has(Vector3i(0, 6, ez + 2)), "la puerta de llegada (pared oeste) tiene su portal de luz")
-	check(glow.has(Vector3i(sx + 2, 6, 0)) and not solid.has(Vector3i(sx + 2, 6, 0)), "la puerta de salida (pared norte) tiene su portal de luz")
+	check(not solid.has(Vector3i(0, 6, ez + 2)), "la puerta de llegada (pared oeste) tiene el vano libre (el portal de ondas es un shader)")
+	check(not solid.has(Vector3i(sx + 2, 6, 0)), "la puerta de salida (pared norte) tiene el vano libre (el portal de ondas es un shader)")
 	check(solid.has(Vector3i(0, 6, ez - 1)) and solid.has(Vector3i(sx - 1, 6, 0)), "las dos puertas tienen marco")
-	var shades := {}
-	for u in Room.CELL_VOX:
-		for h in 10:
-			shades[glow[Vector3i(sx + u, 2 + h, 0)]] = true
-	check(shades.size() == 3, "el interior del portal es una espiral de 3 tonos (%d)" % shades.size())
 	var lum := func(c: Color) -> float: return c.get_luminance()
-	for st in [1, 10, 27]:
+	for st in [1, 8, 15]:
 		check(lum.call(Room.portal_color(st, true)) > lum.call(Room.portal_color(st, false)), "etapa %d: la puerta de salida es mas clara que la de llegada" % st)
-	check(lum.call(Room.portal_color(1, false)) < lum.call(Room.portal_color(14, false)) and lum.call(Room.portal_color(14, false)) < lum.call(Room.portal_color(27, false)), "las puertas se aclaran a medida que avanzan las etapas")
-	var later := Room.build_voxels(20)
-	check(later.glow[Vector3i(sx + 2, 6, 0)] != v.glow[Vector3i(sx + 2, 6, 0)], "el modelo de la sala usa el color de la etapa")
+	check(lum.call(Room.portal_color(1, false)) < lum.call(Room.portal_color(8, false)) and lum.call(Room.portal_color(8, false)) < lum.call(Room.portal_color(15, false)), "las puertas se aclaran a medida que avanzan las etapas")
 
 
 func test_look() -> void:
 	var lum := func(c: Color) -> float: return c.get_luminance()
 	var early := Room.look(1)
-	var salon := Room.look(13)
-	var casino := Room.look(14)
-	var gran := Room.look(27)
+	var salon := Room.look(7)
+	var casino := Room.look(8)
+	var gran := Room.look(15)
 	for key in ["floor_a", "floor_b", "wall", "wall_dark", "gold", "wood", "felt", "carpet", "lamp", "pillar"]:
 		check(lum.call(early[key]) < lum.call(salon[key]), "la taberna se aclara hasta el salón: %s" % key)
 	check(early.corruption > salon.corruption and salon.corruption > 0.0 and casino.corruption == 0.0 and gran.corruption == 0.0, "la suciedad baja con los niveles y el casino y el gran casino no tienen")
 	# el casino y el gran casino: mármol cálido con valores medios y buen contraste (nada se quema hasta el blanco)
-	for lk in [casino, gran, Room.look(20), Room.look(21)]:
+	for lk in [casino, gran, Room.look(11), Room.look(12)]:
 		for key in ["floor_a", "wall", "pillar", "stone"]:
 			check(lum.call(lk[key]) < 0.93, "el casino de nivel alto no se quema: %s (%.2f)" % [key, lum.call(lk[key])])
 		check(lum.call(lk.floor_a) - lum.call(lk.floor_b) > 0.25, "el damero del piso tiene contraste (%.2f)" % (lum.call(lk.floor_a) - lum.call(lk.floor_b)))
 		check(lum.call(lk.wall) > lum.call(lk.wall_dark) and lum.call(lk.pillar) > lum.call(lk.wall), "las columnas se distinguen de la pared")
-	check(Room.look(1, 3).floor_a == Room.look(27, 3).floor_a or absf(lum.call(Room.look(1, 3).floor_a) - lum.call(Room.look(27, 3).floor_a)) < 0.12, "con el escenario Gran Casino la paleta es la del gran casino aunque la etapa sea baja")
-	check(Room.look(14, 3).gold != Room.look(14, 2).gold, "el gran casino y el casino tienen paletas propias")
+	check(Room.look(1, 3).floor_a == Room.look(15, 3).floor_a or absf(lum.call(Room.look(1, 3).floor_a) - lum.call(Room.look(15, 3).floor_a)) < 0.12, "con el escenario Gran Casino la paleta es la del gran casino aunque la etapa sea baja")
+	check(Room.look(8, 3).gold != Room.look(8, 2).gold, "el gran casino y el casino tienen paletas propias")
 
 
 func test_tiers() -> void:
 	# La sala cambia de diseño con la etapa: 4 niveles, cada uno mas grande y con mas cosas que el anterior.
-	check(Room.tier_of(1) == 0 and Room.tier_of(6) == 0 and Room.tier_of(7) == 1 and Room.tier_of(13) == 1 and Room.tier_of(14) == 2 and Room.tier_of(20) == 2 and Room.tier_of(21) == 3 and Room.tier_of(27) == 3, "los niveles de la sala: 1-6, 7-13, 14-20, 21-27")
+	check(Room.tier_of(1) == 0 and Room.tier_of(3) == 0 and Room.tier_of(4) == 1 and Room.tier_of(7) == 1 and Room.tier_of(8) == 2 and Room.tier_of(11) == 2 and Room.tier_of(12) == 3 and Room.tier_of(15) == 3, "los niveles de la sala: 1-3, 4-7, 8-11, 12-15")
 	var areas: Array = []
 	var machines: Array = []
-	for st in [1, 7, 14, 21]:
+	for st in [1, 4, 8, 12]:
 		var lay := Room.layout(st)
 		areas.append(lay.cells.x * lay.cells.y)
 		machines.append(lay.machines.size())
 		check(lay.tier == Room.tier_of(st), "el layout de la etapa %d es del nivel %d" % [st, Room.tier_of(st)])
 	check(areas[0] < areas[1] and areas[1] < areas[2] and areas[2] < areas[3], "la sala crece: %s celdas" % str(areas))
 	check(machines[0] >= 1 and machines[0] <= machines[1] and machines[1] <= machines[2], "desde la taberna hay tragamonedas y los niveles altos suman más: %s" % str(machines))
-	check(Room.layout(1).card_tables.is_empty() and Room.layout(1).machines.size() == 1 and Room.layout(7).card_tables.size() == 1 and Room.layout(21).card_tables.size() == 2 and Room.layout(14).card_tables.size() == 1, "la taberna sólo tiene una tragamonedas y ninguna mesa de cartas; el salón suma una mesa y el gran casino tiene dos")
-	check(Room.layout(21).heights.size() > 10 and Room.layout(1).heights.is_empty(), "el gran casino tiene tarima con escalones; la taberna no")
-	var lay3 := Room.layout(25)
+	check(Room.layout(1).card_tables.is_empty() and Room.layout(1).machines.size() == 1 and Room.layout(4).card_tables.size() == 1 and Room.layout(12).card_tables.size() == 2 and Room.layout(8).card_tables.size() == 1, "la taberna sólo tiene una tragamonedas y ninguna mesa de cartas; el salón suma una mesa y el gran casino tiene dos")
+	check(Room.layout(12).heights.size() > 10 and Room.layout(1).heights.is_empty(), "el gran casino tiene tarima con escalones; la taberna no")
+	var lay3 := Room.layout(14)
 	var min_h := 99
 	for s in Room.roulette_spots(lay3):
 		min_h = mini(min_h, Room.height_of(s, lay3))
 	check(min_h >= 2 and Room.height_of(lay3.dealer, lay3) == 4 and Room.height_of(Vector2i(0, 0), lay3) == 0, "en el gran casino la ruleta esta sobre los escalones")
 	check(Room.world_of_cell(Vector2i(6, 6), lay3).y > Room.world_of_cell(Vector2i(0, 0), lay3).y, "el personaje sube con los escalones")
-	for st in [1, 4, 7, 10, 14, 18, 21, 27]:
+	for st in [1, 2, 4, 6, 8, 10, 12, 15]:
 		var lay := Room.layout(st)
 		var reach := Room.reachable(lay.entry, lay)
 		var free := 0
@@ -212,7 +205,7 @@ func test_tiers() -> void:
 			ok = ok and p.x >= 0 and p.x < W and p.z >= 0 and p.z < D and p.y >= 0 and not v.solid.has(p)
 		var ez: int = lay.entry.y * Room.CELL_VOX
 		var sx: int = lay.exit.x * Room.CELL_VOX
-		ok = ok and v.glow.has(Vector3i(sx + 2, 6, 0)) and v.glow.has(Vector3i(0, 6, ez + 2)) and v.solid.has(Vector3i(0, 6, ez - 1)) and v.solid.has(Vector3i(sx - 1, 6, 0))
+		ok = ok and not v.solid.has(Vector3i(sx + 2, 6, 0)) and not v.solid.has(Vector3i(0, 6, ez + 2)) and v.solid.has(Vector3i(0, 6, ez - 1)) and v.solid.has(Vector3i(sx - 1, 6, 0))
 		check(ok, "etapa %d: el piso esta completo, nada sale de la sala, las puertas estan intactas y nada solido pisa lo que brilla" % st)
 	# El modelado se refina: las paredes de la taberna son irregulares, las del salon de piedra tienen ladrillos, las de
 	# mas adelante son lisas (menos colores distintos por area de pared) y de marmol (pilastras mas altas).

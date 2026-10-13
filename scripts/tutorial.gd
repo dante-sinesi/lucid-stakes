@@ -1,6 +1,7 @@
 extends RefCounted
 ## Tutorial: una serie de lecciones, cada una una torre chica armada a mano que enseña una sola cosa. Reemplaza al modo entrenamiento.
-## Cada lección es {id, title, text, zoom, build: Callable -> TowerLogic, marker?: Vector3i, needs?: [modos que exige], generated?: filas}.
+## Cada lección es {id, title, text, zoom, build: Callable -> TowerLogic, marker?: Vector3i, needs?: [modos que exige], generated?: filas,
+## keys?: las teclas que se muestran arriba, grises hasta que se aprietan ("wasd", "shift_wasd" o "espacio_wasd"; ver key_hint.gd)}.
 ## Se completa al llegar al bloque dorado (o, en las lecciones con `marker`, al dejar un bloque sobre la casilla marcada).
 ## Las lecciones están pensadas para que el mecanismo sea imprescindible (el solucionador lo comprueba en tests/test_tutorial.gd).
 
@@ -11,48 +12,19 @@ const UP := Vector3i(0, 1, 0)
 const NO_FALL := 100000   # la fila de abajo no cae en las lecciones chicas
 
 
-## Todas las lecciones, en orden.
+## Todas las lecciones, en orden. Sólo enseñan mecánicas (nada de tipos de bloque). `say` es lo que dice el tabernero (lore, en story.gd); `help` la frase simple
+## que queda arriba con las teclas (ver key_hint.gd); `mode` qué cuenta como usar esas teclas; `complete: "keys"` la completa al usar todas las teclas (sin meta).
 static func lessons() -> Array:
+	var wasd := "{mover_adelante} {mover_izquierda} {mover_atras} {mover_derecha}"
+	var wasd_opt := "{?mover_adelante} {?mover_izquierda} {?mover_atras} {?mover_derecha}"
 	return [
-		{"id": "moverse", "title": "Moverse",
-		"text": "W A S D mueven al personaje, siempre según la rosa de los vientos de arriba a la derecha.\nGirá la cámara con el mouse (arrastrando) o con las flechas, y fijate cómo cambian las teclas.\nLlegá al bloque dorado.",
-		"zoom": 9.0, "build": _moverse},
-		{"id": "trepar", "title": "Trepar",
-		"text": "Caminá hacia un bloque más alto para treparlo, de a un nivel.\nSube la escalera hasta el bloque dorado.",
-		"zoom": 9.0, "build": _trepar},
-		{"id": "empujar", "title": "Empujar",
-		"text": "Shift + dirección empuja el bloque que tenés enfrente.\nHay un hueco en el piso: empujá el bloque hasta taparlo y cruzá por encima.\n(Si te equivocás, R reintenta.)",
-		"zoom": 10.0, "build": _empujar, "needs": [TowerLogic.Mode.GRAB]},
-		{"id": "tirar", "title": "Tirar",
-		"text": "Shift + la dirección contraria al bloque lo tira hacia vos: caminás hacia atrás y el bloque te sigue.\nTirá el bloque hasta la casilla dorada del piso.",
-		"zoom": 9.0, "build": _tirar, "marker": Vector3i(2, 1, 1)},
-		{"id": "colgarse", "title": "Colgarse",
-		"text": "Estás arriba de una torre alta y no se puede bajar caminando.\nEspacio + dirección te cuelga del borde; para soltarte, andá en la dirección contraria al bloque. (Con el bloque enfrente trepás de vuelta.)\nBajá y llegá al bloque dorado.",
-		"zoom": 12.0, "build": _colgarse, "needs": [TowerLogic.Mode.HANG]},
-		{"id": "hielo", "title": "Hielo",
-		"text": "El bloque celeste es hielo: te hace resbalar hasta que algo te frene.\nCruzá el corredor y trepá al dorado.",
-		"zoom": 10.0, "build": _hielo},
-		{"id": "pesado", "title": "Bloque pesado",
-		"text": "El bloque de hierro no se empuja ni se tira, pero se puede trepar.\nPasá por encima de él.",
-		"zoom": 9.0, "build": _pesado},
-		{"id": "agrietado", "title": "Bloque agrietado",
-		"text": "Los de arenisca con grietas se rompen apenas te bajás de ellos: no hay vuelta atrás.\nCruzá el puente de agrietados.",
-		"zoom": 10.0, "build": _agrietado},
-		{"id": "bomba", "title": "Bomba",
-		"text": "La bomba cuenta hacia atrás cada movimiento que hacés mientras estás a su altura. Subirte encima la desactiva.\nTe da justo los movimientos que necesitás: si perdés uno o retrocedés, explota (R reintenta).",
-		"zoom": 9.0, "build": _bomba},
-		{"id": "fila", "title": "Fila de bloques",
-		"text": "Si hay bloques pegados detrás del que empujás, se mueve toda la fila (hasta 3 bloques).\nEl corredor es angosto: empujá la fila hasta tapar el hueco y cruzá por encima.\n(Si te equivocás, R reintenta.)",
-		"zoom": 10.0, "build": _fila, "needs": [TowerLogic.Mode.GRAB]},
-		{"id": "trampa", "title": "Trampa",
-		"text": "Un bloque con una cruz roja arriba es una trampa: se desarma apenas te parás encima y te caés con él.\nRodealo y llegá al bloque dorado.",
-		"zoom": 10.0, "build": _trampa},
-		{"id": "pinchos", "title": "Pinchos",
-		"text": "Los bloques con púas plateadas son pinchos: pisarlos pierde.\nRodealos (o empujalos fuera del camino) y llegá al bloque dorado.",
-		"zoom": 10.0, "build": _pinchos},
-		{"id": "torre", "title": "Una torre de verdad",
-		"text": "Así son las torres del juego: la fila de abajo cae cada cierto número de movimientos (contador arriba a la izquierda).\nLos bloques violetas se purifican al pisarlos y dan claridad; si encadenás pisadas nuevas, la racha multiplica.\nSubí hasta el portal dorado: te lleva al casino.",
-		"zoom": 14.0, "generated": 4},
+		{"id": "moverse", "title": "Moverse", "help": "Pulsá " + wasd, "mode": "move", "zoom": 9.0, "build": _moverse},
+		{"id": "camara", "title": "La cámara", "help": "Pulsá {camara_arriba} {camara_izquierda} {camara_abajo} {camara_derecha}", "mode": "camera", "zoom": 9.0, "build": _camara, "complete": "keys"},
+		{"id": "empujar", "title": "Empujar", "help": "Mantené {empujar} y pulsá " + wasd_opt, "mode": "push", "zoom": 10.0, "build": _empujar, "needs": [TowerLogic.Mode.GRAB]},
+		{"id": "tirar", "title": "Tirar", "help": "Mantené {empujar} y pulsá " + wasd_opt, "mode": "pull", "zoom": 10.0, "build": _tirar, "complete": "keys"},
+		{"id": "colgarse", "title": "Cornisa", "help": "Mantené {colgarse} y pulsá " + wasd_opt, "mode": "hang", "zoom": 11.0, "build": _colgarse_s, "needs": [TowerLogic.Mode.HANG]},
+		{"id": "soltarse", "title": "Soltarse", "help": "Colgate con {colgarse} y una dirección, y soltate con {colgarse}", "mode": "hang", "zoom": 12.0, "build": _colgarse, "needs": [TowerLogic.Mode.HANG]},
+		{"id": "torre", "title": "Una torre de verdad", "help": "Subí hasta el portal dorado", "zoom": 14.0, "generated": 4, "dice": true},   # (mientras se genera, el tabernero explica los dados)
 	]
 
 
@@ -91,57 +63,24 @@ static func _goal(t, cell: Vector3i) -> void:
 	t.goal_y = cell.y + 1
 
 
-# --- lecciones ------------------------------------------------------------------------------------------------------
-
-## Un corredor angosto (muros pesados de 2 de alto) con un hueco de ancho completo en x = 5 y una fila de dos bloques: el único
-## modo de cruzar es empujar la fila entera hasta el hueco.
-static func _fila() -> RefCounted:
-	var t := _new(9, 3)
-	for x in 9:
-		if x != 5:
-			_fill(t, x, x, 0, 2, 0)
-	for y in [1, 2]:
-		_fill(t, 1, 4, 0, 0, y, K.HEAVY)
-		_fill(t, 1, 4, 2, 2, y, K.HEAVY)
-	t.add_block(Vector3i(3, 1, 1))
-	t.add_block(Vector3i(4, 1, 1))
-	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(8, 0, 1))
-	return t
-
-
-## Dos carriles sobre el vacío: el recto (z = 1) tiene una trampa en x = 4; el de al lado es todo de bloques comunes.
-static func _trampa() -> RefCounted:
-	var t := _new(9, 3)
-	_fill(t, 0, 1, 0, 2, 0)
-	_fill(t, 2, 3, 0, 1, 0)
-	_fill(t, 4, 4, 0, 0, 0)
-	t.add_block(Vector3i(4, 0, 1), false, K.TRAP)
-	_fill(t, 5, 6, 0, 1, 0)
-	_fill(t, 7, 8, 0, 2, 0)
-	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(8, 0, 1))
-	return t
-
-
-## Pinchos puestos en zigzag sobre un piso ancho: el camino recto pasa por encima de ellos.
-static func _pinchos() -> RefCounted:
-	var t := _new(9, 3)
-	_fill(t, 0, 8, 0, 2, 0)
-	t.add_block(Vector3i(3, 1, 0), false, K.SPIKES)
-	t.add_block(Vector3i(3, 1, 1), false, K.SPIKES)
-	t.add_block(Vector3i(6, 1, 1), false, K.SPIKES)
-	t.add_block(Vector3i(6, 1, 2), false, K.SPIKES)
-	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(8, 0, 1))
-	return t
-
-
+## Un sendero en forma de S sobre el vacío: da vueltas en las cuatro direcciones, así que hay que usar las cuatro teclas.
 static func _moverse() -> RefCounted:
-	var t := _new(6, 6)
-	_fill(t, 0, 5, 0, 5, 0)
+	var t := _new(5, 5)
+	for c in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(2, 1), Vector2i(2, 2), Vector2i(1, 2), Vector2i(0, 2), Vector2i(0, 3), Vector2i(0, 4),
+			Vector2i(1, 4), Vector2i(2, 4), Vector2i(3, 4), Vector2i(3, 3)]:
+		t.add_block(Vector3i(c.x, 0, c.y))
 	t.player = Vector3i(0, 1, 0)
-	_goal(t, Vector3i(5, 0, 5))
+	_goal(t, Vector3i(3, 0, 3))
+	return t
+
+
+## El personaje parado sobre un solo bloque: no hay adónde ir, sólo se mira alrededor (se completa al usar las cuatro flechas).
+static func _camara() -> RefCounted:
+	var t := _new(3, 3)
+	t.add_block(Vector3i(1, 0, 1))
+	t.player = Vector3i(1, 1, 1)
+	t.goal_y = 1000
+	t.goal_cell = Vector3i(-5, 0, -5)
 	return t
 
 
@@ -156,26 +95,44 @@ static func _trepar() -> RefCounted:
 	return t
 
 
-## Piso de 9 x 3 con un hueco de ancho completo en x = 4 y un bloque suelto: hay que empujarlo hasta el hueco.
+## Una escalera que se arma empujando: la plataforma alta (x = 5..8) no se trepa de un salto, así que hay que empujar el bloque suelto hasta su pie; arriba,
+## otro bloque suelto se empuja hasta quedar de escalón junto a la torrecita dorada.
 static func _empujar() -> RefCounted:
 	var t := _new(9, 3)
-	for x in 9:
-		if x != 4:
-			_fill(t, x, x, 0, 2, 0)
-	t.add_block(Vector3i(2, 1, 1))
+	_fill(t, 0, 8, 0, 2, 0)
+	_fill(t, 5, 8, 0, 2, 1)
+	_fill(t, 5, 8, 0, 2, 2)
+	t.add_block(Vector3i(3, 1, 1))   # el primer escalón (hay que dejarlo en x = 4)
+	t.add_block(Vector3i(6, 3, 1))   # el segundo (hay que dejarlo en x = 7)
+	t.add_block(Vector3i(8, 3, 1))   # la torrecita dorada
 	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(8, 0, 1))
+	_goal(t, Vector3i(8, 3, 1))
 	return t
 
 
-## Un bloque suelto a dos casillas de la casilla marcada (la lección se completa al dejarlo ahí).
+## Un bloque suelto al lado del personaje, sobre un piso largo: tirar de él una vez completa la lección (empujarlo no cuenta; el piso de atrás alcanza para tirar).
 static func _tirar() -> RefCounted:
-	var t := _new(7, 3)
-	_fill(t, 0, 6, 0, 2, 0)
+	var t := _new(8, 3)
+	_fill(t, 0, 7, 1, 1, 0)
 	t.add_block(Vector3i(4, 1, 1))
 	t.player = Vector3i(3, 1, 1)
-	t.goal_y = 1000   # la lección no se gana llegando a ningún lado
-	t.goal_cell = Vector3i(2, 1, 1)
+	t.goal_y = 1000   # esta lección no se gana llegando a ningún lado
+	t.goal_cell = Vector3i(-5, 0, -5)
+	return t
+
+
+## Una S de columnas de hierro de 2 de alto que se tocan sólo en diagonal: caminando no se pasa de una a otra; hay que colgarse del borde y rodear la esquina.
+static func _colgarse_s() -> RefCounted:
+	var t := _new(7, 4)
+	var cells: Array[Vector2i] = [Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 3), Vector2i(6, 2), Vector2i(6, 1), Vector2i(5, 0), Vector2i(4, 0)]
+	for x in 3:   # la plataforma de salida es ancha: desde cualquiera de sus bordes se puede colgar (Espacio + cualquier dirección)
+		for z in 3:
+			cells.append(Vector2i(x, z))
+	for c in cells:
+		for y in 2:
+			t.add_block(Vector3i(c.x, y, c.y), false, K.HEAVY)
+	t.player = Vector3i(1, 2, 1)
+	_goal(t, Vector3i(4, 1, 0))
 	return t
 
 
@@ -188,47 +145,4 @@ static func _colgarse() -> RefCounted:
 	_fill(t, 0, 2, 0, 2, 3)
 	t.player = Vector3i(0, 4, 1)
 	_goal(t, Vector3i(7, 0, 1))
-	return t
-
-
-static func _hielo() -> RefCounted:
-	var t := _new(10, 3)
-	_fill(t, 0, 1, 1, 1, 0)
-	_fill(t, 2, 7, 1, 1, 0, K.ICE)
-	t.add_block(Vector3i(8, 1, 1))
-	t.add_block(Vector3i(8, 0, 1))
-	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(8, 1, 1))
-	return t
-
-
-## Un muro de hierro de 1 de alto atraviesa el corredor: se trepa.
-static func _pesado() -> RefCounted:
-	var t := _new(7, 3)
-	_fill(t, 0, 6, 0, 2, 0)
-	_fill(t, 3, 3, 0, 2, 1, K.HEAVY)
-	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(6, 0, 1))
-	return t
-
-
-## Un puente de tres agrietados sobre el vacío.
-static func _agrietado() -> RefCounted:
-	var t := _new(9, 3)
-	_fill(t, 0, 2, 1, 1, 0)
-	_fill(t, 3, 5, 1, 1, 0, K.CRACKED)
-	_fill(t, 6, 8, 1, 1, 0)
-	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(8, 0, 1))
-	return t
-
-
-## La bomba está sobre el piso, a la altura del jugador (por eso cuenta), a 3 movimientos exactos: dos pasos y subirse encima.
-## Con 3 de cuenta hay que ir directo: perder un solo movimiento (o retroceder) hace que explote.
-static func _bomba() -> RefCounted:
-	var t := _new(7, 3)
-	_fill(t, 0, 6, 1, 1, 0)
-	t.add_block(Vector3i(3, 1, 1), false, K.BOMB, 3)
-	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(6, 0, 1))
 	return t

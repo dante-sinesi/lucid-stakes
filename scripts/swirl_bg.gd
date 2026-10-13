@@ -43,6 +43,7 @@ func color_at(i: int, j: int, cols: int, rows: int, t: float) -> Color:
 func _draw() -> void:
 	var cols := int(size.x / cube) + 1
 	var rows := int(size.y / cube) + 1
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.01, 0.04))   # las juntas entre cubitos siempre negras (no se asoma la escena de atrás, que puede ser clara)
 	for j in rows:
 		for i in cols:
 			var col := color_at(i, j, cols, rows, _t)

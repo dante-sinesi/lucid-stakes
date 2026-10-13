@@ -15,6 +15,7 @@ const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const CasinoTheme := preload("res://scripts/casino_theme.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const Sfx := preload("res://scripts/sfx.gd")
+const ResultOverlay := preload("res://scripts/result_overlay.gd")
 
 signal resolved
 signal closed
@@ -46,6 +47,7 @@ var stake_ui := {}
 var result_label: Control
 var prizes_panel: Control
 var flash_rect: ColorRect
+var overlay                 # el cartel de "¡Ganaste!" / "¡Perdiste!"
 var _spin_t := 0.0
 var _stopped := [false, false, false]
 var _tick_t := 0.0
@@ -161,6 +163,8 @@ func _build() -> void:
 	flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flash_rect.color = Color(1, 1, 1, 0)
 	add_child(flash_rect)
+	overlay = ResultOverlay.new()
+	add_child(overlay)
 
 
 ## La tabla de pagos: cada símbolo con lo que paga por dos y por tres iguales.
@@ -317,7 +321,34 @@ func _spin_finished() -> void:
 func _finish(res: Dictionary) -> void:
 	ui_state = UiState.DONE
 	_show_result(res)
+	_show_overlay(res)
 	_refresh()
+
+
+## Espacio mientras giran: se saltea la animación (los rodillos frenan ya).
+func skip_spin() -> void:
+	if ui_state != UiState.SPINNING:
+		return
+	for i in Slots.REELS:
+		if _respin_mask[i] and not _stopped[i]:
+			_stop_reel(i)
+	_spin_finished()
+
+
+## El cartel de resultado sobre los rodillos: ganaste o perdiste, cuánta claridad y, con las tres coronas, el boost.
+func _show_overlay(res: Dictionary) -> void:
+	if fast:
+		return
+	var item_id := ""
+	var item_name := ""
+	var delta := -int(res.spent)
+	var won := str(res.kind) != "none"
+	if won:
+		delta = int(res.claridad)
+		if int(res.symbol) == Slots.CROWN and not bool(res.get("converted", false)) and res.get("item") is Dictionary:
+			item_id = str(res.item.get("id", ""))
+			item_name = Loc.t(str(res.item.get("name", "")))
+	overlay.show_result(won, delta, item_id, item_name, RuleUI.notes(res))
 
 
 func _show_result(res: Dictionary) -> void:
@@ -384,8 +415,6 @@ func _flash() -> void:
 func _refresh() -> void:
 	claridad_counter.value = run.claridad
 	price_counter.value = game.price if ui_state == UiState.HOLD or ui_state == UiState.SPINNING else Roulette.run_price(run) * Rules.stake(run)
-	rule_label.text = RuleUI.status(run)
-	rule_label.visible = rule_label.text != ""
 	RuleUI.refresh_stake(stake_ui, run, can_spin())
 	var holding := ui_state == UiState.HOLD
 	for i in Slots.REELS:
@@ -414,6 +443,12 @@ func request_close() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	if overlay.showing and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+		return   # (el cartel de resultado lo maneja él: Espacio lo saltea)
+	if ui_state == UiState.SPINNING and event.keycode == KEY_SPACE:   # sólo se puede saltear la animación (retener es parte del juego)
+		skip_spin()
+		get_viewport().set_input_as_handled()
 		return
 	if prizes_panel.visible:
 		if event.keycode == KEY_ESCAPE:

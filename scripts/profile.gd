@@ -21,7 +21,7 @@ static var _loaded_from := ""
 
 static func default_data() -> Dictionary:
 	return {"version": VERSION, "luz": 0, "luz_total": 0, "best_stage": 0, "runs": 0, "victories": 0, "trials_cleared": 0, "abilities": {}, "cosmetics": {},
-			"hat": "", "outfit": "", "characters": {"dante": true, "gaby": true}, "character": "dante"}
+			"hat": "", "outfit": "", "characters": {"dante": true, "gaby": true}, "character": "dante", "blocks_seen": {}, "tutorial_done": false}
 
 
 ## Carga el perfil (una vez por ruta). Si no hay archivo o está dañado, uno vacío.
@@ -78,6 +78,21 @@ static func reset() -> void:
 	save()
 
 
+## ¿Ya se hizo el tutorial? (Quien ya jugó antes de que el tutorial fuera obligatorio no lo repite.) GAME_FIRST_RUN=1 fuerza la primera vez (para probarla).
+static func tutorial_done() -> bool:
+	if OS.get_environment("GAME_FIRST_RUN") == "1":
+		return false
+	var d := load_profile()
+	return bool(d.get("tutorial_done", false)) or int(d.get("runs", 0)) > 0 or int(d.get("best_stage", 0)) > 0
+
+
+static func mark_tutorial_done() -> void:
+	var d := load_profile()
+	if not bool(d.get("tutorial_done", false)):
+		d["tutorial_done"] = true
+		save()
+
+
 static func luz() -> int:
 	return int(load_profile().luz)
 
@@ -95,6 +110,21 @@ static func pay_entry(scenario_id: String) -> bool:
 		return false
 	var d := load_profile()
 	d.luz = int(d.luz) - cost
+	save()
+	return true
+
+
+# --- guía de bloques ---------------------------------------------------------------------------------------------------
+
+static func has_block(id: String) -> bool:
+	return bool(load_profile().blocks_seen.get(id, false))
+
+
+## Anota un bloque como descubierto (se guarda al instante). Devuelve true si era nuevo.
+static func discover_block(id: String) -> bool:
+	if has_block(id):
+		return false
+	load_profile().blocks_seen[id] = true
 	save()
 	return true
 
@@ -149,6 +179,7 @@ static func award_scenario_ability(scenario_id: String, rng: RandomNumberGenerat
 static func apply_to_run(run) -> void:
 	Abilities.apply_to_run(run, owned_abilities())
 	run.price_mult = float(run.scenario().get("price_mult", 1.0))
+	run.lives = run.max_lives()   # las vidas del escenario (con los corazones de más de las habilidades)
 
 
 # --- Luz suelta y cosméticos ----------------------------------------------------------------------------------------
@@ -254,12 +285,12 @@ static func on_ability(ability_id: String) -> Array[String]:
 	return _unlocked(["pinguino"] if ability_id == "garras_de_hielo" else [])
 
 
-## Se llegó a una etapa: la 4 desbloquea al gatito y la 10 al conejito.
+## Se llegó a una etapa: la 2 desbloquea al gatito y la 6 al conejito.
 static func on_stage_reached(stage: int) -> Array[String]:
 	var ids: Array = []
-	if stage >= 4:
+	if stage >= 2:
 		ids.append("gato")
-	if stage >= 10:
+	if stage >= 6:
 		ids.append("conejo")
 	return _unlocked(ids)
 
@@ -276,7 +307,7 @@ static func _unlocked(ids: Array) -> Array[String]:
 
 ## Luz que da un run: 3 por cada torre superada, 12 por cada prueba y 100 por escapar; el escenario la multiplica.
 static func luz_for_run(run, victory: bool) -> int:
-	var base: int = run.towers_cleared * 3 + run.trials_cleared * 12 + (100 if victory else 0)
+	var base: int = run.towers_cleared * 5 + run.trials_cleared * 20 + (100 if victory else 0)   # (son 15 torres y 5 pruebas)
 	return int(round(base * float(run.scenario().get("luz_mult", 1.0))))
 
 

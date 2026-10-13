@@ -16,6 +16,10 @@ const VOID := Color(0.04, 0.02, 0.07)
 
 ## Corrupción por defecto de la interfaz (se puede cambiar según la etapa).
 static var default_corruption := 0.45
+## Modo de lectura (Opciones): letras sin corrupción, más claras y con contorno oscuro.
+static var reading := false
+## Alto contraste (Opciones): cartas más oscuras y de borde blanco, sin ruido ni corrupción.
+static var high_contrast := false
 
 
 ## Número pseudoaleatorio estable en 0..1 para una celda (no cambia entre cuadros).
@@ -58,6 +62,12 @@ static func text_cells(ci: CanvasItem, origin: Vector2, cells: Array, height_cel
 	for c in cells:
 		lit[c] = true
 	var h := float(maxi(height_cells, 1))
+	if reading:
+		corruption = 0.0
+		color = color.lerp(Color.WHITE, 0.35)
+		var o := maxf(1.0, s * 0.4)
+		for c in cells:   # contorno oscuro: el texto se despega de cualquier fondo
+			ci.draw_rect(Rect2(origin + Vector2(c.x, c.y) * s - Vector2(o, o), Vector2(s + o * 2.0, s + o * 2.0)), Color(0.0, 0.0, 0.02, 0.92))
 	if shadow and s >= 2.0:
 		var off := Vector2(maxf(1.0, s * 0.45), maxf(1.0, s * 0.65))
 		for c in cells:
@@ -85,15 +95,20 @@ static func card(ci: CanvasItem, rect: Rect2, s: float, state: int, corruption: 
 	var plate := PLATE_HOVER if state == 1 else PLATE
 	if gold:
 		plate = Color(0.50, 0.34, 0.09) if state != 1 else Color(0.66, 0.46, 0.13)
+	if high_contrast:
+		corruption = 0.0
+		plate = plate.darkened(0.55)
 	if state == 2:
 		plate = plate.darkened(0.2)
 	if state == 3:
 		plate = plate.darkened(0.3)
 	var rim := GOLD if gold else MARBLE
+	if high_contrast:
+		rim = rim.lightened(0.4)
 	if state == 1:
 		rim = rim.lightened(0.12)
 	if state == 3:
-		rim = rim.darkened(0.45)
+		rim = rim.darkened(0.2 if high_contrast else 0.45)
 	var origin := rect.position + Vector2((rect.size.x - cols * s) * 0.5, 0)
 	var body := Rect2(origin, Vector2(cols * s, rows * s))
 	ci.draw_rect(Rect2(body.position + Vector2(s * 0.8, s * 1.2), body.size), Color(0, 0, 0, 0.6))   # sombra dura
@@ -101,7 +116,7 @@ static func card(ci: CanvasItem, rect: Rect2, s: float, state: int, corruption: 
 	for y in range(1, rows - 1):   # textura de la placa: unos pocos cubitos un poco más claros
 		for x in range(1, cols - 1):
 			var n := noise(x, y, seed_value + 5)
-			if n < 0.025:
+			if n < 0.025 and not high_contrast:
 				cube(ci, origin + Vector2(x, y) * s, s, plate.lightened(0.10 + n), true)
 	for y in rows:   # borde
 		for x in cols:
