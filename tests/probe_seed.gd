@@ -9,7 +9,7 @@ func _init() -> void:
 	var stage := int(OS.get_environment("STAGE")) if OS.get_environment("STAGE") != "" else 10
 	var scen := OS.get_environment("SCEN") if OS.get_environment("SCEN") != "" else "pesadilla"
 	var prof := Gen.profile_for_stage(stage, {}, Scenarios.get_scenario(scen))
-	var res: Dictionary = Rooms.generate_stage(seed_v, 25, prof.difficulty, {"pace": prof.pace, "scenario": prof.scenario})
+	var res: Dictionary = Rooms.generate_stage(seed_v, int(OS.get_environment("ROWS")) if OS.get_environment("ROWS") != "" else 25, prof.difficulty, {"pace": prof.pace, "scenario": prof.scenario})
 	if not res.ok:
 		print("falló: ", res.get("error", ""))
 		quit()

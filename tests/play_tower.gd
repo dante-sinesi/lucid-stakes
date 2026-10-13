@@ -18,6 +18,8 @@ func _init() -> void:
 		print("no se generó")
 		quit()
 		return
+	OS.set_environment("IDEA_ONLY", "")   # (el juego genera sus torres con las reglas de siempre)
+	OS.set_environment("NO_FALLBACK", "")
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.quit_game_override = true
 	main.quick_portal = true
