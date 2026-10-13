@@ -1353,6 +1353,9 @@ static func _vert_module(cells: Array[Vector2i], arrival: Vector2i, pillar: Vect
 	var target := 6 + int(ctx.d * 6.0)
 	var min_grabs := 4 + int(ctx.d * 2.0)
 	var min_moved := 2 + int(ctx.d * 2.0)
+	if ctx.has("mod_less"):   # (las salas medianas piden menos a cada módulo: lo que importa es el total)
+		min_grabs -= int(ctx.mod_less)
+		min_moved -= int(ctx.mod_less)
 	if OS.get_environment("TALLER_MIN") != "":
 		min_grabs = int(OS.get_environment("TALLER_MIN"))
 	var allowed := {arrival: true}
@@ -1400,6 +1403,7 @@ static func _vert_module(cells: Array[Vector2i], arrival: Vector2i, pillar: Vect
 			break
 	if not best.is_empty() and best.grabs >= min_grabs and best.moved >= min_moved:
 		best["blocks"] = _module_blocks(best_t)
+		best["start"] = best_t
 		return best
 	# si no salió nada bueno, la búsqueda al azar de antes (más corta)
 	best = {}
@@ -1454,8 +1458,23 @@ static func _vert_module(cells: Array[Vector2i], arrival: Vector2i, pillar: Vect
 			print("     vertical fácil: %d agarres, %d bloques (pide %d y %d)" % [best.grabs, best.moved, min_grabs, min_moved])
 		_why("vertical: sin lugar 6")
 		return {}
-	best["blocks"] = _module_blocks(_vert_mini(cells, arrival, pillar, ph, best_cols, env))
+	var start_t = _vert_mini(cells, arrival, pillar, ph, best_cols, env)
+	best["blocks"] = _module_blocks(start_t)
+	best["start"] = start_t
 	return best
+
+
+## ¿El camino de una sala vertical sigue valiendo si en la capa `y` de la arena hay bloques fijos en `cells` (el piso de la sala de arriba)?
+static func _path_ok(start, path: Array, cells: Array[Vector2i], y: int) -> bool:
+	var t = start.clone()
+	for c in cells:
+		var cell := Vector3i(c.x, y, c.y)
+		if not t.blocks.has(cell):
+			t.add_block(cell, true)
+	for a in path:
+		if not t.try_action(a.dir, a.mode).ok or t.lost:
+			return false
+	return true
 
 
 ## Las celdas con bloques de la arena sola, en coordenadas de la torre: la capa 1 de la arena es `ey` (la sala). Primero la salida. `lift` sube todo (para una sala que arranca encima de otra).
@@ -1586,32 +1605,10 @@ static func _c_mediana(ctx: Dictionary) -> Dictionary:
 	if spots.is_empty():
 		_why("mediana: sin lugar 3")
 		return {}
-	var cells_b: Array[Vector2i] = spots[rng.randi_range(0, spots.size() - 1)]
-	var all_cells := {}
-	for c in all_a:
-		all_cells[c] = true
-	for c in cells_b:
-		all_cells[c] = true
-	var pill_b: Vector2i = Vector2i(-9, -9)   # la salida de la segunda: una esquina con a dónde ir
-	var opts: Array[Vector2i] = []
-	for c in cells_b:
-		var cn := 0
-		for d in DIRS4:
-			if cells_b.has(c + d):
-				cn += 1
-		if cn > 2 or (c - pill_a).length() < 1.5:
-			continue   # (esquinas de la arena, lejos de la entrada)
-		var outs := 0
-		for d in DIRS4:
-			var n: Vector2i = c + d
-			if not all_cells.has(n) and ctx.cellset.has(n) and _free(ctx.st, n, ey, ey + 1):
-				outs += 1
-		if outs >= 1:
-			opts.append(c)
-	if opts.is_empty():
-		_why("mediana: sin lugar 4")
-		return {}
-	pill_b = opts[rng.randi_range(0, opts.size() - 1)]
+	var first_spot: Array[Vector2i] = spots.pop_at(rng.randi_range(0, spots.size() - 1))
+	var env_a := _module_env(ctx, ey, pa)
+	for c in first_spot:   # (el piso fijo de la segunda sala está a la altura de la cima de la primera: la primera tiene que saberlo)
+		env_a.append(Vector3i(c.x, pa, c.y))
 	# primera sala
 	var free_a: Array[Vector2i] = []
 	for c in all_a:
@@ -1620,21 +1617,68 @@ static func _c_mediana(ctx: Dictionary) -> Dictionary:
 	if free_a.size() < 4:
 		_why("mediana: sin lugar 5")
 		return {}
-	var mod_a := _vert_module(all_a, ctx.arrival, pill_a, free_a, pa, _module_env(ctx, ey, pa), ctx)
+	ctx["mod_less"] = 1
+	var mod_a := _vert_module(all_a, ctx.arrival, pill_a, free_a, pa, env_a, ctx)
 	if mod_a.is_empty():
+		ctx.erase("mod_less")
 		return {}
-	# segunda sala: su piso es la capa de la cima de la primera
+	# segunda sala: su piso es la capa de la cima de la primera; si el primer lugar no da, se prueba otro
 	var ey_b := ey + pa
-	var free_b: Array[Vector2i] = []
-	for c in cells_b:
-		if c != pill_b and (c - pill_a).length() >= 1.5:
-			free_b.append(c)
-	if free_b.size() < 4:
+	var mod_b := {}
+	var cells_b: Array[Vector2i] = []
+	var pill_b := Vector2i(-9, -9)
+	var all_cells := {}
+	for _tb in 2:
+		if _tb == 0:
+			cells_b = first_spot
+		else:
+			if spots.is_empty():
+				break
+			cells_b = spots.pop_at(rng.randi_range(0, spots.size() - 1))
+			if not _path_ok(mod_a.start, mod_a.path, cells_b, pa):
+				continue
+		all_cells = {}
+		for c in all_a:
+			all_cells[c] = true
+		for c in cells_b:
+			all_cells[c] = true
+		var opts: Array[Vector2i] = []   # la salida de la segunda: una esquina con a dónde ir
+		for c in cells_b:
+			var cn := 0
+			for d in DIRS4:
+				if cells_b.has(c + d):
+					cn += 1
+			if cn > 2 or (c - pill_a).length() < 1.5:
+				continue   # (esquinas de la arena, lejos de la entrada)
+			var outs := 0
+			for d in DIRS4:
+				var n: Vector2i = c + d
+				if not all_cells.has(n) and ctx.cellset.has(n) and _free(ctx.st, n, ey, ey + 1):
+					outs += 1
+			if outs >= 1:
+				opts.append(c)
+		if opts.is_empty():
+			continue
+		pill_b = opts[rng.randi_range(0, opts.size() - 1)]
+		var free_b: Array[Vector2i] = []
+		for c in cells_b:
+			if c != pill_b and (c - pill_a).length() >= 1.5:
+				free_b.append(c)
+		if free_b.size() < 4:
+			continue
+		ctx["work"] = 0   # (cada sala tiene su propio presupuesto de trabajo)
+		var env_b := _module_env(ctx, ey_b, pb)
+		for c in all_a:   # (debajo de la primera hay columnas que se mueven: la segunda no puede contar con que ahí no haya nada, así que se verifica con algo siempre abajo)
+			env_b.append(Vector3i(c.x, -1, c.y))
+		mod_b = _vert_module(cells_b, pill_a, pill_b, free_b, pb, env_b, ctx)
+		if not mod_b.is_empty():
+			break
+	ctx.erase("mod_less")
+	if mod_b.is_empty():
 		_why("mediana: sin lugar 6")
 		return {}
-	ctx["work"] = 0   # (cada sala tiene su propio presupuesto de trabajo)
-	var mod_b := _vert_module(cells_b, pill_a, pill_b, free_b, pb, _module_env(ctx, ey_b, pb), ctx)
-	if mod_b.is_empty():
+	if int(mod_a.grabs) + int(mod_b.grabs) < 7 + int(ctx.d * 3.0):
+		_why("mediana: fácil")
 		return {}
 	if OS.get_environment("IDEA_LOG") != "":
 		print("     mediana de %d pisos (%d + %d): %d + %d agarres, %d + %d bloques distintos" % [hh, pa, pb, mod_a.grabs, mod_b.grabs, mod_a.moved, mod_b.moved])
