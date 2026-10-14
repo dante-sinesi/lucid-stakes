@@ -290,6 +290,20 @@ func _init() -> void:
 			print("    en el camino más corto: %.1f agarres y %.1f bloques distintos en promedio | buenas (sin atajo caminando y 4+ bloques distintos): %d" % [sum_grabs / solved, sum_moved / solved, good])
 		print("    sin atajo caminando y con al menos... ", th)
 		ex.sort_custom(func(a, b): return a[0] > b[0])
+		if OS.get_environment("SAVE") != "" and fill == "vacío":   # (las mejores salas con su camino más corto, para jugarlas en el juego: tests/shot_cadenas.gd)
+			var out: Array = []
+			for i in mini(int(_env("KEEP", 6)), ex.size()):
+				var e = ex[i]
+				var cl: Array = []
+				for c in e[1].cols:
+					cl.append([c.x, c.y, e[1].cols[c].h])
+				var pt: Array = []
+				for a in e[3].path:
+					pt.append([a.dir.x, a.dir.z, int(a.mode)])
+				out.append({"cols": cl, "path": pt, "moved": e[4], "grabs": e[5], "w": w, "d": d, "ph": ph})
+			var f := FileAccess.open(OS.get_environment("SAVE"), FileAccess.WRITE)
+			f.store_string(JSON.stringify(out))
+			f.close()
 		for i in mini(show, ex.size()):
 			var e = ex[i]
 			print("   ejemplo (relleno %s): óptimo %d pasos, %d agarres, %d bloques distintos; cadena plantada %d pasos, %d agarres" % [fill, e[3].moves, e[5], e[4], e[2].acts.size(), e[2].grabs])
