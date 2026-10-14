@@ -107,9 +107,88 @@ Y una **prueba humana estándar**: 10 salas por proveedor, mezcladas a ciegas, c
 | 4 | Prueba humana a ciegas de las 2–3 finalistas | Valoraciones y telemetría | Gana la que dé mejor atractivo a costo aceptable |
 | 5 | Plan de implementación del ganador (híbrido si hace falta) | Hoja de ruta | Aprobada por vos |
 
-## 6. Lo que necesito de vos
+## 6. Decisiones tomadas hasta ahora
+- **Se pone a prueba la biblioteca precalculada (G).** "Fuera de línea" significa que se genera antes de publicar, en una PC sobrante que corre 24/7; el juego no necesita internet.
+- Se usa el propio Godot: una escena "minero" exportada como `.exe` + `.pck`, con tantas copias como núcleos. Formato de trabajo: JSON Lines (una sala por línea, un archivo por copia); formato de publicación: binario comprimido, deduplicado y ordenado por dificultad.
+- El generador actual pasa a ser **un proveedor más** del minero (y la red de seguridad del juego).
 
-1. **El calibre**: ¿puedo contar con tus grabaciones o una lista de tramos de Catherine que consideres la vara? Si no, ¿marcás tus mejores salas actuales?
-2. **La biblioteca fuera de línea (G)**: ¿está descartada por principio o la ponemos a prueba con datos? Es la que más ataca el problema del tiempo.
-3. **Cuánto tiempo de generación aceptás** en el peor caso en una partida normal (la primera torre de la partida, una torre de etapa 13): ¿2 minutos, 30 segundos, instantáneo?
-4. **Quiénes pueden probar**: ¿tenés a 3–5 personas para la prueba a ciegas?
+## 7. Cómo funcionaría el generador (hipótesis de arquitectura, a validar)
+
+Tres piezas separadas:
+
+```
+ MINERO (PC sobrante, 24/7)      BIBLIOTECA (archivo)       ENSAMBLADOR (en el juego)
+ proveedores -> medir ->  -->    salas con métricas  -->    elige, transforma, apila,
+ filtrar -> deduplicar            + versión de reglas        verifica y arma la torre
+```
+
+### 7.1 La sala estándar ("enchufes")
+Una sala de la biblioteca es independiente del resto de la torre y se describe en coordenadas relativas a su llegada:
+- **Entrada:** el jugador llega parado en una celda de piso, a nivel 0, junto a la arena.
+- **Salida:** celda de la cima de su columna de salida, a altura `h`; de ahí arranca la sala siguiente.
+- **Huella:** celdas que ocupa (arena y camino) y qué tipo de piso lleva cada una.
+- **Contenido:** bloques (celda relativa, tipo, fijo o no, temporizador si es bomba).
+- **Camino más corto** (para revalidar sin buscar) y sus métricas.
+- **Etiquetas:** tamaño (chica, mediana, grande), tema (hielo, bomba, trampas…), técnicas usadas, banda de dificultad, proveedor.
+- **Versión de reglas** y **huella normalizada** (igual para giros y espejos).
+
+Tamaños previstos: chica (3x3 a 3x5, 4–5 pisos), mediana (apilando dos chicas o una arena de 3x6 a 3x8, 8–10 pisos), grande (L de 5x5, hasta ~15 pisos).
+
+### 7.2 El minero
+1. **Proveedores:** el generador actual (`taller`, `chica`, `mediana`), el muestreo masivo con filtro (B) y, si pasan la prueba, la búsqueda local (C), las cadenas y las plantillas (E). Cada uno devuelve una sala estándar.
+2. **Medición:** todas las métricas de la sección 1, con el solucionador completo y el jugador de miras cortas.
+3. **Filtro por banda:** solo entran las salas dentro de la banda de calibre de su tamaño y etapa, sin atajo caminando, con la visibilidad mínima.
+4. **Deduplicado** por huella normalizada y por cercanía de descriptores (para no guardar mil variantes de lo mismo).
+5. **Salida:** una línea por sala en `minero_N.jsonl`, con cuenta de aceptadas por hora y por banda; reinicio automático si falla.
+
+### 7.3 La biblioteca
+- Se arma con un paso de empaquetado: une los archivos de todas las copias, revalida con las reglas actuales (descarta las que ya no funcionen), ordena por banda y tamaño, y escribe un binario comprimido.
+- Metas de tamaño por banda (a ajustar con datos): por lo menos 1 500 salas distintas por banda de dificultad y tamaño; con giros, espejos y combinaciones el conjunto efectivo es mucho mayor. La tabla del brainstorming dice que ~10 000 salas dejan la repetición de la partida 4 en ~3 %.
+- Control de calidad humano: una herramienta que muestra una muestra al azar por banda para marcar "buena / mala"; las malas se descartan y sus descriptores se usan para endurecer el filtro.
+
+### 7.4 El ensamblador (tiempo de ejecución)
+1. **Plan de torre:** secuencia de salas según etapa y dificultad (reglas actuales de ritmo: respiros, sin repetir tema ni tres salas del mismo tipo seguidas).
+2. **Selección:** para cada hueco, elige de la biblioteca por banda, tamaño y tema, sin repetir salas dentro de la partida (y reduciendo la probabilidad de las vistas recientemente).
+3. **Transformación:** giro y espejo para que entre en la huella libre; cambio de aspecto o de tipo solo si la etiqueta lo permite.
+4. **Colocación y verificación:** se ubica con su llegada sobre la salida de la anterior; se comprueba el espacio libre; se repite el camino guardado en la torre real (milisegundos, sin buscar). Si falla (el entorno cambió algo), se prueba otra sala.
+5. **Composición:** cuando hace falta una sala grande, se apilan dos o más de la biblioteca (verificadas de a una y en conjunto).
+6. **Red de seguridad:** si no hay sala disponible o ninguna entra, cae al generador actual.
+7. Tiempo esperado: menos de un segundo por torre.
+
+### 7.5 Cuidado de la variedad y el atractivo
+- Los jugadores no deberían reconocer "la misma sala" de una partida a otra: se mide con la prueba de repetición y con la pregunta "¿ya viste esta?" en las pruebas humanas.
+- Distribución de descriptores objetivo (técnicas, tamaños, temas) por etapa, no solo la dificultad; así una torre no es "diez salas iguales".
+- Telemetría opcional en el juego (siempre local): tiempo por sala, deshacer, reinicios; sirve para marcar salas que la gente abandona.
+
+## 8. Plan por fases (revisado)
+
+| Fase | Qué se hace | Entrega | Criterio para pasar | Esfuerzo |
+|---|---|---|---|---|
+| 0 | Fijar el calibre con tramos de Catherine y/o tus salas favoritas | Banda de calibre por tamaño y etapa | Aprobada por vos | S |
+| 1 | Banco de pruebas y línea base del generador actual | `tests/eval_rooms.gd` + tabla A | Reproducible con semilla | M |
+| 2 | **Sala estándar y enchufes:** formato, importar/exportar, colocarla en una torre con transformaciones y revalidar | Una sala del generador actual guardada, cargada, girada y verificada | Pasa la verificación en 100 salas | M |
+| 3 | Microbanco y prototipo del solucionador rápido (K) | Aceleración medida | Decidir si se porta a C++ | M |
+| 4 | **Minero v0** con el generador actual como proveedor; exportar a `.jsonl`; empaquetar | Un archivo de ~1 000 salas y el empaquetador | Rendimiento por hora medido | M |
+| 5 | **Ensamblador v0:** armar una torre de etapa 10 desde la biblioteca, con verificación | Torre en menos de 1 s, jugable | Ganable con el camino guardado | M |
+| 6 | Proveedores nuevos en el minero (B, C, cadenas, E) comparados con el banco | Tabla comparativa por rendimiento y dificultad | Al menos uno supera al actual en la banda | M c/u |
+| 7 | Prueba humana a ciegas: biblioteca vs. generador actual vs. el mejor proveedor nuevo | Valoraciones y telemetría | Gana la biblioteca con atractivo >= al actual | S |
+| 8 | Producción: la PC sobrante corre 24/7, revisión de muestras, ajuste de bandas, integración final | Biblioteca de 20 000+ salas | Metas de tamaño y variedad cumplidas | L (tiempo de máquina) |
+
+S = menos de un día, M = 1–3 días, L = semanas de máquina con poco trabajo mío.
+
+## 9. Riesgos principales y cómo se miden
+| Riesgo | Cómo se detecta |
+|---|---|
+| La repetición se nota | Prueba "¿ya viste esta?" con 20 salas y 3–5 personas; tabla de repetición con el tamaño real |
+| Las salas de la biblioteca son más fáciles que las actuales | `moved`, `myopic` contra la banda de la fase 0 |
+| El entorno de la torre rompe una sala | Tasa de salas rechazadas al colocarlas (fase 5) |
+| Los cambios de reglas invalidan todo | Versión de reglas + revalidación en el empaquetador |
+| La PC sobrante rinde poco | Aceptadas por hora medidas en la fase 4; acelerar con la fase 3 |
+| Atractivo igual de bajo | Prueba humana de la fase 7 antes de invertir semanas de minería |
+
+## 10. Preguntas abiertas
+1. **El calibre:** ¿tus grabaciones de Catherine o una lista de tramos como vara? Si no, tus salas favoritas del juego.
+2. **Tiempo de espera aceptable** en el peor caso (hoy minutos; con la biblioteca, menos de 1 s).
+3. **Quiénes pueden probar** a ciegas (3–5 personas).
+4. **Salas con una sola entrada y salida:** ¿está bien que todas las salas de la biblioteca sean de ese tipo? (Las que bajan, o con varias salidas, serían una segunda familia.)
+5. **Variaciones de aspecto:** ¿se permite cambiar el tipo de bloque (común, hielo, bomba) de una sala al ensamblarla, o el tema es parte fija de la sala?
