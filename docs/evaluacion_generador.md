@@ -287,3 +287,62 @@ Una sala alta tiene que ser **un solo acertijo conectado**, no pilas de salas. L
 - **Fase 3 (solucionador rápido)** sube de prioridad: determina el tope de altura nativa y la cantidad de salas por hora.
 - **Fase de formas y alturas:** incluye la curva costo vs. altura (12.3.1) y el proveedor "alta entrelazada".
 - **Fase 2 (sala estándar):** agrega los tres hashes (exacto, familia y patrón de solución) y el campo `origen` (minero / manual).
+
+## 13. Camino mínimo exacto, qué se guarda y cómo se generan salas nuevas (14/10, tercera tanda)
+
+### 13.1 Hallazgo: el "camino más corto" actual no está garantizado
+El solucionador de producción (`solver.gd`) es un A* con una heurística de guía. Una parte de esa heurística (`_goal_deficit`) **está documentada como "no es una cota exacta"**: puede sobrestimar, y entonces el A* puede devolver un camino que **no es el más corto**.
+
+Comprobación (`tests/check_optimal.gd`: se compara el A* con el mismo solucionador sin heurística, que es exacto):
+- Una sala de 3x3 con pilar de 4: **16 pasos con heurística, 12 el exacto**. Es un contraejemplo confirmado.
+- En otra muestra de salas que ambos resolvieron dentro de un tope de 30 000 estados: 6 de 6 coincidieron. La tasa de diferencia **todavía no está medida**: el exacto necesita entre 10 y 100 veces más estados (ejemplos: 713 vs 57, 18 210 vs 1 236, 4 323 vs 61), y las salas donde la heurística falla son justo las más caras para el exacto.
+
+Consecuencias:
+- Las cifras de "óptimo" de los experimentos anteriores son **cotas superiores** del mínimo real: los atajos pueden ser más comunes y los bloques distintos movidos pueden ser menos de lo medido.
+- Antes de minar la biblioteca hay que tener un **verificador exacto**.
+
+### 13.2 ¿Se puede asegurar el mínimo sin un árbol?
+Para este tipo de juego (empujar bloques, como Sokoban) el problema de planificación es **PSPACE-completo**: no hay fórmula; la forma de demostrar que no existe un camino más corto es **explorar** (o demostrar por exclusión). Lo que sí se puede elegir es *cómo*:
+
+| Método | Garantía | Idea |
+|---|---|---|
+| **A\* con heurística admisible** (la que nunca sobrestima) | exacta | el mismo árbol, pero poda mucho; hay que **demostrar** que la heurística es admisible |
+| Búsqueda sin heurística (Dijkstra / BFS por costo) | exacta | el verificador más simple; 10–100× más estados |
+| Búsqueda bidireccional / IDA\* | exacta | menos memoria; útil para salas altas |
+| **Bases de patrones** (pattern databases) | exacta | heurística admisible más fuerte, calculada de antemano sobre una versión simplificada |
+| **Planificación con SAT / CP** (límite de largo *k*) | exacta | un programa externo demuestra "no existe camino de largo < *k*"; a veces gana al A\* en problemas profundos y angostos |
+| Retroanálisis (partir de las metas hacia atrás) | exacta | para salas muy chicas: el espacio entero cabe en memoria |
+
+Respuesta corta: **sin explorar, no**; con exploración, sí, y es exacta si la heurística es admisible. En la práctica hay que **separar dos solucionadores**:
+- **De producción:** el rápido de hoy, con la heurística que guía; encuentra un camino bueno y rápido.
+- **Verificador exacto:** heurística demostrablemente admisible (o ninguna). Corre en el minero para fijar el mínimo y la prueba.
+
+### 13.3 ¿Es rápido para salas en O de 20 de alto?
+No hay que darlo por hecho: el tamaño de la arena no acota el espacio de estados, lo acota **cuántos bloques movibles hay y cuánto pueden apilarse**. Lo que sabemos: una sala de 3x3 con pilar de 4 se resuelve con 50–18 000 estados según la heurística; salas de 3x6 con pilar de 6 quedaron sin resolver con 30 000. Presupuesto de referencia: el solucionador actual hace unos 3 000 estados por segundo, así que 30 minutos son ~5 millones de estados; un solucionador en C++ podría hacer del orden de 1 millón por segundo (estimación, a medir): 30 minutos serían ~2 000 millones, y ahí la memoria pasa a ser el límite (hacen falta claves compactas o IDA\*). **Se mide con la curva costo vs. altura del plan** (12.3), ahora para el verificador exacto.
+
+### 13.4 Qué se guarda de cada sala (vara de comparación)
+Se agrega a la sala estándar:
+- `opt_moves`: pasos del camino mínimo; `opt_grabs`, `opt_moved` (bloques distintos).
+- `prueba`: **probado** (el verificador terminó y es mínimo), **cota** (se agotó el presupuesto: se guarda la menor cota inferior encontrada y el mejor camino, `L <= óptimo <= U`) o **sin probar**.
+- **Firma de solución** (el patrón normalizado), junto con el camino.
+Sirve de **vara**: las bandas de dificultad por etapa se definen en términos de `opt_moved` y `opt_moves` probados, y el ensamblador puede pedir "una sala de entre X e Y".
+
+### 13.5 Cómo se generan salas completamente nuevas (sin arquetipos)
+La biblioteca no parte de plantillas de sala: parte de **un proceso que descubre salas**, con lo único escrito a mano siendo las reglas del juego, las operaciones de cambio y lo que se considera "bueno". Propuesta: **calidad-diversidad (MAP-Elites)**, pensado para una PC que corre 24/7.
+
+1. **Archivo de rejilla:** se divide el espacio de salas por **descriptores** (forma de la huella, altura, bloques distintos movidos, tipos de bloque usados, técnicas usadas). Cada casillero guarda **la mejor sala encontrada** de su tipo.
+2. **Origen:** salas al azar resolubles (terrenos aleatorios filtrados), cadenas plantadas (el experimento), andamios resueltos (una escalera de la altura pedida) y, para alturas grandes, escaleras triviales que luego se complican.
+3. **Mutaciones (los "movimientos del generador"):** agregar, quitar, mover o cambiar de tipo un bloque; subir o bajar una columna; intercambiar dos columnas; cambiar la forma de la huella. Se elige un casillero ocupado al azar, se muta su sala y se evalúa la hija.
+4. **Evaluación de la hija:** restricciones duras (resoluble, sin camino caminando, mínimo probado, entrada y salida válidas, visibilidad) y objetivo (más bloques distintos movidos y más largo el mínimo). Si es mejor que la del casillero que le toca, la reemplaza.
+5. **Resultado:** el archivo se llena de salas distintas y cada vez más exigentes en cada casillero, sin que nadie dibujara ninguna. Los casilleros son las "familias" y cubren tamaños, alturas y temas a la vez.
+6. **Temas:** "sala de hielo" no es una plantilla: es un casillero (usa hielo y lo necesita para resolverse) con la restricción "se rompe si se cambia el hielo".
+7. **Curado:** el Estudio de salas (12.1) para revisar lo que sale; las malas alimentan un descriptor de "feo" para penalizar.
+
+Riesgos: la búsqueda por mutación puede producir salas "raras" (monstruos de bloques sin sentido) o quedarse en óptimos locales; el atractivo no está garantizado por la optimización. Se mitiga con: restricción de visibilidad, límite de densidad, revisión humana y la prueba a ciegas.
+
+**Cómo se valida (experimento corto):** dejar 1 hora una ejecución MAP-Elites en 3x3x4 y otra en 5x3x6 y comparar, a igual tiempo, contra el muestreo al azar y las cadenas: cuántos casilleros se llenan, mejor `opt_moved` por casillero, variedad (distancia entre salas) y tasa de mejora. Si no supera al muestreo, se descarta.
+
+### 13.6 Cambios a las fases
+- **Nueva fase 0b "Verificar el solucionador":** medir la tasa de caminos no mínimos en 1 000 salas chicas, corregir la heurística (o separar el verificador exacto) y marcar `prueba` en cada sala. Antes que cualquier minería.
+- **Fase de proveedores:** el proveedor principal a evaluar pasa a ser MAP-Elites; el muestreo al azar y las cadenas quedan como orígenes y como comparación.
+- **Fase 3 (solucionador rápido):** incluye el verificador exacto y la curva costo vs. altura.
