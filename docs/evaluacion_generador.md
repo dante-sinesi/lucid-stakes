@@ -191,4 +191,45 @@ S = menos de un día, M = 1–3 días, L = semanas de máquina con poco trabajo 
 2. **Tiempo de espera aceptable** en el peor caso (hoy minutos; con la biblioteca, menos de 1 s).
 3. **Quiénes pueden probar** a ciegas (3–5 personas).
 4. **Salas con una sola entrada y salida:** ¿está bien que todas las salas de la biblioteca sean de ese tipo? (Las que bajan, o con varias salidas, serían una segunda familia.)
-5. **Variaciones de aspecto:** ¿se permite cambiar el tipo de bloque (común, hielo, bomba) de una sala al ensamblarla, o el tema es parte fija de la sala?
+5. ~~Variaciones de aspecto~~ **Resuelto (ver sección 11.1):** sí se cambia el tipo de bloque, pero cada variante se verifica en el minero.
+
+## 11. Decisiones nuevas (14/10) y lo que cambian
+
+Respuestas de Dante a las preguntas abiertas:
+
+1. **Variaciones de tipo de bloque: sí.** Ejemplo: en una sala donde hay que mover un bloque para pasar un muro de hierro, el bloque que se mueve puede ser común, de hielo o de arenisca: tres variantes de una misma sala.
+2. **No se repiten salas.**
+3. **Toda sala tiene un punto de entrada y uno de salida.**
+4. **El generador no se limita a un tamaño:** hace todas las variantes: chicas (3x3), medianas (5x3), y formas en L, en U y en O (anillo), con **alturas de 4 hasta unos 20 pisos**.
+
+### 11.1 Variantes de tipo: se verifican, no se asumen
+Cambiar el tipo de un bloque **cambia la solución** (el hielo se desliza hasta chocar, el agrietado se rompe tras unos pasos, la bomba cuenta movimientos), así que no se puede cambiar al ensamblar sin volver a resolver. Se hace en el **minero**:
+- Para cada sala aceptada, el minero prueba cambiar el tipo de cada bloque movible (y de los muros que se mueven) por cada tipo permitido, **resuelve de nuevo** y conserva la variante solo si sigue siendo resoluble, sin atajo y dentro de la banda.
+- Cada variante es un registro propio, con `family` (la sala base normalizada sin tipos) y `variant_of`. El camino más corto de la variante puede ser distinto del de la base.
+- Costo: una resolución por variante (milisegundos con las salas chicas). Multiplica la biblioteca por 2–4 sin tener que inventar salas nuevas.
+- Medir: qué fracción de las salas admite al menos una variante, y si las variantes se **sienten** distintas (prueba humana: ¿es "la misma sala"?). Si el jugador las reconoce como la misma, valen menos para la repetición que como salas nuevas, y el recuento de variedad lo debe tener en cuenta (cada familia cuenta como una sala con 0,5 de crédito extra por variante, por ejemplo).
+- Pregunta pendiente: "arenisca": ¿es el bloque agrietado actual (se rompe tras pisarlo) o un tipo nuevo?
+
+### 11.2 No repetir salas
+- Cada registro tiene `id` y `family`.
+- **Dentro de una torre:** ninguna `family` dos veces.
+- **Dentro de una partida:** ningún `id` dos veces; una `family` puede volver solo con otro tipo de bloque y no antes de 5 salas.
+- **Memoria entre partidas (opcional, local):** una lista de las últimas salas vistas, que baja el peso de lo ya visto. Se mide con la prueba de repetición.
+- Prueba automática: simular 1 000 partidas completas y contar repeticiones por `id`, por `family` y por huella normalizada.
+
+### 11.3 Formas y alturas
+- **Formas:** chica 3x3; chica alargada 3x4–3x5; mediana 5x3; L, U y O (anillo con el hueco en el medio); más adelante grandes. Cada forma es una **huella** distinta con sus entradas y salidas posibles (en U y en O, la entrada y la salida pueden estar en puntas opuestas y obligar a rodear).
+- **Alturas de 4 a 20 pisos:** el costo del solucionador sube muy rápido con la altura. Plan en dos niveles:
+  - hasta ~10 pisos: salas **nativas** (el proveedor resuelve la sala entera);
+  - de 10 a 20: salas **compuestas** de varias salas verticales apiladas, cada una resuelta por separado y verificadas juntas (como la `mediana`), más una verificación del conjunto con tope.
+  - Medir con datos: cuántos pisos nativos se alcanzan a costo razonable (curva "tiempo por sala aceptada vs. altura"). Medir también si un tramo apilado se siente como una sola sala o como "pilas de lo mismo" (prueba humana).
+- **Entrada y salida:** estándar de cada huella; registradas en el formato de la sala.
+
+### 11.4 Control de la mezcla de tamaños
+El ensamblador no sorteará "una sala cualquiera" sino que respeta **cuotas por torre**: por ejemplo, de 6 a 10 salas por torre, al menos 2 formas distintas, no más de 3 del mismo tamaño seguidas, y la altura total que pide la etapa. Programar las cuotas como datos (tabla por etapa), no en el código, para ajustarlas con las pruebas.
+
+### 11.5 Cambios a las fases
+- **Fase 2 (sala estándar):** incluye huellas no rectangulares (L, U, O), alturas variables y los campos `family` y `variant_of`.
+- **Fase 4 (minero v0):** agrega la etapa de variantes de tipo.
+- **Fase 5 (ensamblador v0):** agrega no repetición y cuotas.
+- **Fase nueva entre 4 y 5:** "formas y alturas": medir cuánto cuesta producir salas L/U/O y de 10–20 pisos y decidir qué se hace nativo y qué compuesto.
