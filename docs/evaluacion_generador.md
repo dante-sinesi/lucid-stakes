@@ -208,7 +208,7 @@ Cambiar el tipo de un bloque **cambia la solución** (el hielo se desliza hasta 
 - Cada variante es un registro propio, con `family` (la sala base normalizada sin tipos) y `variant_of`. El camino más corto de la variante puede ser distinto del de la base.
 - Costo: una resolución por variante (milisegundos con las salas chicas). Multiplica la biblioteca por 2–4 sin tener que inventar salas nuevas.
 - Medir: qué fracción de las salas admite al menos una variante, y si las variantes se **sienten** distintas (prueba humana: ¿es "la misma sala"?). Si el jugador las reconoce como la misma, valen menos para la repetición que como salas nuevas, y el recuento de variedad lo debe tener en cuenta (cada familia cuenta como una sala con 0,5 de crédito extra por variante, por ejemplo).
-- Pregunta pendiente: "arenisca": ¿es el bloque agrietado actual (se rompe tras pisarlo) o un tipo nuevo?
+- "Arenisca" es el bloque agrietado actual (resuelto en la sección 12).
 
 ### 11.2 No repetir salas
 - Cada registro tiene `id` y `family`.
@@ -221,7 +221,7 @@ Cambiar el tipo de un bloque **cambia la solución** (el hielo se desliza hasta 
 - **Formas:** chica 3x3; chica alargada 3x4–3x5; mediana 5x3; L, U y O (anillo con el hueco en el medio); más adelante grandes. Cada forma es una **huella** distinta con sus entradas y salidas posibles (en U y en O, la entrada y la salida pueden estar en puntas opuestas y obligar a rodear).
 - **Alturas de 4 a 20 pisos:** el costo del solucionador sube muy rápido con la altura. Plan en dos niveles:
   - hasta ~10 pisos: salas **nativas** (el proveedor resuelve la sala entera);
-  - de 10 a 20: salas **compuestas** de varias salas verticales apiladas, cada una resuelta por separado y verificadas juntas (como la `mediana`), más una verificación del conjunto con tope.
+  - de 10 a 20: **descartado el apilado** (ver sección 12.3): tienen que ser salas nativas, con el tope que marque la curva de costo.
   - Medir con datos: cuántos pisos nativos se alcanzan a costo razonable (curva "tiempo por sala aceptada vs. altura"). Medir también si un tramo apilado se siente como una sola sala o como "pilas de lo mismo" (prueba humana).
 - **Entrada y salida:** estándar de cada huella; registradas en el formato de la sala.
 
@@ -233,3 +233,57 @@ El ensamblador no sorteará "una sala cualquiera" sino que respeta **cuotas por 
 - **Fase 4 (minero v0):** agrega la etapa de variantes de tipo.
 - **Fase 5 (ensamblador v0):** agrega no repetición y cuotas.
 - **Fase nueva entre 4 y 5:** "formas y alturas": medir cuánto cuesta producir salas L/U/O y de 10–20 pisos y decidir qué se hace nativo y qué compuesto.
+
+## 12. Decisiones nuevas (14/10, segunda tanda)
+
+1. **"Arenisca" es el bloque agrietado actual** (se rompe después de pisarlo). No hay tipo nuevo: las variantes de tipo usan los tipos que ya existen.
+2. **Se descartan las salas compuestas** para alturas de 10 a 20 pisos: "terminarían siendo dos salas". Reemplaza la segunda mitad de 11.3 (ver 12.3).
+3. **Se pide un ejecutable de edición de salas** (ver 12.1) y **un hash de cada sala** para no repetir (ver 12.2).
+
+### 12.1 Estudio de salas (ejecutable de edición y curado)
+Un programa hecho con el mismo motor del juego (se exporta como `.exe`, igual que el minero) que abre la biblioteca y deja **ver, jugar, corregir y anotar** cada sala.
+
+**Qué hace**
+- **Ver:** navegar la biblioteca (filtros por tamaño, forma, altura, tema, banda de dificultad, estado), con la sala dibujada con el mismo aspecto del juego y cámara orbital; botón para **reproducir el camino más corto** (como hice en las capturas).
+- **Editar:** seleccionar un bloque con el mouse y borrarlo, moverlo o cambiar su tipo; agregar bloques.
+- **Marcar variantes:** seleccionar un bloque y declarar "puede ser también hielo, agrietado, común…". Es una **pista**, no una orden: al marcar, el Estudio vuelve a resolver la sala con cada tipo y muestra al instante cuáles son válidos (resoluble, sin atajo, dentro de la banda). Los que no, quedan tachados con la razón.
+- **Verificación continua:** cada vez que se edita algo, se vuelve a resolver (en milisegundos si es una sala chica) y se muestran las métricas nuevas (bloques distintos movidos, agarres, atajos, si todavía se resuelve). Una sala editada que deja de resolverse no se puede guardar como "buena".
+- **Salas parecidas:** muestra la **sala más parecida** (y las 5 más cercanas) con su **miniatura**, la distancia y en qué se parecen. Sirve para decidir "esta ya la tengo" y descartar.
+- **Curado:** marcar buena / mala / "mejorable", con una nota. Las malas se descartan; las buenas pasan a la biblioteca de publicación. Las editadas a mano quedan con `origen: manual`, protegidas de que el minero las pise.
+- **Guardar:** cada cambio se guarda en la biblioteca con la versión de reglas.
+
+**Cómo se hace**
+- Reutiliza el motor del juego: las reglas (`TowerLogic`), el solucionador y los modelos de bloque (`block_models.gd`, `voxel_mesh.gd`). El dibujo de la torre hoy vive dentro de `main.gd` (2 800 líneas); hay dos caminos: (a) **v0 rápido:** instanciar la escena del juego y cargarle la sala, como hacen mis scripts de captura, y reutilizar la selección de bloque con el mouse que ya existe para los consumibles; (b) **v1 limpio:** extraer un nodo `TowerView` reutilizable por el juego, el Estudio y el minero. Recomiendo empezar con (a) para ver salas en días y pasar a (b) si el Estudio crece.
+- Miniaturas: se dibujan fuera de pantalla (SubViewport) una sola vez y se guardan como PNG pequeños junto a la sala.
+- "Sala más parecida": distancia entre descriptores (tamaño, forma, histograma de alturas, tipos de bloque, agarres, bloques movidos, técnicas) más una distancia estructural sobre la sala normalizada (invariante a giros y espejos). Se indexa en el empaquetado; para la búsqueda alcanza una comparación directa con unos miles de salas.
+
+**Qué mide el éxito:** el tiempo por sala que lleva revisarla y corregirla (objetivo: menos de 1 minuto), y cuántas salas del minero pasan a "buena" sin edición.
+
+### 12.2 Hash de sala para no repetir
+Sí se puede, y conviene tener **tres niveles**, porque un solo hash es insuficiente:
+
+| Nivel | Qué mira | Para qué |
+|---|---|---|
+| **Exacto** | huella, bloques y tipos, normalizado | no guardar dos veces la misma sala |
+| **Familia** | igual pero sin tipos de bloque (solo "hay bloque / no hay bloque" y fijo / pesado) | no mostrar la base y su variante seguidas; agrupar variantes |
+| **Patrón de solución** | secuencia normalizada de los movimientos del camino más corto y de qué bloque se mueve adónde | detectar salas que **se juegan igual** aunque tengan relleno distinto |
+
+- **Normalización:** se traslada la sala para que su esquina mínima sea (0,0,0), se generan las 8 simetrías (4 giros × espejo) y se elige la de serialización menor: así una sala, su giro y su espejo dan el mismo hash. Hash de 128 bits (SHA-256 recortado): colisiones prácticamente imposibles.
+- **Casi duplicados:** si se cambia un solo bloque de relleno, el hash exacto cambia aunque la sala se sienta igual. Para eso, además del hash: huella de tipo "MinHash / SimHash" sobre el conjunto de celdas relativas (comparación rápida) y la distancia de descriptores. El Estudio muestra las más cercanas y el minero rechaza las que estén bajo un umbral.
+- **Lo que reconoce el jugador es el patrón de solución, no el relleno:** por eso el tercer nivel es el más útil para "no repetir". Se validará con la prueba humana "¿ya viste esta?".
+- **En el juego:** el ensamblador lleva un conjunto de hashes vistos en la partida (y opcionalmente en las últimas partidas, guardado local).
+
+### 12.3 Alturas de 10 a 20: solo salas nativas (reemplaza lo de salas compuestas)
+Una sala alta tiene que ser **un solo acertijo conectado**, no pilas de salas. Lo que hay que averiguar con datos es **hasta qué altura se puede producir y verificar una sala nativa**:
+
+1. **Curva costo vs. altura:** con el solucionador actual y el rápido (cuando exista), medir tiempo y estados para salas de 4, 6, 8, 10, 12, 14, 16, 20 pisos, con la misma densidad. Define el **tope nativo**. Si no se llega a 20 con el solucionador actual, el tope hoy es el que da la curva; el solucionador rápido (fase 3) puede subirlo.
+2. **Ventaja de la biblioteca precalculada:** el minero puede gastar **10 o 30 minutos por sala alta** (en la PC sobrante, de noche) en lugar de segundos. Con la PC 24/7 es viable producir unas pocas decenas de salas altas buenas por día.
+3. **Cómo se construyen (proveedor "alta entrelazada"):** una cadena donde cada tramo **depende del material y las posiciones del anterior** (los bloques movidos abajo son los que hacen falta arriba), de modo que sea un solo acertijo y no dos. Se verifica **entera** con el solucionador con un tope grande (offline) y se guarda el camino más corto. La cadena sola tiene muchos atajos (ver `experimento_cadenas.md`), así que cada candidato se filtra con el solucionador.
+4. **Verificación débil como último recurso:** si una sala muy alta no se puede resolver óptimamente en un tiempo razonable, se podría aceptar con el camino plantado y un tope de búsqueda de atajos (garantía más débil: puede haber atajo no encontrado). Se marca con una etiqueta `garantia: debil` y se usa con peso bajo. Decisión pendiente tras ver la curva.
+5. **Criterio:** si la curva dice que a 14 pisos el costo ya es inviable aun fuera de línea, el tope de altura del juego es 14 hasta tener solucionador rápido. Mejor un tope honesto que salas altas que en realidad son dos.
+
+### 12.4 Cambios a las fases
+- **Nueva fase "Estudio de salas v0"** después del minero v0 (necesita salas guardadas para verlas): visor con reproducción del camino, selección y edición de bloques, verificación continua, miniaturas y "sala más parecida". Esfuerzo M–L.
+- **Fase 3 (solucionador rápido)** sube de prioridad: determina el tope de altura nativa y la cantidad de salas por hora.
+- **Fase de formas y alturas:** incluye la curva costo vs. altura (12.3.1) y el proveedor "alta entrelazada".
+- **Fase 2 (sala estándar):** agrega los tres hashes (exacto, familia y patrón de solución) y el campo `origen` (minero / manual).
