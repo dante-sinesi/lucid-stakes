@@ -61,7 +61,7 @@ La sala de 13 agarres: un pasillo de 3x8 casi vacío (3 bloques en el aire más 
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Salas | 917 | 1 822 | 2 916 | 2 335 | 1 510 | 1 017 | 289 | 88 | 44 | 18 | 8 | 1 | 4 | 1 | 2 |
 
-Bloques distintos que hay que mover: hasta 10. Dificultad (agarres sobre pasos): 10–19 %: 5 264 salas, 20–29 %: 3 725, 30–39 %: 623, 40–49 %: 58, 50–59 %: 4. La mejor: **15 agarres en 35 pasos (43 %)**, 3x8 de 5 pisos con 4 bloques sueltos en total (arriba). El desempate importa: al elegir entre los caminos más cortos el de menos agarres, 581 de 1 048 salas recalculadas bajaron su cantidad de agarres (en promedio unos 0,55; hasta 4), y esa es la medida conservadora que guarda la biblioteca.
+Bloques distintos que hay que mover: hasta 10. Dificultad (agarres sobre pasos): 10–19 %: 5 264 salas, 20–29 %: 3 725, 30–39 %: 623, 40–49 %: 58, 50–59 %: 4. La mejor: **15 agarres en 35 pasos (43 %)**, 3x8 de 5 pisos con 4 bloques sueltos en total (captura: `docs/img/sala_15_agarres.png`). De las 10 972 salas, **9 854 tienen huecos** (bloques sin columna hasta el piso). El desempate importa: al elegir entre los caminos más cortos el de menos agarres, 581 de 1 048 salas recalculadas bajaron su cantidad de agarres (en promedio unos 0,55; hasta 4), y esa es la medida conservadora que guarda la biblioteca.
 
 Faltan las alturas 13 a 20 (la corrida se limitó a 12; las salas altas siguen con el método de solución plantada y sin prueba exacta).
 
