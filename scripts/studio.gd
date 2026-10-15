@@ -9,6 +9,7 @@ const RoomView := preload("res://scripts/room_view.gd")
 const StudioModel := preload("res://scripts/studio_model.gd")
 
 const TOOLS := [["select", "Seleccionar"], ["add", "Agregar bloque arriba"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["move", "Mover a otra columna"]]
+const SHAPE_NAMES := {"3x3": "Chica (3x3)", "3x5": "Mediana (3x5)", "3x8": "Grande (3x8)", "L": "L", "U": "U"}
 const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["moved", "Bloques distintos"], ["moves", "Pasos"], ["h", "Altura"], ["reciente", "Recientes"]]
 
 var model := StudioModel.new()
@@ -43,6 +44,7 @@ var path_label: Label
 var f_shape: OptionButton
 var f_hlo: SpinBox
 var f_hhi: SpinBox
+var f_moves: SpinBox
 var f_grabs: SpinBox
 var f_diff: SpinBox
 var f_status: OptionButton
@@ -146,31 +148,38 @@ func _build_ui() -> void:
 	file_row.add_child(_button("Abrir…", func(): file_dialog.popup_centered_ratio(0.7)))
 	file_row.add_child(_button("Recargar", func(): if lib_path != "": open_library(lib_path)))
 	left.add_child(file_row)
-	var shapes: Array = ["(todas)"]
-	shapes.append_array(RoomLib.SHAPES)
+	var shapes: Array = ["(todos)"]
+	for sh in RoomLib.SHAPES:
+		shapes.append(SHAPE_NAMES[sh])
 	f_shape = _option(shapes, func(_i): refresh_list())
 	var row1 := HBoxContainer.new()
-	row1.add_child(_label("Forma"))
+	row1.add_child(_label("Tipo"))
 	row1.add_child(f_shape)
 	row1.add_child(_label("Orden"))
 	f_sort = _option(SORTS.map(func(s): return s[1]), func(_i): refresh_list())
 	row1.add_child(f_sort)
 	left.add_child(row1)
 	var row2 := HBoxContainer.new()
-	row2.add_child(_label("Pisos"))
+	row2.add_child(_label("Altura (pisos) de"))
 	f_hlo = _spin(0, 20, 0, func(_v): refresh_list())
 	f_hhi = _spin(0, 20, 20, func(_v): refresh_list())
 	row2.add_child(f_hlo)
 	row2.add_child(_label("a"))
 	row2.add_child(f_hhi)
 	left.add_child(row2)
+	var row2a := HBoxContainer.new()
+	row2a.add_child(_label("Pasos ≥"))
+	f_moves = _spin(0, 400, 0, func(_v): refresh_list())
+	row2a.add_child(f_moves)
+	row2a.add_child(_label("Con desplazamiento ≥"))
+	f_grabs = _spin(0, 60, 0, func(_v): refresh_list())
+	row2a.add_child(f_grabs)
+	left.add_child(row2a)
 	var row2b := HBoxContainer.new()
-	row2b.add_child(_label("Empujes y tirones ≥"))
-	f_grabs = _spin(0, 40, 0, func(_v): refresh_list())
-	row2b.add_child(f_grabs)
 	row2b.add_child(_label("Dificultad ≥ %"))
 	f_diff = _spin(0, 100, 0, func(_v): refresh_list())
 	row2b.add_child(f_diff)
+	row2b.add_child(_button("Limpiar filtros", clear_filters))
 	left.add_child(row2b)
 	var row3 := HBoxContainer.new()
 	f_status = _option(["(todos)"] + RoomLib.STATUSES, func(_i): refresh_list())
@@ -192,7 +201,7 @@ func _build_ui() -> void:
 	list.item_selected.connect(_on_list_selected)
 	left.add_child(list)
 	var new_row := HBoxContainer.new()
-	new_shape = _option(RoomLib.SHAPES, func(_i): pass)
+	new_shape = _option(RoomLib.SHAPES.map(func(sh): return SHAPE_NAMES[sh]), func(_i): pass)
 	new_h = _spin(RoomLib.MIN_H, RoomLib.MAX_H, 6, func(_v): pass)
 	new_row.add_child(_button("Sala nueva", do_new))
 	new_row.add_child(new_shape)
@@ -375,7 +384,7 @@ func open_library(path: String) -> int:
 
 
 func filters() -> Dictionary:
-	var f := {"sort": SORTS[f_sort.selected][0], "h_lo": int(f_hlo.value), "h_hi": int(f_hhi.value), "min_grabs": int(f_grabs.value), "min_diff": f_diff.value / 100.0, "text": f_text.text}
+	var f := {"sort": SORTS[f_sort.selected][0], "h_lo": int(f_hlo.value), "h_hi": int(f_hhi.value), "min_moves": int(f_moves.value), "min_grabs": int(f_grabs.value), "min_diff": f_diff.value / 100.0, "text": f_text.text}
 	if f_shape.selected > 0:
 		f["shape"] = RoomLib.SHAPES[f_shape.selected - 1]
 	if f_status.selected > 0:
@@ -385,6 +394,21 @@ func filters() -> Dictionary:
 	if f_proof.selected > 0:
 		f["proof"] = ["exacta", "cota", "sin_probar"][f_proof.selected - 1]
 	return f
+
+
+## Deja todos los filtros como al abrir (el orden se mantiene).
+func clear_filters() -> void:
+	f_shape.select(0)
+	f_hlo.value = 0
+	f_hhi.value = 20
+	f_moves.value = 0
+	f_grabs.value = 0
+	f_diff.value = 0
+	f_status.select(0)
+	f_origin.select(0)
+	f_proof.select(0)
+	f_text.text = ""
+	refresh_list()
 
 
 func _row_text(r: Dictionary) -> String:
@@ -403,7 +427,7 @@ func refresh_list() -> void:
 	for r in rooms:
 		list.add_item(_row_text(r))
 		_list_ids.append(r.id)
-	count_label.text = "%d de %d salas · d dificultad, empujes y tirones / pasos, E exacta" % [rooms.size(), model.rooms.size()]
+	count_label.text = "%d de %d salas · d dificultad, con desplazamiento / pasos, E exacta" % [rooms.size(), model.rooms.size()]
 	_select_in_list()
 
 

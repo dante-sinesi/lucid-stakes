@@ -63,6 +63,21 @@ func test_ui() -> void:
 	studio.refresh_list()
 	check(studio.list.item_count <= n, "el filtro de bloques movidos")
 	studio.f_grabs.value = 0
+	studio.f_moves.value = 9999
+	studio.refresh_list()
+	check(studio.list.item_count == 0, "pasos mínimos imposibles dejan la lista vacía")
+	studio.f_moves.value = 8
+	studio.f_hlo.value = 5
+	studio.f_hhi.value = 5
+	studio.f_shape.select(1)
+	studio.refresh_list()
+	var combo: Array = studio.model.filtered(studio.filters())
+	check(studio.list.item_count == combo.size() and studio.filters().min_moves == 8, "todos los filtros juntos")
+	for r in combo:
+		check(r.shape == "3x3" and r.h == 5 and int(r.opt.moves) >= 8, "las de la lista cumplen tipo, altura y pasos")
+	studio.clear_filters()
+	check(studio.list.item_count == n and studio.f_moves.value == 0 and studio.f_shape.selected == 0 and studio.f_hhi.value == 20, "Limpiar filtros los deja como al abrir")
+	check(studio.f_shape.get_item_text(1).find("Chica") != -1 and studio.f_shape.get_item_text(2).find("Mediana") != -1 and studio.f_shape.get_item_text(3).find("Grande") != -1, "los tipos se llaman chica, mediana y grande")
 	studio.f_diff.value = 99
 	studio.refresh_list()
 	check(studio.list.item_count <= n and studio.filters().min_diff > 0.98, "el filtro de dificultad mínima de la lista")

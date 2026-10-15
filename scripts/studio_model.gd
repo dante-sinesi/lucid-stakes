@@ -60,7 +60,8 @@ func _write() -> bool:
 	return ok
 
 
-## Las salas que cumplen los filtros, ordenadas. filters: shape, min_grabs, min_diff (0 a 1), min_moved, status, origin, proof, text (prefijo de id, familia o patrón), h_lo, h_hi,
+## Las salas que cumplen los filtros, ordenadas. filters: shape, h_lo, h_hi (altura), min_moves (pasos totales), min_grabs (empujes y tirones: los pasos con desplazamiento de bloques), min_diff (0 a 1),
+## min_moved (bloques distintos), status, origin, proof, text (prefijo de id, familia o patrón),
 ## sort ("diff" = dificultad, "grabs" = empujes y tirones, "moved", "moves", "h", "reciente").
 func filtered(filters: Dictionary = {}) -> Array:
 	var out: Array = []
@@ -69,6 +70,8 @@ func filtered(filters: Dictionary = {}) -> Array:
 		if filters.get("shape", "") != "" and r.shape != filters.shape:
 			continue
 		if int(r.opt.get("moved", 0)) < int(filters.get("min_moved", 0)):
+			continue
+		if int(r.opt.get("moves", 0)) < int(filters.get("min_moves", 0)):
 			continue
 		if int(r.opt.get("grabs", 0)) < int(filters.get("min_grabs", 0)) or float(r.opt.get("diff", 0.0)) < float(filters.get("min_diff", 0.0)) - 0.0001:
 			continue

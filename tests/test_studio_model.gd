@@ -433,5 +433,25 @@ func test_difficulty_filters() -> void:
 	for r in many:
 		check(int(r.opt.grabs) >= 4, "todas cumplen los empujes y tirones mínimos")
 	check(m.filtered({"min_diff": 1.1}).is_empty(), "una dificultad imposible no deja ninguna")
+	# pasos totales, altura, tipo y combinaciones
+	var longest := 0
+	for r in m.rooms:
+		longest = maxi(longest, int(r.opt.moves))
+	var long_ones := m.filtered({"min_moves": longest})
+	check(long_ones.size() >= 1 and long_ones.size() < m.rooms.size(), "el filtro de pasos mínimos (%d con %d o más)" % [long_ones.size(), longest])
+	for r in long_ones:
+		check(int(r.opt.moves) >= longest, "todas cumplen los pasos mínimos")
+	check(m.filtered({"min_moves": longest + 1}).is_empty(), "pasos mínimos imposibles no dejan ninguna")
+	var some: Dictionary = m.rooms[0]
+	var combo := m.filtered({"shape": some.shape, "h_lo": some.h, "h_hi": some.h, "min_moves": int(some.opt.moves), "min_grabs": int(some.opt.grabs), "min_diff": float(some.opt.diff) - 0.001})
+	var found := false
+	for r in combo:
+		check(r.shape == some.shape and r.h == some.h and int(r.opt.moves) >= int(some.opt.moves) and int(r.opt.grabs) >= int(some.opt.grabs), "las salas cumplen todos los filtros juntos")
+		if r.id == some.id:
+			found = true
+	check(found, "una sala cumple los filtros hechos con sus propios datos")
+	var wrong := m.filtered({"shape": some.shape, "h_lo": some.h + 1, "h_hi": some.h + 1})
+	for r in wrong:
+		check(r.h == some.h + 1, "el filtro de altura exacta")
 	for r in m.rooms:
 		check(r.opt.has("diff") and is_equal_approx(float(r.opt.diff), float(r.opt.grabs) / float(r.opt.moves)), "cada sala tiene su dificultad")
