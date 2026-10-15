@@ -33,6 +33,11 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 	var use_collapse: bool = opts.get("use_collapse", false)
 	var use_h: bool = opts.get("heuristic", true)
 	var no_grab: bool = opts.get("no_grab", false)
+	var max_ms: int = opts.get("max_ms", 0)   # >0: tope de tiempo (el estado de la búsqueda se devuelve como "limit")
+	var deadline: int = Time.get_ticks_msec() + max_ms
+	var tick := 0
+	var adm: bool = opts.get("admissible", false)   # sólo la parte demostrable de la heurística (nunca sobrestima): con esto el camino que devuelve es el MÁS CORTO
+	var h_weight: float = opts.get("h_weight", 1.0)   # >1 busca más a lo codicioso (encuentra un camino rápido pero ya no garantiza que sea el más corto)
 	var unit := 16 if opts.get("prefer_plain", false) else 1  # con desempate cada acción vale 16 y empujar/tirar/colgarse 17
 
 	var root = _prepare(start, target_y, use_collapse)
@@ -49,13 +54,17 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 	var gs := PackedInt32Array([0])
 	var best := {_key(root, use_collapse): 0}
 	var buckets := {}
-	var f0 := _h(root, target_y, use_h, gain, xz_goal) * unit
+	var f0 := int(round(_h(root, target_y, use_h, gain, xz_goal, adm) * h_weight)) * unit
 	buckets[f0] = [0]
 	var f := f0
 	var open := 1
 	var generated := 1
 
 	while open > 0:
+		if max_ms > 0:
+			tick += 1
+			if (tick & 63) == 0 and Time.get_ticks_msec() > deadline:
+				return {"status": "limit", "moves": -1, "path": [], "states": generated, "state": null, "f_reached": f}
 		if not buckets.has(f) or buckets[f].is_empty():
 			f += 1
 			continue
@@ -93,14 +102,14 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 				actions.append(di * 3 + mode)
 				gs.append(g + step)
 				var ni := states.size() - 1
-				var nf := g + step + _h(n, target_y, use_h, gain, xz_goal) * unit
+				var nf := g + step + int(round(_h(n, target_y, use_h, gain, xz_goal, adm) * h_weight)) * unit
 				if not buckets.has(nf):
 					buckets[nf] = []
 				buckets[nf].append(ni)
 				open += 1
 				generated += 1
 				if generated >= max_states:
-					return {"status": "limit", "moves": -1, "path": [], "states": generated, "state": null}
+					return {"status": "limit", "moves": -1, "path": [], "states": generated, "state": null, "f_reached": f}   # (sin heurística, f_reached es una cota inferior de los pasos: todo lo que está por debajo se expandió entero)
 		states[idx] = null  # ya expandido: liberar memoria
 	return {"status": "unsolvable", "moves": -1, "path": [], "states": generated, "state": null}
 
@@ -164,7 +173,7 @@ static func solve_rows_greedy(start, opts: Dictionary = {}) -> Dictionary:
 	return {"status": "solved", "rows": rows, "total": total, "states": total_states}
 
 
-static func _h(s, target_y: int, use_h: bool, gain: int, xz_goal := false) -> int:
+static func _h(s, target_y: int, use_h: bool, gain: int, xz_goal := false, adm := false) -> int:
 	if not use_h:
 		return 0
 	var h := ceili(float(maxi(0, target_y - s.player.y)) / gain)
@@ -178,7 +187,7 @@ static func _h(s, target_y: int, use_h: bool, gain: int, xz_goal := false) -> in
 				var p: Vector3i = s.positions[id]
 				best = mini(best, maxi(absi(p.x - s.player.x), absi(p.z - s.player.z)))
 		h = maxi(h, best)
-	if not s.goal_ids.is_empty():
+	if not s.goal_ids.is_empty() and not adm:
 		h += _goal_deficit(s)   # (bloques que todavía hay que sumar a una columna pegada a la meta: acciones de empujar o tirar, distintas de las de caminar y trepar que ya cuenta h)
 	return h
 

@@ -36,6 +36,8 @@ func key_of(cols: Dictionary) -> String:
 
 
 func evaluate(cols: Dictionary) -> Dictionary:
+	if OS.get_environment("TRACE") != "":
+		print("EVAL ", key_of(cols))
 	var t = Rooms._vert_mini(cells, arrival, pillar, ph, cols, [])
 	var res: Dictionary = Solver.solve(t.clone(), ph + 1, {"max_states": cap, "goal_ids": t.goal_ids})
 	if res.status != "solved":
