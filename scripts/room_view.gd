@@ -102,7 +102,7 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 	mm.emission = Color(0.2, 1.0, 0.45)
 	mm.emission_energy_multiplier = 0.8
 	mark.material_override = mm
-	mark.position = Vector3(entry.x + 0.5, 1.0 + 0.03, entry.y + 0.5)
+	mark.position = Vector3(entry.x + 0.5, float(room.get("entry_y", 1)) + 0.03, entry.y + 0.5)
 	mark.name = "llegada"
 	parent.add_child(mark)
 	if show_player:

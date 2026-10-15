@@ -86,6 +86,9 @@ func _ready() -> void:
 	RoomView.register_globals()
 	_build_ui()
 	_build_world()
+	if "--pasos" in OS.get_cmdline_user_args():   # (herramientas\pasos.bat usa el mismo programa)
+		get_tree().change_scene_to_file.call_deferred("res://scenes/step_studio.tscn")
+		return
 	var path := OS.get_environment("STUDIO_LIB")
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--lib="):
@@ -213,6 +216,7 @@ func _build_ui() -> void:
 	new_row.add_child(new_shape)
 	new_row.add_child(new_h)
 	left.add_child(new_row)
+	left.add_child(_button("Diseñar pasos…", func(): get_tree().change_scene_to_file("res://scenes/step_studio.tscn")))
 	# --- centro: la sala
 	var mid := VBoxContainer.new()
 	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
