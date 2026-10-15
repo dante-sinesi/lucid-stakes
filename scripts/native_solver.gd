@@ -1,7 +1,7 @@
 extends RefCounted
 ## Puente al solucionador nativo (native/solver_nativo.cpp, compilado a tools/solver_nativo.exe): arma el archivo de entrada con el estado, corre el programa y lee el resultado.
-## Resuelve lo mismo que Solver.solve (mismas reglas y mismo A*), mucho más rápido. Si el programa no está, o el estado tiene algo que no entiende (bombas, catapultas, trampas, pinchos,
-## boosts, la caída de la fila base), `solve` devuelve {} y el llamador usa el solucionador de GDScript.
+## Resuelve lo mismo que Solver.solve (mismas reglas y mismo A*), mucho más rápido, con todos los tipos de bloque (común, hielo, bomba, catapulta, agrietado, pesado, trampa y pinchos).
+## Si el programa no está, o el estado usa boosts, escudos u otras cosas que no entiende (la caída de la fila base), `solve` devuelve {} y el llamador usa el solucionador de GDScript.
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const DIR_CHARS := "EWSN"

@@ -8,7 +8,7 @@ Las salas del minero pedían como mucho 4–6 empujes o tirones (el 95 % pedía 
 
 ## 1. Solucionador nativo (`native/solver_nativo.cpp`)
 
-Un port a C++ de las reglas de `tower_logic.gd` (caminar, empujar, tirar, colgarse, hielo, agrietado, pesado, gravedad con apoyo por vecinos y aristas) y del A* de `solver.gd` (mismas cubetas de f, mismo hash de Zobrist, mismas heurísticas: de producción y admisible). Con bombas, catapultas, trampas o pinchos contesta "unsupported" y se usa GDScript.
+Un port a C++ de las reglas de `tower_logic.gd` (caminar, empujar, tirar, colgarse, hielo, agrietado, pesado, gravedad con apoyo por vecinos y aristas) y del A* de `solver.gd` (mismas cubetas de f, mismo hash de Zobrist, mismas heurísticas: de producción y admisible). Desde la rama `feature/excavar-tipos` entiende también bomba, catapulta, trampa y pinchos (ver "Todos los tipos de bloque").
 
 - Compilar: `native\construir.bat` (hace falta g++, por ejemplo el de MSYS2) → `tools\solver_nativo.exe`. `herramientas\construir.ps1` lo copia a `build\herramientas`. El .exe no se versiona.
 - Puente: `scripts/native_solver.gd`. `Solver.solve` lo usa solo cuando el tope de estados es de 1 000 o más (lanzar el programa cuesta decenas de milisegundos) y `opts.native` no es `false`; si no está o no entiende el estado, sigue con GDScript. Variable de entorno `SIN_NATIVO=1` lo apaga.
@@ -77,3 +77,11 @@ Faltan las alturas 13 a 20 (la corrida se limitó a 12; las salas altas siguen c
 - El camino que guarda la sala es *uno* de los más cortos; la cantidad de agarres puede variar de uno a otro con el mismo largo (visto: 3 a 13 agarres en 23 pasos para salas distintas, y el desempate entre caminos del mismo largo no está definido). Conviene definir el desempate (el de menos agarres, para ser conservadores).
 - Ensamblar salas en torres (el ensamblador del juego) todavía no existe; las salas libres necesitan que el ensamblador respete sus apoyos (cada bloque en el aire se sostiene de un vecino).
 - Estudio: faltan herramientas para *agregar* bloques en el aire (hoy sólo se apilan encima de una columna) y ver los huecos al editar.
+
+
+## Todos los tipos de bloque (rama `feature/excavar-tipos`, 15/10)
+
+- **Formato**: en `cols`, `n` común, `h` pesado, `i` hielo, `c` agrietado (arenisca), `b` bomba (arranca con cuenta 6), `k` catapulta (trampolín), `t` trampa, `s` pinchos.
+- **Solucionador nativo**: ahora entiende todo. Catapulta (impulso de 4 pisos y agarre del borde, igual que `_launch`), trampa (se desarma y cae con el jugador), pinchos (se pierde), bomba (la cuenta sólo baja cuando el jugador está en su fila, pisarla la desactiva, al llegar a 0 la torre se derrumba; la cuenta de cada bomba entra en la identidad del estado y acompaña al bloque cuando se empuja). La heurística tiene en cuenta que con catapultas una acción sube hasta 5. `tests/test_native.gd` genera salas con los 8 tipos: 0 diferencias en miles de pasos y **los mismos estados generados que GDScript** en las búsquedas.
+- **Minero** (`--types=P`): a una sala del archivo se le cambia el tipo de uno o dos bloques, o se le agrega un bloque especial; se resuelve con el solucionador exacto y se comprueba que no se resuelva caminando. Después viene la **limpieza de adornos**: cada bloque especial se cambia por uno común y se vuelve a resolver; si el camino más corto no cambia (mismos pasos y mismos agarres) era adorno y se queda común; si no queda ningún especial que importe, la sala se descarta. Así cada especial que figura en una sala **es necesario**: sin él la sala cambia (más fácil, más difícil o imposible). El casillero del archivo ya distingue las salas por los tipos que tienen, así que cada tipo conserva sus mejores salas.
+- `herramientas\excavador.bat` trae `--excavate=0.6 --types=0.3 --excavate-free=1`.
