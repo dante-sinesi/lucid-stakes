@@ -277,37 +277,42 @@ static func _sym(i: int, x: int, z: int) -> Vector2i:
 	return Vector2i(-z, -x)
 
 
+## La sala vista con la simetría `s` (giros y espejos), trasladada a la esquina: {text, blocks}. Con `erase_types` los bloques que no son pesados se tratan como uno solo.
+static func _image(room: Dictionary, s: int, erase_types: bool) -> Dictionary:
+	var mn := Vector2i(1 << 20, 1 << 20)
+	var cells: Array = []
+	for c in room.cells:
+		var q := _sym(s, c.x, c.y)
+		cells.append(q)
+		mn = Vector2i(mini(mn.x, q.x), mini(mn.y, q.y))
+	var en := _sym(s, room.entry.x, room.entry.y)
+	var ex := _sym(s, room.exit.x, room.exit.y)
+	mn = Vector2i(mini(mn.x, en.x), mini(mn.y, en.y))
+	var cs := PackedStringArray()
+	for q in cells:
+		cs.append("%d,%d" % [q.x - mn.x, q.y - mn.y])
+	cs.sort()
+	var bs := PackedStringArray()
+	for c in room.cols:
+		var q := _sym(s, c.x, c.y)
+		var ks: String = room.cols[c]
+		for i in ks.length():
+			var ch: String = ks[i]
+			if erase_types and ch != "h":
+				ch = "b"
+			bs.append("%d,%d,%d,%s" % [q.x - mn.x, i + 1, q.y - mn.y, ch])
+	bs.sort()
+	var text := "h%d;E%d,%d;X%d,%d;C%s;B%s" % [room.h, en.x - mn.x, en.y - mn.y, ex.x - mn.x, ex.y - mn.y, "|".join(cs), "|".join(bs)]
+	return {"text": text, "blocks": bs}
+
+
 ## La sala escrita en forma canónica: se prueban las 8 simetrías (4 giros y sus espejos), se traslada cada una a la esquina y se elige la de texto menor. Una sala, su giro y su espejo dan el mismo texto.
 ## Con `erase_types` los bloques que no son pesados se tratan como uno solo (la "familia"). {text, sym}.
 static func canonical(room: Dictionary, erase_types: bool) -> Dictionary:
 	var best := ""
 	var best_sym := 0
 	for s in 8:
-		var pts: Array = []
-		var mn := Vector2i(1 << 20, 1 << 20)
-		var cells: Array = []
-		for c in room.cells:
-			var q := _sym(s, c.x, c.y)
-			cells.append(q)
-			mn = Vector2i(mini(mn.x, q.x), mini(mn.y, q.y))
-		var en := _sym(s, room.entry.x, room.entry.y)
-		var ex := _sym(s, room.exit.x, room.exit.y)
-		mn = Vector2i(mini(mn.x, en.x), mini(mn.y, en.y))
-		var cs := PackedStringArray()
-		for q in cells:
-			cs.append("%d,%d" % [q.x - mn.x, q.y - mn.y])
-		cs.sort()
-		var bs := PackedStringArray()
-		for c in room.cols:
-			var q := _sym(s, c.x, c.y)
-			var ks: String = room.cols[c]
-			for i in ks.length():
-				var ch: String = ks[i]
-				if erase_types and ch != "h":
-					ch = "b"
-				bs.append("%d,%d,%d,%s" % [q.x - mn.x, i + 1, q.y - mn.y, ch])
-		bs.sort()
-		var text := "h%d;E%d,%d;X%d,%d;C%s;B%s" % [room.h, en.x - mn.x, en.y - mn.y, ex.x - mn.x, ex.y - mn.y, "|".join(cs), "|".join(bs)]
+		var text: String = _image(room, s, erase_types).text
 		if best == "" or text < best:
 			best = text
 			best_sym = s
@@ -362,9 +367,19 @@ static func finalize(room: Dictionary) -> void:
 static func block_set(room: Dictionary) -> Dictionary:
 	var ex := canonical(room, false)
 	var out := {}
-	var parts: PackedStringArray = ex.text.split(";B")[1].split("|", false)
-	for p in parts:
+	for p in _image(room, int(ex.sym), false).blocks:
 		out[p] = true
+	return out
+
+
+## Los conjuntos de bloques de las 8 orientaciones de la sala. Para comparar una sala (todavía sin forma canónica estable, por ejemplo recién editada) contra otras ya canónicas.
+static func block_sets_all(room: Dictionary) -> Array:
+	var out: Array = []
+	for s in 8:
+		var set := {}
+		for p in _image(room, s, false).blocks:
+			set[p] = true
+		out.append(set)
 	return out
 
 
@@ -381,21 +396,31 @@ static func descriptor(room: Dictionary) -> Array:
 	return [float(SHAPES.find(room.shape)), float(room.h), float(o.get("moved", 0)), float(o.get("grabs", 0)), float(o.get("moves", 0)), float(n), float(counts.n), float(counts.h), float(counts.i), float(counts.c)]
 
 
-## Distancia entre dos salas: mezcla la diferencia de bloques (Jaccard sobre la forma canónica) y la de descriptores. 0 = iguales.
-static func distance(a: Dictionary, b: Dictionary, set_a: Dictionary, set_b: Dictionary) -> float:
-	var inter := 0
-	for k in set_a:
-		if set_b.has(k):
-			inter += 1
-	var uni := set_a.size() + set_b.size() - inter
-	var jac := 1.0 - (float(inter) / float(uni) if uni > 0 else 1.0)
+## Distancia entre dos salas: mezcla la diferencia de bloques (Jaccard) y la de descriptores. 0 = iguales. `set_a` es un conjunto de bloques o una lista de conjuntos (las orientaciones de la sala: se toma la que mejor coincide).
+static func distance(a: Dictionary, b: Dictionary, set_a, set_b: Dictionary) -> float:
+	var sets_a: Array = set_a if set_a is Array else [set_a]
+	var jac_best := 0.0
+	for sa in sets_a:
+		var inter := 0
+		for k in sa:
+			if set_b.has(k):
+				inter += 1
+		var uni: int = sa.size() + set_b.size() - inter
+		var jac_s: float = (float(inter) / float(uni)) if uni > 0 else 1.0
+		jac_best = maxf(jac_best, jac_s)
+	var jac := 1.0 - jac_best
 	var da := descriptor(a)
 	var db := descriptor(b)
 	var scale := [1.0, 20.0, 12.0, 12.0, 60.0, 80.0, 80.0, 20.0, 20.0, 20.0]
 	var dd := 0.0
+	var used := 0
+	var skip_metrics: bool = bool(a.opt.get("stale", false)) or bool(b.opt.get("stale", false)) or not a.opt.has("moves") or not b.opt.has("moves")   # (una sala recién editada todavía no tiene métricas)
 	for i in da.size():
+		if skip_metrics and i >= 2 and i <= 4:
+			continue
 		dd += absf(float(da[i]) - float(db[i])) / float(scale[i])
-	dd /= float(da.size())
+		used += 1
+	dd /= float(maxi(used, 1))
 	var shape_pen := 0.0 if a.shape == b.shape else 0.5
 	return clampf(0.65 * jac + 0.35 * dd + shape_pen * 0.3, 0.0, 1.0)
 
