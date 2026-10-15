@@ -784,7 +784,7 @@ func _excavate_step(par: Dictionary) -> void:
 		tried += 1
 		stats.evals = int(stats.evals) + 1
 		var t2 = RoomLib.build_state(room)
-		var res: Dictionary = Solver.solve(t2.clone(), room.h + 1, {"max_states": excavate_cap, "goal_ids": t2.goal_ids, "admissible": true, "max_ms": 12000})
+		var res: Dictionary = Solver.solve(t2.clone(), room.h + 1, {"max_states": excavate_cap, "goal_ids": t2.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": 12000})
 		if res.status != "solved":
 			_fail("excavar_" + str(res.status))
 			continue

@@ -8,7 +8,7 @@ const RoomLib := preload("res://scripts/room_lib.gd")
 const RoomView := preload("res://scripts/room_view.gd")
 const StudioModel := preload("res://scripts/studio_model.gd")
 
-const TOOLS := [["select", "Seleccionar"], ["add", "Agregar bloque arriba"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["move", "Mover a otra columna"]]
+const TOOLS := [["select", "Seleccionar"], ["add", "Agregar bloque arriba"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["move", "Mover a otra columna"], ["add_side", "Agregar pegado a una cara"], ["delete_gap", "Borrar y dejar el hueco"]]
 const SHAPE_NAMES := {"3x3": "Chica (3x3)", "3x5": "Mediana (3x5)", "3x8": "Grande (3x8)", "L": "L", "U": "U"}
 const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["moved", "Bloques distintos"], ["moves", "Pasos"], ["h", "Altura"], ["reciente", "Recientes"]]
 
@@ -700,6 +700,16 @@ func click_at(pos: Vector2) -> void:
 	var st = model.view_state()
 	if st == null:
 		return
+	if tool == "add_side":
+		var f := RoomView.pick_face(cam, pos, st)
+		if f.hit.x == -1000:
+			return
+		var q: Vector3i = f.prev
+		if model.add_block_at(Vector2i(q.x, q.z), q.y, kind_pick):
+			after_edit()
+		else:
+			_set_status(model.message)
+		return
 	var c := RoomView.pick(cam, pos, st)
 	if c.x == -1000:
 		return
@@ -734,6 +744,11 @@ func click_cell(c: Vector3i) -> void:
 				after_edit()
 			else:
 				_set_status(model.message if model.message != "" else "Ahí no hay un bloque para borrar.")
+		"delete_gap":
+			if y >= 1 and model.delete_block(cell, y, true):
+				after_edit()
+			else:
+				_set_status(model.message if model.message != "" else "Ahí no hay un bloque para borrar.")
 		"type":
 			if y >= 1 and model.set_kind(cell, y, kind_pick):
 				after_edit()
@@ -764,7 +779,7 @@ func set_tool(name: String) -> void:
 		if TOOLS[i][0] == name and tool_opt != null:
 			tool_opt.select(i)
 	_refresh_view()
-	var hints := {"select": "Clic en un bloque para seleccionarlo (y marcar sus variantes).", "add": "Clic en una columna (o en el piso): se agrega un bloque arriba.", "delete": "Clic en un bloque para borrarlo.", "type": "Clic en un bloque: cambia al tipo elegido.", "move": "Clic en el bloque que querés mover y después en la columna destino."}
+	var hints := {"select": "Clic en un bloque para seleccionarlo (y marcar sus variantes).", "add": "Clic en una columna (o en el piso): se agrega un bloque arriba.", "delete": "Clic en un bloque para borrarlo.", "type": "Clic en un bloque: cambia al tipo elegido.", "move": "Clic en el bloque que querés mover y después en la columna destino.", "add_side": "Clic en la cara de un bloque: se agrega un bloque pegado a esa cara (puede quedar en el aire si se sostiene de sus vecinos).", "delete_gap": "Clic en un bloque para borrarlo; los de arriba quedan donde están si se sostienen solos."}
 	_set_status(str(hints.get(name, "")))
 
 

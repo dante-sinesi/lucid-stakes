@@ -172,3 +172,19 @@ static func pick(cam: Camera3D, pos: Vector2, st) -> Vector3i:
 			return c
 		t += 0.04
 	return Vector3i(-1000, 0, 0)
+
+
+## Como `pick`, pero devuelve también la celda vacía por la que entró el rayo (la cara que se tocó): {hit, prev}. `hit.x == -1000` si no toca nada.
+static func pick_face(cam: Camera3D, pos: Vector2, st) -> Dictionary:
+	var origin := cam.project_ray_origin(pos)
+	var dir := cam.project_ray_normal(pos)
+	var t := 0.0
+	var prev := Vector3i(-1000, 0, 0)
+	while t < 120.0:
+		var p := origin + dir * t
+		var c := Vector3i(floori(p.x), floori(p.y), floori(p.z))
+		if st.blocks.has(c):
+			return {"hit": c, "prev": prev if prev.x != -1000 else c}
+		prev = c
+		t += 0.04
+	return {"hit": Vector3i(-1000, 0, 0), "prev": Vector3i(-1000, 0, 0)}

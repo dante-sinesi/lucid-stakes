@@ -563,6 +563,7 @@ static Sim buildRoot() {
 // --- heurística ------------------------------------------------------------------------------------------------------------------
 static int heurMode = 1;      // 0 ninguna, 1 admisible (subida + distancia a la meta), 2 producción (la anterior más el déficit de la columna de la meta, que no es admisible)
 static double weightH = 1.0;
+static int unitCost = 1;   // 16 con PLAIN: entre los caminos más cortos gana el de menos empujes, tirones y colgadas (cada acción cuesta 16 y esas 17)
 static bool noGrab = false;
 
 static int goalDeficit(const Sim &s) {
@@ -901,7 +902,11 @@ int main(int argc, char **argv) {
 			in >> h;
 			heurMode = h == "none" ? 0 : (h == "prod" ? 2 : 1);
 		} else if (tok == "WEIGHT") in >> weightH;
-		else if (tok == "MAXNODES") in >> exMaxNodes;
+		else if (tok == "PLAIN") {
+			int v;
+			in >> v;
+			unitCost = v != 0 ? 16 : 1;
+		} else if (tok == "MAXNODES") in >> exMaxNodes;
 		else if (tok == "TOPK") in >> exTopK;
 		else if (tok == "MIND") in >> exMinD;
 		else if (tok == "ENTRY") in >> exEntryX >> exEntryZ;
@@ -979,7 +984,7 @@ int main(int argc, char **argv) {
 		nodes.push_back(n0);
 		best[keyOf(root)] = 0;
 	}
-	int f0 = heuristic(root);
+	int f0 = heuristic(root) * unitCost;
 	buckets.resize(f0 + 64);
 	buckets[f0].push_back(0);
 	long long open = 1, generated = 1, expanded = 0;
@@ -1036,14 +1041,14 @@ int main(int argc, char **argv) {
 				if (!tryAction(n, dd, mode2) || n.lost) continue;
 				Key k = keyOf(n);
 				auto it = best.find(k);
-				int ng = cur.g + 1;
+				int ng = cur.g + unitCost + ((unitCost > 1 && mode2 != 0) ? 1 : 0);
 				if (it != best.end() && it->second <= ng) continue;
 				best[k] = ng;
 				int cfg = cur.cfg;
 				if (wVersion != ver0) cfg = addCfg(n);
 				Node nn = {cfg, n.p, n.hang, ng, idx, (u8)(di * 3 + mode2), n.dirty, n.won};
 				nodes.push_back(nn);
-				int nf = ng + heuristic(n);
+				int nf = ng + heuristic(n) * unitCost;
 				if (nf >= (int)buckets.size()) buckets.resize(nf + 64);
 				buckets[nf].push_back((int)nodes.size() - 1);
 				open++;

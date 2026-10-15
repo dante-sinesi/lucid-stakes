@@ -60,6 +60,20 @@ static func collect(in_dir: String, out_path: String, opts: Dictionary = {}) -> 
 				if src != "":
 					r.opt.source = src
 				res["shortened"] = int(res.get("shortened", 0)) + 1
+		var rerate_min := int(opts.get("rerate", 0))
+		if rerate_min > 0 and int(r.opt.get("grabs", 0)) >= rerate_min:   # (vuelve a calcular el camino más corto, y entre los más cortos el de menos agarres: así se mide la dificultad)
+			var ver := RoomLib.verify_exact(r, int(opts.get("rerate_cap", 1500000)), int(opts.get("rerate_ms", 60000)))
+			if ver.proof == "exacta":
+				var src4: String = str(r.opt.get("source", ""))
+				var g_before := int(r.opt.get("grabs", 0))
+				RoomLib.apply_result(r, ver.path, "exacta", int(ver.moves), int(ver.states))
+				if src4 != "":
+					r.opt.source = src4
+				res["rerated"] = int(res.get("rerated", 0)) + 1
+				res["rerated_grabs_lost"] = int(res.get("rerated_grabs_lost", 0)) + maxi(0, g_before - int(r.opt.grabs))
+			elif ver.proof == "imposible":
+				res.invalid += 1
+				continue
 		if do_prune:   # (saca el relleno que no hace falta: la sala cambia de id)
 			var pr := RoomLib.prune(r, rng, int(opts.get("prune_ms", 20000)))
 			if int(pr.removed) > 0:

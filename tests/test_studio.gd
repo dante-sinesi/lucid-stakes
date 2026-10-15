@@ -238,7 +238,8 @@ func test_ui() -> void:
 	if studio.model.verified:
 		var before_prune: int = studio.model.block_count()
 		studio.do_prune()
-		check(studio.status.text.find("Se sacaron") != -1 and studio.model.block_count() < before_prune, "el botón Podar relleno saca bloques: %s" % studio.status.text)
+		# (el bloque agregado puede servir para un camino más corto: entonces no hay relleno, y el botón lo dice)
+		check((studio.status.text.find("Se sacaron") != -1 and studio.model.block_count() < before_prune) or studio.status.text.find("no hay nada que sacar") != -1, "el botón Podar relleno saca bloques o avisa que no hay: %s" % studio.status.text)
 	studio.do_optimize()
 	check(studio.status.text.find("Camino") != -1, "el botón Mejorar camino responde: %s" % studio.status.text)
 	check(studio.info.text.find("camino") != -1, "el panel muestra el camino")

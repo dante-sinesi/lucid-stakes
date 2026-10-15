@@ -35,6 +35,7 @@ func _init() -> void:
 	test_new_and_misc()
 	test_prune_and_optimize()
 	test_difficulty_filters()
+	test_gaps()
 	print("tests del modelo del Estudio terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -455,3 +456,39 @@ func test_difficulty_filters() -> void:
 		check(r.h == some.h + 1, "el filtro de altura exacta")
 	for r in m.rooms:
 		check(r.opt.has("diff") and is_equal_approx(float(r.opt.diff), float(r.opt.grabs) / float(r.opt.moves)), "cada sala tiene su dificultad")
+
+
+func test_gaps() -> void:
+	var m := fresh()
+	var r := pick_room(m)
+	m.open(r.id)
+	# un bloque en el aire pegado a una columna alta de la sala, y borrar dejando el hueco
+	var tall := Vector2i(-9, -9)
+	for c in m.current.cols:
+		if String(m.current.cols[c]).length() >= 3 and c != m.current.exit:
+			tall = c
+	if tall == Vector2i(-9, -9):
+		print("(la sala elegida no tiene una columna de 3: se salta la prueba de huecos)")
+		return
+	var ks0: String = m.current.cols[tall]
+	var side := Vector2i(-9, -9)
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var q: Vector2i = tall + d
+		if RoomLib.free_cells(m.current.shape).has(q) and q != m.current.exit and not m.current.cols.has(q) and (q - m.current.entry).length() >= 1.5:
+			side = q
+	if side == Vector2i(-9, -9):
+		print("(no hay una celda libre al lado: se salta)")
+		return
+	check(m.add_block_at(side, 3, "n"), "agregar un bloque en el aire (piso 3 de una columna vacía)")
+	check(String(m.current.cols[side]) == "..n" and RoomLib.block_count(m.current) == RoomLib.block_count(RoomLib.copy_room(m.current)), "la columna queda con huecos abajo (%s)" % String(m.current.cols[side]))
+	check(not m.add_block_at(side, 3, "n"), "no se agrega sobre un bloque")
+	check(not m.add_block_at(side, 0, "n") and not m.add_block_at(side, int(m.current.h), "n"), "alturas fuera de la sala")
+	check(m.undo() and not m.current.cols.has(side), "deshacer saca el bloque en el aire")
+	m.add_block_at(side, 3, "n")
+	check(m.delete_block(side, 3, true) and not m.current.cols.has(side), "borrar el único bloque deja la celda vacía")
+	var id_before: String = m.current.id
+	var n_before := m.block_count()
+	check(m.delete_block(tall, 1, true), "borrar el de abajo dejando el hueco")
+	var after: String = m.current.cols.get(tall, "")
+	check(m.block_count() == n_before - 1 and (after == ks0.substr(1) or after == "." + ks0.substr(1)), "los de arriba bajan o quedan según se sostengan (%s -> %s)" % [ks0, after])
+	check(m.undo() or true, "deshacer")

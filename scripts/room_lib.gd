@@ -300,12 +300,12 @@ static func evaluate(room: Dictionary, opts: Dictionary = {}) -> Dictionary:
 	return {"ok": true, "why": "", "path": res.path, "moves": res.moves, "grabs": st.grabs, "moved": st.moved, "states": int(res.states) + int(plain.states)}
 
 
-## Verificador exacto: A* con la heurística demostrable (nunca sobrestima: distancia de subida y distancia al bloque meta), que garantiza el camino más corto cuando termina. {proof: "exacta"|"cota", moves, lower, path, states}.
+## Verificador exacto: A* con la heurística demostrable (nunca sobrestima: distancia de subida y distancia al bloque meta), que garantiza el camino más corto cuando termina (y entre los más cortos, el de menos empujes y tirones: la dificultad se mide con ese). {proof: "exacta"|"cota", moves, lower, path, states}.
 ## Si se acaba el presupuesto, `lower` es una cota inferior de los pasos (todo lo que cuesta menos se miró entero).
 static func verify_exact(room: Dictionary, cap := 60000, max_ms := 60000) -> Dictionary:
 	var h: int = room.h
 	var t = build_state(room)
-	var res: Dictionary = Solver.solve(t, h + 1, {"max_states": cap, "goal_ids": t.goal_ids, "admissible": true, "max_ms": max_ms})
+	var res: Dictionary = Solver.solve(t, h + 1, {"max_states": cap, "goal_ids": t.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": max_ms})
 	if res.status == "solved":
 		return {"proof": "exacta", "moves": res.moves, "lower": res.moves, "path": res.path, "states": res.states}
 	if res.status == "unsolvable":

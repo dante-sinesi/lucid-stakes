@@ -38,7 +38,7 @@ func _score(room: Dictionary, cap: int) -> Dictionary:
 	if RoomLib.validate_structure(room) != "":
 		return {}
 	var t = RoomLib.build_state(room)
-	var res: Dictionary = Solver.solve(t.clone(), room.h + 1, {"max_states": cap, "goal_ids": t.goal_ids, "admissible": true, "max_ms": 25000})
+	var res: Dictionary = Solver.solve(t.clone(), room.h + 1, {"max_states": cap, "goal_ids": t.goal_ids, "admissible": true, "max_ms": 25000, "prefer_plain": true})
 	if res.status != "solved":
 		return {}
 	var plain: Dictionary = Solver.solve(t.clone(), room.h + 1, {"max_states": 60000, "goal_ids": t.goal_ids, "no_grab": true, "max_ms": 8000})

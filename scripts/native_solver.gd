@@ -20,6 +20,8 @@ static func exe_path() -> String:
 		return _exe
 	_looked = true
 	var candidates: Array = []
+	if OS.has_environment("SOLVER_NATIVO_EXE"):   # (para probar otra versión del programa)
+		candidates.append(OS.get_environment("SOLVER_NATIVO_EXE"))
 	var base := OS.get_executable_path().get_base_dir()
 	candidates.append(base.path_join("solver_nativo.exe"))
 	candidates.append(base.path_join("tools").path_join("solver_nativo.exe"))
@@ -104,7 +106,7 @@ static func _run(text: String, tag: String) -> Dictionary:
 
 ## Igual que Solver.solve (mismas opciones: max_states, max_ms, heuristic, no_grab, goal_ids, admissible, h_weight). {} si no se puede usar el nativo.
 static func solve(start, target_y: int, opts: Dictionary, prepared) -> Dictionary:
-	if not available() or opts.get("use_collapse", false) or opts.get("prefer_plain", false):
+	if not available() or opts.get("use_collapse", false):
 		return {}
 	if not supported(prepared) or prepared.goal_block >= 0:
 		return {}
@@ -122,6 +124,7 @@ static func solve(start, target_y: int, opts: Dictionary, prepared) -> Dictionar
 		"HEUR %s" % heur,
 		"WEIGHT %f" % float(opts.get("h_weight", 1.0)),
 		"NOGRAB %d" % (1 if opts.get("no_grab", false) else 0),
+		"PLAIN %d" % (1 if opts.get("prefer_plain", false) else 0),
 	]
 	var out: Dictionary = _run(_write_input(prepared, target_y, goal_ids, header, []), "s")
 	if out.is_empty():

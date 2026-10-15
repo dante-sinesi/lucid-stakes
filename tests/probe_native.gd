@@ -1,6 +1,6 @@
 extends SceneTree
 ## Salas de la biblioteca resueltas con el solucionador nativo y con el de GDScript: coinciden? cuánto más rápido? cuántas de las que GDScript deja en "limit" se resuelven con más presupuesto?
-## Variables: LIB (archivo .jsonl, biblioteca_actualizada/biblioteca.jsonl), N (30), SKIP (0), CAPG (estados de GDScript, 20000), CAPN (estados del nativo, 1500000), ADM (1: admisible).
+## Variables: PLAIN (1: prefer_plain), LIB (archivo .jsonl, biblioteca_actualizada/biblioteca.jsonl), N (30), SKIP (0), CAPG (estados de GDScript, 20000), CAPN (estados del nativo, 1500000), ADM (1: admisible).
 const RoomLib := preload("res://scripts/room_lib.gd")
 const Solver := preload("res://scripts/solver.gd")
 
@@ -34,7 +34,7 @@ func _init() -> void:
 			continue
 		done += 1
 		var t = RoomLib.build_state(r)
-		var o := {"goal_ids": t.goal_ids, "admissible": adm}
+		var o := {"goal_ids": t.goal_ids, "admissible": adm, "prefer_plain": _env("PLAIN", 0) > 0}
 		var a0 := Time.get_ticks_usec()
 		var g: Dictionary = Solver.solve(t.clone(), r.h + 1, o.merged({"max_states": capg, "native": false}))
 		var a1 := Time.get_ticks_usec()

@@ -209,6 +209,30 @@ func add_block(cell: Vector2i, kind: String) -> bool:
 	return true
 
 
+## Agrega un bloque en (`cell`, `y`) aunque no haya columna debajo: se sostiene de sus vecinos (si no, la sala queda inválida y la verificación lo dice).
+func add_block_at(cell: Vector2i, y: int, kind: String) -> bool:
+	if not RoomLib.free_cells(current.shape).has(cell):
+		message = "ahí no puede haber bloques"
+		return false
+	if y < 1 or y > int(current.h) - 1:
+		message = "esa altura no existe en la sala"
+		return false
+	if RoomLib.block_char(current, cell, y) != "" or not KINDS.has(kind):
+		message = "ahí ya hay un bloque" if KINDS.has(kind) else "tipo desconocido"
+		return false
+	_push_undo()
+	var ks := column(cell)
+	while ks.length() < y - 1:
+		ks += RoomLib.GAP
+	if ks.length() >= y:
+		ks = ks.substr(0, y - 1) + kind + ks.substr(y)
+	else:
+		ks += kind
+	current.cols[cell] = ks
+	_edited()
+	return true
+
+
 ## `keep_gap`: los bloques de arriba quedan donde están (si se sostienen de sus vecinos) y la columna tiene un hueco; si no, bajan un piso como si cayeran.
 func delete_block(cell: Vector2i, y: int, keep_gap := false) -> bool:
 	var ks := column(cell)

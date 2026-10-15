@@ -25,6 +25,8 @@ Juego de puzzle de torres de cubos (estilo Catherine) con casino y economía de 
 - `scripts/rooms.gd`: generador vigente de torres por salas con "ideas" (pila de salas alrededor del core). `scripts/tower_gen.gd`: generador anterior y utilidades de cierre.
 - `scripts/main.gd`: escena principal, generación en hilos con prefetch de dos etapas; `RunState.rows_for(etapa)` fija las filas (25 hasta la etapa 5, hasta 41).
 - Biblioteca de salas: `scripts/room_lib.gd` (formato, formas, hashes, verificación), `room_miner.gd` + `miner_main.gd` (minero), `room_pack.gd` (empaquetador), `studio_model.gd` + `studio.gd` + `room_view.gd` (Estudio). Plan: `docs/evaluacion_generador.md`.
+- **Solucionador nativo** (`native/solver_nativo.cpp` → `tools/solver_nativo.exe`, se arma con `native\construir.bat`; g++ de MSYS2): port exacto del solucionador a C++, 400 mil estados/s (GDScript 3 mil). `scripts/native_solver.gd` es el puente: `Solver.solve` lo usa solo con tope ≥ 1000 estados y cae a GDScript si no está o el estado tiene bombas/catapultas/trampas/pinchos. Pruebas: `tests/test_native.gd`, `tests/probe_native.gd` (mismos estados que GDScript). Además el modo **excavar** (`NativeSolver.excavate`): grafo de estados alrededor del camino + distancias exactas hacia atrás; el minero lo usa con `--excavate=P --excavate-free=1` (`herramientas\excavador.bat`). Detalle y resultados en `docs/solucionador_nativo_y_excavacion.md`.
+- Salas con **huecos**: en `cols`, `.` es aire entre bloques (bloques sostenidos por vecinos, sin columna hasta el piso); `RoomLib.validate_structure` exige que sean estables (`is_stable`).
 - Documentos: `docs/diseno.md` (diseño, §41–45 el generador), `docs/plan_generador.md` (bitácora de rondas), `docs/cosas_a_mejorar.md`.
 
 ## Lo aprendido sobre la dificultad de las torres
@@ -32,6 +34,7 @@ Juego de puzzle de torres de cubos (estilo Catherine) con casino y economía de 
 - Los bloques solo se mueven horizontalmente y la altura total se conserva: subir exige **transportar material** hasta la escalera. Ahí está la complejidad (en Catherine, ~15 movimientos de bloque por cada 3 filas).
 - Medir con el solucionador completo. La distancia reversible por BFS sobreestima (hay atajos irreversibles) y las estimaciones cortas engañan.
 - Las salas con una sola técnica se resuelven moviendo 1–2 bloques. Funcionan: `taller` (acertijo de cajas) y `chica` (sala vertical de 4–5 pisos).
+- **Lo que sí sube la dificultad** (15/10): cambiar bloques al azar no pasa de 4–6 empujes aunque el solucionador sea 100 veces más rápido; **excavar** sí (mirar el grafo de estados cerca de una sala y quedarse con la disposición más lejana, verificada con el A* exacto): 13 agarres en 33 pasos con sólo 4 bloques sueltos. La dificultad se mide con `prefer_plain` (entre los caminos más cortos, el de menos agarres). El grafo explorado sobrestima (atajos fuera de lo explorado): toda candidata se verifica con el solucionador exacto. El techo ahora es la heurística admisible (~25 pasos).
 - Pendiente: salas medianas y grandes como módulos encadenados y verificados por separado (la búsqueda al azar en espacios grandes casi nunca da algo resoluble), alturas variables, temas por tamaño.
 
 ## Un mensaje para cloude
