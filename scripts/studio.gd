@@ -9,7 +9,7 @@ const RoomView := preload("res://scripts/room_view.gd")
 const StudioModel := preload("res://scripts/studio_model.gd")
 
 const TOOLS := [["select", "Seleccionar"], ["add", "Agregar bloque arriba"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["move", "Mover a otra columna"]]
-const SORTS := [["moved", "Bloques movidos"], ["moves", "Pasos"], ["h", "Altura"], ["reciente", "Recientes"]]
+const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["moved", "Bloques distintos"], ["moves", "Pasos"], ["h", "Altura"], ["reciente", "Recientes"]]
 
 var model := StudioModel.new()
 var lib_path := ""
@@ -43,7 +43,8 @@ var path_label: Label
 var f_shape: OptionButton
 var f_hlo: SpinBox
 var f_hhi: SpinBox
-var f_moved: SpinBox
+var f_grabs: SpinBox
+var f_diff: SpinBox
 var f_status: OptionButton
 var f_origin: OptionButton
 var f_proof: OptionButton
@@ -162,10 +163,15 @@ func _build_ui() -> void:
 	row2.add_child(f_hlo)
 	row2.add_child(_label("a"))
 	row2.add_child(f_hhi)
-	row2.add_child(_label("Bloques ≥"))
-	f_moved = _spin(0, 30, 0, func(_v): refresh_list())
-	row2.add_child(f_moved)
 	left.add_child(row2)
+	var row2b := HBoxContainer.new()
+	row2b.add_child(_label("Empujes y tirones ≥"))
+	f_grabs = _spin(0, 40, 0, func(_v): refresh_list())
+	row2b.add_child(f_grabs)
+	row2b.add_child(_label("Dificultad ≥ %"))
+	f_diff = _spin(0, 100, 0, func(_v): refresh_list())
+	row2b.add_child(f_diff)
+	left.add_child(row2b)
 	var row3 := HBoxContainer.new()
 	f_status = _option(["(todos)"] + RoomLib.STATUSES, func(_i): refresh_list())
 	f_origin = _option(["(todos)", "minero", "manual", "autor"], func(_i): refresh_list())
@@ -369,7 +375,7 @@ func open_library(path: String) -> int:
 
 
 func filters() -> Dictionary:
-	var f := {"sort": SORTS[f_sort.selected][0], "h_lo": int(f_hlo.value), "h_hi": int(f_hhi.value), "min_moved": int(f_moved.value), "text": f_text.text}
+	var f := {"sort": SORTS[f_sort.selected][0], "h_lo": int(f_hlo.value), "h_hi": int(f_hhi.value), "min_grabs": int(f_grabs.value), "min_diff": f_diff.value / 100.0, "text": f_text.text}
 	if f_shape.selected > 0:
 		f["shape"] = RoomLib.SHAPES[f_shape.selected - 1]
 	if f_status.selected > 0:
@@ -385,7 +391,7 @@ func _row_text(r: Dictionary) -> String:
 	var o: Dictionary = r.opt
 	var mark: String = {"buena": "+", "mala": "x", "mejorable": "?", "nuevo": " "}.get(r.status, " ")
 	var pr: String = {"exacta": "E", "cota": "c", "sin_probar": "·"}.get(str(o.get("proof", "")), "·")
-	return "%s %s %2dp  m%d g%d %3d  %s %s" % [mark, r.shape, r.h, int(o.get("moved", 0)), int(o.get("grabs", 0)), int(o.get("moves", 0)), pr, str(r.id).substr(0, 8)]
+	return "%s %s %2dp  d%3d%%  %2d/%-3d  %s %s" % [mark, r.shape, r.h, roundi(float(o.get("diff", 0.0)) * 100.0), int(o.get("grabs", 0)), int(o.get("moves", 0)), pr, str(r.id).substr(0, 8)]
 
 
 func refresh_list() -> void:
@@ -397,7 +403,7 @@ func refresh_list() -> void:
 	for r in rooms:
 		list.add_item(_row_text(r))
 		_list_ids.append(r.id)
-	count_label.text = "%d de %d salas · m bloques, g agarres, E exacta" % [rooms.size(), model.rooms.size()]
+	count_label.text = "%d de %d salas · d dificultad, empujes y tirones / pasos, E exacta" % [rooms.size(), model.rooms.size()]
 	_select_in_list()
 
 
@@ -486,7 +492,8 @@ func _refresh_info() -> void:
 		var proof := str(o.get("proof", "sin_probar"))
 		var proof_txt: String = {"exacta": "[color=#7fe08a]exacta: es el mínimo[/color]", "cota": "[color=#e0c860]cota: entre %d y %d[/color]" % [int(o.get("lower", 0)), int(o.moves)], "sin_probar": "[color=#e0a060]sin probar el mínimo[/color]"}.get(proof, proof)
 		var label := "camino más corto" if proof == "exacta" else "camino conocido (el mínimo puede ser menor)"
-		t += "%s: [b]%d pasos[/b] · %d agarres · [b]%d bloques distintos[/b] · %s%s\n" % [label, int(o.moves), int(o.get("grabs", 0)), int(o.get("moved", 0)), proof_txt, " · camino plantado" if str(o.get("source", "")) == "plantada" else ""]
+		t += "dificultad [b]%d %%[/b]: %d empujes o tirones de %d pasos · %d bloques distintos\n" % [roundi(float(o.get("diff", 0.0)) * 100.0), int(o.get("grabs", 0)), int(o.moves), int(o.get("moved", 0))]
+		t += "%s (%d pasos) · %s%s\n" % [label, int(o.moves), proof_txt, " · camino plantado" if str(o.get("source", "")) == "plantada" else ""]
 	elif o.has("error"):
 		t += "[color=#ff7070]no se resuelve: %s[/color]\n" % str(o.error)
 	else:
@@ -549,7 +556,7 @@ func _refresh_similar() -> void:
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		row.add_child(tr)
 		var b := Button.new()
-		b.text = "distancia %.2f\n%s · %d pisos · %d bloques\n%s" % [float(s.dist), r.shape, r.h, int(r.opt.get("moved", 0)), str(r.id).substr(0, 8)]
+		b.text = "distancia %.2f\n%s · %d pisos · dificultad %d %%\n%s" % [float(s.dist), r.shape, r.h, roundi(float(r.opt.get("diff", 0.0)) * 100.0), str(r.id).substr(0, 8)]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.focus_mode = Control.FOCUS_NONE
@@ -748,7 +755,7 @@ func after_edit() -> void:
 	sel = {} if sel.is_empty() or String(model.current.cols.get(sel.cell, "")).length() < int(sel.y) else sel
 	var v := model.verify(3000)
 	if v.ok:
-		_set_status("Verificada: %d pasos, %d bloques distintos%s." % [int(v.moves), int(v.moved), " (se conservó el camino)" if v.reused else ""])
+		_set_status("Verificada: %d empujes o tirones de %d pasos (dificultad %d %%)%s." % [int(v.grabs), int(v.moves), roundi(100.0 * float(v.grabs) / maxf(float(v.moves), 1.0)), " (se conservó el camino)" if v.reused else ""])
 	else:
 		_set_status("Sin solución: %s." % str(v.why))
 	refresh_all()

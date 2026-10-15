@@ -23,6 +23,7 @@ func _init() -> void:
 	test_evaluate_and_exact()
 	test_files()
 	test_paths_and_prune()
+	test_difficulty()
 	print("tests de la biblioteca de salas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -322,3 +323,21 @@ func test_paths_and_prune() -> void:
 				cand2.cols[c] = ks.substr(0, ks.length() - 1)
 			check(not RoomLib._prune_ok(cand2, pr.room.path, pr.room.h), "no se puede sacar más: el bloque de arriba de la columna %s hace falta" % str(c))
 	check(int(RoomLib.prune(RoomLib.make_room("3x3", 5)).removed) == 0, "una sala sin camino no se poda")
+
+
+## La dificultad: empujes y tirones sobre el total de pasos.
+func test_difficulty() -> void:
+	check(is_equal_approx(RoomLib.difficulty({"moves": 15, "grabs": 1}), 1.0 / 15.0), "una escalera con un solo empuje de 15 pasos da 7 %")
+	check(is_equal_approx(RoomLib.difficulty({"moves": 10, "grabs": 5}), 0.5), "5 empujes o tirones de 10 pasos dan 50 %")
+	check(RoomLib.difficulty({}) == 0.0 and RoomLib.difficulty({"moves": 0, "grabs": 3}) == 0.0, "sin camino no hay dificultad")
+	check(RoomLib.difficulty({"moves": 4, "grabs": 9}) == 1.0, "nunca pasa de 100 %")
+	var r := sample_room()
+	var ev := RoomLib.evaluate(r, {"cap": 6000})
+	RoomLib.apply_result(r, ev.path, "sin_probar", r.h, 0)
+	check(is_equal_approx(float(r.opt.diff), float(r.opt.grabs) / float(r.opt.moves)), "apply_result guarda la dificultad (%.2f)" % float(r.opt.diff))
+	var back := RoomLib.from_line(RoomLib.to_line(r))
+	check(is_equal_approx(float(back.opt.diff), float(r.opt.diff)), "la dificultad sobrevive al archivo")
+	var legacy := RoomLib.to_dict(r)
+	legacy.opt.erase("diff")
+	var old := RoomLib.from_dict(legacy)
+	check(is_equal_approx(float(old.opt.diff), float(r.opt.diff)), "una sala de una biblioteca vieja (sin dificultad) la calcula al leerse")

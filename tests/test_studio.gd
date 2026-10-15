@@ -59,10 +59,14 @@ func test_ui() -> void:
 	for r in only:
 		check(r.shape == "3x3", "todas las de la lista son 3x3")
 	studio.f_shape.select(0)
-	studio.f_moved.value = 3
+	studio.f_grabs.value = 3
 	studio.refresh_list()
 	check(studio.list.item_count <= n, "el filtro de bloques movidos")
-	studio.f_moved.value = 0
+	studio.f_grabs.value = 0
+	studio.f_diff.value = 99
+	studio.refresh_list()
+	check(studio.list.item_count <= n and studio.filters().min_diff > 0.98, "el filtro de dificultad mínima de la lista")
+	studio.f_diff.value = 0
 	studio.f_text.text = "zzzz"
 	studio.refresh_list()
 	check(studio.list.item_count == 0 and studio.count_label.text.begins_with("0 de"), "una búsqueda sin resultados")
@@ -76,6 +80,8 @@ func test_ui() -> void:
 	check(studio.select_room(r.id) and studio.model.current.id == r.id, "elegir una sala")
 	await _frames(3)
 	check(studio.info.text.find("3x5") != -1 and studio.info.text.find("pasos") != -1, "el panel muestra la sala y su camino")
+	check(studio.info.text.find("dificultad") != -1 and studio.info.text.find("empujes o tirones") != -1, "el panel muestra la dificultad")
+	check(studio._row_text(r).find("%") != -1, "la fila de la lista muestra la dificultad")
 	check(studio.blocks_root.get_child_count() > 10, "la vista dibuja bloques (%d nodos)" % studio.blocks_root.get_child_count())
 	check(studio.similar_box.get_child_count() >= 1, "se listan salas parecidas")
 	# clic con el mouse: el centro de la pantalla toca algún bloque

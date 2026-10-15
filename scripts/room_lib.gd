@@ -248,12 +248,22 @@ static func verify_exact(room: Dictionary, cap := 60000, max_ms := 60000) -> Dic
 	return {"proof": "cota", "moves": -1, "lower": int(res.get("f_reached", 0)), "path": [], "states": res.states}
 
 
+## La dificultad de una sala: qué parte de su camino más corto es empujar o tirar (los agarres) sobre el total de pasos (caminar, trepar, empujar, tirar...). 0 a 1.
+## Una sala que se resuelve subiendo una escalera y moviendo un solo bloque da un número bajo aunque el camino sea largo. Es el único lugar donde se define: cambiar la fórmula es cambiar esta función.
+static func difficulty(opt: Dictionary) -> float:
+	var moves := float(opt.get("moves", 0))
+	if moves <= 0.0:
+		return 0.0
+	return clampf(float(opt.get("grabs", 0)) / moves, 0.0, 1.0)
+
+
 ## Completa y deja coherente la sala con el resultado de una evaluación (camino, métricas, hashes).
 static func apply_result(room: Dictionary, path: Array, proof: String, lower: int, states: int) -> void:
 	path = simplify_path(room, path)
 	var st := path_stats(room, path)
 	room.path = path
 	room.opt = {"moves": path.size(), "lower": lower, "grabs": st.grabs, "moved": st.moved, "proof": proof, "states": states}
+	room.opt["diff"] = difficulty(room.opt)
 	finalize(room)
 
 
@@ -644,6 +654,8 @@ static func from_dict(d: Dictionary) -> Dictionary:
 	room.cols = cols
 	room.path = parse_path(str(d.get("path", "")))
 	var opt: Dictionary = d.get("opt", {})
+	if opt.has("moves") and not opt.has("diff"):   # (bibliotecas hechas antes de la métrica de dificultad)
+		opt["diff"] = difficulty(opt)
 	room.opt = opt
 	room.origin = str(d.get("origin", "minero"))
 	room.parent = str(d.get("parent", ""))

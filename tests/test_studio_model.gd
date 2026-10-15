@@ -34,6 +34,7 @@ func _init() -> void:
 	test_playback()
 	test_new_and_misc()
 	test_prune_and_optimize()
+	test_difficulty_filters()
 	print("tests del modelo del Estudio terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -412,3 +413,25 @@ func test_prune_and_optimize() -> void:
 		check(int(m3.current.opt.moves) == m3.current.path.size(), "las métricas siguen al camino nuevo")
 	var empty := StudioModel.new()
 	check(empty.prune_current() == 0 and empty.optimize_path().after == 0, "sin sala no hay qué podar ni mejorar")
+
+
+## Filtros y orden por dificultad y por empujes y tirones.
+func test_difficulty_filters() -> void:
+	var m := fresh()
+	var by_diff := m.filtered({"sort": "diff"})
+	for i in range(1, by_diff.size()):
+		check(float(by_diff[i - 1].opt.diff) >= float(by_diff[i].opt.diff) - 0.0001, "ordenadas de la más difícil a la más fácil")
+	var by_grabs := m.filtered({"sort": "grabs"})
+	for i in range(1, by_grabs.size()):
+		check(int(by_grabs[i - 1].opt.grabs) >= int(by_grabs[i].opt.grabs), "ordenadas por empujes y tirones")
+	var top: float = by_diff[0].opt.diff
+	var half := m.filtered({"min_diff": top / 2.0})
+	check(half.size() >= 1 and half.size() <= m.rooms.size(), "el filtro de dificultad mínima")
+	for r in half:
+		check(float(r.opt.diff) >= top / 2.0 - 0.0001, "todas cumplen la dificultad mínima")
+	var many := m.filtered({"min_grabs": 4})
+	for r in many:
+		check(int(r.opt.grabs) >= 4, "todas cumplen los empujes y tirones mínimos")
+	check(m.filtered({"min_diff": 1.1}).is_empty(), "una dificultad imposible no deja ninguna")
+	for r in m.rooms:
+		check(r.opt.has("diff") and is_equal_approx(float(r.opt.diff), float(r.opt.grabs) / float(r.opt.moves)), "cada sala tiene su dificultad")

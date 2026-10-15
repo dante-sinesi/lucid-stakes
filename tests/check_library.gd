@@ -26,6 +26,9 @@ func _init() -> void:
 	var per := {}
 	var proofs := {"exacta": 0, "cota": 0, "sin_probar": 0}
 	var moved_hist := {}
+	var diff_hist := {}
+	var diff_sum := [0.0, 0.0]
+	var diff_n := [0, 0]
 	var tall_planted := 0
 	var t0 := Time.get_ticks_msec()
 	for r in rooms:
@@ -43,6 +46,11 @@ func _init() -> void:
 		var st := RoomLib.path_stats(r, r.path)
 		check(int(r.opt.moved) == int(st.moved) and int(r.opt.grabs) == int(st.grabs) and int(r.opt.moves) == r.path.size(), "las métricas coinciden con el camino (%s %d: moved %d/%d grabs %d/%d moves %d/%d)" % [r.shape, r.h, int(r.opt.moved), int(st.moved), int(r.opt.grabs), int(st.grabs), int(r.opt.moves), r.path.size()])
 		check(int(r.opt.moved) >= 1 and int(r.opt.grabs) >= 1, "pide mover bloques")
+		check(r.opt.has("diff") and is_equal_approx(float(r.opt.diff), float(r.opt.grabs) / float(r.opt.moves)), "la dificultad es empujes y tirones sobre pasos")
+		diff_hist[mini(int(float(r.opt.diff) * 10.0), 9)] = int(diff_hist.get(mini(int(float(r.opt.diff) * 10.0), 9), 0)) + 1
+		var hb: int = 0 if r.h <= 8 else 1
+		diff_sum[hb] += float(r.opt.diff)
+		diff_n[hb] += 1
 		var pr := str(r.opt.get("proof", "sin_probar"))
 		proofs[pr] = int(proofs.get(pr, 0)) + 1
 		if pr == "exacta":
@@ -84,6 +92,13 @@ func _init() -> void:
 	for k in mk:
 		mh.append("%d:%d" % [k, moved_hist[k]])
 	print("bloques distintos que hay que mover (cantidad:salas): ", " ".join(mh))
+	var dk: Array = diff_hist.keys()
+	dk.sort()
+	var dh := []
+	for k in dk:
+		dh.append("%d%%-%d%%:%d" % [k * 10, k * 10 + 9, diff_hist[k]])
+	print("dificultad (empujes y tirones / pasos), cantidad de salas por tramo: ", " ".join(dh))
+	print("dificultad promedio: chicas (hasta 8 pisos) %.0f %%, altas %.0f %%" % [100.0 * diff_sum[0] / maxi(diff_n[0], 1), 100.0 * diff_sum[1] / maxi(diff_n[1], 1)])
 	print("pruebas: ", proofs, "  con camino plantado: ", tall_planted)
 	print("familias distintas: %d, patrones distintos: %d" % [fams.size(), pats.size()])
 	print("check_library terminado, fallos: ", fails)

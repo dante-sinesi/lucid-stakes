@@ -60,7 +60,8 @@ func _write() -> bool:
 	return ok
 
 
-## Las salas que cumplen los filtros, ordenadas. filters: shape, min_moved, status, origin, proof, text (prefijo de id, familia o patrón), h_lo, h_hi, sort ("moved", "moves", "h", "reciente").
+## Las salas que cumplen los filtros, ordenadas. filters: shape, min_grabs, min_diff (0 a 1), min_moved, status, origin, proof, text (prefijo de id, familia o patrón), h_lo, h_hi,
+## sort ("diff" = dificultad, "grabs" = empujes y tirones, "moved", "moves", "h", "reciente").
 func filtered(filters: Dictionary = {}) -> Array:
 	var out: Array = []
 	var text := str(filters.get("text", "")).strip_edges().to_lower()
@@ -68,6 +69,8 @@ func filtered(filters: Dictionary = {}) -> Array:
 		if filters.get("shape", "") != "" and r.shape != filters.shape:
 			continue
 		if int(r.opt.get("moved", 0)) < int(filters.get("min_moved", 0)):
+			continue
+		if int(r.opt.get("grabs", 0)) < int(filters.get("min_grabs", 0)) or float(r.opt.get("diff", 0.0)) < float(filters.get("min_diff", 0.0)) - 0.0001:
 			continue
 		if filters.get("status", "") != "" and r.status != filters.status:
 			continue
@@ -80,9 +83,19 @@ func filtered(filters: Dictionary = {}) -> Array:
 		if text != "" and not (str(r.id).begins_with(text) or str(r.family).begins_with(text) or str(r.pattern).begins_with(text)):
 			continue
 		out.append(r)
-	var key := str(filters.get("sort", "moved"))
+	var key := str(filters.get("sort", "diff"))
 	out.sort_custom(func(a, b):
 		match key:
+			"diff":
+				var da := float(a.opt.get("diff", 0.0))
+				var db := float(b.opt.get("diff", 0.0))
+				if absf(da - db) > 0.0001:
+					return da > db
+				return int(a.opt.get("grabs", 0)) > int(b.opt.get("grabs", 0)) or (int(a.opt.get("grabs", 0)) == int(b.opt.get("grabs", 0)) and str(a.id) < str(b.id))
+			"grabs":
+				if int(a.opt.get("grabs", 0)) != int(b.opt.get("grabs", 0)):
+					return int(a.opt.get("grabs", 0)) > int(b.opt.get("grabs", 0))
+				return float(a.opt.get("diff", 0.0)) > float(b.opt.get("diff", 0.0))
 			"moves":
 				return int(a.opt.get("moves", 0)) > int(b.opt.get("moves", 0))
 			"h":

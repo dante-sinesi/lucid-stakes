@@ -83,7 +83,7 @@ static func group_key(room: Dictionary) -> String:
 
 
 static func cell_key(room: Dictionary) -> String:
-	return "%s|%d|%d|%s" % [room.shape, room.h, int(room.opt.get("moved", 0)), special_types(room)]
+	return "%s|%d|%d|%d|%s" % [room.shape, room.h, mini(int(room.opt.get("grabs", 0)), 24), int(clampf(float(room.opt.get("diff", 0.0)), 0.0, 0.99) * 10.0), special_types(room)]
 
 
 func archive_size() -> int:
@@ -122,9 +122,10 @@ func _store(room: Dictionary) -> void:
 	by_group[g].append(room)
 
 
+## Entre las salas de un mismo casillero se prefiere la más difícil (más empujes y tirones sobre el total de pasos).
 func _score(room: Dictionary) -> float:
 	var o: Dictionary = room.opt
-	return float(o.get("moves", 0)) + 0.01 * float(o.get("grabs", 0))
+	return float(o.get("diff", 0.0)) * 100.0 + float(o.get("grabs", 0)) + 0.01 * float(o.get("moved", 0))
 
 
 ## Entra la sala al archivo si el casillero tiene lugar o si es mejor que la peor de él. Escribe la línea en el .jsonl. true si entró.
@@ -710,8 +711,8 @@ func pick_parent(shape: String, h: int) -> Dictionary:
 	var total := 0.0
 	var weights: Array = []
 	for k in keys:
-		var moved := float(int(archive[k][0].opt.get("moved", 1)))
-		var w := pow(1.0 + moved, 1.5)   # (los casilleros de más bloques movidos, que son los que faltan, se eligen más)
+		var o0: Dictionary = archive[k][0].opt
+		var w := pow(1.0 + float(o0.get("grabs", 1)), 1.5) * (0.25 + float(o0.get("diff", 0.0)))   # (los casilleros de más agarres y más dificultad, que son los que faltan, se eligen más)
 		weights.append(w)
 		total += w
 	var roll := rng.randf() * total
@@ -799,17 +800,21 @@ func summary() -> Dictionary:
 	var secs: float = maxf((Time.get_ticks_msec() - started_ms) / 1000.0, 0.001)
 	var per_shape := {}
 	var max_moved := {}
+	var max_grabs := {}
+	var max_diff := {}
 	var proofs := {"exacta": 0, "cota": 0, "sin_probar": 0}
 	for r in all_rooms():
 		per_shape[r.shape] = int(per_shape.get(r.shape, 0)) + 1
 		max_moved[r.shape] = maxi(int(max_moved.get(r.shape, 0)), int(r.opt.get("moved", 0)))
+		max_grabs[r.shape] = maxi(int(max_grabs.get(r.shape, 0)), int(r.opt.get("grabs", 0)))
+		max_diff[r.shape] = maxf(float(max_diff.get(r.shape, 0.0)), snappedf(float(r.opt.get("diff", 0.0)), 0.01))
 		proofs[str(r.opt.get("proof", "sin_probar"))] = int(proofs.get(str(r.opt.get("proof", "sin_probar")), 0)) + 1
 	var covered := {}
 	for g in by_group:
 		if not by_group[g].is_empty():
 			covered[g] = true
 	return {"id": miner_id, "secs": secs, "evals_per_s": float(stats.evals) / secs, "stats": stats, "archive": archive_size(), "cells": archive.size(), "groups_covered": covered.size(), "groups_total": combos_list.size(),
-		"per_shape": per_shape, "max_moved_by_shape": max_moved, "proofs": proofs}
+		"per_shape": per_shape, "max_moved_by_shape": max_moved, "max_grabs_by_shape": max_grabs, "max_diff_by_shape": max_diff, "proofs": proofs}
 
 
 func write_stats() -> void:
