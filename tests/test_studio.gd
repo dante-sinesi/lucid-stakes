@@ -224,6 +224,14 @@ func test_ui() -> void:
 	var rooms_before: int = studio.model.rooms.size()
 	studio.do_create_variants()
 	check(studio.model.rooms.size() >= rooms_before, "crear variantes no pierde salas")
+	# ver solo la sala y desde atrás del personaje
+	studio.set_view_only(true)
+	check(not studio.left_panel.visible and not studio.right_panel.visible and studio.show_panels_btn.visible, "ver solo la sala oculta los paneles")
+	studio.view_from_behind()
+	var rr: Dictionary = studio.model.current
+	check(absf(studio.yaw - rad_to_deg(atan2(-float(rr.exit.x - rr.entry.x), -float(rr.exit.y - rr.entry.y)))) < 0.01, "la cámara queda detrás de la llegada")
+	studio.set_view_only(false)
+	check(studio.left_panel.visible and studio.right_panel.visible and not studio.show_panels_btn.visible, "se vuelven a mostrar los paneles")
 	# podar el relleno y mejorar el camino con los botones
 	studio.model.revert()
 	studio.select_room(studio.model.rooms[0].id)

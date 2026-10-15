@@ -31,6 +31,11 @@ var _suppress := false
 var playing := false      # (Timer.is_stopped() da verdadero durante el aviso de un temporizador repetido: se lleva la cuenta aparte)
 var _user_cam := false   # el usuario movió la cámara: no se reencuadra sola al cambiar el tamaño
 
+var status_row: Control
+var left_panel: Control
+var right_panel: Control
+var view_only := false
+var show_panels_btn: Button
 var vp_container: SubViewportContainer
 var viewport: SubViewport
 var world: Node3D
@@ -138,6 +143,7 @@ func _build_ui() -> void:
 	var left := VBoxContainer.new()
 	left.custom_minimum_size = Vector2(310, 0)
 	root.add_child(left)
+	left_panel = left
 	var title := _label("Estudio de salas")
 	title.add_theme_font_size_override("font_size", 18)
 	left.add_child(title)
@@ -226,8 +232,15 @@ func _build_ui() -> void:
 	status.custom_minimum_size = Vector2(0, 26)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mid.add_child(status)
+	var cam_row := HBoxContainer.new()
+	cam_row.add_child(_button("Ver solo la sala (Tab)", func(): set_view_only(true)))
+	cam_row.add_child(_button("Desde atrás del personaje", view_from_behind))
+	cam_row.add_child(_button("Vista en diagonal", view_default))
+	mid.add_child(cam_row)
+	status_row = cam_row
 	# --- derecha: la sala abierta
 	var scroll := ScrollContainer.new()
+	right_panel = scroll
 	scroll.custom_minimum_size = Vector2(370, 0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
@@ -329,6 +342,48 @@ func _build_ui() -> void:
 	confirm_delete.dialog_text = "¿Eliminar esta sala de la biblioteca? No se puede deshacer."
 	confirm_delete.confirmed.connect(do_delete)
 	add_child(confirm_delete)
+
+	show_panels_btn = _button("Mostrar paneles (Tab)", func(): set_view_only(false))
+	show_panels_btn.visible = false
+	show_panels_btn.position = Vector2(8, 8)
+	add_child(show_panels_btn)
+
+
+## Sólo la sala a pantalla completa (sin la lista ni los paneles); Tab alterna.
+func set_view_only(on: bool) -> void:
+	view_only = on
+	if left_panel != null:
+		left_panel.visible = not on
+	if right_panel != null:
+		right_panel.visible = not on
+	if status != null:
+		status.visible = not on
+	if status_row != null:
+		status_row.visible = not on
+	if show_panels_btn != null:
+		show_panels_btn.visible = on
+	_user_cam = false
+	_frame_camera()
+
+
+## La cámara detrás del personaje (de la llegada), mirando hacia la salida.
+func view_from_behind() -> void:
+	if not model.has_current():
+		return
+	var r: Dictionary = model.current
+	var dx := float(r.exit.x - r.entry.x)
+	var dz := float(r.exit.y - r.entry.y)
+	yaw = rad_to_deg(atan2(-dx, -dz))
+	pitch = 28.0
+	_user_cam = false
+	_frame_camera()
+
+
+func view_default() -> void:
+	yaw = 35.0
+	pitch = 38.0
+	_user_cam = false
+	_frame_camera()
 
 
 func _build_world() -> void:
@@ -1003,7 +1058,9 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 	var k := ev as InputEventKey
 	if k == null or not k.pressed or k.echo:
 		return
-	if k.ctrl_pressed and k.keycode == KEY_Z:
+	if k.keycode == KEY_TAB:
+		set_view_only(not view_only)
+	elif k.ctrl_pressed and k.keycode == KEY_Z:
 		do_undo()
 	elif k.ctrl_pressed and k.keycode == KEY_Y:
 		do_redo()

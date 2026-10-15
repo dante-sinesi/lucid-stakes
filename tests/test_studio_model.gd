@@ -134,7 +134,7 @@ func test_edit() -> void:
 	m3.open(pick_room(m3).id)
 	var cell3 := Vector2i(-9, -9)
 	for c in m3.current.cols:
-		if String(m3.current.cols[c]).length() >= 2:
+		if String(m3.current.cols[c]).length() >= 2 and String(m3.current.cols[c]).find(RoomLib.GAP) == -1:
 			cell3 = c
 	if cell3 == Vector2i(-9, -9):
 		for c in RoomLib.free_cells(m3.current.shape):
