@@ -182,3 +182,50 @@ static func sim(s, target_y: int, goal_ids: Dictionary, actions: Array) -> Array
 				row.append(int(parts[i]))
 			rows.append(row)
 	return rows
+
+
+## Excavar: explora el grafo de estados cerca de la sala (`t` es el estado de la sala: RoomLib.build_state) y devuelve las salas candidatas más difíciles que se alcanzan desde ella.
+## {status, nodes, edges, wins, maxd, maxg, cands: [{d, g, blocks: [[x, y, z, tipo], ...]}]}; d y g son los pasos y los agarres exactos (dentro de lo explorado) que faltan desde ese candidato.
+## {} si el nativo no está o la sala usa algo que no entiende.
+static func excavate(t, entry: Vector2i, exit: Vector2i, path_text := "", max_nodes := 1000000, top_k := 20, min_d := 0, columns_only := true, max_y := 19) -> Dictionary:
+	if not available():
+		return {}
+	var s = t.clone()
+	s.lazy_settle = true
+	if not supported(s):
+		return {}
+	var header: Array = ["MODE excavate", "MAXNODES %d" % max_nodes, "TOPK %d" % top_k, "MIND %d" % min_d, "ENTRY %d %d" % [entry.x, entry.y], "EXIT %d %d" % [exit.x, exit.y], "HEUR none", "COLUMNS %d" % (1 if columns_only else 0), "MAXY %d" % max_y]
+	if path_text != "":
+		header.append("PATH " + path_text)
+	var out: Dictionary = _run(_write_input(s, t.goal_y, t.goal_ids, header, []), "x")
+	if out.is_empty():
+		return {}
+	var res := {"status": "", "nodes": 0, "edges": 0, "wins": 0, "maxd": 0, "maxg": 0, "ms": 0, "cands": []}
+	for line in out.text.split("\n"):
+		var parts: PackedStringArray = line.strip_edges().split(" ")
+		if parts.size() < 2:
+			continue
+		match parts[0]:
+			"STATUS":
+				res.status = parts[1]
+			"NODES":
+				res.nodes = int(parts[1])
+			"EDGES":
+				res.edges = int(parts[1])
+			"WINS":
+				res.wins = int(parts[1])
+			"MAXD":
+				res.maxd = int(parts[1])
+			"MAXG":
+				res.maxg = int(parts[1])
+			"MS":
+				res.ms = int(parts[1])
+			"CAND":
+				var blocks: Array = []
+				if parts.size() >= 4:
+					for b in parts[3].split(";"):
+						var f: PackedStringArray = b.split(",")
+						if f.size() == 4:
+							blocks.append([int(f[0]), int(f[1]), int(f[2]), int(f[3])])
+				res.cands.append({"d": int(parts[1]), "g": int(parts[2]), "blocks": blocks})
+	return res

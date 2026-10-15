@@ -8,6 +8,7 @@ extends RefCounted
 const RoomLib := preload("res://scripts/room_lib.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Solver := preload("res://scripts/solver.gd")
+const NativeSolver := preload("res://scripts/native_solver.gd")
 
 const SPECIAL := ["i", "c"]
 
@@ -31,6 +32,12 @@ var prune_on := true         # sacar el relleno de cada sala que entra al archiv
 var prune_ms := 20000
 var polish_max_path := 90   # el tramo final del camino se mejora con el verificador exacto en salas con caminos de hasta esta cantidad de pasos
 var cap_mult := 1.0         # multiplica el tope de estados y de tiempo con el que se resuelve cada sala (más tope = salas que piden más empujes, pero cada evaluación tarda más)
+var excavate_p := 0.0       # probabilidad de dedicar el paso a excavar una sala del archivo (ver _excavate_step; hace falta el solucionador nativo)
+var excavate_nodes := 1000000   # estados que explora cada excavación
+var excavate_top := 60
+var excavate_free := false    # las salas excavadas pueden tener bloques sin columna hasta el piso (sostenidos por sus vecinos)
+var excavate_cap := 500000    # estados que se le dan al solucionador exacto por candidato
+var excavate_eval := 20     # candidatos de cada excavación que se evalúan con el solucionador exacto
 var last_why := ""         # por qué falló el último desorden
 var tall_h := 9            # desde esta altura el solucionador ya no llega a resolver salas de partida: se construyen con la solución plantada (ver scramble_from)
 var combos_list: Array = []
@@ -53,6 +60,11 @@ func _init(cfg: Dictionary = {}) -> void:
 	write_lines = bool(cfg.get("write", true))
 	prune_on = bool(cfg.get("prune", prune_on))
 	cap_mult = float(cfg.get("cap_mult", cap_mult))
+	excavate_p = float(cfg.get("excavate", excavate_p))
+	excavate_nodes = int(cfg.get("excavate_nodes", excavate_nodes))
+	excavate_eval = int(cfg.get("excavate_eval", excavate_eval))
+	excavate_cap = int(cfg.get("excavate_cap", excavate_cap))
+	excavate_free = bool(cfg.get("excavate_free", excavate_free))
 	rng.seed = int(cfg.get("seed", 1 + miner_id * 7919))
 	var shapes: Array = cfg.get("shapes", RoomLib.SHAPES)
 	var h_lo := int(cfg.get("h_lo", RoomLib.MIN_H))
@@ -731,6 +743,67 @@ func pick_combo() -> Array:
 	return combos_list[rng.randi_range(0, combos_list.size() - 1)]
 
 
+
+## Excavar: el solucionador nativo explora el grafo de estados alrededor de la sala (y de su camino) y propone las disposiciones de bloques más difíciles que se alcanzan desde ella;
+## cada una se resuelve con el solucionador exacto (camino más corto garantizado) y entra al archivo si no se puede resolver caminando. Es el motor que sube la cantidad de empujes y tirones.
+func _excavate_step(par: Dictionary) -> void:
+	if par.is_empty() or par.path.is_empty():
+		_fail("excavar_sin_camino")
+		return
+	stats.excavations = int(stats.get("excavations", 0)) + 1
+	var t = RoomLib.build_state(par)
+	var ex := NativeSolver.excavate(t, Vector2i(par.entry.x, par.entry.y), par.exit, RoomLib.path_string(par.path), excavate_nodes, excavate_top, 0, not excavate_free, par.h - 1)
+	if ex.is_empty():
+		_fail("excavar_nativo")
+		return
+	var tried := 0
+	var order: Array = []   # los primeros del ranking y, para variar, otros al azar (el ranking del grafo explorado sobrestima: muchos tienen atajos que sólo ve el solucionador exacto)
+	for i in ex.cands.size():
+		order.append(i)
+	var head_n := mini(excavate_eval / 3, order.size())
+	var tail: Array = order.slice(head_n)
+	for i in range(tail.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp = tail[i]
+		tail[i] = tail[j]
+		tail[j] = tmp
+	order = order.slice(0, head_n) + tail
+	for oi in order:
+		var cd: Dictionary = ex.cands[oi]
+		if tried >= excavate_eval:
+			break
+		var room := RoomLib.room_from_layout(par, cd.blocks)
+		if RoomLib.validate_structure(room) != "":
+			continue
+		RoomLib.finalize(room)
+		if seen.has(room.id):
+			stats.dup = int(stats.dup) + 1
+			continue
+		seen[room.id] = true
+		tried += 1
+		stats.evals = int(stats.evals) + 1
+		var t2 = RoomLib.build_state(room)
+		var res: Dictionary = Solver.solve(t2.clone(), room.h + 1, {"max_states": excavate_cap, "goal_ids": t2.goal_ids, "admissible": true, "max_ms": 12000})
+		if res.status != "solved":
+			_fail("excavar_" + str(res.status))
+			continue
+		var plain: Dictionary = Solver.solve(t2, room.h + 1, {"max_states": 60000, "goal_ids": t2.goal_ids, "no_grab": true, "max_ms": 8000})
+		if plain.status != "unsolvable":
+			_fail("atajo" if plain.status == "solved" else "sin_prueba_de_atajo")
+			continue
+		var st := RoomLib.path_stats(room, res.path)
+		if int(st.moved) < 1:
+			_fail("sin_bloques")
+			continue
+		stats.valid = int(stats.valid) + 1
+		RoomLib.apply_result(room, res.path, "exacta", int(res.moves), int(res.states))
+		room.opt.source = "excavada"
+		room.origin = "minero"
+		room.stamp = int(Time.get_unix_time_from_system())
+		if insert(room):
+			stats.inserted = int(stats.inserted) + 1
+			stats.excavated = int(stats.get("excavated", 0)) + 1
+
 ## Un paso: o se verifica una sala, o se crea y evalúa una nueva.
 func step() -> void:
 	if combos_list.is_empty():
@@ -741,6 +814,9 @@ func step() -> void:
 	var list: Array = by_group.get("%s|%d" % [combo[0], combo[1]], [])
 	var r := rng.randf()
 	var tall: bool = combo[1] >= tall_h
+	if excavate_p > 0.0 and not list.is_empty() and rng.randf() < excavate_p and NativeSolver.available():
+		_excavate_step(pick_parent(combo[0], combo[1]))
+		return
 	if list.size() < 3 or r < seed_p:
 		stats.seeds = int(stats.seeds) + 1
 		var seed_room := make_tall_seed(combo[0], combo[1]) if tall else make_seed(combo[0], combo[1])

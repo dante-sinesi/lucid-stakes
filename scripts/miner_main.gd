@@ -2,7 +2,7 @@ extends Node
 ## Escena del minero de salas (se deja corriendo 24/7). Uso (después de `--` van los argumentos del minero):
 ##   Godot --headless --path . res://scenes/miner.tscn -- --id=1 --out=C:/biblioteca --minutes=0
 ## Argumentos: --id=N (cada copia en marcha usa uno distinto), --out=CARPETA (donde se escribe miner_N.jsonl y stats_N.json; por defecto user://biblioteca),
-## --minutes=M (0 = para siempre), --seed=S, --shapes=3x3,3x5,3x8,L,U, --hlo=5, --hhi=20, --keep=6, --verify=0.1, --max-evals=N, --cap-mult=1 (multiplica el tope de estados y de tiempo del solucionador).
+## --minutes=M (0 = para siempre), --seed=S, --shapes=3x3,3x5,3x8,L,U, --hlo=5, --hhi=20, --keep=6, --verify=0.1, --max-evals=N, --cap-mult=1 (multiplica el tope de estados y de tiempo del solucionador), --excavate=P (probabilidad de excavar una sala del archivo con el solucionador nativo en cada paso; 0 = nunca), --excavate-nodes=N, --excavate-eval=N, --excavate-free=1 (las salas excavadas pueden tener bloques sin columna hasta el piso).
 ## Se detiene sola con un archivo llamado STOP en la carpeta de salida. Si se corta (luz, error), se retoma desde su propio .jsonl.
 const RoomMiner := preload("res://scripts/room_miner.gd")
 const RoomLib := preload("res://scripts/room_lib.gd")
@@ -40,6 +40,14 @@ static func parse_args(args: PackedStringArray) -> Dictionary:
 				cfg.max_evals = int(v)
 			"cap-mult":
 				cfg.cap_mult = float(v)
+			"excavate":
+				cfg.excavate = float(v)
+			"excavate-nodes":
+				cfg.excavate_nodes = int(v)
+			"excavate-eval":
+				cfg.excavate_eval = int(v)
+			"excavate-free":
+				cfg.excavate_free = int(v) != 0
 	return cfg
 
 
@@ -73,7 +81,7 @@ func _ready() -> void:
 			last_report = Time.get_ticks_msec()
 			miner.write_stats()
 			var s := miner.summary()
-			print("[minero %d] %.1f evaluaciones/s, %d salas en el archivo, %d/%d combinaciones cubiertas, pruebas %s, correcciones %d" % [miner.miner_id, s.evals_per_s, s.archive, s.groups_covered, s.groups_total, str(s.proofs), int(miner.stats.corrections)])
+			print("[minero %d] %.1f evaluaciones/s, %d salas en el archivo, %d/%d combinaciones cubiertas, pruebas %s, correcciones %d, excavaciones %d, máximo de agarres %s" % [miner.miner_id, s.evals_per_s, s.archive, s.groups_covered, s.groups_total, str(s.proofs), int(miner.stats.corrections), int(miner.stats.get("excavations", 0)), str(s.max_grabs_by_shape)])
 	miner.write_stats()
 	var fin := miner.summary()
 	print("[minero %d] fin: %d evaluaciones, %d salas en el archivo, pruebas %s" % [miner.miner_id, int(miner.stats.evals), fin.archive, str(fin.proofs)])

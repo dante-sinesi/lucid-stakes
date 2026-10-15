@@ -178,7 +178,7 @@ func _edited() -> void:
 		var parts: PackedStringArray = str(k).split(",")
 		if parts.size() == 3:
 			var c := Vector2i(int(parts[0]), int(parts[2]))
-			if current.cols.has(c) and String(current.cols[c]).length() >= int(parts[1]):
+			if RoomLib.block_char(current, c, int(parts[1])) != "":
 				slots[k] = current.slots[k]
 	current.slots = slots
 	current.variants = []
@@ -209,24 +209,38 @@ func add_block(cell: Vector2i, kind: String) -> bool:
 	return true
 
 
-func delete_block(cell: Vector2i, y: int) -> bool:
+## `keep_gap`: los bloques de arriba quedan donde están (si se sostienen de sus vecinos) y la columna tiene un hueco; si no, bajan un piso como si cayeran.
+func delete_block(cell: Vector2i, y: int, keep_gap := false) -> bool:
 	var ks := column(cell)
-	if y < 1 or y > ks.length():
+	if RoomLib.block_char(current, cell, y) == "":
 		message = "no hay un bloque ahí"
 		return false
 	_push_undo()
-	var nk := ks.substr(0, y - 1) + ks.substr(y)
-	if nk == "":
-		current.cols.erase(cell)
-	else:
-		current.cols[cell] = nk
+	_remove_at(cell, y, keep_gap)
 	_edited()
 	return true
 
 
+## Saca el bloque de (`cell`, `y`); con `keep_gap` los de arriba quedan donde están si se sostienen de sus vecinos (la columna queda con un hueco), si no bajan un piso.
+func _remove_at(cell: Vector2i, y: int, keep_gap := false) -> void:
+	var ks := column(cell)
+	var with_gap := RoomLib._trim_gaps(ks.substr(0, y - 1) + RoomLib.GAP + ks.substr(y))
+	if keep_gap and y < ks.length():
+		var probe := RoomLib.copy_room(current)
+		probe.cols[cell] = with_gap
+		if RoomLib.is_stable(probe):
+			current.cols[cell] = with_gap
+			return
+	var nk := RoomLib._trim_gaps(ks.substr(0, y - 1) + ks.substr(y))
+	if nk == "":
+		current.cols.erase(cell)
+	else:
+		current.cols[cell] = nk
+
+
 func set_kind(cell: Vector2i, y: int, kind: String) -> bool:
 	var ks := column(cell)
-	if y < 1 or y > ks.length() or not KINDS.has(kind):
+	if RoomLib.block_char(current, cell, y) == "" or not KINDS.has(kind):
 		message = "no hay un bloque ahí"
 		return false
 	if ks[y - 1] == kind:
@@ -243,7 +257,7 @@ func move_block(src: Vector2i, y: int, dst: Vector2i) -> bool:
 		message = "es la misma columna"
 		return false
 	var ks := column(src)
-	if y < 1 or y > ks.length():
+	if RoomLib.block_char(current, src, y) == "":
 		message = "no hay un bloque ahí"
 		return false
 	var err := can_add(dst)
@@ -252,11 +266,7 @@ func move_block(src: Vector2i, y: int, dst: Vector2i) -> bool:
 		return false
 	_push_undo()
 	var kind := ks[y - 1]
-	var nk := ks.substr(0, y - 1) + ks.substr(y)
-	if nk == "":
-		current.cols.erase(src)
-	else:
-		current.cols[src] = nk
+	_remove_at(src, y)
 	current.cols[dst] = column(dst) + kind
 	_edited()
 	return true
@@ -301,10 +311,7 @@ func revert() -> void:
 # --- verificación ---------------------------------------------------------------------------------------------------------------
 
 func block_count() -> int:
-	var n := 0
-	for c in current.cols:
-		n += String(current.cols[c]).length()
-	return n
+	return RoomLib.block_count(current)
 
 
 ## Vuelve a verificar la sala con el solucionador. Si el camino que tenía todavía la resuelve (y no se puede resolver caminando) se lo conserva; si no, se busca uno.

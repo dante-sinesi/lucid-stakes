@@ -27,6 +27,8 @@ const KIND_OF_CHAR := {"n": K.NORMAL, "h": K.HEAVY, "i": K.ICE, "c": K.CRACKED}
 const CHAR_OF_KIND := {K.NORMAL: "n", K.HEAVY: "h", K.ICE: "i", K.CRACKED: "c"}
 const DIR_CHARS := {Vector3i(1, 0, 0): "E", Vector3i(-1, 0, 0): "W", Vector3i(0, 0, 1): "S", Vector3i(0, 0, -1): "N"}
 const MODE_CHARS := {TowerLogic.Mode.MOVE: "m", TowerLogic.Mode.GRAB: "g", TowerLogic.Mode.HANG: "h"}
+## En una columna, un hueco (aire) entre bloques: permite salas con bloques sostenidos por sus vecinos de costado, sin columna hasta el piso.
+const GAP := "."
 const STATUSES := ["nuevo", "buena", "mala", "mejorable"]
 
 static var _shape_cache := {}
@@ -140,13 +142,75 @@ static func validate_structure(room: Dictionary) -> String:
 		var ks: String = room.cols[c]
 		if ks.length() > h - 1:
 			return "una columna es más alta que el pilar"
+		if ks.ends_with(GAP):
+			return "la columna termina en un hueco"
 		for i in ks.length():
-			if not KIND_OF_CHAR.has(ks[i]):
+			if ks[i] != GAP and not KIND_OF_CHAR.has(ks[i]):
 				return "tipo de bloque desconocido"
+	if has_gaps(room) and not is_stable(room):
+		return "hay bloques sin apoyo"
 	return ""
 
 
+static func has_gaps(room: Dictionary) -> bool:
+	for c in room.cols:
+		if String(room.cols[c]).contains(GAP):
+			return true
+	return false
+
+
+## ¿Ningún bloque de la sala cae al empezar? (los que no están sobre una columna tienen que sostenerse de sus vecinos)
+static func is_stable(room: Dictionary) -> bool:
+	var t = build_state(room)
+	var before: Dictionary = t.blocks.duplicate()
+	t._settle()
+	return before.size() == t.blocks.size() and before.hash() == t.blocks.hash()
+
+
+## Cantidad de bloques sueltos de la sala (sin contar el piso ni el pilar de salida).
+static func block_count(room: Dictionary) -> int:
+	var n := 0
+	for c in room.cols:
+		var ks: String = room.cols[c]
+		for i in ks.length():
+			if ks[i] != GAP:
+				n += 1
+	return n
+
+
+## El carácter del bloque en la columna `cell` a la altura `y` (1 = sobre el piso): "" si no hay.
+static func block_char(room: Dictionary, cell: Vector2i, y: int) -> String:
+	var ks: String = room.cols.get(cell, "")
+	if y < 1 or y > ks.length() or ks[y - 1] == GAP:
+		return ""
+	return ks[y - 1]
+
+
 # --- simulador ------------------------------------------------------------------------------------------------------------
+
+
+## La sala que resulta de poner los bloques `blocks` ([x, y, z, tipo], como los devuelve NativeSolver.excavate) en la arena de `base`: mismas formas, otras columnas (los huecos entre bloques quedan como GAP).
+static func room_from_layout(base: Dictionary, blocks: Array) -> Dictionary:
+	var r := copy_room(base)
+	r.cols = {}
+	r.path = []
+	r.opt = {}
+	r.parent = str(base.get("id", ""))
+	var by_col := {}
+	for b in blocks:
+		var c := Vector2i(int(b[0]), int(b[2]))
+		if not by_col.has(c):
+			by_col[c] = {}
+		by_col[c][int(b[1])] = String(CHAR_OF_KIND.get(int(b[3]), "n"))
+	for c in by_col:
+		var top := 0
+		for y in by_col[c]:
+			top = maxi(top, int(y))
+		var s := ""
+		for y in range(1, top + 1):
+			s += String(by_col[c][y]) if by_col[c].has(y) else GAP
+		r.cols[c] = s
+	return r
 
 ## La sala sola, en una torre chica: piso fijo (la arena y la llegada), el pilar de salida (h - 1 bloques pesados y arriba un bloque fijo) y las columnas. El jugador empieza en la llegada.
 static func build_state(room: Dictionary):
@@ -169,7 +233,8 @@ static func build_state(room: Dictionary):
 	for c in keys:
 		var ks: String = room.cols[c]
 		for i in ks.length():
-			t.add_block(Vector3i(c.x, i + 1, c.y), false, int(KIND_OF_CHAR.get(ks[i], K.NORMAL)))
+			if ks[i] != GAP:
+				t.add_block(Vector3i(c.x, i + 1, c.y), false, int(KIND_OF_CHAR.get(ks[i], K.NORMAL)))
 	t.player = Vector3i(entry.x, 1, entry.y)
 	t.goal_y = h + 1
 	t.goal_ids = {goal_id: true}
@@ -406,7 +471,7 @@ static func prune(room: Dictionary, rng: RandomNumberGenerator = null, max_ms :=
 	var removed := 0
 	var h: int = out.h
 	var progress := true
-	var whole := true   # primero columnas enteras, después los bloques de arriba
+	var phase := 0   # primero columnas enteras, después el bloque de arriba de cada una y al final cualquier bloque (si queda sostenido por sus vecinos)
 	while progress and Time.get_ticks_msec() < deadline:
 		progress = false
 		var cells: Array = out.cols.keys()
@@ -421,18 +486,34 @@ static func prune(room: Dictionary, rng: RandomNumberGenerator = null, max_ms :=
 			if not out.cols.has(c):
 				continue
 			var ks: String = out.cols[c]
-			var cand := copy_room(out)
-			var drop := ks.length() if whole else 1
-			if drop >= ks.length():
-				cand.cols.erase(c)
+			if phase < 2:
+				var cand := copy_room(out)
+				var drop := ks.length() if phase == 0 else 1
+				if drop >= ks.length():
+					cand.cols.erase(c)
+				else:
+					cand.cols[c] = _trim_gaps(ks.substr(0, ks.length() - 1))
+				if _prune_ok(cand, out.path, h):
+					out = cand
+					removed += ks.length() - String(cand.cols.get(c, "")).length()
+					progress = true
 			else:
-				cand.cols[c] = ks.substr(0, ks.length() - 1)
-			if _prune_ok(cand, out.path, h):
-				out = cand
-				removed += drop
-				progress = true
-		if not progress and whole:
-			whole = false
+				for y in range(ks.length() - 2, -1, -1):   # (el de arriba ya se probó)
+					if Time.get_ticks_msec() > deadline:
+						break
+					var cur: String = out.cols.get(c, "")
+					if y >= cur.length() or cur[y] == GAP:
+						continue
+					var cand2 := copy_room(out)
+					cand2.cols[c] = _trim_gaps(cur.substr(0, y) + GAP + cur.substr(y + 1))
+					if cand2.cols[c] == "":
+						cand2.cols.erase(c)
+					if _prune_ok(cand2, out.path, h):
+						out = cand2
+						removed += 1
+						progress = true
+		if not progress and phase < 2:
+			phase += 1
 			progress = true
 	if removed > 0:
 		out.slots = {}
@@ -441,7 +522,15 @@ static func prune(room: Dictionary, rng: RandomNumberGenerator = null, max_ms :=
 	return {"room": out, "removed": removed}
 
 
+static func _trim_gaps(ks: String) -> String:
+	while ks.ends_with(GAP):
+		ks = ks.substr(0, ks.length() - 1)
+	return ks
+
+
 static func _prune_ok(cand: Dictionary, path: Array, h: int) -> bool:
+	if has_gaps(cand) and validate_structure(cand) != "":
+		return false
 	if not replay(cand, path).ok:
 		return false
 	var t = build_state(cand)
@@ -491,6 +580,8 @@ static func _image(room: Dictionary, s: int, erase_types: bool) -> Dictionary:
 		var ks: String = room.cols[c]
 		for i in ks.length():
 			var ch: String = ks[i]
+			if ch == GAP:
+				continue
 			if erase_types and ch != "h":
 				ch = "b"
 			bs.append("%d,%d,%d,%s" % [q.x - mn.x, i + 1, q.y - mn.y, ch])
@@ -583,6 +674,8 @@ static func descriptor(room: Dictionary) -> Array:
 	for c in room.cols:
 		var ks: String = room.cols[c]
 		for i in ks.length():
+			if ks[i] == GAP:
+				continue
 			counts[ks[i]] = int(counts[ks[i]]) + 1
 			n += 1
 	var o: Dictionary = room.get("opt", {})

@@ -603,6 +603,205 @@ static string pathText(const vector<Node> &nodes, int idx) {
 	return out;
 }
 
+// --- excavar: el grafo de estados cerca de una sala, con la distancia exacta a la meta de cada estado ----------------------------------------------------------
+// Explora a lo ancho desde el estado inicial hasta MAXNODES estados, guarda todas las aristas, y calcula hacia atrás (desde los estados ganadores) cuántas acciones faltan para ganar
+// desde cada estado y cuántas de ellas son empujar o tirar (entre los caminos más cortos, el de menos agarres). Los candidatos son los estados donde el jugador está en la entrada, de pie,
+// cuyos bloques sueltos forman columnas apoyadas en el piso (un formato que la biblioteca de salas puede guardar): son salas nuevas, alcanzables desde la inicial, de dificultad exacta conocida.
+static long long exMaxNodes = 1000000;
+static int exTopK = 20, exEntryX = 0, exEntryZ = 0, exExitX = -99, exExitZ = -99, exMinD = 0, exColumns = 1, exMaxY = 19;
+
+struct EdgeRec { int u, v; u8 grab; };
+
+static string exPath;   // camino solución conocido (letras como las de la salida): se exploran los estados alrededor de todo el camino
+
+static void excavate(Sim &root, ofstream &out) {
+	auto t0 = chrono::steady_clock::now();
+	vector<Node> nodes;
+	unordered_map<Key, int, KeyHash> idx;
+	unordered_map<i64, int> cfgIndex;
+	vector<EdgeRec> edges;
+	vector<i64> nodeZob;
+	vector<int> tmp;
+	cfgData.clear();
+	nodes.reserve(1 << 18);
+	idx.reserve(1 << 20);
+	cfgData.push_back(packCfg(root, tmp));
+	cfgIndex[root.zob] = 0;
+	nodes.push_back({0, root.p, root.hang, 0, -1, 255, root.dirty, root.won});
+	nodeZob.push_back(root.zob);
+	idx[keyOf(root)] = 0;
+	bool capped = false;
+	// agrega (o encuentra) el estado `n` que sale de `ui` con la acción (di, m); -1 si ya no entran más nodos
+	auto visit = [&](Sim &n, int ui, int di, int m) -> int {
+		Key k = keyOf(n);
+		auto it = idx.find(k);
+		int vi;
+		if (it != idx.end()) {
+			vi = it->second;
+		} else {
+			if ((long long)nodes.size() >= exMaxNodes) {
+				capped = true;
+				return -1;
+			}
+			int cfg = nodes[ui].cfg;
+			if (n.zob != nodeZob[ui]) {
+				auto cp = cfgIndex.find(n.zob);
+				if (cp == cfgIndex.end()) {
+					cfgData.push_back(packCfg(n, tmp));
+					cfg = (int)cfgData.size() - 1;
+					cfgIndex[n.zob] = cfg;
+				} else {
+					cfg = cp->second;
+				}
+			}
+			nodes.push_back({cfg, n.p, n.hang, nodes[ui].g + 1, ui, (u8)(di * 3 + m), n.dirty, n.won});
+			nodeZob.push_back(n.zob);
+			vi = (int)nodes.size() - 1;
+			idx[k] = vi;
+		}
+		edges.push_back({ui, vi, (u8)(m == 1 ? 1 : 0)});
+		return vi;
+	};
+	{   // el camino conocido entra primero: la exploración rodea todo el camino y los estados cercanos llegan a la meta
+		Sim cur = root;
+		int prev = 0;
+		for (size_t i = 0; i + 1 < exPath.size(); i += 2) {
+			int m = exPath[i] == 'm' ? 0 : (exPath[i] == 'g' ? 1 : 2);
+			int di = exPath[i + 1] == 'E' ? 0 : (exPath[i + 1] == 'W' ? 1 : (exPath[i + 1] == 'S' ? 2 : 3));
+			Sim n = cur;
+			if (!tryAction(n, DIRS[di], m) || n.lost) break;
+			int vi = visit(n, prev, di, m);
+			if (vi < 0) break;
+			prev = vi;
+			cur = n;
+			if (n.won) break;
+		}
+	}
+	size_t head = 0;
+	while (head < nodes.size()) {
+		int ui = (int)head++;
+		const Node cur = nodes[ui];
+		if (cur.won) continue;
+		Sim base = simFromNode(cur, nodeZob[ui]);
+		for (int di = 0; di < 4; di++) {
+			V dd = DIRS[di];
+			for (int m = 0; m < 3; m++) {
+				if (cur.hang != ZERO && m != 0) continue;
+				if (m == 1 && !(has(base, base.p + dd) || has(base, base.p - dd))) continue;
+				if (m == 2) {
+					V ht = base.p + dd;
+					if (has(base, ht) || has(base, ht + DOWN) || has(base, ht + DOWN + DOWN)) continue;
+				}
+				Sim n = base;
+				if (!tryAction(n, dd, m) || n.lost) continue;
+				visit(n, ui, di, m);
+			}
+		}
+	}
+	// hacia atrás desde los ganadores
+	int N = (int)nodes.size();
+	vector<int> start(N + 2, 0);
+	for (auto &e : edges) start[e.v + 1]++;
+	for (int i = 0; i < N; i++) start[i + 1] += start[i];
+	vector<int> fill(start.begin(), start.end() - 1);
+	vector<int> radj(edges.size());
+	for (size_t i = 0; i < edges.size(); i++) radj[fill[edges[i].v]++] = (int)i;
+	vector<int> dist(N, -1), gm(N, 0);
+	vector<int> q;
+	for (int i = 0; i < N; i++)
+		if (nodes[i].won) {
+			dist[i] = 0;
+			q.push_back(i);
+		}
+	size_t qh = 0;
+	while (qh < q.size()) {
+		int v = q[qh++];
+		for (int k = start[v]; k < start[v + 1]; k++) {
+			const EdgeRec &e = edges[radj[k]];
+			int u = e.u;
+			int cand = e.grab + gm[v];
+			if (dist[u] < 0) {
+				dist[u] = dist[v] + 1;
+				gm[u] = cand;
+				q.push_back(u);
+			} else if (dist[u] == dist[v] + 1 && cand < gm[u]) {
+				gm[u] = cand;
+			}
+		}
+	}
+	// candidatos: una disposición de bloques (con el jugador donde mejor le quede) expresable en columnas apoyadas en el piso
+	vector<signed char> exprOk(cfgData.size(), -1);
+	auto expressible = [&](int cfg) -> bool {
+		if (exprOk[cfg] >= 0) return exprOk[cfg] != 0;
+		const vector<u8> &c = cfgData[cfg];
+		vector<int> cells;
+		for (size_t j = 0; j < c.size(); j += 3) cells.push_back(c[j] | (c[j + 1] << 8));
+		sort(cells.begin(), cells.end());
+		bool ok = true;
+		for (int ci : cells) {
+			V b = cellOf(ci);
+			if (b.x == exExitX && b.z == exExitZ) continue;   // el pilar de la salida
+			if (b.y < 1 || b.y > exMaxY || !(S[cellIdx({b.x, 0, b.z})])) {
+				ok = false;
+				break;
+			}
+			if (exColumns && b.y > 1 && !binary_search(cells.begin(), cells.end(), cellIdx({b.x, b.y - 1, b.z}))) {
+				ok = false;
+				break;
+			}
+		}
+		exprOk[cfg] = ok ? 1 : 0;
+		return ok;
+	};
+	struct Lay { int node, d, g; };
+	unordered_map<i64, Lay> layouts;
+	for (int i = 0; i < N; i++) {
+		const Node &nd = nodes[i];
+		if (nd.won || dist[i] <= 0 || dist[i] < exMinD) continue;
+		if (nodeZob[i] == nodeZob[0]) continue;   // la sala de partida
+		if (!expressible(nd.cfg)) continue;
+		auto it = layouts.find(nodeZob[i]);
+		if (it == layouts.end()) {
+			layouts[nodeZob[i]] = {i, dist[i], gm[i]};
+		} else if (gm[i] > it->second.g || (gm[i] == it->second.g && dist[i] < it->second.d)) {   // (el jugador mejor parado: menos pasos para los mismos agarres)
+			it->second = {i, dist[i], gm[i]};
+		}
+	}
+	vector<Lay> cands;
+	for (auto &kv : layouts) cands.push_back(kv.second);
+	sort(cands.begin(), cands.end(), [](const Lay &a, const Lay &b) { return a.g != b.g ? a.g > b.g : (a.d != b.d ? a.d > b.d : a.node < b.node); });
+	long long ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t0).count();
+	int maxd = 0, maxg = 0, wins = 0;
+	for (int i = 0; i < N; i++) {
+		if (nodes[i].won) wins++;
+		if (dist[i] > maxd) maxd = dist[i];
+		if (dist[i] >= 0 && gm[i] > maxg) maxg = gm[i];
+	}
+	out << "STATUS " << (capped ? "capped" : "complete") << "\n";
+	out << "NODES " << N << "\n";
+	out << "EDGES " << edges.size() << "\n";
+	out << "WINS " << wins << "\n";
+	out << "MAXD " << maxd << "\n";
+	out << "MAXG " << maxg << "\n";
+	out << "CANDS " << cands.size() << "\n";
+	out << "MS " << ms << "\n";
+	for (int i = 0; i < (int)cands.size() && i < exTopK; i++) {
+		const Lay &cd = cands[i];
+		out << "CAND " << cd.d << " " << cd.g << " ";
+		const vector<u8> &c = cfgData[nodes[cd.node].cfg];
+		bool first = true;
+		for (size_t j = 0; j < c.size(); j += 3) {
+			int ci = c[j] | (c[j + 1] << 8);
+			V b = cellOf(ci);
+			if (b.x == exExitX && b.z == exExitZ) continue;
+			if (!first) out << ";";
+			first = false;
+			out << b.x << "," << b.y << "," << b.z << "," << (c[j + 2] & 7);
+		}
+		out << "\n";
+	}
+}
+
 int main(int argc, char **argv) {
 	if (argc < 3) {
 		fprintf(stderr, "uso: solver_nativo ENTRADA SALIDA\n");
@@ -627,6 +826,14 @@ int main(int argc, char **argv) {
 			in >> h;
 			heurMode = h == "none" ? 0 : (h == "prod" ? 2 : 1);
 		} else if (tok == "WEIGHT") in >> weightH;
+		else if (tok == "MAXNODES") in >> exMaxNodes;
+		else if (tok == "TOPK") in >> exTopK;
+		else if (tok == "MIND") in >> exMinD;
+		else if (tok == "ENTRY") in >> exEntryX >> exEntryZ;
+		else if (tok == "EXIT") in >> exExitX >> exExitZ;
+		else if (tok == "PATH") in >> exPath;
+		else if (tok == "COLUMNS") in >> exColumns;
+		else if (tok == "MAXY") in >> exMaxY;
 		else if (tok == "NOGRAB") {
 			int v;
 			in >> v;
@@ -668,6 +875,10 @@ int main(int argc, char **argv) {
 	heldStamp.assign(CELLS, 0);
 	Sim root = buildRoot();
 
+	if (mode == "excavate") {
+		excavate(root, out);
+		return 0;
+	}
 	if (mode == "sim") {   // aplica las acciones una por una y cuenta cómo queda cada paso (para compararlo con GDScript)
 		Sim s = root;
 		for (auto &a : simActions) {

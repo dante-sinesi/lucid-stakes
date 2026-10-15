@@ -24,6 +24,7 @@ func _init() -> void:
 	test_files()
 	test_paths_and_prune()
 	test_difficulty()
+	test_gaps()
 	print("tests de la biblioteca de salas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -341,3 +342,36 @@ func test_difficulty() -> void:
 	legacy.opt.erase("diff")
 	var old := RoomLib.from_dict(legacy)
 	check(is_equal_approx(float(old.opt.diff), float(r.opt.diff)), "una sala de una biblioteca vieja (sin dificultad) la calcula al leerse")
+
+
+func test_gaps() -> void:
+	# Salas con huecos: bloques sostenidos por sus vecinos, sin columna hasta el piso.
+	var r := RoomLib.make_room("3x5", 6)
+	var cells: Array = RoomLib.free_cells("3x5")
+	var far: Array = []
+	for c in cells:
+		if (c - r.entry).length() >= 2.5 and c != r.exit and (c - r.exit).length() >= 1.5:
+			far.append(c)
+	var a: Vector2i = far[0]
+	var b := Vector2i(-9, -9)
+	for c in far:
+		if (c - a).length() == 1.0:
+			b = c
+	check(b != Vector2i(-9, -9), "hay dos celdas vecinas lejos de la llegada y la salida")
+	r.cols[a] = "nnn"
+	r.cols[b] = "n.n"
+	check(RoomLib.validate_structure(r) == "", "un bloque pegado a una columna alta se sostiene de ella (%s)" % RoomLib.validate_structure(r))
+	check(RoomLib.block_count(r) == 5 and RoomLib.block_char(r, b, 2) == "" and RoomLib.block_char(r, b, 3) == "n", "los huecos no cuentan como bloques")
+	var t = RoomLib.build_state(r)
+	check(t.blocks.has(Vector3i(b.x, 3, b.y)) and not t.blocks.has(Vector3i(b.x, 2, b.y)), "el hueco queda vacío en el simulador")
+	var r2 := RoomLib.make_room("3x5", 6)
+	r2.cols[a] = "..n"
+	check(RoomLib.validate_structure(r2) == "hay bloques sin apoyo", "un bloque solo, en el aire, no es válido (%s)" % RoomLib.validate_structure(r2))
+	var r3 := RoomLib.copy_room(r)
+	r3.cols[b] = "n."
+	check(RoomLib.validate_structure(r3) != "", "una columna no puede terminar en un hueco")
+	RoomLib.finalize(r)
+	var back := RoomLib.from_line(RoomLib.to_line(r))
+	check(back.cols[b] == "n.n" and back.id == r.id, "los huecos sobreviven al archivo")
+	var rl := RoomLib.room_from_layout(r, [[a.x, 1, a.y, 0], [a.x, 3, a.y, 5], [b.x, 2, b.y, 1]])
+	check(rl.cols[a] == "n.h" and rl.cols[b] == ".i", "room_from_layout deja huecos donde faltan bloques (%s, %s)" % [rl.cols[a], rl.cols[b]])

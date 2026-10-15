@@ -117,8 +117,7 @@ static func _add_stats(st: Dictionary, r: Dictionary) -> void:
 	st.moved += int(r.opt.get("moved", 0))
 	st.diff += float(r.opt.get("diff", 0.0))
 	st.exact += 1 if str(r.opt.get("proof", "")) == "exacta" else 0
-	for c in r.cols:
-		st.blocks += String(r.cols[c]).length()
+	st.blocks += RoomLib.block_count(r)
 
 
 ## Una línea con los promedios de un grupo de salas.

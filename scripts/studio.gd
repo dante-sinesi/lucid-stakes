@@ -508,7 +508,8 @@ func _refresh_info() -> void:
 	for c in r.cols:
 		var ks: String = r.cols[c]
 		for i in ks.length():
-			counts[ks[i]] = int(counts[ks[i]]) + 1
+			if ks[i] != RoomLib.GAP:
+				counts[ks[i]] = int(counts[ks[i]]) + 1
 	var t := "[b]%s · %d pisos[/b]   %d bloques (común %d, pesado %d, hielo %d, agrietado %d) en %d columnas\n" % [r.shape, r.h, model.block_count(), counts.n, counts.h, counts.i, counts.c, r.cols.size()]
 	t += "id [code]%s[/code]  familia [code]%s[/code]  patrón [code]%s[/code]\n" % [str(r.id).substr(0, 10), str(r.family).substr(0, 10), str(r.pattern).substr(0, 10)]
 	t += "origen: %s · estado: %s%s\n" % [r.origin, r.status, ("  ·  vino de [code]%s[/code]" % str(r.parent).substr(0, 8)) if str(r.parent) != "" else ""]
@@ -537,7 +538,7 @@ func _refresh_info() -> void:
 
 func _refresh_variants_ui() -> void:
 	var ok := false
-	if not sel.is_empty() and model.has_current() and sel.y >= 1 and String(model.current.cols.get(sel.cell, "")).length() >= sel.y:
+	if not sel.is_empty() and model.has_current() and sel.y >= 1 and RoomLib.block_char(model.current, sel.cell, sel.y) != "":
 		ok = true
 	for k in variant_checks:
 		var cb: CheckBox = variant_checks[k]
@@ -717,7 +718,7 @@ func click_cell(c: Vector3i) -> void:
 			_refresh_view()
 			_refresh_variants_ui()
 			var ks := String(model.current.cols.get(cell, ""))
-			if y >= 1 and ks.length() >= y:
+			if y >= 1 and RoomLib.block_char(model.current, cell, y) != "":
 				_set_status("Bloque (%d, %d) piso %d: %s" % [cell.x, cell.y, y, StudioModel.KIND_NAMES[ks[y - 1]]])
 			elif cell == model.current.exit:
 				_set_status("La salida: el pilar no se edita.")
@@ -740,7 +741,7 @@ func click_cell(c: Vector3i) -> void:
 				_set_status(model.message if model.message != "" else "Ahí no hay un bloque.")
 		"move":
 			if move_src.is_empty():
-				if y >= 1 and String(model.current.cols.get(cell, "")).length() >= y:
+				if y >= 1 and RoomLib.block_char(model.current, cell, y) != "":
 					move_src = {"cell": cell, "y": y}
 					_refresh_view()
 					_set_status("Ahora elegí la columna adonde va el bloque (Esc cancela).")
@@ -776,7 +777,7 @@ func set_kind_pick(k: String) -> void:
 
 ## Después de cada cambio: se vuelve a verificar la sala y se redibuja todo.
 func after_edit() -> void:
-	sel = {} if sel.is_empty() or String(model.current.cols.get(sel.cell, "")).length() < int(sel.y) else sel
+	sel = {} if sel.is_empty() or RoomLib.block_char(model.current, sel.cell, int(sel.y)) == "" else sel
 	var v := model.verify(3000)
 	if v.ok:
 		_set_status("Verificada: %d empujes o tirones de %d pasos (dificultad %d %%)%s." % [int(v.grabs), int(v.moves), roundi(100.0 * float(v.grabs) / maxf(float(v.moves), 1.0)), " (se conservó el camino)" if v.reused else ""])
