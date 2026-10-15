@@ -53,7 +53,7 @@ func test_shapes() -> void:
 		check(RoomLib.free_cells(sh).size() >= 4, "%s tiene lugar para columnas" % sh)
 		check(RoomLib.max_height(sh) >= RoomLib.MIN_H and RoomLib.max_height(sh) <= RoomLib.MAX_H, "la altura máxima de %s está en rango" % sh)
 	check(RoomLib.max_height("3x8") == 20 and RoomLib.max_height("L") == 20 and RoomLib.max_height("U") == 20, "las formas grandes llegan a 20 pisos")
-	check(RoomLib.max_height("3x3") == 7 and RoomLib.max_height("3x5") == 10, "las arenas chicas tienen un tope de altura")
+	check(RoomLib.max_height("3x3") == 7 and RoomLib.max_height("3x5") == 8, "las arenas chicas tienen un tope de altura")
 	check(RoomLib.combos().size() > 40, "hay muchas combinaciones forma-altura")
 	var l_cells: Array = RoomLib.shape_info("L").cells
 	var has_arm := false

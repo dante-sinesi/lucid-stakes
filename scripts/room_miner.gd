@@ -24,6 +24,7 @@ var exact_ms := 40000
 var exact_max_moves := 30  # más largo que esto el verificador exacto no llega: queda "sin_probar"
 var type_p := 0.12         # probabilidad de que un cambio sea de tipo de bloque
 var current_shape := ""
+var climb_bias := 0.0      # sin nada que empujar o tirar: probabilidad de preferir un paso que sube (para llegar a lo alto de la escalera, donde hay bloques para desordenar)
 var walk_bias := 0.0       # probabilidad de caminar hacia el bloque más cercano cuando no hay nada que empujar
 var last_info := ""
 var last_why := ""         # por qué falló el último desorden
@@ -430,9 +431,9 @@ func _state_ok(sim, arena: Dictionary, exit: Vector2i, entry: Vector2i) -> bool:
 
 
 ## Desordena una sala que ya se sabe resolver (con `room.path`): se hacen acciones del juego que se pueden deshacer (caminar, empujar, tirar) y la sala nueva es el resultado.
-## Se sigue desordenando hasta que la sala ya no se pueda resolver caminando (y al menos `min_steps` acciones). La solución es: caminar hasta donde terminó el desorden, deshacerlo al revés
+## Se sigue desordenando hasta que la sala ya no se pueda resolver caminando (y al menos `min_steps` acciones y `min_grabs` empujes o tirones). La solución es: caminar hasta donde terminó el desorden, deshacerlo al revés
 ## y seguir con el camino de la sala original. Sirve para cualquier altura: no hace falta que el solucionador la encuentre. {} si no se pudo (el motivo queda en `last_why`).
-func scramble_from(base: Dictionary, min_steps: int, max_steps := 120) -> Dictionary:
+func scramble_from(base: Dictionary, min_steps: int, max_steps := 120, min_grabs := 2) -> Dictionary:
 	var h: int = base.h
 	var sim = RoomLib.build_state(base)
 	var start_blocks: int = sim.blocks.size()
@@ -477,6 +478,16 @@ func scramble_from(base: Dictionary, min_steps: int, max_steps := 120) -> Dictio
 		for o in opts:
 			if o[2] == TowerLogic.Mode.GRAB:
 				has_grab = true
+		if not has_grab and rng.randf() < climb_bias:
+			var up: Array = []
+			var w_up := 0
+			for o in opts:
+				if o[0].player.y > sim.player.y:
+					up.append(o)
+					w_up += int(o[4])
+			if not up.is_empty():
+				opts = up
+				weight = w_up
 		if not has_grab and rng.randf() < walk_bias:   # (sin nada que empujar o tirar: se camina hacia el bloque más cercano)
 			var near := _block_distance(sim, base)
 			var closer: Array = []
@@ -502,7 +513,7 @@ func scramble_from(base: Dictionary, min_steps: int, max_steps := 120) -> Dictio
 			recent.pop_front()
 		if pick[2] == TowerLogic.Mode.GRAB:
 			grabs += 1
-		if grabs >= 2 and invs.size() >= min_steps and invs.size() % 2 == 0:
+		if grabs >= min_grabs and invs.size() >= min_steps and invs.size() % 2 == 0:
 			var c2 = sim.clone()   # (la sala que queda: el jugador arranca en la llegada)
 			c2.player = entry_pos
 			c2.hang_dir = Vector3i.ZERO
@@ -576,7 +587,7 @@ func make_tall_seed(shape: String, h: int) -> Dictionary:
 		last_why = "sin_camino_base"
 		return {}
 	base.path = walk.path
-	return scramble_from(base, rng.randi_range(4, 6 + h / 2))
+	return scramble_from(base, 4, 160, 2)
 
 
 # --- el paso del minero ---------------------------------------------------------------------------------------------------------
@@ -695,7 +706,7 @@ func step() -> void:
 			stats.seeds_ok = int(stats.seeds_ok) + 1
 	elif tall and r < 0.55:   # extender: más desorden sobre una sala alta que ya se sabe resolver
 		var par: Dictionary = pick_parent(combo[0], combo[1])
-		var ext := scramble_from(par, rng.randi_range(2, 8))
+		var ext := scramble_from(par, 2, 120, rng.randi_range(2, 4))
 		if ext.is_empty():
 			_fail("ext_" + last_why)
 			return

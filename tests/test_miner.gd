@@ -70,7 +70,7 @@ func test_seeds_and_changes() -> void:
 				check(RoomLib.validate_structure(s) == "", "la semilla de %s es coherente" % sh)
 		check(got > 10, "salen semillas de %s" % sh)
 	# semillas altas con solución plantada
-	for pair in [["3x5", 10], ["3x8", 10], ["3x8", 15], ["L", 12], ["L", 20], ["U", 14], ["U", 20]]:
+	for pair in [["L", 9], ["3x8", 10], ["3x8", 15], ["L", 12], ["L", 20], ["U", 14], ["U", 20]]:
 		var ok := 0
 		for _i in 60:
 			var s := m.make_tall_seed(pair[0], pair[1])

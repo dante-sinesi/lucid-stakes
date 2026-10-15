@@ -89,7 +89,7 @@ static func free_cells(shape: String) -> Array[Vector2i]:
 
 ## Alturas posibles de una forma: una escalera a pie hasta la salida necesita h - 1 columnas distintas (cada una un escalón más alta), así que la arena limita la altura.
 static func max_height(shape: String) -> int:
-	var cap: int = {"3x3": 7, "3x5": 10}.get(shape, MAX_H)   # (en una arena chica casi no hay lugar para desordenar una escalera alta: lo medido con el minero)
+	var cap: int = {"3x3": 7, "3x5": 8}.get(shape, MAX_H)   # (en una arena chica casi no hay lugar para desordenar una escalera alta: lo medido con el minero)
 	return clampi(mini(cap, free_cells(shape).size() + 1), MIN_H, MAX_H)
 
 

@@ -24,12 +24,12 @@ Los argumentos del minero (después de `--`): `--id=N --out=CARPETA --minutes=M 
 | Forma | Arena | Entrada → salida | Alturas (pisos) |
 |---|---|---|---|
 | 3x3 | 3 x 3 | un extremo → la esquina opuesta | 5 a 7 |
-| 3x5 | 3 x 5 | idem | 5 a 10 |
+| 3x5 | 3 x 5 | idem | 5 a 8 |
 | 3x8 | 3 x 8 (un lado completo de la torre) | idem | 5 a 20 |
 | L | 8 x 3 más un tramo de 2 x 3 en perpendicular | la punta del tramo corto → el otro extremo del lado largo | 5 a 20 |
 | U | dos brazos de 5 x 3 unidos por un tramo de 2 x 3 (ancho total 8) | la punta de un brazo → la punta del otro | 5 a 20 |
 
-La O no se hace (por lo que implica subir). Las arenas chicas no admiten cualquier altura: una escalera a pie hasta la salida necesita una columna distinta por cada piso y casi no queda lugar para desordenarla (3x3 llega a 7 y 3x5 a 10 en lo que se midió).
+La O no se hace (por lo que implica subir). Las arenas chicas no admiten cualquier altura: una escalera a pie hasta la salida necesita una columna distinta por cada piso y casi no queda lugar para desordenarla (3x3 llega a 7 y 3x5 a 8 en lo que se midió).
 
 **Una sala** (`scripts/room_lib.gd`): la forma, la altura `h` (el jugador sube `h` pisos y queda parado sobre el tope de la salida), las columnas (de abajo hacia arriba: `n` común, `h` pesado, `i` hielo, `c` agrietado), el camino más corto conocido y sus métricas, y tres hashes: `id` (exacto, igual para giros y espejos), `family` (sin tipos de bloque) y `pattern` (la familia más el camino normalizado: lo que reconoce el jugador). Más el origen (`minero`, `manual`, `autor`), el estado (`nuevo`, `buena`, `mala`, `mejorable`), una nota y las variantes marcadas.
 
@@ -42,7 +42,9 @@ La O no se hace (por lo que implica subir). Las arenas chicas no admiten cualqui
 ## Lo medido
 
 - El solucionador de producción **no garantiza el mínimo** (su heurística de guía puede sobrestimar): en una sala dio 16 pasos con 12 de mínimo real. Por eso existe la verificación exacta. `tests\test_solver_exact.gd`: el modo admisible coincide con la búsqueda sin heurística en todas las salas comparadas y usa unas 19 veces menos estados.
-- En esta PC, el minero hace de 1 a 5 evaluaciones por segundo según las alturas. En una corrida de 3 minutos con alturas 5 y 6: 219 salas, las 10 combinaciones cubiertas, 63 verificadas exactas. Con alturas 12 a 20 (3x8, L, U): 231 salas y 19 de 27 combinaciones.
+- **Corrida de comprobación final** (3 copias del minero, 9 minutos, en esta PC, como `.exe` exportados): 1 554 líneas escritas, 1 048 salas distintas tras empaquetar (0 líneas malas, 0 inválidas), 54 de las 55 combinaciones forma-altura con salas (falta 3x8 de 20 pisos), 502 con prueba exacta. `tests\check_library.gd` sobre esa biblioteca: **0 fallos** (todas las salas se resuelven con su camino, los hashes y las métricas coinciden, ninguna de las 131 revisadas se resuelve caminando).
+- **Dificultad todavía baja**: bloques distintos que hay que mover (cantidad de salas): 1: 388, 2: 442, 3: 182, 4: 35, 5: 1. Es lo esperable de 27 minutos de minería: los casilleros difíciles se llenan con tiempo (la elección de padres favorece los casilleros con más bloques movidos). Hay que dejar corriendo la PC y mirar cómo avanza `stats_N.json` (campo `max_moved_by_shape`).
+- Velocidad: de 1 a 5 evaluaciones por segundo por copia según las alturas; las salas altas rinden unas 20 por minuto por copia.
 - De las verificaciones exactas de salas altas, casi todas encuentran un camino más corto que el plantado (esperable: el plantado incluye el desorden y su deshacer).
 
 ## El Estudio
