@@ -167,9 +167,9 @@ static func build_state(step: Dictionary):
 	for c in platforms:
 		if c.y >= 1:
 			t.add_block(c, true)
-	if goal_cell.y == 0:
-		if not t.blocks.has(goal_cell):
-			t.add_block(goal_cell, true)   # (la salida sobre un pozo: la plataforma de meta igual existe)
+	for support in [goal_cell, entry + Vector3i(0, -1, 0)]:
+		if support.y == 0 and not t.blocks.has(support):
+			t.add_block(support, true)   # (el bloque de inicio o de fin sobre un pozo: esa celda del piso igual existe)
 	t.player = entry
 	t.goal_y = exit.y
 	t.goal_ids = {int(t.blocks[goal_cell]): true}
@@ -209,6 +209,18 @@ static func examples() -> Array:
 	ic.note = "El tramo repetible es una celda del camino de hielo: se patina más o menos lejos."
 	finalize(ic)
 	out.append(ic)
+	# Hielo sin piso: nada de suelo, bloques fijos de inicio y de fin en el aire y caminos de hielo en L; se patina hasta el primer bloque que no es hielo.
+	var air := make_step("Hielo sin piso (patinar en L)", 6, 5, 3)
+	for x in 6:
+		for z in 5:
+			air.holes.append([x, z])
+	air.blocks = [[1, 1, 0, K.ICE], [2, 1, 0, K.ICE], [3, 1, 0, K.ICE], [4, 1, 0, K.ICE], [5, 1, 0, K.NORMAL], [5, 1, 1, K.ICE], [5, 1, 2, K.ICE], [5, 1, 3, K.ICE]]
+	air.entry = [0, 2, 0]
+	air.exit = [5, 2, 4]
+	air.repeat = {"on": true, "axis": "x", "from": 2, "to": 2, "min": 1, "max": 5}
+	air.note = "Sin piso: el bloque verde (inicio) y el rojo (fin) están en el aire. Se patina por el camino de hielo, se frena en el bloque común, y se vuelve a patinar."
+	finalize(air)
+	out.append(air)
 	return out
 
 

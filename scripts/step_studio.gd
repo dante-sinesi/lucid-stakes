@@ -8,8 +8,8 @@ const RoomView := preload("res://scripts/room_view.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 
 const TOOLS := [["add", "Agregar bloque (clic en una cara)"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["entry", "Poner el bloque de inicio, verde (clic en una cara)"], ["exit", "Poner el bloque de fin, rojo (clic en una cara)"], ["hole", "Pozo en el piso (alternar)"], ["slab", "Marcar el tramo repetible (dos clics)"]]
-const HINTS := {"add": "Clic en la cara de un bloque o del piso: se agrega un bloque del tipo elegido pegado a esa cara.", "delete": "Clic en un bloque para borrarlo.", "type": "Clic en un bloque: cambia al tipo elegido.",
-	"entry": "Clic en una cara: el jugador empieza parado sobre ese bloque, que se pinta de verde (si no hay bloque, se pone uno fijo).", "exit": "Clic en una cara: el jugador tiene que quedar parado sobre ese bloque, que se pinta de rojo y es fijo. La altura de la sala sale de dónde lo pongas.",
+const HINTS := {"add": "Clic en la cara de un bloque o del piso: se agrega un bloque del tipo elegido pegado a esa cara.", "delete": "Clic en un bloque para borrarlo; en un bloque del piso, se quita esa celda (queda un pozo).", "type": "Clic en un bloque: cambia al tipo elegido.",
+	"entry": "Clic en la cara de arriba de un bloque: ese bloque pasa a ser el de inicio (verde). Clic en otra cara: se pone un bloque verde fijo pegado a esa cara, también en el aire. El jugador empieza parado sobre él.", "exit": "Igual que el inicio, pero rojo: el jugador tiene que quedar parado sobre ese bloque. La altura sale de dónde lo pongas.",
 	"hole": "Clic en una celda del piso: se quita o se vuelve a poner (un pozo).", "slab": "Clic en la primera columna del tramo y después en la última (a lo largo del eje elegido)."}
 const KINDS := [0, 1, 4, 3, 6, 7, 2, 5]
 
@@ -205,6 +205,7 @@ func _build_ui() -> void:
 	h_spin.editable = false
 	h_spin.tooltip_text = "La altura sale sola: la del bloque más alto o la del bloque de fin (rojo)."
 	right.add_child(_row("largo x", [w_spin, _label("ancho z"), d_spin, _label("alto (sola)"), h_spin]))
+	right.add_child(_row("Piso", [_button("Quitar todo el piso", func(): set_floor(false)), _button("Poner todo el piso", func(): set_floor(true))]))
 	right.add_child(_label("Herramienta (botón izquierdo)"))
 	tool_opt = OptionButton.new()
 	for t in TOOLS:
@@ -791,8 +792,13 @@ func click_face(hit: Vector3i, prev: Vector3i) -> void:
 			_changed()
 		"delete":
 			var i := _block_index(hit)
+			if i < 0 and hit.y == 0:   # el piso: se borra la celda (queda un pozo)
+				_push_undo()
+				current.holes.append([hit.x, hit.z])
+				_changed()
+				return
 			if i < 0:
-				_set_status("Ahí no hay un bloque para borrar (el piso y la plataforma de salida no se borran).")
+				_set_status("Ese es el bloque de inicio o el de fin: se mueven con su herramienta.")
 				return
 			_push_undo()
 			current.blocks.remove_at(i)
@@ -806,13 +812,17 @@ func click_face(hit: Vector3i, prev: Vector3i) -> void:
 			current.blocks[j][3] = kind_pick
 			_changed()
 		"entry", "exit":
-			if prev.x < 0 or prev.x >= int(current.w) or prev.z < 0 or prev.z >= int(current.d) or prev.y < 1 or prev.y > StepLib.MAX_H + 1:
+			# cara de arriba de un bloque: ese bloque pasa a ser el verde (o el rojo); otra cara: se pone un bloque nuevo, fijo, en la celda pegada a esa cara (puede quedar en el aire)
+			var top_face := prev == hit + Vector3i(0, 1, 0)
+			var port := prev if top_face else prev + Vector3i(0, 1, 0)
+			if port.x < 0 or port.x >= int(current.w) or port.z < 0 or port.z >= int(current.d) or port.y < 1 or port.y > StepLib.MAX_H + 1:
 				_set_status("Eso queda fuera de la ventana.")
 				return
-			if _block_index(prev) >= 0:
+			if _block_index(port) >= 0:
+				_set_status("Ahí hay un bloque: borralo primero.")
 				return
 			_push_undo()
-			current[tool] = [prev.x, prev.y, prev.z]
+			current[tool] = [port.x, port.y, port.z]
 			_changed()
 
 
@@ -845,6 +855,20 @@ func click_floor(c: Vector2i) -> void:
 			slab_first = -1
 			_changed()
 			_set_status("Tramo repetible: columnas %d a %d." % [int(current.repeat.from), int(current.repeat.to)])
+
+
+## Todo el piso de la ventana, o ninguno (se puede quitar o poner celda por celda con la herramienta de pozos o borrando bloques del piso).
+func set_floor(on: bool) -> void:
+	if not _can_edit():
+		return
+	_push_undo()
+	current.holes = []
+	if not on:
+		for x in int(current.w):
+			for z in int(current.d):
+				current.holes.append([x, z])
+	_changed()
+	_set_status("Sin piso: el jugador se cae si se sale de los bloques." if not on else "Con todo el piso.")
 
 
 func _port(key: String) -> Vector3i:
