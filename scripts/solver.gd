@@ -14,6 +14,9 @@ extends RefCounted
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const MODES := [TowerLogic.Mode.MOVE, TowerLogic.Mode.GRAB, TowerLogic.Mode.HANG]
+const NativeSolver := preload("res://scripts/native_solver.gd")
+## Desde cuántos estados de tope vale la pena llamar al solucionador nativo (lanzar el programa cuesta unas decenas de milisegundos). opts.native = false lo apaga.
+const NATIVE_MIN_STATES := 1000
 
 
 ## Tiempo total (µs) que se pasó resolviendo (para medir cuánto de la generación es del solucionador; ver tests/bench).
@@ -47,6 +50,10 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 	var xz_goal: bool = not root.goal_ids.is_empty() and gain == 1 and not _has_ice(root)
 	if root.lost:
 		return {"status": "unsolvable", "moves": -1, "path": [], "states": 0, "state": root}
+	if max_states >= NATIVE_MIN_STATES and opts.get("native", true) and not use_collapse:
+		var nat: Dictionary = NativeSolver.solve(start, target_y, opts, root)
+		if not nat.is_empty():
+			return nat
 
 	var states: Array = [root]
 	var parents := PackedInt32Array([-1])
