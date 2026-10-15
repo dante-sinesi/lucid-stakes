@@ -268,12 +268,18 @@ func redo() -> bool:
 	return true
 
 
-## Deshace todos los cambios: la sala vuelve a ser la de la biblioteca (o vacía si era nueva).
+## Deshace todos los cambios: la sala vuelve a ser la de la biblioteca (una sala nueva se descarta entera).
 func revert() -> void:
 	if original_id != "" and index.has(original_id):
 		open(original_id)
-	elif not current.is_empty():
-		new_room(current.shape, current.h)
+	else:
+		current = {}
+		original_id = ""
+		dirty = false
+		verified = false
+		undo_stack.clear()
+		redo_stack.clear()
+		play_state = null
 
 
 # --- verificación ---------------------------------------------------------------------------------------------------------------
