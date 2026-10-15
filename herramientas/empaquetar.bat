@@ -8,8 +8,12 @@ if "%IN%"=="" set IN=%~dp0..\biblioteca
 set OUT=%~f2
 if "%OUT%"=="" set OUT=%IN%\biblioteca.jsonl
 cd /d "%~dp0.."
-if exist "build\herramientas\Empaquetador.console.exe" (
-	"build\herramientas\Empaquetador.console.exe" --headless -- --in="%IN%" --out="%OUT%"
+set EXE=build\herramientas\Empaquetador.console.exe
+if exist "tools\Godot_v4.7.2-stable_win64_console.exe" set EXE=
+if defined EXE if not exist "%EXE%" set EXE=
+rem (en esta PC, con Godot en tools, se usa el proyecto: siempre es el codigo mas nuevo; en la otra PC, los .exe de construir.ps1)
+if defined EXE (
+	"%EXE%" --headless -- --in="%IN%" --out="%OUT%"
 ) else (
 	"tools\Godot_v4.7.2-stable_win64_console.exe" --headless --path . res://scenes/pack.tscn -- --in="%IN%" --out="%OUT%"
 )

@@ -12,8 +12,12 @@ if "%OUT%"=="" set OUT=%~dp0..\biblioteca
 cd /d "%~dp0.."
 if not exist "%OUT%" mkdir "%OUT%"
 :otra_vez
-if exist "build\herramientas\Minero.console.exe" (
-	"build\herramientas\Minero.console.exe" --headless -- --id=%ID% --out="%OUT%" --excavate=0.6 --types=0.3 --excavate-free=1 >> "%OUT%\excavador_%ID%.log" 2>&1
+set EXE=build\herramientas\Minero.console.exe
+if exist "tools\Godot_v4.7.2-stable_win64_console.exe" set EXE=
+if defined EXE if not exist "%EXE%" set EXE=
+rem (en esta PC, con Godot en tools, se usa el proyecto: siempre es el codigo mas nuevo; en la otra PC, los .exe de construir.ps1)
+if defined EXE (
+	"%EXE%" --headless -- --id=%ID% --out="%OUT%" --excavate=0.6 --types=0.3 --excavate-free=1 >> "%OUT%\excavador_%ID%.log" 2>&1
 ) else (
 	"tools\Godot_v4.7.2-stable_win64_console.exe" --headless --path . res://scenes/miner.tscn -- --id=%ID% --out="%OUT%" --excavate=0.6 --types=0.3 --excavate-free=1 >> "%OUT%\excavador_%ID%.log" 2>&1
 )

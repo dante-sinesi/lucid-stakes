@@ -28,7 +28,7 @@ foreach ($t in $tools) {
 	if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
 	New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 	# una copia del proyecto sin lo que no hace falta
-	robocopy $root $tmp /E /NFL /NDL /NJH /NJS /NP /XD .git .godot build tests docs tools herramientas | Out-Null
+	robocopy $root $tmp /E /NFL /NDL /NJH /NJS /NP /XD .git .godot build tests docs tools herramientas bibliotecas capturas pasos native | Out-Null
 	$proj = Join-Path $tmp "project.godot"
 	(Get-Content $proj -Raw) -replace 'run/main_scene="[^"]*"', ('run/main_scene="' + $t.scene + '"') | Set-Content $proj -NoNewline
 	Write-Host ("== " + $t.name)
