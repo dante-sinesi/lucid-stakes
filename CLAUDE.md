@@ -16,7 +16,7 @@ Juego de puzzle de torres de cubos (estilo Catherine) con casino y economía de 
 - Un test: `GAME_SANDBOX=1 tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_rooms.gd` (termina con "fallos: N"). Los tests de generación tardan varios minutos.
 - Sondas útiles: `tests/probe_reja.gd` (`IDEA=chica|taller`, `IDEA_LOG=1`, `SHOW_TALLER=1`), `probe_seed.gd` (`SEED`, `STAGE`), `probe_validate`, `tests/play_tower.gd` (juega una torre dentro del juego y captura).
 - Los archivos usan finales de línea CRLF: al editar con scripts, conservarlos.
-- Minero y Estudio de salas: `herramientas\minero.bat`, `minero_varios.bat`, `empaquetar.bat`, `estudio.bat` (y `construir.ps1` para armar los .exe). Detalle en `docs/minero_y_estudio.md`.
+- Minero y Estudio de salas: `herramientas\minero.bat`, `minero_varios.bat`, `empaquetar.bat`, `actualizar_biblioteca.bat`, `estudio.bat` (y `construir.ps1` para armar los .exe). Detalle en `docs/minero_y_estudio.md`.
 - Los comandos largos con texto en español y comillas se rompen en el shell: escribir los parches de Python con la herramienta Write y correrlos. Cuidado: `pkill` no mata procesos de Godot en Windows (usar `taskkill //F //IM ...`) y los procesos viejos le quitan CPU a todo.
 
 ## Código importante

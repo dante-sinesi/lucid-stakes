@@ -66,6 +66,21 @@ La O no se hace (por lo que implica subir). Las arenas chicas no admiten cualqui
 
 **Lo que muestran los datos** (1 048 salas, caminos ya sin vueltas): dificultad media 14 %, la mejor 35 %; 375 salas entre 0 y 9 %, 502 entre 10 y 19 %, 159 entre 20 y 29 %, 12 entre 30 y 39 %. **La razón baja con la altura**: subir h pisos pide al menos h pasos, así que la mejor dificultad posible de una sala de h pisos con g empujes es g / (h + g) (con 20 pisos hacen falta 20 empujes para llegar a 50 %). Promedio por altura: 5 pisos 17 %, 8 pisos 12 %, 12 pisos 14 %, 15 pisos 9 %, 19 pisos 9 %. Si se quiere comparar salas de alturas distintas hay que mirar la dificultad junto con los empujes y tirones, o descontar la subida (por ejemplo grabs / (pasos - h)); está pendiente decidirlo.
 
+## Actualización de la biblioteca existente (14/10)
+
+`herramientas\actualizar_biblioteca.bat [carpeta] [salida]` (el empaquetador con `--prune --polish`): saca las vueltas de los caminos, poda el relleno, mejora el final de cada camino con el verificador exacto y recalcula pasos, empujes y tirones y dificultad. Corrida sobre las 1 554 líneas de la corrida larga (3 copias del minero):
+
+| | antes | después |
+|---|---|---|
+| Salas | 1 048 | 872 (176 quedaron repetidas tras podar) |
+| Pasos por sala | 49,1 | 17,3 |
+| Empujes y tirones por sala | 3,1 | 1,6 |
+| Bloques distintos por sala | 1,9 | 1,4 |
+| Dificultad media | 10 % | 10 % |
+| Salas con prueba exacta | 502 | 226 |
+
+Salas por cantidad de empujes y tirones — antes: 1: 206, 2: 379, 3: 163, 4: 93, 5: 57, 6: 57, 7: 36, hasta 16; después: **1: 545, 2: 206, 3: 87, 4: 27, 5: 6, 6: 1**. Dificultad por tramo: 0-9 %: 576, 10-19 %: 216, 20-29 %: 73, 30-39 %: 7. La mejor: 6 empujes de 17 pasos (35 %), una U de 5 pisos. Dificultad media: chicas (hasta 8 pisos) 14 %, altas 7 %. 800 salas podadas (1 480 bloques), 520 caminos acortados, 559 mejorados con el verificador exacto. Conclusión honesta: **la dificultad de lo generado hasta ahora estaba inflada por las caminatas y los movimientos del desorden**; la sala típica pide **un** empuje o tirón y subir una escalera. La prueba exacta bajó porque las salas podadas o mejoradas cambian y vuelven a "sin probar" (salvo las que el verificador prueba enteras).
+
 ## El Estudio
 
 Izquierda: la biblioteca (filtros por forma, pisos, bloques movidos, estado, origen, prueba y búsqueda por id/familia/patrón; orden por bloques movidos, pasos, altura o recientes) y **Sala nueva**. Centro: la sala dibujada con los minibloques y el shader del juego. Derecha: datos de la sala, herramientas y salas parecidas con su miniatura.

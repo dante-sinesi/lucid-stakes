@@ -9,7 +9,12 @@ const RoomLib := preload("res://scripts/room_lib.gd")
 ## Junta los .jsonl de `in_dir` (menos `out_path`). {rooms, read, bad, old_rules, invalid, dup, dropped_weak}.
 static func collect(in_dir: String, out_path: String, opts: Dictionary = {}) -> Dictionary:
 	var min_moved := int(opts.get("min_moved", 1))
-	var res := {"rooms": [], "read": 0, "bad": 0, "old_rules": 0, "invalid": 0, "dup": 0, "weak": 0, "files": 0}
+	var do_prune := bool(opts.get("prune", false))
+	var do_polish := bool(opts.get("polish", false))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var res := {"rooms": [], "read": 0, "bad": 0, "old_rules": 0, "invalid": 0, "dup": 0, "weak": 0, "files": 0, "pruned_blocks": 0, "pruned_rooms": 0, "polished": 0, "dup_after": 0,
+		"before": _zero_stats(), "after": _zero_stats()}
 	var d := DirAccess.open(in_dir)
 	if d == null:
 		return res
@@ -45,6 +50,7 @@ static func collect(in_dir: String, out_path: String, opts: Dictionary = {}) -> 
 		if again.id != r.id:
 			res.invalid += 1
 			continue
+		_add_stats(res.before, r)
 		if bool(opts.get("simplify", true)):   # (saca las vueltas de los caminos viejos: es exacto)
 			var shorter := RoomLib.simplify_path(r, r.path)
 			if shorter.size() < r.path.size():
@@ -54,11 +60,71 @@ static func collect(in_dir: String, out_path: String, opts: Dictionary = {}) -> 
 				if src != "":
 					r.opt.source = src
 				res["shortened"] = int(res.get("shortened", 0)) + 1
+		if do_prune:   # (saca el relleno que no hace falta: la sala cambia de id)
+			var pr := RoomLib.prune(r, rng, int(opts.get("prune_ms", 20000)))
+			if int(pr.removed) > 0:
+				var src2: String = str(r.opt.get("source", ""))
+				var proof2: String = str(r.opt.get("proof", "sin_probar"))
+				var low2: int = int(r.opt.get("lower", r.h))
+				r = pr.room
+				RoomLib.apply_result(r, r.path, "sin_probar" if proof2 == "exacta" else proof2, low2, 0)
+				if src2 != "":
+					r.opt.source = src2
+				res.pruned_blocks += int(pr.removed)
+				res.pruned_rooms += 1
+		if do_polish and r.path.size() <= 90 and str(r.opt.get("proof", "")) != "exacta":   # (mejora el final del camino con el verificador exacto)
+			var imp := RoomLib.improve_tail(r, r.path, 8000, 1500)
+			if imp.path.size() < r.path.size() or int(imp.proven) >= imp.path.size():
+				var src3: String = str(r.opt.get("source", ""))
+				var full: bool = int(imp.proven) >= imp.path.size()
+				RoomLib.apply_result(r, imp.path, "exacta" if full else str(r.opt.get("proof", "sin_probar")), imp.path.size() if full else int(r.opt.get("lower", r.h)), int(r.opt.get("states", 0)))
+				if src3 != "":
+					r.opt.source = src3
+				res.polished += 1
+		if bool(opts.get("verbose", false)) and res.rooms.size() % 100 == 99:
+			print("[empaquetador] %d salas procesadas…" % (res.rooms.size() + 1))
 		if int(r.opt.get("moved", 0)) < min_moved and r.origin != "autor":
 			res.weak += 1
 			continue
 		res.rooms.append(r)
+	# después de podar dos salas pueden haber quedado iguales: se queda la mejor
+	var final := {}
+	for r in res.rooms:
+		if final.has(r.id):
+			res.dup_after += 1
+			final[r.id] = RoomLib.better(final[r.id], r)
+		else:
+			final[r.id] = r
+	if res.dup_after > 0:
+		var ids2: Array = final.keys()
+		ids2.sort()
+		res.rooms = []
+		for id2 in ids2:
+			res.rooms.append(final[id2])
+	for r in res.rooms:
+		_add_stats(res.after, r)
 	return res
+
+
+static func _zero_stats() -> Dictionary:
+	return {"rooms": 0, "moves": 0, "grabs": 0, "moved": 0, "blocks": 0, "diff": 0.0, "exact": 0}
+
+
+static func _add_stats(st: Dictionary, r: Dictionary) -> void:
+	st.rooms += 1
+	st.moves += int(r.opt.get("moves", 0))
+	st.grabs += int(r.opt.get("grabs", 0))
+	st.moved += int(r.opt.get("moved", 0))
+	st.diff += float(r.opt.get("diff", 0.0))
+	st.exact += 1 if str(r.opt.get("proof", "")) == "exacta" else 0
+	for c in r.cols:
+		st.blocks += String(r.cols[c]).length()
+
+
+## Una línea con los promedios de un grupo de salas.
+static func stats_line(st: Dictionary) -> String:
+	var n := maxi(int(st.rooms), 1)
+	return "%d salas · %.1f pasos · %.1f con desplazamiento · dificultad %.0f %% · %.1f bloques distintos · %.0f bloques en total · %d con prueba exacta" % [int(st.rooms), float(st.moves) / n, float(st.grabs) / n, 100.0 * float(st.diff) / n, float(st.moved) / n, float(st.blocks) / n, int(st.exact)]
 
 
 static func write_library(rooms: Array, out_path: String, compress := false) -> bool:

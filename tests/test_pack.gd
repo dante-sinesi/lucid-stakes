@@ -113,5 +113,13 @@ func _init() -> void:
 		if lres.rooms.size() == 1:
 			check(lres.rooms[0].path.size() < wander.size() and RoomLib.replay(lres.rooms[0], lres.rooms[0].path).ok, "el camino acortado resuelve la sala (%d -> %d)" % [wander.size(), lres.rooms[0].path.size()])
 			check(int(lres.rooms[0].opt.moves) == lres.rooms[0].path.size(), "las métricas siguen al camino nuevo")
+	# actualizar una biblioteca: caminos sin vueltas, poda y mejora del final del camino, con promedios antes y después
+	var up := RoomPack.pack(dir, dir.path_join("lib_up.jsonl"), {"min_moved": 1, "prune": true, "polish": true, "prune_ms": 8000})
+	check(up.written and up.kept > 5, "se actualiza la biblioteca (%d salas)" % up.kept)
+	check(int(up.after.moves) <= int(up.before.moves) and int(up.after.blocks) <= int(up.before.blocks), "después hay menos o igual pasos y bloques: %s -> %s" % [RoomPack.stats_line(up.before), RoomPack.stats_line(up.after)])
+	for r in RoomLib.read_file(dir.path_join("lib_up.jsonl")).rooms:
+		check(RoomLib.replay(r, r.path).ok and RoomLib.validate_structure(r) == "", "la sala actualizada se resuelve")
+		check(is_equal_approx(float(r.opt.diff), float(r.opt.grabs) / float(r.opt.moves)) and int(r.opt.moves) == r.path.size(), "las métricas de la sala actualizada coinciden con su camino")
+	check(RoomPack.stats_line(up.after).find("salas") != -1, "hay una línea de promedios")
 	print("tests del empaquetador terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
