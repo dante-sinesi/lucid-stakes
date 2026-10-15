@@ -2,7 +2,7 @@ extends Node
 ## Escena del minero de salas (se deja corriendo 24/7). Uso (después de `--` van los argumentos del minero):
 ##   Godot --headless --path . res://scenes/miner.tscn -- --id=1 --out=C:/biblioteca --minutes=0
 ## Argumentos: --id=N (cada copia en marcha usa uno distinto), --out=CARPETA (donde se escribe miner_N.jsonl y stats_N.json; por defecto user://biblioteca),
-## --minutes=M (0 = para siempre), --seed=S, --shapes=3x3,3x5,3x8,L,U, --hlo=5, --hhi=20, --keep=6, --verify=0.1, --max-evals=N, --cap-mult=1 (multiplica el tope de estados y de tiempo del solucionador), --excavate=P (probabilidad de excavar una sala del archivo con el solucionador nativo en cada paso; 0 = nunca), --excavate-nodes=N, --excavate-eval=N, --excavate-free=1 (las salas excavadas pueden tener bloques sin columna hasta el piso).
+## --minutes=M (0 = para siempre), --seed=S, --shapes=3x3,3x5,3x8,L,U, --hlo=5, --hhi=20, --keep=6, --verify=0.1, --max-evals=N, --cap-mult=1 (multiplica el tope de estados y de tiempo del solucionador), --excavate=P (probabilidad de excavar una sala del archivo con el solucionador nativo en cada paso; 0 = nunca), --excavate-nodes=N, --excavate-eval=N, --types=P (probabilidad de probar variantes con bloques especiales), --excavate-free=1 (las salas excavadas pueden tener bloques sin columna hasta el piso).
 ## Se detiene sola con un archivo llamado STOP en la carpeta de salida. Si se corta (luz, error), se retoma desde su propio .jsonl.
 const RoomMiner := preload("res://scripts/room_miner.gd")
 const RoomLib := preload("res://scripts/room_lib.gd")
@@ -46,6 +46,8 @@ static func parse_args(args: PackedStringArray) -> Dictionary:
 				cfg.excavate_nodes = int(v)
 			"excavate-eval":
 				cfg.excavate_eval = int(v)
+			"types":
+				cfg.types = float(v)
 			"excavate-free":
 				cfg.excavate_free = int(v) != 0
 	return cfg

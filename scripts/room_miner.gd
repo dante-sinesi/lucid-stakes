@@ -10,7 +10,7 @@ const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Solver := preload("res://scripts/solver.gd")
 const NativeSolver := preload("res://scripts/native_solver.gd")
 
-const SPECIAL := ["i", "c"]
+const SPECIAL := ["i", "c", "b", "k", "t", "s"]
 
 var rng := RandomNumberGenerator.new()
 var out_dir := ""
@@ -35,6 +35,8 @@ var cap_mult := 1.0         # multiplica el tope de estados y de tiempo con el q
 var excavate_p := 0.0       # probabilidad de dedicar el paso a excavar una sala del archivo (ver _excavate_step; hace falta el solucionador nativo)
 var excavate_nodes := 1000000   # estados que explora cada excavación
 var excavate_top := 60
+var types_p := 0.0            # probabilidad de dedicar el paso a probar variantes con bloques especiales (hielo, agrietado, bomba, catapulta, trampa, pinchos) sobre una sala del archivo
+var types_eval := 8           # variantes que se prueban por paso
 var excavate_free := false    # las salas excavadas pueden tener bloques sin columna hasta el piso (sostenidos por sus vecinos)
 var excavate_cap := 500000    # estados que se le dan al solucionador exacto por candidato
 var excavate_eval := 20     # candidatos de cada excavación que se evalúan con el solucionador exacto
@@ -65,6 +67,8 @@ func _init(cfg: Dictionary = {}) -> void:
 	excavate_eval = int(cfg.get("excavate_eval", excavate_eval))
 	excavate_cap = int(cfg.get("excavate_cap", excavate_cap))
 	excavate_free = bool(cfg.get("excavate_free", excavate_free))
+	types_p = float(cfg.get("types", types_p))
+	types_eval = int(cfg.get("types_eval", types_eval))
 	rng.seed = int(cfg.get("seed", 1 + miner_id * 7919))
 	var shapes: Array = cfg.get("shapes", RoomLib.SHAPES)
 	var h_lo := int(cfg.get("h_lo", RoomLib.MIN_H))
@@ -308,7 +312,7 @@ func make_seed(shape: String, h: int) -> Dictionary:
 
 
 func _random_kind_other(cur: String) -> String:
-	var opts := ["n", "h", "i", "c"]
+	var opts: Array = RoomLib.KIND_OF_CHAR.keys()
 	opts.erase(cur)
 	return opts[rng.randi_range(0, opts.size() - 1)]
 
@@ -805,6 +809,118 @@ func _excavate_step(par: Dictionary) -> void:
 			stats.inserted = int(stats.inserted) + 1
 			stats.excavated = int(stats.get("excavated", 0)) + 1
 
+
+## Resuelve la sala con el solucionador exacto (el camino más corto, y entre los más cortos el de menos agarres) y comprueba que no se pueda resolver caminando y que pida mover bloques. La sala con su camino y sus métricas, o {}.
+func _exact_room(room: Dictionary) -> Dictionary:
+	var t = RoomLib.build_state(room)
+	var res: Dictionary = Solver.solve(t.clone(), room.h + 1, {"max_states": excavate_cap, "goal_ids": t.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": 12000})
+	if res.status != "solved":
+		_fail("tipos_" + str(res.status))
+		return {}
+	var plain: Dictionary = Solver.solve(t, room.h + 1, {"max_states": 60000, "goal_ids": t.goal_ids, "no_grab": true, "max_ms": 8000})
+	if plain.status != "unsolvable":
+		_fail("atajo" if plain.status == "solved" else "sin_prueba_de_atajo")
+		return {}
+	if int(RoomLib.path_stats(room, res.path).moved) < 1:
+		_fail("sin_bloques")
+		return {}
+	var r := RoomLib.copy_room(room)
+	RoomLib.apply_result(r, res.path, "exacta", int(res.moves), int(res.states))
+	return r
+
+
+## Las celdas con bloques especiales de la sala: [[celda, piso (1 = sobre el piso)], ...].
+func _special_blocks(room: Dictionary) -> Array:
+	var out: Array = []
+	for c in room.cols:
+		var ks: String = room.cols[c]
+		for i in ks.length():
+			if SPECIAL.has(ks[i]):
+				out.append([c, i + 1])
+	return out
+
+
+## Un bloque especial que no cambia el camino más corto (mismos pasos y mismos agarres) es adorno: se lo cambia por uno común. Devuelve la sala sin adornos, o {} si no queda ningún especial que importe.
+func _special_cleanup(room: Dictionary) -> Dictionary:
+	var cur := room
+	for sb in _special_blocks(room):
+		var c: Vector2i = sb[0]
+		var y: int = sb[1]
+		var cand := RoomLib.copy_room(cur)
+		var ks: String = cand.cols[c]
+		cand.cols[c] = ks.substr(0, y - 1) + "n" + ks.substr(y)
+		cand.path = []
+		cand.opt = {}
+		var ex := _exact_room(cand)
+		if not ex.is_empty() and int(ex.opt.moves) == int(cur.opt.moves) and int(ex.opt.grabs) == int(cur.opt.grabs):
+			cur = ex
+	return cur if not _special_blocks(cur).is_empty() else {}
+
+
+## Variantes con bloques especiales: a una sala del archivo se le cambia el tipo de uno o dos bloques, o se le agrega un bloque especial, y se queda con las que siguen resolviéndose, siguen pidiendo mover bloques y
+## en las que el especial es necesario (si sacarlo no cambia el camino más corto, era adorno). Así el archivo tiene salas que aprovechan hielo, arenisca, bombas, catapultas, trampas y pinchos.
+func _type_step(par: Dictionary) -> void:
+	if par.is_empty() or par.path.is_empty():
+		_fail("tipos_sin_camino")
+		return
+	stats.type_steps = int(stats.get("type_steps", 0)) + 1
+	var specials := SPECIAL
+	for n in types_eval:
+		var room := RoomLib.copy_room(par)
+		room.path = []
+		room.opt = {}
+		room.parent = str(par.get("id", ""))
+		var cells: Array = room.cols.keys()
+		var kind: String = specials[rng.randi_range(0, specials.size() - 1)]
+		var count := 1 if rng.randf() < 0.6 else 2
+		for k in count:
+			if not cells.is_empty() and rng.randf() < 0.65:   # cambiar el tipo de un bloque
+				var c: Vector2i = cells[rng.randi_range(0, cells.size() - 1)]
+				var ks: String = room.cols[c]
+				var idx: Array = []
+				for i in ks.length():
+					if ks[i] != RoomLib.GAP:
+						idx.append(i)
+				if not idx.is_empty():
+					var i: int = idx[rng.randi_range(0, idx.size() - 1)]
+					room.cols[c] = ks.substr(0, i) + kind + ks.substr(i + 1)
+			else:   # agregar un bloque especial arriba de una columna o en una celda vacía
+				var free: Array = RoomLib.free_cells(room.shape)
+				var c2: Vector2i = free[rng.randi_range(0, free.size() - 1)]
+				var cur: String = room.cols.get(c2, "")
+				if cur.length() < int(room.h) - 1:
+					room.cols[c2] = cur + kind
+		room.cols = _clean(room.cols)
+		if RoomLib.validate_structure(room) != "":
+			_fail("estructura")
+			continue
+		RoomLib.finalize(room)
+		if seen.has(room.id):
+			stats.dup = int(stats.dup) + 1
+			continue
+		seen[room.id] = true
+		stats.evals = int(stats.evals) + 1
+		var ex := _exact_room(room)
+		if ex.is_empty():
+			continue
+		var cleaned := _special_cleanup(ex)
+		if cleaned.is_empty():
+			_fail("tipos_adorno")
+			continue
+		RoomLib.finalize(cleaned)
+		if cleaned.id != room.id:
+			if seen.has(cleaned.id):
+				stats.dup = int(stats.dup) + 1
+				continue
+			seen[cleaned.id] = true
+		stats.valid = int(stats.valid) + 1
+		cleaned.opt.source = "tipos"
+		cleaned.origin = "minero"
+		cleaned.stamp = int(Time.get_unix_time_from_system())
+		if insert(cleaned):
+			stats.inserted = int(stats.inserted) + 1
+			stats.typed = int(stats.get("typed", 0)) + 1
+
 ## Un paso: o se verifica una sala, o se crea y evalúa una nueva.
 func step() -> void:
 	if combos_list.is_empty():
@@ -815,6 +931,9 @@ func step() -> void:
 	var list: Array = by_group.get("%s|%d" % [combo[0], combo[1]], [])
 	var r := rng.randf()
 	var tall: bool = combo[1] >= tall_h
+	if types_p > 0.0 and not list.is_empty() and rng.randf() < types_p and NativeSolver.available():
+		_type_step(pick_parent(combo[0], combo[1]))
+		return
 	if excavate_p > 0.0 and not list.is_empty() and rng.randf() < excavate_p and NativeSolver.available():
 		_excavate_step(pick_parent(combo[0], combo[1]))
 		return

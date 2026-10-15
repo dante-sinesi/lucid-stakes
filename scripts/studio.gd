@@ -504,13 +504,13 @@ func _refresh_info() -> void:
 		return
 	var r := model.current
 	var o: Dictionary = r.opt
-	var counts := {"n": 0, "h": 0, "i": 0, "c": 0}
+	var counts := {"n": 0, "h": 0, "i": 0, "c": 0, "b": 0, "k": 0, "t": 0, "s": 0}
 	for c in r.cols:
 		var ks: String = r.cols[c]
 		for i in ks.length():
 			if ks[i] != RoomLib.GAP:
 				counts[ks[i]] = int(counts[ks[i]]) + 1
-	var t := "[b]%s · %d pisos[/b]   %d bloques (común %d, pesado %d, hielo %d, agrietado %d) en %d columnas\n" % [r.shape, r.h, model.block_count(), counts.n, counts.h, counts.i, counts.c, r.cols.size()]
+	var t := "[b]%s · %d pisos[/b]   %d bloques (común %d, pesado %d, hielo %d, agrietado %d, bomba %d, catapulta %d, trampa %d, pinchos %d) en %d columnas\n" % [r.shape, r.h, model.block_count(), counts.n, counts.h, counts.i, counts.c, counts.b, counts.k, counts.t, counts.s, r.cols.size()]
 	t += "id [code]%s[/code]  familia [code]%s[/code]  patrón [code]%s[/code]\n" % [str(r.id).substr(0, 10), str(r.family).substr(0, 10), str(r.pattern).substr(0, 10)]
 	t += "origen: %s · estado: %s%s\n" % [r.origin, r.status, ("  ·  vino de [code]%s[/code]" % str(r.parent).substr(0, 8)) if str(r.parent) != "" else ""]
 	if o.has("moves"):

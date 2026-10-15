@@ -8,8 +8,8 @@ const RoomPack := preload("res://scripts/room_pack.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Solver := preload("res://scripts/solver.gd")
 
-const KINDS := ["n", "h", "i", "c"]
-const KIND_NAMES := {"n": "común", "h": "pesado", "i": "hielo", "c": "agrietado"}
+const KINDS := ["n", "h", "i", "c", "b", "k", "t", "s"]
+const KIND_NAMES := {"n": "común", "h": "pesado", "i": "hielo", "c": "agrietado", "b": "bomba", "k": "catapulta", "t": "trampa", "s": "pinchos"}
 const UNDO_LIMIT := 100
 
 var path := ""

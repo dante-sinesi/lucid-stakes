@@ -42,12 +42,6 @@ static func available() -> bool:
 static func supported(s) -> bool:
 	if not s.perks.is_empty() or not s.anchored.is_empty() or s.meteors or s.shield or s.double_jump or s.collapse_pause > 0:
 		return false
-	if not s.bomb_timer.is_empty():
-		return false
-	for id in s.kind_of:
-		var k: int = s.kind_of[id]
-		if k == TowerLogic.Kind.BOMB or k == TowerLogic.Kind.CATAPULT or k == TowerLogic.Kind.TRAP or k == TowerLogic.Kind.SPIKES:
-			return false
 	return true
 
 
@@ -70,12 +64,13 @@ static func _write_input(s, target_y: int, goal_ids: Dictionary, header: Array, 
 	lines.append("PLAYER %d %d %d" % [s.player.x, s.player.y, s.player.z])
 	lines.append("HANG %d %d %d" % [s.hang_dir.x, s.hang_dir.y, s.hang_dir.z])
 	lines.append("DIRTY %d" % (1 if s._blocks_dirty else 0))
+	lines.append("READY %d" % (1 if s._standing_ready else 0))
 	for h in header:
 		lines.append(h)
 	for c in s.blocks:
 		var id: int = s.blocks[c]
 		var kind: int = s.kind_of.get(id, 0)
-		lines.append("BLOCK %d %d %d %d %d %d %d" % [c.x, c.y, c.z, kind, 1 if s.fixed.has(c) else 0, 1 if goal_ids.has(id) else 0, 1 if s.standing.has(id) else 0])
+		lines.append("BLOCK %d %d %d %d %d %d %d %d" % [c.x, c.y, c.z, kind, 1 if s.fixed.has(c) else 0, 1 if goal_ids.has(id) else 0, 1 if s.standing.has(id) else 0, int(s.bomb_timer.get(id, 0))])
 	for e in extra:
 		lines.append(e)
 	lines.append("END")

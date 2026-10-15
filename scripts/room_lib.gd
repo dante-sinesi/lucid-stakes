@@ -23,8 +23,10 @@ const WORLD := 8
 const MIN_H := 5
 const MAX_H := 20
 const SHAPES: Array = ["3x3", "3x5", "3x8", "L", "U"]
-const KIND_OF_CHAR := {"n": K.NORMAL, "h": K.HEAVY, "i": K.ICE, "c": K.CRACKED}
-const CHAR_OF_KIND := {K.NORMAL: "n", K.HEAVY: "h", K.ICE: "i", K.CRACKED: "c"}
+## n común, h pesado, i hielo, c agrietado (arenisca), b bomba, k catapulta (trampolín), t trampa, s pinchos.
+const KIND_OF_CHAR := {"n": K.NORMAL, "h": K.HEAVY, "i": K.ICE, "c": K.CRACKED, "b": K.BOMB, "k": K.CATAPULT, "t": K.TRAP, "s": K.SPIKES}
+const BOMB_FUSE := 6   # lo que le queda de cuenta a una bomba al empezar la sala
+const CHAR_OF_KIND := {K.NORMAL: "n", K.HEAVY: "h", K.ICE: "i", K.CRACKED: "c", K.BOMB: "b", K.CATAPULT: "k", K.TRAP: "t", K.SPIKES: "s"}
 const DIR_CHARS := {Vector3i(1, 0, 0): "E", Vector3i(-1, 0, 0): "W", Vector3i(0, 0, 1): "S", Vector3i(0, 0, -1): "N"}
 const MODE_CHARS := {TowerLogic.Mode.MOVE: "m", TowerLogic.Mode.GRAB: "g", TowerLogic.Mode.HANG: "h"}
 ## En una columna, un hueco (aire) entre bloques: permite salas con bloques sostenidos por sus vecinos de costado, sin columna hasta el piso.
@@ -234,7 +236,8 @@ static func build_state(room: Dictionary):
 		var ks: String = room.cols[c]
 		for i in ks.length():
 			if ks[i] != GAP:
-				t.add_block(Vector3i(c.x, i + 1, c.y), false, int(KIND_OF_CHAR.get(ks[i], K.NORMAL)))
+				var kd := int(KIND_OF_CHAR.get(ks[i], K.NORMAL))
+				t.add_block(Vector3i(c.x, i + 1, c.y), false, kd, BOMB_FUSE if kd == K.BOMB else 0)
 	t.player = Vector3i(entry.x, 1, entry.y)
 	t.goal_y = h + 1
 	t.goal_ids = {goal_id: true}
@@ -669,7 +672,7 @@ static func block_sets_all(room: Dictionary) -> Array:
 
 ## Descriptor numérico para la búsqueda de salas parecidas.
 static func descriptor(room: Dictionary) -> Array:
-	var counts := {"n": 0, "h": 0, "i": 0, "c": 0}
+	var counts := {"n": 0, "h": 0, "i": 0, "c": 0, "b": 0, "k": 0, "t": 0, "s": 0}
 	var n := 0
 	for c in room.cols:
 		var ks: String = room.cols[c]

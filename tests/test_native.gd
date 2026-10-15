@@ -39,6 +39,14 @@ func _rooms(n: int, rng: RandomNumberGenerator) -> Array:
 					ch = "i"
 				elif q < 0.17:
 					ch = "c"
+				elif q < 0.22:
+					ch = "b"
+				elif q < 0.28:
+					ch = "k"
+				elif q < 0.33:
+					ch = "t"
+				elif q < 0.38:
+					ch = "s"
 				var ks := ""
 				for k in hh:
 					ks += ch if k == 0 or rng.randf() < 0.8 else "n"

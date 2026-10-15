@@ -13,9 +13,9 @@ cd /d "%~dp0.."
 if not exist "%OUT%" mkdir "%OUT%"
 :otra_vez
 if exist "build\herramientas\Minero.console.exe" (
-	"build\herramientas\Minero.console.exe" --headless -- --id=%ID% --out="%OUT%" --excavate=0.85 --excavate-free=1 >> "%OUT%\excavador_%ID%.log" 2>&1
+	"build\herramientas\Minero.console.exe" --headless -- --id=%ID% --out="%OUT%" --excavate=0.6 --types=0.3 --excavate-free=1 >> "%OUT%\excavador_%ID%.log" 2>&1
 ) else (
-	"tools\Godot_v4.7.2-stable_win64_console.exe" --headless --path . res://scenes/miner.tscn -- --id=%ID% --out="%OUT%" --excavate=0.85 --excavate-free=1 >> "%OUT%\excavador_%ID%.log" 2>&1
+	"tools\Godot_v4.7.2-stable_win64_console.exe" --headless --path . res://scenes/miner.tscn -- --id=%ID% --out="%OUT%" --excavate=0.6 --types=0.3 --excavate-free=1 >> "%OUT%\excavador_%ID%.log" 2>&1
 )
 if exist "%OUT%\STOP" goto fin
 echo [%date% %time%] el excavador %ID% se corto: reinicia en 10 segundos >> "%OUT%\excavador_%ID%.log"

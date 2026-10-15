@@ -1,5 +1,5 @@
 // Solucionador nativo de salas. Es un port en C++ de las reglas de scripts/tower_logic.gd (caminar, empujar, tirar, colgarse, gravedad con apoyo por vecinos y aristas) y del A* de scripts/solver.gd.
-// Tipos de bloque que entiende: común (0), hielo (1), agrietado (4) y pesado (5), más los bloques fijos. Con otros tipos (bomba, catapulta, trampa, pinchos) contesta "unsupported" y el llamador usa el solucionador de GDScript.
+// Tipos de bloque: común (0), hielo (1), bomba (2), catapulta (3), agrietado (4), pesado (5), trampa (6) y pinchos (7), más los bloques fijos.
 // Uso:  solver_nativo ENTRADA SALIDA     (archivos de texto; ver scripts/native_solver.gd, que los arma y los lee)
 // Se compila con native/construir.bat (g++ -O2 -static). Las pruebas contra GDScript están en tests/test_native.gd.
 #include <algorithm>
@@ -70,11 +70,14 @@ static vector<u8> S;            // 0 = vacío; si no, 8 | tipo | 32 si es meta
 static vector<int> fixedCells;
 static vector<V> goalStatic;
 static i64 staticZob = 0;
-static bool anyIce = false;
+static bool anyIce = false, anyBomb = false;
+static int gainG = 1;   // lo que puede subir una acción: 1, o el impulso de la catapulta + 1 si hay catapultas en el estado inicial
+static vector<V> trailV;   // celdas que ocupó el jugador en la última acción (las bombas de abajo se purifican)
 static const u8 PRESENT = 8, STAND = 16, GOALF = 32;
 
 struct Data {
 	vector<u8> g;
+	vector<u8> tm;   // cuenta de cada bomba (0 = desactivada)
 	vector<int> list;
 };
 
@@ -92,19 +95,33 @@ struct Sim {
 };
 
 static inline void own(Sim &) {}
+static inline void setP(Sim &s, V c) {
+	s.p = c;
+	if (anyBomb) trailV.push_back(c);
+}
 
 static vector<int> snapList;
-static vector<u8> snapVal;
+static vector<u8> snapVal, snapTm;
 // Guarda los bloques de W (todo lo que no es cero en W.g está en W.list) para poder deshacer una acción.
 static inline void snapshot() {
 	snapList = W.list;
 	snapVal.resize(snapList.size());
-	for (size_t i = 0; i < snapList.size(); i++) snapVal[i] = W.g[snapList[i]];
+	snapTm.resize(snapList.size());
+	for (size_t i = 0; i < snapList.size(); i++) {
+		snapVal[i] = W.g[snapList[i]];
+		snapTm[i] = W.tm[snapList[i]];
+	}
 }
 static inline void restore() {
-	for (int ci : W.list) W.g[ci] = 0;
+	for (int ci : W.list) {
+		W.g[ci] = 0;
+		W.tm[ci] = 0;
+	}
 	W.list = snapList;
-	for (size_t i = 0; i < snapList.size(); i++) W.g[snapList[i]] = snapVal[i];
+	for (size_t i = 0; i < snapList.size(); i++) {
+		W.g[snapList[i]] = snapVal[i];
+		W.tm[snapList[i]] = snapTm[i];
+	}
 }
 struct RestoreGuard {
 	~RestoreGuard() { restore(); }
@@ -152,6 +169,7 @@ static void removeBlock(Sim &s, V c) {
 	u8 f = s.d->g[i];
 	s.zob ^= zobHash(c, f & 7);
 	s.d->g[i] = 0;
+	s.d->tm[i] = 0;
 	listErase(s.d->list, i);
 	s.dirty = true;
 	wVersion++;
@@ -162,7 +180,9 @@ static void moveBlock(Sim &s, V from, V to) {
 	int fi = cellIdx(from), ti = cellIdx(to);
 	u8 f = s.d->g[fi];
 	int k = f & 7;
+	u8 tmv = s.d->tm[fi];
 	s.d->g[fi] = 0;
+	s.d->tm[fi] = 0;
 	listErase(s.d->list, fi);
 	s.dirty = true;
 	wVersion++;
@@ -173,6 +193,7 @@ static void moveBlock(Sim &s, V from, V to) {
 	s.zob ^= zobHash(from, k) ^ zobHash(to, k);
 	if (from.y == to.y) f &= ~STAND;   // empujado o tirado de costado: se sostiene de sus vecinos
 	s.d->g[ti] = f;
+	s.d->tm[ti] = tmv;
 	s.d->list.push_back(ti);
 }
 
@@ -311,7 +332,7 @@ static void settlePlayer(Sim &s) {
 			s.p.y -= 3;
 			return;
 		}
-		s.p.y -= 1;
+		setP(s, s.p + DOWN);
 	}
 }
 
@@ -335,13 +356,43 @@ static void slide(Sim &s, V d) {
 			s.p = {t.x, max(t.y - 3, -3), t.z};
 			return;
 		}
-		s.p = t;
+		setP(s, t);
 		if (kindAt(s, s.p + DOWN) != ICE) return;
 	}
 }
 
+static void launch(Sim &s, V d) {   // la catapulta dispara hacia arriba y el jugador se agarra del borde de un bloque vecino
+	V origin = s.p;
+	for (int i = 0; i < 4; i++) {
+		V cell = s.p + UP;
+		if (!inBounds(cell) || has(s, cell)) break;
+		setP(s, cell);
+	}
+	if (s.p == origin) return;
+	int topY = s.p.y;
+	for (int i = 0; i < 2; i++) {
+		V above = {s.p.x, topY + 1, s.p.z};
+		if (!inBounds(above) || has(s, above)) break;
+		topY++;
+	}
+	for (int y = topY; y > origin.y; y--) {
+		V gd[4] = {d, {-d.z, 0, d.x}, {d.z, 0, -d.x}, -d};
+		for (int k = 0; k < 4; k++) {
+			V g = V{s.p.x, y, s.p.z} + gd[k];
+			if (has(s, g) && !has(s, g + UP) && kindAt(s, g) != ICE) {
+				while (s.p.y < y) setP(s, s.p + UP);
+				while (s.p.y > y) setP(s, s.p + DOWN);
+				s.hang = gd[k];
+				return;
+			}
+		}
+	}
+}
+
 static void arrive(Sim &s, V d) {
-	if (kindAt(s, s.p + DOWN) == ICE) slide(s, d);
+	int k = kindAt(s, s.p + DOWN);
+	if (k == ICE) slide(s, d);
+	else if (k == CATAPULT) launch(s, d);
 }
 
 static bool actWalk(Sim &s, V d) {
@@ -349,17 +400,17 @@ static bool actWalk(Sim &s, V d) {
 	if (!inBounds(t)) return false;
 	if (has(s, t)) {
 		if (has(s, t + UP) || has(s, s.p + UP)) return false;
-		s.p = t + UP;
+		setP(s, t + UP);
 		arrive(s, d);
 		return true;
 	}
 	if (has(s, t + DOWN)) {
-		s.p = t;
+		setP(s, t);
 		arrive(s, d);
 		return true;
 	}
 	if (has(s, t + DOWN + DOWN)) {
-		s.p = t + DOWN;
+		setP(s, t + DOWN);
 		arrive(s, d);
 		return true;
 	}
@@ -407,21 +458,21 @@ static bool actGrab(Sim &s, V d) {
 			V h = t + DOWN;
 			if (has(s, h + DOWN)) {   // un escalón más abajo: se baja, como al caminar
 				moveBlock(s, back, s.p);
-				s.p = h;
+				setP(s, h);
 				arrive(s, d);
 				return true;
 			}
 			if (has(s, s.p + DOWN) && !has(s, h) && inHangReach(h)) {   // sin piso atrás: el bloque viene y el jugador queda colgado del que pisaba
 				if (kindAt(s, s.p + DOWN) == ICE) return false;
 				moveBlock(s, back, s.p);
-				s.p = h;
+				setP(s, h);
 				s.hang = -d;
 				return true;
 			}
 			return false;
 		}
 		moveBlock(s, back, s.p);
-		s.p = t;
+		setP(s, t);
 		arrive(s, d);
 		return true;
 	}
@@ -434,7 +485,7 @@ static bool actHangOver(Sim &s, V d) {
 	if (kindAt(s, s.p + DOWN) == ICE) return false;
 	if (!inHangReach(t) || has(s, t)) return false;
 	if (has(s, h) || has(s, h + DOWN)) return false;
-	s.p = h;
+	setP(s, h);
 	s.hang = -d;
 	return true;
 }
@@ -444,7 +495,7 @@ static bool actHanging(Sim &s, V d) {
 	if (d == w) {
 		V up = s.p + w + UP;
 		if (has(s, up) || has(s, s.p + UP)) return false;
-		s.p = up;
+		setP(s, up);
 		s.hang = ZERO;
 		return true;
 	}
@@ -464,11 +515,11 @@ static bool actHanging(Sim &s, V d) {
 	if (has(s, g2)) {
 		if (has(s, g2 + UP)) return false;
 		if (kindAt(s, g2) == ICE) return false;
-		s.p = h2;
+		setP(s, h2);
 		return true;
 	}
 	if (inHangReach(g2) && !has(s, s.p + w + UP)) {
-		s.p = g2;
+		setP(s, g2);
 		s.hang = -d;
 		return true;
 	}
@@ -481,16 +532,64 @@ static bool onGoal(const Sim &s) {
 	return goalAt(s, s.p + DOWN);
 }
 
+static void hazards(Sim &s) {   // trampa: se desarma y cae con el jugador; pinchos: se pierde
+	for (int i = 0; i < 8; i++) {
+		if (s.lost || s.hang != ZERO) return;
+		int k = kindAt(s, s.p + DOWN);
+		if (k == TRAP) {
+			removeBlock(s, s.p + DOWN);
+			settle(s);
+		} else if (k == SPIKES) {
+			s.lost = true;
+			return;
+		} else {
+			return;
+		}
+	}
+}
+
 static void afterAction(Sim &s) {
 	if (s.crackCell >= 0 && s.p != s.crackFrom && s.d->g[s.crackCell]) removeBlock(s, cellOf(s.crackCell));   // el agrietado se rompe al bajarte de él
 	settle(s);
+	hazards(s);
 	if (s.lost) return;
-	if (onGoal(s)) s.won = true;
+	if (anyBomb) {   // pisar una bomba la desactiva
+		auto purify = [&](V c) {
+			int i = cellIdx(c);
+			if (i >= 0 && s.d->g[i] && (s.d->g[i] & 7) == BOMB && s.d->tm[i]) {
+				s.d->tm[i] = 0;
+				wVersion++;
+			}
+		};
+		for (V c : trailV) purify(c + DOWN);
+		if (s.hang != ZERO) purify(s.p + s.hang);
+	}
+	if (onGoal(s)) {
+		s.won = true;
+		return;
+	}
+	if (anyBomb) {   // una bomba cuenta sólo cuando el jugador está en su fila; al llegar a 0 explota
+		for (int ci : s.d->list) {
+			if ((s.d->g[ci] & 7) != BOMB || !s.d->tm[ci] || cellOf(ci).y != s.p.y) continue;
+			s.d->tm[ci]--;
+			wVersion++;
+			if (s.d->tm[ci] == 0) {   // explota: la torre se derrumba
+				s.lost = true;
+				s.p.y -= 3;
+				s.zob = 0;
+				return;
+			}
+		}
+	}
 }
 
 static bool tryAction(Sim &s, V dir, int mode) {   // mode: 0 caminar, 1 empujar/tirar, 2 colgarse
 	if (s.won || s.lost) return false;
 	s.crackCell = -1;
+	if (anyBomb) {
+		trailV.clear();
+		trailV.push_back(s.p);
+	}
 	if (s.hang == ZERO && has(s, s.p + DOWN) && kindAt(s, s.p + DOWN) == CRACKED) {
 		s.crackCell = cellIdx(s.p + DOWN);
 		s.crackFrom = s.p;
@@ -505,7 +604,7 @@ static bool tryAction(Sim &s, V dir, int mode) {   // mode: 0 caminar, 1 empujar
 }
 
 // --- carga del estado -----------------------------------------------------------------------------------------------------------
-struct BlockIn { V c; int kind; bool fixed, goal, standing; };
+struct BlockIn { V c; int kind; bool fixed, goal, standing; int timer; };
 static vector<BlockIn> blocksIn;
 static V startP = {0, 0, 0}, startH = {0, 0, 0};
 static bool standingReady = false, startDirty = true;
@@ -513,6 +612,7 @@ static bool standingReady = false, startDirty = true;
 static Sim buildRoot() {
 	Sim s;
 	W.g.assign(CELLS, 0);
+	W.tm.assign(CELLS, 0);
 	W.list.clear();
 	s.d = &W;
 	s.zob = 0;
@@ -528,6 +628,11 @@ static Sim buildRoot() {
 			if (b.kind == ICE) anyIce = true;
 		} else {
 			s.d->g[i] = PRESENT | b.kind | (b.goal ? GOALF : 0) | (b.standing ? STAND : 0);
+				if (b.kind == BOMB) {
+					s.d->tm[i] = (u8)b.timer;
+					anyBomb = true;
+				}
+				if (b.kind == CATAPULT) gainG = 5;
 			s.d->list.push_back(i);
 			if (b.kind == ICE) anyIce = true;
 		}
@@ -557,6 +662,7 @@ static Sim buildRoot() {
 	s.p = startP;
 	s.hang = startH;
 	s.dirty = startDirty;
+	if (!standingReady) markStanding(s);   // (try_action marca los apoyados antes de la primera acción)
 	return s;   // (los apoyados se anotan en la primera revisión de apoyo, igual que en GDScript)
 }
 
@@ -588,8 +694,8 @@ static int goalDeficit(const Sim &s) {
 
 static int heuristic(const Sim &s) {
 	if (heurMode == 0) return 0;
-	int h = max(0, goalY - s.p.y);
-	if (!goalAny && !anyIce) {
+	int h = (max(0, goalY - s.p.y) + gainG - 1) / gainG;
+	if (!goalAny && !anyIce && gainG == 1) {
 		int best = 1000;
 		auto cheb = [&](V p) { best = min(best, max(abs(p.x - s.p.x), abs(p.z - s.p.z))); };
 		for (V g : goalStatic) cheb(g);
@@ -614,7 +720,11 @@ struct KeyHash {
 static inline int encDir(V d) { return (d.x + 1) + 3 * ((d.y + 1) + 3 * (d.z + 1)); }
 static inline Key keyOf(const Sim &s) {
 	int pe = (s.p.x + 40) + 128 * ((s.p.z + 40) + 128 * (s.p.y + 40));
-	return {s.zob, pe * 27 + encDir(s.hang)};
+	i64 z = s.zob;
+	if (anyBomb)
+		for (int ci : s.d->list)
+			if ((s.d->g[ci] & 7) == BOMB && s.d->tm[ci]) z ^= zobHash(cellOf(ci), 40 + min((int)s.d->tm[ci], 200));
+	return {z, pe * 27 + encDir(s.hang)};
 }
 
 struct Node {
@@ -626,7 +736,7 @@ struct Node {
 	bool dirty, won;
 };
 
-// Las configuraciones de bloques de los nodos, una detrás de otra en un solo arreglo: tres bytes por bloque (celda en dos bytes y banderas).
+// Las configuraciones de bloques de los nodos, una detrás de otra en un solo arreglo: cuatro bytes por bloque (celda en dos bytes, banderas y cuenta de la bomba).
 static vector<u8> cfgBytes;
 static vector<unsigned> cfgOff(1, 0);
 struct CfgView {
@@ -646,20 +756,25 @@ static int addCfg(const Sim &s) {
 		cfgBytes.push_back((u8)(ci & 255));
 		cfgBytes.push_back((u8)((ci >> 8) & 255));
 		cfgBytes.push_back(s.d->g[ci]);
+		cfgBytes.push_back(s.d->tm[ci]);
 	}
 	cfgOff.push_back((unsigned)cfgBytes.size());
 	return cfgCount() - 1;
 }
 static Sim simFromNode(const Node &n, i64 zob) {
 	Sim s;
-	for (int ci : W.list) W.g[ci] = 0;
+	for (int ci : W.list) {
+		W.g[ci] = 0;
+		W.tm[ci] = 0;
+	}
 	W.list.clear();
 	s.d = &W;
 	CfgView c = cfgGet(n.cfg);
 	s.d->list.reserve(c.size() / 3);
-	for (size_t i = 0; i < c.size(); i += 3) {
+	for (size_t i = 0; i < c.size(); i += 4) {
 		int ci = c[i] | (c[i + 1] << 8);
 		s.d->g[ci] = c[i + 2];
+		s.d->tm[ci] = c[i + 3];
 		s.d->list.push_back(ci);
 	}
 	s.zob = zob;
@@ -811,7 +926,7 @@ static void excavate(Sim &root, ofstream &out) {
 		if (exprOk[cfg] >= 0) return exprOk[cfg] != 0;
 		CfgView c = cfgGet(cfg);
 		vector<int> cells;
-		for (size_t j = 0; j < c.size(); j += 3) cells.push_back(c[j] | (c[j + 1] << 8));
+		for (size_t j = 0; j < c.size(); j += 4) cells.push_back(c[j] | (c[j + 1] << 8));
 		sort(cells.begin(), cells.end());
 		bool ok = true;
 		for (int ci : cells) {
@@ -866,7 +981,7 @@ static void excavate(Sim &root, ofstream &out) {
 		out << "CAND " << cd.d << " " << cd.g << " ";
 		CfgView c = cfgGet(nodes[cd.node].cfg);
 		bool first = true;
-		for (size_t j = 0; j < c.size(); j += 3) {
+		for (size_t j = 0; j < c.size(); j += 4) {
 			int ci = c[j] | (c[j + 1] << 8);
 			V b = cellOf(ci);
 			if (b.x == exExitX && b.z == exExitZ) continue;
@@ -931,12 +1046,12 @@ int main(int argc, char **argv) {
 		else if (tok == "HANG") in >> startH.x >> startH.y >> startH.z;
 		else if (tok == "BLOCK") {
 			BlockIn b;
-			int f, g, st;
-			in >> b.c.x >> b.c.y >> b.c.z >> b.kind >> f >> g >> st;
+			int f, g, st, tmv;
+			in >> b.c.x >> b.c.y >> b.c.z >> b.kind >> f >> g >> st >> tmv;
+			b.timer = tmv;
 			b.fixed = f != 0;
 			b.goal = g != 0;
 			b.standing = st != 0;
-			if (b.kind == BOMB || b.kind == CATAPULT || b.kind == TRAP || b.kind == SPIKES) unsupported = true;
 			if (b.goal) goalCount++;
 			blocksIn.push_back(b);
 		} else if (tok == "ACTION") {
