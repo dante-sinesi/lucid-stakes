@@ -2,7 +2,7 @@ extends Node
 ## Escena del minero de salas (se deja corriendo 24/7). Uso (después de `--` van los argumentos del minero):
 ##   Godot --headless --path . res://scenes/miner.tscn -- --id=1 --out=C:/biblioteca --minutes=0
 ## Argumentos: --id=N (cada copia en marcha usa uno distinto), --out=CARPETA (donde se escribe miner_N.jsonl y stats_N.json; por defecto user://biblioteca),
-## --minutes=M (0 = para siempre), --seed=S, --shapes=3x3,3x5,3x8,L,U, --hlo=5, --hhi=20, --keep=6, --verify=0.1, --max-evals=N.
+## --minutes=M (0 = para siempre), --seed=S, --shapes=3x3,3x5,3x8,L,U, --hlo=5, --hhi=20, --keep=6, --verify=0.1, --max-evals=N, --cap-mult=1 (multiplica el tope de estados y de tiempo del solucionador).
 ## Se detiene sola con un archivo llamado STOP en la carpeta de salida. Si se corta (luz, error), se retoma desde su propio .jsonl.
 const RoomMiner := preload("res://scripts/room_miner.gd")
 const RoomLib := preload("res://scripts/room_lib.gd")
@@ -38,6 +38,8 @@ static func parse_args(args: PackedStringArray) -> Dictionary:
 				cfg.verify_p = float(v)
 			"max-evals":
 				cfg.max_evals = int(v)
+			"cap-mult":
+				cfg.cap_mult = float(v)
 	return cfg
 
 

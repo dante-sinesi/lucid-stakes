@@ -30,6 +30,7 @@ var last_info := ""
 var prune_on := true         # sacar el relleno de cada sala que entra al archivo
 var prune_ms := 20000
 var polish_max_path := 90   # el tramo final del camino se mejora con el verificador exacto en salas con caminos de hasta esta cantidad de pasos
+var cap_mult := 1.0         # multiplica el tope de estados y de tiempo con el que se resuelve cada sala (más tope = salas que piden más empujes, pero cada evaluación tarda más)
 var last_why := ""         # por qué falló el último desorden
 var tall_h := 9            # desde esta altura el solucionador ya no llega a resolver salas de partida: se construyen con la solución plantada (ver scramble_from)
 var combos_list: Array = []
@@ -51,6 +52,7 @@ func _init(cfg: Dictionary = {}) -> void:
 	exact_ms = int(cfg.get("exact_ms", exact_ms))
 	write_lines = bool(cfg.get("write", true))
 	prune_on = bool(cfg.get("prune", prune_on))
+	cap_mult = float(cfg.get("cap_mult", cap_mult))
 	rng.seed = int(cfg.get("seed", 1 + miner_id * 7919))
 	var shapes: Array = cfg.get("shapes", RoomLib.SHAPES)
 	var h_lo := int(cfg.get("h_lo", RoomLib.MIN_H))
@@ -171,7 +173,7 @@ func resume() -> int:
 # --- crear y cambiar salas ----------------------------------------------------------------------------------------------------
 
 func eval_opts(h: int) -> Dictionary:
-	return {"cap": 2500 + 350 * h, "max_ms": 4000 + 400 * h, "h_weight": 1.0 if h <= 8 else 1.6, "plain_cap": 40000}
+	return {"cap": int((2500 + 350 * h) * cap_mult), "max_ms": int((4000 + 400 * h) * cap_mult), "h_weight": 1.0 if h <= 8 else 1.6, "plain_cap": 40000}
 
 
 ## Una escalera a pie hasta la salida: un camino de columnas pegadas, de h - 1 de alto la que toca el pilar y un escalón menos cada una. {} si la arena no tiene un camino tan largo.
