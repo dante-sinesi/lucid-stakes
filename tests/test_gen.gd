@@ -58,7 +58,7 @@ func test_situations() -> void:
 	var kinds := {}
 	for y in plan:
 		kinds[plan[y]] = true
-	check(kinds.size() == 6 and plan[2] == K.BOMB and plan[3] == K.SPIKES and plan[4] == K.TRAP, "a dificultad media están los 6 tipos y el más nuevo debuta primero (%s)" % str(plan))
+	check(kinds.size() == 7 and plan[2] == K.CATAPULT and plan[3] == K.BOMB and plan[4] == K.SPIKES and plan[5] == K.TRAP, "a dificultad media están los 7 tipos y el más nuevo debuta primero (%s)" % str(plan))
 	check(Gen._feature_plan(rng, 12, 0.0).is_empty() and Gen._feature_plan(rng, 1, 0.9).is_empty(), "sin tipos desbloqueados (o sin filas) no hay situaciones")
 	var res := Gen.generate_stage(77, 6, 0.3, LIGHT)
 	check(res.ok, "se genera una torre con situaciones")
@@ -215,7 +215,7 @@ func test_fairness() -> void:
 	var ones := 0
 	var ratio_ok := true
 	var grace_ok := true
-	var target := lerpf(4.5, 2.6, d)
+	var target := lerpf(4.5, 2.6, d) * Gen.COLLAPSE_TIGHTNESS   # (la caída aprieta a propósito)
 	var ratios := []
 	for sd in 3:
 		var r := Gen.generate_stage(sd, 5, d, LIGHT)
@@ -316,7 +316,7 @@ func test_profiles() -> void:
 			bands[pace] = r.band
 	print("ritmos (margen N/costo medio): ", ratios, " costo medio por fila: ", avgs)
 	check(ratios.has("fast") and ratios.has("slow") and ratios.fast < ratios.normal and ratios.normal < ratios.slow, "el margen de la caida crece de rapido a lento (%s)" % str(ratios))
-	check(ratios.get("fast", 9.0) <= 3.0 and ratios.get("slow", 0.0) >= 4.6, "rapido presiona de verdad (margen <= 3) y lento da aire (margen >= 4.6)")
+	check(ratios.get("fast", 9.0) <= 1.6 and ratios.get("slow", 0.0) >= 2.0, "rapido presiona de verdad (margen <= 1.6) y lento da aire (margen >= 2.0)")
 	# La banda objetivo se corre segun el ritmo (el largo real de las filas la sigue solo de forma ruidosa: no se afirma).
 	var base := Gen.band_for(0.3)
 	var slow_band: Vector2i = bands.get("slow", Vector2i.ZERO)

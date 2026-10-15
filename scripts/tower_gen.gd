@@ -51,6 +51,7 @@ const SEG_TRIES := 4
 const BIG := 1 << 30
 const DIRS2: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 const ATTEMPTS := 4
+const COLLAPSE_TIGHTNESS := 0.45   # el margen de la caída (N / costo medio por fila) es esta fracción del objetivo de la dificultad: la caída tiene que apretar de verdad
 ## Las catapultas (trampolines) vuelven a generarse en las torres, desde CATAPULT_FROM. Ojo: suben 4 en vertical y se agarran de un borde, y en una fila de una sola capa casi nunca hay
 ## una pared alta con el borde libre al lado: hasta que haya un motivo de varias capas (el trampolín con su pared) aparecen sueltas y rara vez cambian la solución.
 const CATAPULTS_IN_TOWERS := true
@@ -327,7 +328,7 @@ static func _close_tower(tower, sim, path: Array, row_moves: Array, shapes: Arra
 	var n_min := min_collapse_every(tower, path)
 	var avg_row := float(path.size()) / rows
 	var ratio: float = opts.get("ratio", maxf(1.8, lerpf(4.5, 2.0, difficulty) * pace.ratio))
-	var n := maxi(maxi(3, ceili(avg_row * ratio * 0.45)), ceili(n_min * maxf(1.0, slack * lerpf(1.0, pace.ratio, 0.25))))   # (el ritmo cambia la holgura sólo a medias: la caída tiene que apretar de verdad)
+	var n := maxi(maxi(3, ceili(avg_row * ratio * COLLAPSE_TIGHTNESS)), ceili(n_min * maxf(1.0, slack * lerpf(1.0, pace.ratio, 0.25))))   # (el ritmo cambia la holgura sólo a medias: la caída tiene que apretar de verdad)
 	while not _replay_wins(tower, path, n):
 		n += 1
 	_arm(tower, n)

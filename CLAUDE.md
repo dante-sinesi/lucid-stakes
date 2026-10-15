@@ -16,12 +16,15 @@ Juego de puzzle de torres de cubos (estilo Catherine) con casino y economía de 
 - Un test: `GAME_SANDBOX=1 tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_rooms.gd` (termina con "fallos: N"). Los tests de generación tardan varios minutos.
 - Sondas útiles: `tests/probe_reja.gd` (`IDEA=chica|taller`, `IDEA_LOG=1`, `SHOW_TALLER=1`), `probe_seed.gd` (`SEED`, `STAGE`), `probe_validate`, `tests/play_tower.gd` (juega una torre dentro del juego y captura).
 - Los archivos usan finales de línea CRLF: al editar con scripts, conservarlos.
+- Minero y Estudio de salas: `herramientas\minero.bat`, `minero_varios.bat`, `empaquetar.bat`, `estudio.bat` (y `construir.ps1` para armar los .exe). Detalle en `docs/minero_y_estudio.md`.
+- Los comandos largos con texto en español y comillas se rompen en el shell: escribir los parches de Python con la herramienta Write y correrlos. Cuidado: `pkill` no mata procesos de Godot en Windows (usar `taskkill //F //IM ...`) y los procesos viejos le quitan CPU a todo.
 
 ## Código importante
 
 - `scripts/tower_logic.gd`: reglas (empujar, tirar, colgarse; tipos de bloque). `scripts/solver.gd`: A\* con la solución óptima. `scripts/tower_metrics.gd`: métricas.
 - `scripts/rooms.gd`: generador vigente de torres por salas con "ideas" (pila de salas alrededor del core). `scripts/tower_gen.gd`: generador anterior y utilidades de cierre.
 - `scripts/main.gd`: escena principal, generación en hilos con prefetch de dos etapas; `RunState.rows_for(etapa)` fija las filas (25 hasta la etapa 5, hasta 41).
+- Biblioteca de salas: `scripts/room_lib.gd` (formato, formas, hashes, verificación), `room_miner.gd` + `miner_main.gd` (minero), `room_pack.gd` (empaquetador), `studio_model.gd` + `studio.gd` + `room_view.gd` (Estudio). Plan: `docs/evaluacion_generador.md`.
 - Documentos: `docs/diseno.md` (diseño, §41–45 el generador), `docs/plan_generador.md` (bitácora de rondas), `docs/cosas_a_mejorar.md`.
 
 ## Lo aprendido sobre la dificultad de las torres

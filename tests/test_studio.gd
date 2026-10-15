@@ -80,9 +80,27 @@ func test_ui() -> void:
 	check(studio.similar_box.get_child_count() >= 1, "se listan salas parecidas")
 	# clic con el mouse: el centro de la pantalla toca algún bloque
 	studio.set_tool("select")
-	studio.click_at(Vector2(studio.viewport.size) * 0.5)
+	var st = studio.model.view_state()
+	var top := Vector3i(-1, -1, -1)
+	for c in st.blocks:
+		if c.y > top.y:
+			top = c
+	var screen: Vector2 = studio.cam.unproject_position(Vector3(top.x + 0.5, top.y + 0.5, top.z + 0.5))
+	var got: Vector3i = studio.RoomView.pick(studio.cam, screen, st)
+	check(got == top, "el rayo de la pantalla toca el bloque más alto %s (tocó %s)" % [str(top), str(got)])
+	studio.click_at(screen)
 	await _frames(2)
-	print("  (clic al centro: selección %s)" % str(studio.sel))
+	check(not studio.sel.is_empty() and studio.sel.cell == Vector2i(top.x, top.z) and studio.sel.y == top.y, "un clic con el mouse selecciona ese bloque")
+	# un bloque de una columna cualquiera, visto de arriba
+	var any := Vector3i(-1, -1, -1)
+	for c in st.blocks:
+		if c.y >= 1 and not st.fixed.has(c):
+			any = c
+	var screen2: Vector2 = studio.cam.unproject_position(Vector3(any.x + 0.5, any.y + 1.0, any.z + 0.5))
+	var got2: Vector3i = studio.RoomView.pick(studio.cam, screen2, st)
+	check(got2.x == any.x and got2.z == any.z or got2.y >= any.y, "el rayo por la cara de arriba de un bloque toca esa columna o algo delante")
+	var off := Vector2(-500, -500)
+	check(studio.RoomView.pick(studio.cam, off, st).x == -1000, "un clic afuera de la sala no toca nada")
 	# agregar un bloque
 	var cell := Vector2i(-9, -9)
 	for c in RoomLib.free_cells(r.shape):

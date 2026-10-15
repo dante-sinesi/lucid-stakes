@@ -22,6 +22,7 @@ func _init() -> void:
 	test_towers()
 	test_taller()
 	test_chica()
+	test_mediana()
 	print("tests de las salas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -50,7 +51,7 @@ func test_plan() -> void:
 		for i in order.size():
 			if order[i].idea == "respiro":
 				rests += 1
-			if i > 0 and order[i].idea == order[i - 1].idea and order[i].idea != "taller" and order[i].idea != "chica":   # (las salas de cajas pueden ir seguidas)
+			if i > 0 and order[i].idea == order[i - 1].idea and not Rooms._puzzle(str(order[i].idea)):   # (las salas de acertijo pueden ir seguidas)
 				ok = false
 		check(ok, "no se repite la idea de la sala anterior (semilla %d)" % sd)
 		check(rests == 0, "con dificultad alta no hay salas de respiro en el plan (%d)" % rests)
@@ -86,6 +87,8 @@ func test_towers() -> void:
 	check(a.ok and b.ok and a.path == b.path, "la misma semilla da la misma torre")
 	# cada idea, sola, arma una sala válida en alguna semilla
 	for idea in Rooms.names():
+		if idea == "mediana":
+			continue   # (necesita una torre más alta y tarda: se prueba aparte, abajo)
 		var made := false
 		for sd in 6:
 			OS.set_environment("IDEA_ONLY", idea)
@@ -150,3 +153,29 @@ func test_chica() -> void:
 		lg.try_action(a.dir, a.mode)
 	check(lg.won and not lg.lost, "el camino de la sala chica gana sobre la torre tal cual sale")
 	check(grabs >= 3, "y pide mover bloques (%d agarres)" % grabs)
+
+
+## La sala mediana (8 a 10 pisos, dos salas verticales apiladas): se arma, mide lo que dice, y el camino que trae gana sobre la torre tal cual sale.
+func test_mediana() -> void:
+	check(Rooms._puzzle("mediana") and Rooms._room_h("mediana", "baja") == 8 and Rooms._room_h("mediana", "media") == 9 and Rooms._room_h("mediana", "alta") == 10, "la mediana mide 8, 9 o 10 pisos según el giro")
+	var res: Dictionary = {}
+	for sd in 4:
+		OS.set_environment("IDEA_ONLY", "mediana")
+		res = Rooms.generate_stage(5 + sd, 12, 0.6, {"pace": "normal", "scenario": "pesadilla"})
+		OS.set_environment("IDEA_ONLY", "")
+		if res.ok and "mediana" in res.rooms.map(func(r): return r.idea):
+			break
+	check(res.ok and "mediana" in res.rooms.map(func(r): return r.idea), "se genera una torre con una sala mediana")
+	if not res.ok:
+		return
+	for r in res.rooms:
+		if r.idea == "mediana":
+			check(r.h >= 8 and r.h <= 10, "la sala mediana mide 8 a 10 pisos (%d)" % r.h)
+	var lg = res.logic.clone()
+	var grabs := 0
+	for a in res.path:
+		if a.mode == TowerLogic.Mode.GRAB:
+			grabs += 1
+		lg.try_action(a.dir, a.mode)
+	check(lg.won and not lg.lost, "el camino de la sala mediana gana sobre la torre tal cual sale")
+	check(grabs >= 6, "y pide mover muchos bloques (%d agarres)" % grabs)
