@@ -2,13 +2,14 @@ extends RefCounted
 ## Sala del casino: distribución en celdas (una sola fuente de verdad) y su modelo de minibloques.
 ##
 ## La sala crece y se refina con las etapas del run (4 niveles, ver `layout`): una taberna chica y descuidada (etapas 1-6),
-## un salón de piedra (7-13), un casino con alfombra, pilastras y más juegos (14-20) y un gran casino de mármol con
-## columnas, escalones hasta la mesa de la ruleta y varias mesas (21-27). Cada nivel cambia el tamaño, las paredes, el piso y
+## un salón de piedra (4-7), un casino con alfombra, pilastras y más juegos (8-11) y un gran casino de mármol con
+## columnas, escalones hasta la mesa de la ruleta y varias mesas (12-15). Cada nivel cambia el tamaño, las paredes, el piso y
 ## los muebles (no sólo el color): los bloques se van refinando de ladrillo rústico y tablas a mármol pulido.
 ## Todo está a la escala del personaje (0,7 de alto): una celda son 5 minibloques de 0,2. De la distribución salen a la vez el
 ## dibujo y las celdas por las que se puede caminar. El casino es una zona segura: no sube el vacío ni hay corrupción
 ## (la "mugre" violeta es sólo decorado y baja a nada a medida que el run avanza).
 
+const Stages := preload("res://scripts/stages.gd")
 const CELL_VOX := 5            # minibloques por celda
 const VOXEL := 0.2
 
@@ -33,13 +34,7 @@ const WALL_H := [14, 14, 14, 20]              # altura de las paredes por nivel 
 
 ## Nivel de la sala (0 taberna, 1 salón, 2 casino, 3 gran casino) según la etapa.
 static func tier_of(stage: int) -> int:
-	if stage <= 6:
-		return 0
-	if stage <= 13:
-		return 1
-	if stage <= 20:
-		return 2
-	return 3
+	return Stages.tier_of(stage)
 
 
 ## Distribución de la sala de una etapa: {tier, cells, entry, exit, table, dealer, machines, card_tables, obstacles,
@@ -85,7 +80,7 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 
 ## La distribución por omisión (la del nivel 2) para quien no pasa una.
 static func _lay(lay: Dictionary) -> Dictionary:
-	return lay if not lay.is_empty() else layout(14)
+	return lay if not lay.is_empty() else layout(8)
 
 
 static func in_room(c: Vector2i, lay := {}) -> bool:
@@ -153,7 +148,7 @@ static func height_of(c: Vector2i, lay := {}) -> int:
 
 # --- aspecto según la etapa -------------------------------------------------------------------------------------
 
-## Colores del casino según la etapa (1..27): de un sótano sucio y casi sin luz a un salón de mármol claro.
+## Colores del casino según la etapa (1..15): de un sótano sucio y casi sin luz a un salón de mármol claro.
 ## `corruption`: fracción de minibloques sucios o rotos (baja a casi nada).
 ## Para probar paletas (muestras de diseño): si no está vacío, pisa los colores de `look`.
 static var palette_override := {}
@@ -162,7 +157,7 @@ static var palette_override := {}
 ## Paleta de la sala. La taberna y el salón (niveles 0 y 1) se aclaran de a poco con las etapas; el casino y el gran casino (niveles 2 y 3) tienen una paleta
 ## propia, de "mármol cálido": claros de valor medio (arena, marfil, pizarra) con contraste, para que los detalles se lean y la sala no se queme.
 static func look(stage: int, tier := -1) -> Dictionary:
-	var t := clampf((stage - 1) / 26.0, 0.0, 1.0)
+	var t := Stages.ratio(stage)
 	var e := t * t * (3.0 - 2.0 * t)   # suave: los extremos cambian despacio
 	var level := tier_of(stage) if tier < 0 else tier
 	var base := _base_look(t, e) if level < 2 else _warm_look(level, stage)
@@ -172,8 +167,8 @@ static func look(stage: int, tier := -1) -> Dictionary:
 
 ## Mármol cálido del casino (nivel 2) y del gran casino (nivel 3). Dentro de cada nivel hay un cambio mínimo de etapa a etapa.
 static func _warm_look(level: int, stage: int) -> Dictionary:
-	var start := 14 if level == 2 else 21
-	var p := clampf(float(stage - start) / 6.0, 0.0, 1.0)
+	var start := 8 if level == 2 else 12
+	var p := clampf(float(stage - start) / 3.0, 0.0, 1.0)
 	var k := lerpf(0.96, 1.04, p)
 	var d: Dictionary
 	if level == 2:
@@ -187,7 +182,7 @@ static func _warm_look(level: int, stage: int) -> Dictionary:
 	for key in ["floor_a", "floor_b", "wall", "wall_dark", "stone", "pillar"]:
 		var c: Color = d[key]
 		d[key] = Color(minf(c.r * k, 1.0), minf(c.g * k, 1.0), minf(c.b * k, 1.0))
-	d["t"] = clampf((stage - 1) / 26.0, 0.0, 1.0)
+	d["t"] = Stages.ratio(stage)
 	d["corruption"] = 0.0
 	return d
 
@@ -213,7 +208,7 @@ static func _base_look(t: float, e: float) -> Dictionary:
 
 ## Color de las puertas según la etapa: cuanto más avanzado el run, más claras. La de salida es algo más clara que la de llegada.
 static func portal_color(stage: int, is_exit: bool) -> Color:
-	var t := clampf((stage - 1) / 26.0, 0.0, 1.0)
+	var t := Stages.ratio(stage)
 	var c := Color(0.20, 0.08, 0.38).lerp(Color(0.80, 0.88, 1.0), t)
 	return c.lerp(Color.WHITE, 0.22) if is_exit else c
 
@@ -235,20 +230,6 @@ static func _noise(x: int, y: int, z: int) -> float:
 static func _shade(c: Color, n: float, amount: float) -> Color:
 	var k := (n - 0.5) * amount
 	return Color(clampf(c.r + k, 0.0, 1.0), clampf(c.g + k, 0.0, 1.0), clampf(c.b + k, 0.0, 1.0))
-
-
-## Interior de una puerta: espiral de tres tonos (como un portal de Minecraft) en un vano de 5 de ancho por 10 de alto
-## y 2 de profundidad (el grosor de la pared). `along_x`: el ancho corre por x (pared norte) o por z (pared oeste).
-static func _swirl(map: Dictionary, c: Color, origin: Vector3i, along_x: bool) -> void:
-	for u in CELL_VOX:
-		for v in 10:
-			var dx := u + 0.5 - CELL_VOX * 0.5
-			var dy := v + 0.5 - 5.0
-			var t := fposmod(atan2(dy, dx) / TAU * 2.0 + sqrt(dx * dx + dy * dy) * 0.28, 1.0)
-			var col := c.lightened(0.3) if t < 0.33 else (c if t < 0.66 else c.darkened(0.25))
-			for d in 2:
-				var pos := origin + (Vector3i(u, v, d) if along_x else Vector3i(d, v, u))
-				map[pos] = col
 
 
 ## Piso: el material se afina con el nivel (tablas manchadas, lajas de piedra, damero y damero de mármol con guardas doradas).
@@ -370,7 +351,7 @@ static func _pilaster(wall: Dictionary, u: int, west: bool, H: int, L: Dictionar
 			wall[Vector3i(2, y, u + w) if west else Vector3i(u + w, y, 2)] = L.gold
 
 
-static func build_voxels(stage := 14, tier_override := -1) -> Dictionary:
+static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 	var lay := layout(stage, tier_override)
 	var L := look(stage, int(lay.tier))
 	var cor: float = L.corruption
@@ -604,16 +585,14 @@ static func build_voxels(stage := 14, tier_override := -1) -> Dictionary:
 				_box(solid, ox + 1, top - 2, oz + 1, ox + 5, top, oz + 5, L.gold)
 				glow[Vector3i(ox + 2, top, oz + 2)] = L.lamp
 
-	# Puertas con portal en espiral: la de salida en la pared norte (frente a EXIT) y la de llegada en la pared oeste
-	# (frente a ENTRY, sólo estética). Cuanto más avanzado el run, más claras; la de salida es algo más clara.
+	# Portales: el de salida en la pared norte (frente a EXIT) y el de llegada en la pared oeste (frente a ENTRY, sólo estético). Acá van sólo los marcos;
+	# el interior, de ondas que se mueven, lo arma casino_scene.gd (shaders/portal.gdshader). Cuanto más avanzado el run, más claros; el de salida es algo más claro.
 	_box(wn, door_x - 1, 2, 0, door_x, H, 2, L.gold)
 	_box(wn, door_x + CELL_VOX, 2, 0, door_x + CELL_VOX + 1, H, 2, L.gold)
 	_box(wn, door_x, 12, 0, door_x + CELL_VOX, H, 2, L.gold)
-	_swirl(gn, portal_color(stage, true), Vector3i(door_x, 2, 0), true)
 	_box(ww, 0, 2, door_z - 1, 2, H, door_z, L.gold)
 	_box(ww, 0, 2, door_z + CELL_VOX, 2, H, door_z + CELL_VOX + 1, L.gold)
 	_box(ww, 0, 12, door_z, 2, H, door_z + CELL_VOX, L.gold)
-	_swirl(gw, portal_color(stage, false), Vector3i(0, 2, door_z), false)
 
 	# Faroles de pie.
 	var lamps: Array = [[3, D - 2], [W - 3, 3]]
@@ -622,6 +601,14 @@ static func build_voxels(stage := 14, tier_override := -1) -> Dictionary:
 	for pos in lamps:
 		_box(solid, pos[0], 2, pos[1], pos[0] + 1, 9, pos[1] + 1, (L.gold as Color).darkened(0.3))
 		_box(glow, pos[0] - 1, 9, pos[1] - 1, pos[0] + 2, 11, pos[1] + 2, L.lamp)
+	for x in range(door_x, door_x + CELL_VOX):   # los vanos de las puertas quedan abiertos (ahí va el portal de ondas)
+		for y in range(2, 12):
+			for z in 2:
+				wn.erase(Vector3i(x, y, z))
+	for z in range(door_z, door_z + CELL_VOX):
+		for y in range(2, 12):
+			for x in 2:
+				ww.erase(Vector3i(x, y, z))
 	for p in glow:  # lo que brilla prevalece: un minibloque no puede ser a la vez sólido y luminoso
 		solid.erase(p)
 		ww.erase(p)

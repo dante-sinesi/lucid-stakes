@@ -17,6 +17,30 @@ func check(cond: bool, label: String) -> void:
 		print("FAIL: ", label)
 
 
+func test_reading_mode() -> void:
+	var VDraw = load("res://scripts/voxel_draw.gd")
+	var OptionsScreen = load("res://scripts/options_screen.gd")
+	var o: Control = OptionsScreen.new()
+	root.add_child(o)
+	o.visible = true
+	await process_frame
+	check(not Settings.reading_mode() and not VDraw.reading, "el modo de lectura viene apagado")
+	o.reading_buttons.on.pressed.emit()
+	check(Settings.reading_mode() and VDraw.reading and not VDraw.high_contrast and is_equal_approx(root.content_scale_factor, 1.0), "modo de lectura: letras claras, sin tocar el contraste ni el tamaño de la interfaz")
+	o.contrast_buttons.on.pressed.emit()
+	check(Settings.high_contrast() and VDraw.high_contrast and o.contrast_buttons.on.selected, "alto contraste se prende por separado")
+	o.reading_buttons.off.pressed.emit()
+	check(not VDraw.reading and VDraw.high_contrast and is_equal_approx(root.content_scale_factor, 1.0), "y cada uno se apaga sin el otro")
+	o.reading_buttons.on.pressed.emit()
+	check(o.reading_buttons.on.selected and not o.reading_buttons.off.selected, "el botón lo refleja")
+	Settings.data.reading_mode = "x"
+	Settings._sanitize()
+	check(Settings.get_value("reading_mode") == false, "lo que no es un booleano se descarta")
+	o.reset_button.pressed.emit()
+	check(not Settings.reading_mode() and not VDraw.reading and not Settings.high_contrast() and not VDraw.high_contrast and is_equal_approx(root.content_scale_factor, 1.0), "Restablecer en General apaga los dos")
+	o.queue_free()
+
+
 func _init() -> void:
 	test_loc()
 	test_settings()
@@ -24,6 +48,7 @@ func _init() -> void:
 	test_controls()
 	await test_tabs()
 	await test_ui_scale()
+	await test_reading_mode()
 	await test_screen()
 	await test_menus_follow_language()
 	Loc.set_lang("es")
@@ -174,18 +199,18 @@ func test_controls() -> void:
 	check(Controls.action_of(e) == "mover_adelante", "una tecla se reconoce como su acción")
 	var swapped := Controls.rebind_key("mover_adelante", KEY_UP)
 	check(swapped == "camara_arriba" and Controls.key_of("camara_arriba") == KEY_W and Controls.key_of("mover_adelante") == KEY_UP, "reasignar a una tecla en uso intercambia las dos")
-	check(Controls.rebind_key("pista", KEY_H) == "" and Controls.key_of("pista") == KEY_H, "reasignar a una tecla libre")
+	check(Controls.rebind_key("reintentar", KEY_H) == "" and Controls.key_of("reintentar") == KEY_H, "reasignar a una tecla libre")
 	var saved: Dictionary = Settings.get_value("bindings")
-	check(saved.has("pista") and int(saved.pista.key) == KEY_H, "el cambio se guarda en los ajustes")
+	check(saved.has("reintentar") and int(saved.reintentar.key) == KEY_H, "el cambio se guarda en los ajustes")
 	Controls._loaded = false
-	check(Controls.key_of("pista") == KEY_H, "y se vuelve a leer de los ajustes")
+	check(Controls.key_of("reintentar") == KEY_H, "y se vuelve a leer de los ajustes")
 	check(Controls.pad_of("mover_adelante") == {"axis": Controls.AXIS_LY, "sign": -1} and Controls.pads_of("mover_adelante").size() == 2, "el mando de fábrica: stick y cruceta")
 	var keys := Controls.keys_for_pad({"button": JOY_BUTTON_DPAD_UP})
 	check(keys == [KEY_UP], "la cruceta arriba manda la tecla de Mover adelante (reasignada)")
 	check(Controls.keys_for_pad({"button": JOY_BUTTON_A}) == [KEY_ENTER], "A confirma (Enter)")
-	check(Controls.rebind_pad("pista", {"button": JOY_BUTTON_A}) == "" and Controls.keys_for_pad({"button": JOY_BUTTON_A}) == [KEY_H], "reasignar un botón cambia la tecla que produce")
-	Controls.reset_action("pista")
-	check(Controls.key_of("pista") == KEY_P, "reset_action vuelve una sola acción a lo de fábrica")
+	check(Controls.rebind_pad("reintentar", {"button": JOY_BUTTON_A}) == "" and Controls.keys_for_pad({"button": JOY_BUTTON_A}) == [KEY_H], "reasignar un botón cambia la tecla que produce")
+	Controls.reset_action("reintentar")
+	check(Controls.key_of("reintentar") == KEY_R, "reset_action vuelve una sola acción a lo de fábrica")
 	Controls.reset_all()
 	check(Controls.key_of("mover_adelante") == KEY_W and (Settings.get_value("bindings") as Dictionary).is_empty(), "reset_all vuelve todo a lo de fábrica")
 
@@ -207,25 +232,25 @@ func test_tabs() -> void:
 	o.reset_button.pressed.emit()
 	check(Graphics.preset() == "alta" and o.preset_buttons.alta.selected, "Restablecer en Gráficos vuelve a Alta")
 	o.tab_buttons.controles.pressed.emit()
-	o.bind_buttons.pista.key.pressed.emit()
-	check(o.capturing == "pista" and Controls.capturing, "apretar una tecla de la lista espera la nueva")
+	o.bind_buttons.reintentar.key.pressed.emit()
+	check(o.capturing == "reintentar" and Controls.capturing, "apretar una tecla de la lista espera la nueva")
 	var e := InputEventKey.new()
 	e.keycode = KEY_J
 	e.pressed = true
 	o._input(e)
-	check(o.capturing == "" and not Controls.capturing and Controls.key_of("pista") == KEY_J, "la tecla apretada se asigna")
-	o.bind_buttons.pista.key.pressed.emit()
+	check(o.capturing == "" and not Controls.capturing and Controls.key_of("reintentar") == KEY_J, "la tecla apretada se asigna")
+	o.bind_buttons.reintentar.key.pressed.emit()
 	var esc := InputEventKey.new()
 	esc.keycode = KEY_ESCAPE
 	esc.pressed = true
 	o._input(esc)
-	check(o.capturing == "" and Controls.key_of("pista") == KEY_J, "Esc cancela sin cambiar nada")
+	check(o.capturing == "" and Controls.key_of("reintentar") == KEY_J, "Esc cancela sin cambiar nada")
 	o.bind_buttons.mover_derecha.key.pressed.emit()
 	var e2 := InputEventKey.new()
 	e2.keycode = KEY_J
 	e2.pressed = true
 	o._input(e2)
-	check(Controls.key_of("pista") == KEY_D and o.bind_message.text != "", "una tecla en uso se intercambia y se avisa")
+	check(Controls.key_of("reintentar") == KEY_D and o.bind_message.text != "", "una tecla en uso se intercambia y se avisa")
 	o.bind_buttons.empujar.pad.pressed.emit()
 	var jb := InputEventJoypadButton.new()
 	jb.button_index = JOY_BUTTON_RIGHT_SHOULDER
@@ -233,7 +258,7 @@ func test_tabs() -> void:
 	o._input(jb)
 	check(Controls.pad_of("empujar") == {"button": JOY_BUTTON_RIGHT_SHOULDER}, "un botón del mando se asigna")
 	o.reset_button.pressed.emit()
-	check(Controls.key_of("pista") == KEY_P, "Restablecer en Controles vuelve a lo de fábrica")
+	check(Controls.key_of("reintentar") == KEY_R, "Restablecer en Controles vuelve a lo de fábrica")
 	o.queue_free()
 
 

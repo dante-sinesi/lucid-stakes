@@ -15,6 +15,7 @@ const ALL: Array[Dictionary] = [
 	{"id": "racha_firme", "name": "Racha firme", "desc": "El tope del multiplicador de racha sube de ×4 a ×6.", "perk": "racha_larga"},
 	{"id": "garras_de_hielo", "name": "Garras de hielo", "desc": "Podés colgarte de los bloques de hielo.", "perk": "garras_de_hielo"},
 	{"id": "fuerza_bruta", "name": "Fuerza bruta", "desc": "Podés empujar y tirar de los bloques pesados.", "perk": "fuerza_bruta"},
+	{"id": "corazon_extra", "name": "Corazón extra", "desc": "Tenés una vida más en todas las partidas (4 corazones)."},
 	{"id": "mecha_larga", "name": "Mecha larga", "desc": "Las cuentas de las bombas empiezan 3 movimientos más altas.", "perk": "reflejos"},
 ]
 
@@ -47,6 +48,9 @@ static func remove_from_run(run, id: String) -> void:
 			run.meta_consumable_slots = maxi(run.meta_consumable_slots - 1, 0)
 		"segunda_oportunidad":
 			run.restart_discount = maxf(run.restart_discount - 0.15, 0.0)
+		"corazon_extra":
+			run.bonus_lives = maxi(run.bonus_lives - 1, 0)
+			run.lives = mini(run.lives, run.max_lives())
 
 
 ## Aplica a un run recién empezado lo que no es un perk de la torre.
@@ -61,3 +65,5 @@ static func apply_to_run(run, owned: Array) -> void:
 				run.meta_consumable_slots += 1
 			"segunda_oportunidad":
 				run.restart_discount += 0.15
+			"corazon_extra":
+				run.bonus_lives += 1

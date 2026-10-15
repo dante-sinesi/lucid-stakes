@@ -31,7 +31,7 @@ func test_font() -> void:
 	var all_text: String = UI.TITLE + UI.SUBTITLE + _story_text() + "Ruleta de la Luz Claridad Ficha: GIRAR Salir del casino ¡Cayó el 0! ¿Cuánto arriesgás? 1234567890 ×·«»%+-*/()[]=<>_|'\".,;:!?"
 	for it in preload("res://scripts/items.gd").ALL:
 		all_text += it.name + it.desc
-	for line in preload("res://scripts/casino_scene.gd").DEALER_LINES:
+	for line in preload("res://scripts/story.gd").GREETINGS:
 		all_text += line
 	for msg in ["Freno: la fila de abajo se detiene 5 movimientos", "No hay bombas para desarmar", "El hielo se volvió roca", "El bloque de enfrente es ahora una catapulta", "Bloque anclado: no cae en esta etapa", "¡Segundo aliento!", "Generando la torre de la etapa 3... 12 s", "No se pudo generar la torre.", "¡Completaste la torre!", "¡Escapaste de la pesadilla!", "Explotó una bomba: la torre se derrumbó", "Caíste al vacío", "No se puede tirar: no hay piso atrás", "Tragamonedas: próximamente"]:
 		all_text += msg

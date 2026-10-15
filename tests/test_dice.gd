@@ -130,7 +130,7 @@ func test_game() -> void:
 	h.throw_dice()
 	check(h.phase == DiceGame.Phase.ROLLING and h.revealed == 0, "al tirar los dados ruedan")
 	h.request_close()
-	check(h.visible and h.closing, "si se pide cerrar durante un tiro, espera a que termine")
+	check(h.visible and not h.closing, "no se puede cerrar durante un tiro: jugar es obligatorio")
 	h._process(DiceGame.ROLL_TIME + 0.01)
 	check(h.phase == DiceGame.Phase.REVEAL and h.revealed == 0, "despues de rodar empiezan a mostrarse")
 	var order := []
@@ -141,7 +141,7 @@ func test_game() -> void:
 	check(order.has(1) and order.has(2) and order.has(3) and order.has(4), "se revelan de a uno (%s)" % str(order))
 	for k in 40:
 		h._process(0.3)
-	check(not h.visible and not h.closing, "al terminar el tiro en curso se cierra solo")
+	check(h.visible and not h.closing, "al terminar el tiro los dados siguen abiertos hasta que se aprieta Empezar")
 	h.queue_free()
 	await process_frame
 
@@ -296,6 +296,16 @@ func test_main() -> void:
 	Profile.reset()
 
 
+## Juega las tiradas que queden hasta terminar (acierte o no).
+func _play_out(d) -> void:
+	var guard := 0
+	while d.visible and not (d.phase == d.Phase.RESULT or d.phase == d.Phase.DONE) and guard < 4000:
+		if d.can_throw():
+			d.throw_dice()
+		await process_frame
+		guard += 1
+
+
 ## La pantalla de carga: aparece si la generacion tarda, se cierra cuando la torre esta lista, y nunca se ve si es instantanea.
 func test_loading_screen() -> void:
 	var main := make_main()
@@ -311,8 +321,7 @@ func test_loading_screen() -> void:
 	var was_open := false
 	var first_frame_open := false
 	var banner_empty := true
-	var button_gray_while_loading := true
-	var spiral_while_loading := false
+	var button_gray_while_loading_visible := false
 	main._await_job(job)   # (sin esperar: lo vamos mirando cuadro a cuadro)
 	var frames := 0
 	while th.is_alive() and frames < 600:
@@ -323,47 +332,45 @@ func test_loading_screen() -> void:
 			was_open = true
 			if frames <= 3:
 				first_frame_open = true
-			button_gray_while_loading = button_gray_while_loading and (main.dice.tower_ready or main.dice.start_button.disabled)
-			spiral_while_loading = spiral_while_loading or main.dice.start_button.get_node("espiral").visible
+			button_gray_while_loading_visible = button_gray_while_loading_visible or main.dice.start_button.visible
 	check(was_open and first_frame_open, "si hay que esperar, se abre directo con los dados (a los pocos cuadros)")
 	check(banner_empty, "sin ningun cartel de Generando la torre antes ni durante: sólo los dados")
-	check(button_gray_while_loading and spiral_while_loading, "mientras se genera, Empezar esta gris y con la espiral de carga")
-	check(main.dice.start_button.text == "Empezar" and main.dice.start_button.position.x + main.dice.start_button.size.x > 0.0, "el boton dice Empezar")
-	# La torre esta lista: el minijuego NO se cierra solo; se habilita Empezar y desaparece la espiral
+	check(not button_gray_while_loading_visible, "mientras se juegan las tiradas no hay botón Empezar: jugar es obligatorio")
+	# La torre esta lista: el minijuego NO se cierra solo y Empezar sigue sin aparecer hasta terminar las tiradas
 	for i in 20:
 		await process_frame
-	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.disabled, "cuando la torre esta lista el minijuego sigue y Empezar se habilita")
-	check(not main.dice.start_button.get_node("espiral").visible, "la espiral de carga desaparece")
-	check(main.dice.status_label.text == "", "los dados no muestran ningún aviso de la torre: el jugador sólo ve Empezar apagado o encendido")
-	# Se puede seguir jugando mientras tanto
-	main.dice.throw_dice()
-	check(main.dice.phase == main.DiceGame.Phase.ROLLING and main.dice.visible, "se puede tirar aunque la torre este lista")
-	# Apretar Empezar con un tiro en curso: el tiro termina y recien ahi se cierra
+	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.visible, "con la torre lista, Empezar no aparece mientras queden tiradas")
+	check(main.dice.status_label.text == "", "los dados no muestran ningún aviso de la torre")
+	main.dice.request_close()
+	check(main.dice.visible and not main.dice.closing, "no se puede saltear el juego")
+	await _play_out(main.dice)
+	check(main.dice.start_button.visible and not main.dice.start_button.disabled and not main.dice.start_button.get_node("espiral").visible, "terminadas las tiradas, con la torre lista: Empezar listo para apretar")
+	check(main.dice.start_button.text == "Empezar" and main.dice.start_button.position.x + main.dice.start_button.size.x > 0.0, "el boton dice Empezar")
 	main.dice.start_button.pressed.emit()
-	check(main.dice.visible and main.dice.closing, "Empezar durante un tiro espera a que termine")
-	var guard := 0
-	while main.dice.visible and guard < 3000:
-		await process_frame
-		guard += 1
-	check(not main.dice.visible and main.dice.throws_left == 2, "al terminar el tiro se cierra y se sigue (el tiro se jugo entero)")
+	await process_frame
+	check(not main.dice.visible, "Empezar cierra y se sigue")
 	main._jobs.erase(job)
-	# Y Empezar sin tiro en curso cierra al instante
+	# Si las tiradas terminan antes de que la torre esté lista: Empezar aparece gris y con la espiral
 	var th3 := Thread.new()
 	th3.start(func() -> Dictionary:
-		OS.delay_msec(1500)
+		OS.delay_msec(25000)
 		return {"ok": true})
 	var job3 := {"stage": 3, "thread": th3, "t0": Time.get_ticks_msec() - 2000, "done": false}   # (ya paso la demora: abre enseguida)
 	main._await_job(job3)
+	for i in 5:
+		await process_frame
+	await _play_out(main.dice)
+	check(main.dice.visible and main.dice.start_button.visible and main.dice.start_button.disabled and main.dice.start_button.get_node("espiral").visible, "si la torre sigue generándose, Empezar aparece gris y con la espiral")
 	frames = 0
-	while th3.is_alive() and frames < 600:
+	while th3.is_alive() and frames < 6000:
 		await process_frame
 		frames += 1
 	for i in 10:
 		await process_frame
-	check(main.dice.visible and not main.dice.start_button.disabled, "otra carga: queda esperando que aprietes Empezar")
+	check(main.dice.visible and not main.dice.start_button.disabled and not main.dice.start_button.get_node("espiral").visible, "cuando la torre se termina, Empezar se habilita")
 	main.dice.start_button.pressed.emit()
 	await process_frame
-	check(not main.dice.visible, "Empezar sin tiro en curso cierra y se sigue")
+	check(not main.dice.visible, "y al apretarlo se sigue")
 	main._jobs.erase(job3)
 	# La generacion usa varios hilos: gana la primera semilla que sale y frena a las demas
 	var job4: Dictionary = main._start_job(6, 4242)
@@ -394,7 +401,9 @@ func test_loading_screen() -> void:
 	main._await_job(job_fast)
 	for i in 6:
 		await process_frame
-	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.disabled, "aunque la torre ya esté lista, los dados se ven siempre y se puede apretar Empezar")
+	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.visible, "aunque la torre ya esté lista, los dados se ven siempre y hay que jugarlos")
+	await _play_out(main.dice)
+	check(main.dice.start_button.visible and not main.dice.start_button.disabled, "al terminar las tiradas se puede apretar Empezar")
 	main.dice.start_button.pressed.emit()
 	await process_frame
 	check(not main.dice.visible, "Empezar los cierra")
@@ -540,7 +549,7 @@ func test_hold() -> void:
 	check(g.phase == DiceGame.Phase.HOLD and g.hits() == 0, "con 0 aciertos también se espera la próxima tirada")
 	got.clear()
 	g.request_close()
-	check(got.size() == 1 and g.closing, "si pedís empezar mientras esperás la próxima tirada, se cobra y después se cierra")
+	check(got.is_empty() and not g.closing and g.phase == DiceGame.Phase.HOLD, "mientras esperás la próxima tirada no se puede empezar")
 	# pedir Empezar mientras ruedan: al terminar de revelar se cobra directo (no queda esperando)
 	g.open(rng)
 	g.picks = [1, 2, 3, 4, 5]
@@ -551,7 +560,44 @@ func test_hold() -> void:
 	g._process(0.0)
 	g._phase_t = DiceGame.REVEAL_STEP * 6.0
 	g._process(0.0)
-	check(g.phase != DiceGame.Phase.HOLD, "si ya se pidió cerrar, la tirada en curso se cobra sin esperar otra")
+	check(g.phase == DiceGame.Phase.HOLD and not g.closing, "pedir empezar a mitad de un tiro no hace nada")
+	# Espacio durante la animación la saltea
+	g.open(rng)
+	g.picks = [1, 2, 3, 4, 5]
+	var sp := InputEventKey.new()
+	sp.pressed = true
+	sp.keycode = KEY_SPACE
+	g._unhandled_input(sp)   # (en la elección, Espacio tira)
+	check(g.phase == DiceGame.Phase.ROLLING and g.throws_left == 2, "Espacio tira los dados")
+	g.rolls = [1, 2, 6, 6, 6]
+	g._unhandled_input(sp)   # (rodando: se saltea)
+	check(g.phase == DiceGame.Phase.HOLD and g.unrevealed.is_empty() and g.revealed == DiceGame.DICE and g.hits() == 2, "Espacio mientras ruedan saltea la animación y deja los resultados a la vista")
+	g._unhandled_input(sp)
+	check(g.phase == DiceGame.Phase.ROLLING and g.throws_left == 1, "Espacio tira de nuevo los que fallaron")
+	g._unhandled_input(sp)
+	check(g.phase == DiceGame.Phase.HOLD or g.phase == DiceGame.Phase.RESULT, "saltear también sirve en la segunda tirada")
+	# la última tirada: se saltea y, con la torre lista, se entra
+	g.open(rng)
+	var shut := []
+	g.closed.connect(func(): shut.append(true))
+	g.picks = [1, 2, 3, 4, 5]
+	g.throws_left = 1
+	g.throw_dice()
+	g.rolls = [6, 6, 6, 6, 6]
+	g.set_ready(true)
+	g._unhandled_input(sp)
+	check(shut.size() == 1 and not g.visible, "Espacio en la animación de la última tirada la saltea y entra a la torre")
+	# la última tirada sin la torre lista: se saltea y se espera
+	g.open(rng)
+	g.picks = [1, 2, 3, 4, 5]
+	g.throws_left = 1
+	g.throw_dice()
+	g.rolls = [6, 6, 6, 6, 6]
+	g._unhandled_input(sp)
+	check(g.phase == DiceGame.Phase.RESULT and g.visible and shut.size() == 1, "sin la torre lista se saltea pero no se entra")
+	g.set_ready(true)
+	g._unhandled_input(sp)
+	check(shut.size() == 2 and not g.visible, "cuando la torre está lista, Espacio entra")
 	g.queue_free()
 	Profile.reset()
 

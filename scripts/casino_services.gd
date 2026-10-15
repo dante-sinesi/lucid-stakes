@@ -149,7 +149,7 @@ static func withdraw(run) -> int:
 
 ## Cuánto costaría el primer reintento de la próxima torre (sin seguro).
 static func first_retry_cost(run) -> int:
-	return maxi(int(round(float(RunState.RESTART_BASE + run.stage) * (1.0 - run.restart_discount))), 1)
+	return maxi(int(round(float(RunState.RESTART_BASE + 2 * run.stage) * (1.0 - run.restart_discount))), 1)
 
 
 static func insurance_price(run) -> int:

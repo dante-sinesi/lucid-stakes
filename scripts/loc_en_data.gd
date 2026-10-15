@@ -74,6 +74,8 @@ const TABLE := {
 	"Quebradizo": "Brittle",
 	"Casi todo se rompe al pisarlo o no se mueve.": "Almost everything breaks when stepped on or won't budge.",
 	"Polvorín": "Powder keg",
+	"Lluvia de meteoritos": "Meteor shower",
+	"Cada vez que te movés cae un meteorito y destruye un bloque (se marca antes). Nunca te cierra el camino.": "Every time you move a meteor falls and destroys a block (marked beforehand). It never cuts off your path.",
 	"La torre está llena de bombas.": "The tower is full of bombs.",
 	"Recompensa: %s": "Reward: %s",
 	"Recompensa: %d de claridad": "Reward: %d clarity",

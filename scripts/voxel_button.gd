@@ -133,10 +133,10 @@ func _draw() -> void:
 	var l: Dictionary = VFont.layout(text.replace("\r", "").split("\n"), 1)
 	var text_size := Vector2(l.size) * cube
 	var origin := -text_size * 0.5
-	var col := Color(0.14, 0.07, 0.02) if gold else Draw.MARBLE
+	var col := Color(1.0, 0.98, 0.9) if gold else Draw.MARBLE
 	if st == 3:
 		col = col.darkened(0.5)
 	elif hover and not gold:
 		col = Draw.GOLD
-	Draw.text_cells(self, origin, l.cells, l.size.y, cube, col, k * 0.4, seed_value + 1, not gold)
+	Draw.text_cells(self, origin, l.cells, l.size.y, cube, col, k * 0.4, seed_value + 1, true)
 	draw_set_transform_matrix(Transform2D.IDENTITY)

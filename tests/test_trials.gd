@@ -31,6 +31,7 @@ func _init() -> void:
 	test_generator_bias()
 	await test_in_game()
 	await test_no_retry()
+	await test_meteors()
 	Profile.reset()
 	print("tests de las pruebas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
@@ -51,11 +52,11 @@ func wait_tower(main: Node) -> void:
 
 
 func test_schedule() -> void:
-	check(Trials.stages() == [3, 6, 9, 12, 15, 18, 21, 24, 27] and Trials.is_trial_stage(27) and not Trials.is_trial_stage(4) and not Trials.is_trial_stage(1), "las pruebas caen de a multiplos de 3 (3, 6, ... 27)")
+	check(Trials.stages() == [3, 6, 9, 12, 15] and Trials.is_trial_stage(15) and not Trials.is_trial_stage(4) and not Trials.is_trial_stage(1) and not Trials.is_trial_stage(18), "las pruebas caen de a multiplos de 3 (3, 6, ... 15)")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
 	var a := Trials.draw_schedule(Scenarios.get_scenario("pesadilla").pool, rng)
-	check(a.size() == 9, "se sortea una prueba para cada una de las 9 etapas")
+	check(a.size() == 5, "se sortea una prueba para cada una de las 5 etapas")
 	var no_repeat := true
 	var prev := ""
 	for st in Trials.stages():
@@ -79,7 +80,7 @@ func test_schedule() -> void:
 	check(run.next_trial_text(28) == "", "sin pruebas pendientes no hay texto")
 	check(RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict()))).trial_schedule == a, "el sorteo se guarda y se carga")
 	# Las ultimas pagan mas
-	check(run.trial_at(3).mult < run.trial_at(15).mult and run.trial_at(15).mult < run.trial_at(27).mult and run.trial_at(4).is_empty(), "las ultimas pruebas pagan mas claridad")
+	check(run.trial_at(3).mult < run.trial_at(9).mult and run.trial_at(9).mult < run.trial_at(15).mult and run.trial_at(4).is_empty(), "las ultimas pruebas pagan mas claridad")
 
 
 func test_catalog() -> void:
@@ -113,12 +114,12 @@ func test_reward() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var run := RunState.new()
-	run.trial_schedule = {3: "niebla", 27: "prisa"}
+	run.trial_schedule = {3: "niebla", 15: "prisa"}
 	var r := Trials.reward(run.trial_at(3), 3, run, rng)
 	check(not r.item.is_empty() and r.item.type == Items.Type.BOOST and run.has_room_for(r.item) and r.text.begins_with("Recompensa"), "superar una prueba da un boost")
 	check(Trials.reward({}, 4, run, rng).text == "", "una etapa comun no da recompensa")
 	run.boosts.assign(["aire_extra", "ojo_de_hielo", "ahorro", "pies_de_luz", "paso_firme"])
-	var full := Trials.reward(run.trial_at(27), 27, run, rng)
+	var full := Trials.reward(run.trial_at(15), 15, run, rng)
 	check(full.item.is_empty() and full.claridad == 310 and full.text.contains("310"), "sin lugar para boosts la recompensa es claridad")
 
 
@@ -167,7 +168,8 @@ func test_in_game() -> void:
 	main.stage_number = 7
 	main.trial = {}
 	main._refresh()
-	check(main.trial_label.visible and main.trial_label.text.contains("Sin ayudas") and main.trial_label.text.contains("en 2 etapas"), "en una etapa comun se ve la proxima prueba y cuantas etapas faltan")
+	var nxt: Dictionary = main.run.next_trial_info(8)
+	check(not main.trial_label.visible and not nxt.is_empty() and str(nxt.trial.name) == "Sin ayudas" and int(nxt.left) == 1, "en una etapa comun no se muestra la prueba: la cuenta el tabernero (quedan %s)" % str(nxt.get("left")))
 	# Superar la prueba: claridad multiplicada, boost de regalo y habilidad persistente (sólo la primera vez)
 	main.stage_number = 6
 	main.trial = main.run.trial_at(6)
@@ -203,6 +205,25 @@ func test_in_game() -> void:
 	var perks := Abilities.perks_for(Profile.owned_abilities())
 	check(perks.has("garras_de_hielo") and perks.has("fuerza_bruta"), "las habilidades dan perks a la torre")
 	Profile.reset()
+
+
+func test_meteors() -> void:
+	var main := make_main()
+	await wait_tower(main)
+	main.run.trial_schedule = {3: "meteoritos"}
+	main.stage_number = 3
+	main.run.stage = 3
+	main.trial = main.run.trial_at(3)
+	main.new_tower(7)
+	await wait_tower(main)
+	check(main.logic.meteors and not main.logic.protected_ids.is_empty() and main.logic.meteor_cell != TowerLogic.NO_CELL, "en Lluvia de meteoritos la torre tiene meteoritos, camino protegido y un bloque marcado")
+	var marked: Vector3i = main.logic.meteor_cell
+	var step: Dictionary = main.solution[0]
+	main._apply(step.dir, step.mode)
+	check(not main.logic.blocks.has(marked) and main.logic.meteor_hit == marked, "con el primer movimiento cae el meteorito sobre el bloque marcado")
+	main._cancel_jobs()
+	main.queue_free()
+	await process_frame
 
 
 func test_no_retry() -> void:

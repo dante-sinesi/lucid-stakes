@@ -17,6 +17,16 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform vec4 glow_color : source_color = vec4(0.0);
 uniform float glow_energy = 0.0;
 uniform float roughness_value = 0.8;
+uniform float shake = 0.0;   // temblor (la fila de abajo está por caer): cuánto se sacude cada bloque, en unidades
+
+void vertex() {
+	if (shake > 0.0) {
+		float ph = dot(MODEL_MATRIX[3].xyz, vec3(12.9898, 78.233, 37.719));
+		VERTEX.x += sin(TIME * 63.0 + ph) * shake;
+		VERTEX.z += cos(TIME * 51.0 + ph * 1.3) * shake;
+		VERTEX.y += sin(TIME * 47.0 + ph * 0.7) * shake * 0.5;
+	}
+}
 
 void fragment() {
 	float depth = -VERTEX.z;

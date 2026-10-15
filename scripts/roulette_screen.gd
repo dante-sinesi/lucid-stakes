@@ -16,6 +16,7 @@ const Juice := preload("res://scripts/juice.gd")
 const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const Sfx := preload("res://scripts/sfx.gd")
+const ResultOverlay := preload("res://scripts/result_overlay.gd")
 
 signal spun(result: Dictionary)
 signal resolved   ## la tirada ya se cobró y pagó (antes de la animación): hay que guardar
@@ -46,6 +47,8 @@ var exit_button: Button
 var prizes_window
 var result_label: Control
 var flash_rect: ColorRect   # destello al ganar
+var overlay                 # el cartel de "¡Ganaste!" / "¡Perdiste!"
+var _spin_tween: Tween
 var _spin_time := 0.0
 var _tick_t := 0.0
 var shown_claridad := 0     # claridad que se muestra mientras gira (la tirada ya está cobrada, pero no se spoilea el resultado)
@@ -80,7 +83,7 @@ func _build() -> void:
 	claridad_counter = ClarityCounter.new(4.0)
 	claridad_counter.name = "claridad"
 	top.add_child(claridad_counter)
-	rule_label = RuleUI.make_status(top, 620)   # la regla de la casa, al lado de la claridad (no se pisa con los botones)
+	rule_label = RuleUI.make_status(top, 620)   # (el estado de la regla ya no se muestra: lo cuenta el tabernero)
 	rule_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -145,6 +148,8 @@ func _build() -> void:
 	flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flash_rect.color = Color(1, 1, 1, 0)
 	add_child(flash_rect)
+	overlay = ResultOverlay.new()
+	add_child(overlay)
 	shown_claridad = run.claridad
 
 
@@ -223,6 +228,7 @@ func spin() -> Dictionary:
 	var base: float = wheel.angle_for(res.pocket)
 	var target: float = base + TAU * floorf((wheel.rotation_angle - base) / TAU) - TAU * turns
 	var tw := create_tween()
+	_spin_tween = tw
 	if not fast:   # antes de arrancar, la rueda se echa un poco hacia atrás (como tomar impulso)
 		tw.tween_property(wheel, "rotation_angle", wheel.rotation_angle + 0.28, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(wheel, "rotation_angle", target, duration).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
@@ -231,11 +237,58 @@ func spin() -> Dictionary:
 	wheel.spinning = false
 	wheel.result = res.pocket
 	state = State.RESULT
+	_spin_tween = null
 	_result_effects(res)
 	_show_result(res)
+	_show_overlay(res)
 	_refresh()
 	spun.emit(res)
 	return res
+
+
+## Espacio mientras gira: se saltea la animación (la rueda llega enseguida).
+func skip_spin() -> void:
+	if state == State.SPINNING and _spin_tween != null and _spin_tween.is_valid():
+		_spin_tween.set_speed_scale(60.0)
+
+
+## El cartel de resultado sobre la ruleta: ganaste o perdiste, cuánta claridad y, si el premio es un ítem, cuál.
+func _show_overlay(res: Dictionary) -> void:
+	if fast:
+		return
+	var delta := -int(res.price)
+	var item_id := ""
+	var item_name := ""
+	if res.won:
+		var prize: Dictionary = res.prize
+		if prize.type == Items.Type.CLARITY:
+			delta = int(round(prize.mult * res.price))
+		elif res.converted:
+			delta = int(round(Items.value_of(prize, res.price) * 0.5))
+		else:
+			delta = 0
+			item_id = str(prize.id)
+			item_name = Loc.t(str(prize.name))
+	var extra := int(res.get("rules", {}).get("total", 0))
+	if res.won and extra > 0:
+		delta += extra
+	elif not res.won and extra > 0:
+		delta += extra   # (el fiado devuelve parte de lo perdido)
+	overlay.show_result(res.won, delta, item_id, item_name, RuleUI.notes(res))
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible or prizes_window.visible or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	if not event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+		return
+	if overlay.showing:
+		return   # (el cartel se cierra solo con Espacio)
+	if state == State.SPINNING:
+		skip_spin()
+	elif can_spin():
+		spin()   # con la misma apuesta de antes
+	get_viewport().set_input_as_handled()
 
 
 ## Efectos al caer la bola: la bola rebota, parpadea la casilla, destello dorado si ganaste o temblor si ganó la casa,
@@ -308,8 +361,6 @@ func _show_result(res: Dictionary) -> void:
 
 func _refresh() -> void:
 	var price: int = Roulette.run_price(run)
-	rule_label.text = RuleUI.status(run)
-	rule_label.visible = rule_label.text != ""
 	claridad_counter.value = shown_claridad if state == State.SPINNING else run.claridad
 	price_counter.value = price
 	for b in bet_buttons:

@@ -4,6 +4,7 @@ extends Control
 
 const VoxelDraw := preload("res://scripts/voxel_draw.gd")
 const VFont := preload("res://scripts/voxel_font.gd")
+const Settings := preload("res://scripts/settings.gd")
 
 const KEYS := [["W", 1, 1], ["D", 1, -1], ["S", -1, -1], ["A", -1, 1]]
 const ARM := 4          # cubitos por brazo
@@ -34,7 +35,7 @@ static func project(g: Vector2, yaw_deg: float, pitch_deg: float) -> Vector2:
 
 
 func _draw() -> void:
-	if not view_source.is_valid() or not dir_source.is_valid():
+	if not view_source.is_valid() or not dir_source.is_valid() or not Settings.compass_on():   # (se puede apagar desde Opciones)
 		return
 	var v: Vector2 = view_source.call()
 	var c := size * 0.5

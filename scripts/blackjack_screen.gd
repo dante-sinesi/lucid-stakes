@@ -15,6 +15,7 @@ const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const CasinoTheme := preload("res://scripts/casino_theme.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const Sfx := preload("res://scripts/sfx.gd")
+const ResultOverlay := preload("res://scripts/result_overlay.gd")
 
 signal resolved
 signal closed
@@ -47,6 +48,7 @@ var stand_button
 var double_button
 var exit_button
 var flash_rect: ColorRect
+var overlay                 # el cartel de "¡Ganaste!" / "¡Perdiste!"
 
 
 func setup(run_state, random: RandomNumberGenerator, quick := false) -> void:
@@ -156,6 +158,8 @@ func _build() -> void:
 	flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flash_rect.color = Color(1, 1, 1, 0)
 	add_child(flash_rect)
+	overlay = ResultOverlay.new()
+	add_child(overlay)
 
 
 func _wait(seconds: float) -> void:
@@ -274,6 +278,9 @@ func _show_result() -> void:
 	var net: int = int(r.net)
 	var tail := Loc.f("+%d de claridad.", [net]) if net > 0 else (Loc.f("−%d de claridad.", [-net]) if net < 0 else Loc.t("Sin cambios."))
 	_say(Loc.f("%s  %s", [Loc.t(Blackjack.outcome_text(o)), tail]) + RuleUI.notes(r), color)
+	if not fast:   # el cartel de resultado sobre la mesa (se saltea con Espacio)
+		var won: bool = o == Blackjack.Outcome.WIN or o == Blackjack.Outcome.BLACKJACK
+		overlay.show_result(won, net, "", "", RuleUI.notes(r), o == Blackjack.Outcome.PUSH)
 
 
 func _say(text: String, color: Color) -> void:
@@ -337,8 +344,6 @@ func _refresh() -> void:
 	claridad_counter.value = run.claridad
 	var showing_bet: bool = game.bet > 0 and game.phase != Blackjack.Phase.IDLE
 	bet_counter.value = game.bet if showing_bet else Roulette.run_price(run) * Rules.stake(run)
-	rule_label.text = RuleUI.status(run)
-	rule_label.visible = rule_label.text != ""
 	RuleUI.refresh_stake(stake_ui, run, can_deal())
 	deal_button.visible = game.phase != Blackjack.Phase.PLAYER
 	deal_button.disabled = not can_deal()
@@ -367,6 +372,8 @@ func request_close() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
+	if overlay.showing and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+		return   # (el cartel de resultado lo maneja él: Espacio lo saltea; no se salta nada más)
 	match event.keycode:
 		KEY_ESCAPE:
 			request_close()

@@ -15,6 +15,7 @@ const Cosmetics := preload("res://scripts/cosmetics.gd")
 const Characters := preload("res://scripts/characters.gd")
 const Roulette := preload("res://scripts/roulette.gd")
 const Story := preload("res://scripts/story.gd")
+const BlockGuide := preload("res://scripts/block_guide.gd")
 const Tutorial := preload("res://scripts/tutorial.gd")
 const RouletteScreen := preload("res://scripts/roulette_screen.gd")
 const SlotsScreen := preload("res://scripts/slots_screen.gd")
@@ -77,10 +78,18 @@ func test_catalog() -> void:
 	for id in Story.LESSONS:
 		need(Story.LESSONS[id], "lección del tabernero")
 	need(Story.BLOCKED_TABLE, "mesa bloqueada")
+	for b in BlockGuide.ALL:
+		need(b.name, "bloque de la guía")
+		need(b.desc, "descripción del bloque " + b.id)
+		need(b.say, "lo que dice el tabernero del bloque " + b.id)
+	need("Por descubrir", "guía de bloques")
+	need("Guía de bloques", "guía de bloques")
+	for l in Story.dice_intro():
+		need(l if typeof(l) == TYPE_STRING else l.text, "dados del tabernero")
 	for l in Tutorial.lessons():
 		need(l.title, "título de lección")
-		if l.has("text"):
-			need(l.text, "texto de lección " + l.id)
+		if l.help != "":
+			need(l.help, "ayuda de lección " + l.id)
 	need(Story.SPEAKER, "nombre del tabernero")
 	for k in CasinoServices.INFO:
 		need(CasinoServices.INFO[k].name, "servicio del casino")
@@ -221,14 +230,10 @@ func test_in_game() -> void:
 	main.logic.try_action(Vector3i(1, 0, 0))
 	main.logic.try_action(Vector3i(0, 0, 1), 1)
 	main._flash(main.logic.perk_msg)
-	main.hint_on = true
-	main._show_hint({"ok": true, "mode": 1, "dir": Vector3i(1, 0, 0)})
-	main._show_hint({"ok": false})
 	main.pause_game()
 	main.resume_game()
 	main.enter_casino()
 	await process_frame
-	main.casino.next_label.text = main.run.next_trial_text(1)
 	for i in 5:
 		await process_frame
 	main.leave_casino()

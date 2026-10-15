@@ -14,6 +14,9 @@ extends RefCounted
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const MODES := [TowerLogic.Mode.MOVE, TowerLogic.Mode.GRAB, TowerLogic.Mode.HANG]
+const NativeSolver := preload("res://scripts/native_solver.gd")
+## Desde cuántos estados de tope vale la pena llamar al solucionador nativo (lanzar el programa cuesta unas decenas de milisegundos). opts.native = false lo apaga.
+const NATIVE_MIN_STATES := 1000
 
 
 ## Tiempo total (µs) que se pasó resolviendo (para medir cuánto de la generación es del solucionador; ver tests/bench).
@@ -33,6 +36,11 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 	var use_collapse: bool = opts.get("use_collapse", false)
 	var use_h: bool = opts.get("heuristic", true)
 	var no_grab: bool = opts.get("no_grab", false)
+	var max_ms: int = opts.get("max_ms", 0)   # >0: tope de tiempo (el estado de la búsqueda se devuelve como "limit")
+	var deadline: int = Time.get_ticks_msec() + max_ms
+	var tick := 0
+	var adm: bool = opts.get("admissible", false)   # sólo la parte demostrable de la heurística (nunca sobrestima): con esto el camino que devuelve es el MÁS CORTO
+	var h_weight: float = opts.get("h_weight", 1.0)   # >1 busca más a lo codicioso (encuentra un camino rápido pero ya no garantiza que sea el más corto)
 	var unit := 16 if opts.get("prefer_plain", false) else 1  # con desempate cada acción vale 16 y empujar/tirar/colgarse 17
 
 	var root = _prepare(start, target_y, use_collapse)
@@ -42,6 +50,10 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 	var xz_goal: bool = not root.goal_ids.is_empty() and gain == 1 and not _has_ice(root)
 	if root.lost:
 		return {"status": "unsolvable", "moves": -1, "path": [], "states": 0, "state": root}
+	if max_states >= NATIVE_MIN_STATES and opts.get("native", true) and not use_collapse:
+		var nat: Dictionary = NativeSolver.solve(start, target_y, opts, root)
+		if not nat.is_empty():
+			return nat
 
 	var states: Array = [root]
 	var parents := PackedInt32Array([-1])
@@ -49,13 +61,17 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 	var gs := PackedInt32Array([0])
 	var best := {_key(root, use_collapse): 0}
 	var buckets := {}
-	var f0 := _h(root, target_y, use_h, gain, xz_goal) * unit
+	var f0 := int(round(_h(root, target_y, use_h, gain, xz_goal, adm) * h_weight)) * unit
 	buckets[f0] = [0]
 	var f := f0
 	var open := 1
 	var generated := 1
 
 	while open > 0:
+		if max_ms > 0:
+			tick += 1
+			if (tick & 63) == 0 and Time.get_ticks_msec() > deadline:
+				return {"status": "limit", "moves": -1, "path": [], "states": generated, "state": null, "f_reached": f}
 		if not buckets.has(f) or buckets[f].is_empty():
 			f += 1
 			continue
@@ -93,14 +109,14 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 				actions.append(di * 3 + mode)
 				gs.append(g + step)
 				var ni := states.size() - 1
-				var nf := g + step + _h(n, target_y, use_h, gain, xz_goal) * unit
+				var nf := g + step + int(round(_h(n, target_y, use_h, gain, xz_goal, adm) * h_weight)) * unit
 				if not buckets.has(nf):
 					buckets[nf] = []
 				buckets[nf].append(ni)
 				open += 1
 				generated += 1
 				if generated >= max_states:
-					return {"status": "limit", "moves": -1, "path": [], "states": generated, "state": null}
+					return {"status": "limit", "moves": -1, "path": [], "states": generated, "state": null, "f_reached": f}   # (sin heurística, f_reached es una cota inferior de los pasos: todo lo que está por debajo se expandió entero)
 		states[idx] = null  # ya expandido: liberar memoria
 	return {"status": "unsolvable", "moves": -1, "path": [], "states": generated, "state": null}
 
@@ -164,7 +180,7 @@ static func solve_rows_greedy(start, opts: Dictionary = {}) -> Dictionary:
 	return {"status": "solved", "rows": rows, "total": total, "states": total_states}
 
 
-static func _h(s, target_y: int, use_h: bool, gain: int, xz_goal := false) -> int:
+static func _h(s, target_y: int, use_h: bool, gain: int, xz_goal := false, adm := false) -> int:
 	if not use_h:
 		return 0
 	var h := ceili(float(maxi(0, target_y - s.player.y)) / gain)
@@ -178,7 +194,32 @@ static func _h(s, target_y: int, use_h: bool, gain: int, xz_goal := false) -> in
 				var p: Vector3i = s.positions[id]
 				best = mini(best, maxi(absi(p.x - s.player.x), absi(p.z - s.player.z)))
 		h = maxi(h, best)
+	if not s.goal_ids.is_empty() and not adm:
+		h += _goal_deficit(s)   # (bloques que todavía hay que sumar a una columna pegada a la meta: acciones de empujar o tirar, distintas de las de caminar y trepar que ya cuenta h)
 	return h
+
+
+## Cota inferior de los empujes y tirones que faltan: para pararse en la meta (un bloque en lo alto de la columna `gy`) hay que llegar a una celda pegada con la columna a `gy - 1` de alto (o más).
+## Cada acción de empujar o tirar suma como mucho un bloque a una columna dada, así que faltan al menos tantas como bloques le falten a la columna vecina más alta.
+## (No es una cota exacta —hay otras maneras de llegar, como colgarse—, pero sirve para guiar la búsqueda: sin esto el solucionador casi no sabe hacia dónde mover los bloques.)
+static func _goal_deficit(s) -> int:
+	var best := 1000
+	for id in s.goal_ids:
+		if not s.positions.has(id):
+			continue
+		var p: Vector3i = s.positions[id]
+		for d in TowerLogic.DIRS:
+			var n: Vector3i = p + d
+			var top := p.y - 1   # (alto de la columna vecina: capas contiguas desde el piso, contando hasta p.y - 1)
+			var y := p.y - 1
+			var missing := 0
+			while y >= 0 and missing <= 12:
+				if s.blocks.has(Vector3i(n.x, y, n.z)):
+					break
+				missing += 1
+				y -= 1
+			best = mini(best, missing)
+	return 0 if best >= 1000 else best
 
 
 ## Cuánto puede subir el jugador en una sola acción: trepar (1) o, con catapultas, trepar a la
@@ -209,6 +250,11 @@ static func _path(idx: int, parents: PackedInt32Array, actions: PackedInt32Array
 static func _enc(c: Vector3i) -> int:
 	# Los bloques empujados pueden salir de la huella (x, z negativas o mayores que el tamaño): por eso el desplazamiento.
 	return (c.x + 8) + 64 * ((c.z + 8) + 64 * (c.y + 64))
+
+
+## La identidad de un estado (bloques, tipos, bombas y jugador), sin la cuenta de la caída.
+static func state_key(s) -> Vector3i:
+	return _key(s, false)
 
 
 static func _key(s, use_collapse: bool) -> Vector3i:

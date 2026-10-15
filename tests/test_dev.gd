@@ -19,6 +19,8 @@ func _init() -> void:
 	await test_commands()
 	await test_goto_end()
 	await test_goto_casino()
+	await test_tower()
+	await test_idea()
 	await test_hud()
 	await test_set_luz()
 	await test_console()
@@ -139,14 +141,56 @@ func test_release() -> void:
 	DevCommands.disabled_for_tests = false
 
 
+## El comando tower: una torre de la etapa y el escenario que se pida, desde el menú principal, con semilla opcional.
+func test_tower() -> void:
+	var main := make_main()
+	await wait_tower(main)
+	main.open_main_menu()
+	check(DevCommands.execute("tower", main).contains("Uso") and DevCommands.execute("tower 0", main).contains("Uso") and DevCommands.execute("tower 16", main).contains("Uso") and DevCommands.execute("tower 3 glaciar x", main).contains("semilla"), "sin etapa, con una etapa inválida o una semilla rara explica cómo se usa")
+	check(DevCommands.execute("tower 3 nadie", main).contains("desconocido") and main.in_menu, "un escenario que no existe se avisa y no cambia nada")
+	check(DevCommands.execute("help", main).contains("tower"), "help lista tower")
+	var msg := DevCommands.execute("tower 4 glaciar 4242", main)
+	check(msg.contains("etapa 4") and msg.contains("glaciar") and msg.contains("4242") and not main.in_menu and main.run.scenario_id == "glaciar" and main.stage_number == 4 and main.run.stage == 4, "desde el menú principal arranca una partida en esa etapa y escenario")
+	check(Profile.luz() == 0 or Profile.luz() == int(Profile.luz()), "no se paga la entrada")
+	while main.generating:
+		await process_frame
+	check((main.seed_value - 4242) % 100003 == 0 and main.logic != null and main.hud_layer.visible, "con la semilla pedida y la torre generada")
+	var blocks_a: Dictionary = main.stage_start.blocks.duplicate()
+	DevCommands.execute("tower 4 glaciar 4242", main)
+	while main.generating:
+		await process_frame
+	check(main.stage_start.blocks == blocks_a, "la misma semilla da la misma torre")
+	check(DevCommands.execute("torre 2", main).contains("pesadilla") and main.run.scenario_id == "pesadilla", "sin escenario: La Pesadilla (también desde el juego)")
+	main._cancel_jobs()
+	main.queue_free()
+	await process_frame
+
+
+## El comando idea: un tramo armado por una idea de las torres, desde el menú principal.
+func test_idea() -> void:
+	var main := make_main()
+	await wait_tower(main)
+	main.open_main_menu()
+	check(DevCommands.execute("idea", main).contains("Uso") and DevCommands.execute("idea nada", main).contains("No se pudo") and DevCommands.execute("idea pared_pinchos x", main).contains("semilla"), "sin nombre, con una idea que no existe o con una semilla rara explica qué pasa")
+	var msg := DevCommands.execute("idea pared_pinchos 21", main)
+	check(msg.contains("Pared de pinchos") and msg.contains("semilla 21") and msg.contains("capa 1") and not main.in_menu, "arranca una partida con el esquema de la instancia")
+	while main.generating:
+		await process_frame
+	check(main.logic != null and main.logic.goal_y == 5 and main.solution.size() >= 7 and main.custom_tower.is_empty(), "la partida usa el tramo armado (4 pisos) y no el generador")
+	check(not main.dice.visible and main.logic.collapse_every >= 1000000, "sin dados al empezar y sin caída de la fila de abajo")
+	main._cancel_jobs()
+	main.queue_free()
+	await process_frame
+
+
 func test_goto_casino() -> void:
 	var main := make_main()
 	await wait_tower(main)
 	main.run.claridad = 123
 	check(DevCommands.execute("help", main).contains("goto_casino"), "help lista goto_casino")
-	check(DevCommands.execute("goto_casino", main).contains("Uso") and DevCommands.execute("goto_casino 0", main).contains("Uso") and DevCommands.execute("goto_casino 28", main).contains("Uso") and main.casino == null, "sin etapa o con una etapa invalida explica como se usa")
+	check(DevCommands.execute("goto_casino", main).contains("Uso") and DevCommands.execute("goto_casino 0", main).contains("Uso") and DevCommands.execute("goto_casino 16", main).contains("Uso") and main.casino == null, "sin etapa o con una etapa invalida explica como se usa")
 	var Room := preload("res://scripts/casino_room.gd")
-	for st in [1, 7, 14, 21, 27]:
+	for st in [1, 4, 8, 12, 15]:
 		var msg := DevCommands.execute("goto_casino %d" % st, main)
 		check(msg.contains(str(st)) and main.casino != null and main.run.stage == st and main.stage_number == st, "goto_casino %d abre el casino de esa etapa" % st)
 		check(main.casino.lay.tier == Room.tier_of(st) and main.casino.cell == main.casino.lay.entry, "...con la sala del nivel %d" % Room.tier_of(st))
@@ -157,7 +201,7 @@ func test_goto_casino() -> void:
 	main.casino.step(Vector2i(0, -1))
 	while main.generating:
 		await process_frame
-	check(main.casino == null and main.stage_number == 27 and main.logic != null, "salir del casino de la etapa 27 no pasa de la 27")
+	check(main.casino == null and main.stage_number == 15 and main.logic != null, "salir del casino de la etapa 15 no pasa de la 15")
 	main.open_main_menu()
 	check(DevCommands.execute("goto_casino 5", main).contains("Empezá"), "en el menu pide empezar una partida")
 	main._cancel_jobs()
@@ -193,12 +237,8 @@ func test_hud() -> void:
 	check(main.debug_hud and main.hud.visible, "F2 muestra los textos de depuracion")
 	main._unhandled_input(f2)
 	check(not main.debug_hud and not main.hud.visible, "F2 otra vez los oculta")
-	# Lo que si ve el jugador: etapa y piso, claridad, cuenta de la fila de abajo y racha
-	check(main.stage_label.text.contains("Etapa") and main.stage_label.text.contains("Piso"), "se ve la etapa y el piso")
-	check(main.collapse_label.visible and main.collapse_label.text.begins_with("Cae en "), "se ve cuantos movimientos faltan para que caiga la fila de abajo")
-	main.logic.moves_to_collapse = 2
-	main._refresh()
-	check(main.collapse_label.text == "Cae en 2" and main.collapse_label.color.r > 0.9 and main.collapse_label.color.g < 0.5, "con 2 o menos la cuenta se pone roja")
+	# Lo que si ve el jugador: etapa, claridad y racha (la cuenta de la fila de abajo ya no se muestra)
+	check(main.stage_label.text.contains("Etapa") and not main.stage_label.text.contains("Piso"), "se ve la etapa, sin el piso")
 	check(not main.streak_label.visible, "sin racha no se muestra el multiplicador")
 	main.logic.streak = 3
 	main._refresh()

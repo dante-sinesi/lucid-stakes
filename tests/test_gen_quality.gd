@@ -30,7 +30,7 @@ func _init() -> void:
 	var d := 0.3
 	var rows_all := []
 	var ones := 0
-	var target := lerpf(4.5, 2.6, d)
+	var target := lerpf(4.5, 2.6, d) * Gen.COLLAPSE_TIGHTNESS   # (la caída aprieta a propósito: el margen es la mitad del de antes)
 	for sd in 4:
 		var r := Gen.generate_stage(sd, 6, d)
 		check(r.ok, "d=0.3 semilla %d genera" % sd)

@@ -103,14 +103,14 @@ func test_stage_look() -> void:
 		await process_frame
 	main.stage_number = 1
 	check(is_equal_approx(main.stage_tone(), 0.0) and main._stage_tint().is_equal_approx(Color.WHITE), "etapa 1: tono 0 y tinte neutro")
-	main.stage_number = 27
-	check(is_equal_approx(main.stage_tone(), 1.0), "etapa 27: tono 1")
+	main.stage_number = 15
+	check(is_equal_approx(main.stage_tone(), 1.0), "etapa 15: tono 1")
 	var lum := func(c: Color) -> float: return c.get_luminance()
 	var prev := -1.0
 	var bgs_ok := true
 	var tint_ok := true
 	var prev_tint := 0.0
-	for st in range(1, 28):
+	for st in range(1, 16):
 		main.stage_number = st
 		main._apply_stage_look()
 		var l: float = lum.call(main.env.background_color)
@@ -122,7 +122,7 @@ func test_stage_look() -> void:
 	check(bgs_ok, "el fondo es mas claro en cada etapa que en la anterior")
 	check(tint_ok, "el tinte de los bloques es mas claro en cada etapa")
 	# Dentro de una misma etapa el fondo no cambia aunque se suba.
-	main.stage_number = 10
+	main.stage_number = 8
 	main._apply_stage_look()
 	var bg_a: Color = main.env.background_color
 	main.logic.player = main.logic.player + Vector3i(0, 2, 0)
@@ -138,10 +138,10 @@ func test_final() -> void:
 	while main.generating or main.logic == null:
 		await process_frame
 	main.quick_portal = true
-	main.stage_number = 27
+	main.stage_number = 15
 	main.logic.claridad = 10
 	main.logic.won = true
 	await main._on_anim_done()
-	check(main.casino == null and main.in_menu and main.run_end.visible and main.run_over, "al pasar la etapa 27 no hay casino: termina el run y se ve la pantalla de fin")
+	check(main.casino == null and main.in_menu and main.run_end.visible and main.run_over, "al pasar la etapa 15 no hay casino: termina el run y se ve la pantalla de fin")
 	main.queue_free()
 	await process_frame

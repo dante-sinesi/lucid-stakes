@@ -91,6 +91,8 @@ var best_streak := 0
 var purified_count := 0
 var track_purify := true          # el solucionador lo apaga: sólo importa desactivar bombas
 var player := Vector3i.ZERO
+var last_grab := ""   # lo que hizo la última acción de Shift: "push" (empujó), "pull" (tiró) o "" (el tutorial distingue una de otra)
+var release_with_opposite := true   # colgado, ir en la dirección contraria al bloque suelta (el solucionador y las pruebas); el juego lo apaga: se suelta con Espacio (release_hang)
 var hang_dir := Vector3i.ZERO     # ZERO = de pie; si no, dirección hacia el bloque del que cuelga
 var facing := Vector3i(0, 0, -1)
 var floor_y := 0                  # capa más baja que aún existe
@@ -98,6 +100,9 @@ var collapse_every := 6
 var moves_to_collapse := 6
 var moves_made := 0
 var won := false
+var toll := 0                     # lo que cobra el duende para encender el portal de salida (0 = el portal siempre está encendido)
+var wallet := 0                   # la claridad que traés al empezar la torre (se suma a la que juntás para pagar el peaje)
+var toll_blocked := false         # estás en el portal pero no alcanza para pagar: hay que juntar más (o el suelo cae)
 var lost := false
 var lost_reason := ""
 var _next_id := 0
@@ -106,6 +111,8 @@ var perks := {}
 var collapse_pause := 0        # movimientos que quedan con la caída de la fila base en pausa (consumible Freno)
 var second_wind_used := false  # el boost Segundo aliento se usa una vez por etapa
 var last_safe := Vector3i.ZERO # última celda donde estuvo parado sobre un bloque (para Segundo aliento)
+var standing := {}            # ids de bloques que estuvieron apoyados sobre otro bloque (y no se movieron de costado): si pierden ese apoyo caen (salvo apoyo por arista o pegados al núcleo), aunque tengan vecinos al costado; los que cuelgan desde el principio (plataformas) se sostienen de sus vecinos
+var _standing_ready := false  # ya se anotaron los apoyados (ver mark_standing)
 var anchored := {}             # ids de bloques que no caen aunque pierdan sus vecinos (consumible Ancla chica)
 var perk_msg := ""             # aviso de la última acción para la vista (por ejemplo "¡Segundo aliento!")
 var trap_broke := false        # en la última acción se desarmó una trampa (para el sonido)
@@ -124,6 +131,14 @@ var row_platforms := {}
 var platform_row := {}
 var reached_row := 0
 var _fixed_shared := false   # `fixed` se comparte entre copias (casi nunca cambia): se duplica recién al escribir
+const NO_CELL := Vector3i(-999, -999, -999)
+const METEOR_RADIUS := 6.5
+const METEOR_TRIES := 10
+var meteors := false          # prueba "Lluvia de meteoritos": cada movimiento destruye el bloque marcado y marca otro (ver meteors.gd)
+var protected_ids := {}       # ids de los bloques del camino garantizado: nunca se destruyen ni se mueven por un meteorito
+var meteor_cell := NO_CELL    # el bloque marcado: se destruye con el próximo movimiento
+var meteor_hit := NO_CELL     # el bloque que acaba de destruirse (para la vista)
+var meteor_rng := RandomNumberGenerator.new()
 var shield := false           # Escudo: la próxima bomba que explote no te afecta (la lógica lo gasta y avisa con shield_used)
 var shield_used := false
 var double_jump := false      # Doble salto armado: el próximo salto hacia arriba sube 2 bloques
@@ -133,13 +148,22 @@ var _blocks_dirty := true    # hay que revisar el apoyo de los bloques (cambió 
 var _maps_shared := false    # blocks, positions, kind_of, bomb_timer y purified se comparten con otra copia hasta que una escribe (ver _own_maps)
 
 
-func in_bounds(c: Vector3i) -> bool:
+## El mundo es más grande que la huella de 8x8 donde se genera la torre: los bloques que se empujan afuera quedan ahí (colgados de sus vecinos) y se puede ir a pie, o colgado, hasta donde llegan.
+const OUTSIDE := 5
+
+
+## La huella de la torre (donde se genera): el hielo se desliza hasta salir de ella y el jugador que resbala fuera de ella se cae.
+func in_footprint(c: Vector3i) -> bool:
 	return c.x >= 0 and c.x < size.x and c.z >= 0 and c.z < size.y and c.y >= 0
 
 
-## Colgado del borde se puede estar una celda por fuera de la huella (el agarre es de un bloque de adentro).
+func in_bounds(c: Vector3i) -> bool:
+	return c.x >= -OUTSIDE and c.x < size.x + OUTSIDE and c.z >= -OUTSIDE and c.z < size.y + OUTSIDE and c.y >= 0
+
+
+## Colgado del borde se puede estar una celda más allá de lo que se camina (el agarre es de un bloque de adentro).
 func in_hang_reach(c: Vector3i) -> bool:
-	return c.x >= -1 and c.x <= size.x and c.z >= -1 and c.z <= size.y and c.y >= 0
+	return c.x >= -OUTSIDE - 1 and c.x <= size.x + OUTSIDE and c.z >= -OUTSIDE - 1 and c.z <= size.y + OUTSIDE and c.y >= 0
 
 
 ## Hash de 64 bits de un bloque de tipo `kind` en la celda `c` (mezcla splitmix64).
@@ -234,11 +258,15 @@ func generate(seed_value: int) -> void:
 func try_action(dir: Vector3i, mode: Mode = Mode.MOVE) -> Dictionary:
 	if won or lost:
 		return {"ok": false, "msg": ""}
+	if not _standing_ready:
+		mark_standing()   # (antes de la primera acción: lo que ya estaba apoyado, si se lo saca, cae)
 	removed_ids.clear()
 	last_purified.clear()
 	last_gain = 0
+	last_grab = ""
 	jump_used = false
 	shield_used = false
+	meteor_hit = NO_CELL
 	perk_msg = ""
 	trap_broke = false
 	exploded = false
@@ -261,7 +289,71 @@ func try_action(dir: Vector3i, mode: Mode = Mode.MOVE) -> Dictionary:
 		res = _act_walk(dir)
 	if res.ok:
 		_after_action()
+		if meteors and not won and not lost:
+			_meteor_step()
 	return res
+
+
+## Marca el primer bloque en cuanto empieza la prueba (así el primer movimiento ya tiene su aviso).
+func meteor_prime() -> void:
+	meteor_cell = _pick_meteor_target()
+
+
+## Un meteorito por movimiento: se destruye el bloque que estaba marcado (si todavía se puede) y se marca el siguiente.
+func _meteor_step() -> void:
+	if meteor_cell != NO_CELL:
+		var c := meteor_cell
+		meteor_cell = NO_CELL
+		if blocks.has(c) and _meteor_safe(c):
+			_remove_block(c)
+			meteor_hit = c
+			_settle()
+			_hazards()
+	if lost:
+		return
+	meteor_cell = _pick_meteor_target()
+
+
+## ¿Se puede destruir el bloque sin tocar el camino garantizado? No si es fijo, del camino, la meta o donde estás parado o colgado, ni si al caer él se
+## mueve (o cae) algún bloque del camino o el jugador: se simula en una copia.
+func _meteor_safe(c: Vector3i) -> bool:
+	if not blocks.has(c) or fixed.has(c):
+		return false
+	var id: int = blocks[c]
+	if protected_ids.has(id) or id == goal_block:
+		return false
+	if hang_dir == Vector3i.ZERO and c == player + DOWN:
+		return false
+	if hang_dir != Vector3i.ZERO and c == player + hang_dir:
+		return false
+	var t = clone()
+	t.meteors = false
+	t._remove_block(c)
+	t._settle()
+	if t.lost or t.player != player or t.hang_dir != hang_dir:
+		return false
+	for pid in protected_ids:
+		if positions.has(pid) and t.positions.get(pid, NO_CELL) != positions[pid]:
+			return false
+	return true
+
+
+## Elige el próximo bloque a destruir: de los cercanos al jugador, los más cerca primero (con algo de azar), el primero que sea seguro.
+func _pick_meteor_target() -> Vector3i:
+	var near: Array = []
+	for c in blocks:
+		var d := Vector3(c - player).length()
+		if d <= METEOR_RADIUS and not fixed.has(c) and not protected_ids.has(blocks[c]):
+			near.append([d + meteor_rng.randf() * 3.0, c])
+	near.sort_custom(func(a, b): return a[0] < b[0])
+	var tried := 0
+	for item in near:
+		if tried >= METEOR_TRIES:
+			break
+		tried += 1
+		if _meteor_safe(item[1]):
+			return item[1]
+	return NO_CELL
 
 
 ## Copia independiente del estado (la usa el solucionador).
@@ -282,6 +374,7 @@ func clone() -> RefCounted:
 	c.shield = shield
 	c.double_jump = double_jump
 	c.lazy_settle = lazy_settle
+	c.release_with_opposite = release_with_opposite
 	c._blocks_dirty = _blocks_dirty
 	c.blocks = blocks
 	c.fixed = fixed
@@ -291,6 +384,8 @@ func clone() -> RefCounted:
 	c.bomb_timer = bomb_timer
 	c.positions = positions
 	c.purified = purified
+	c.standing = standing
+	c._standing_ready = _standing_ready
 	c._maps_shared = true
 	_maps_shared = true
 	c.claridad = claridad
@@ -306,6 +401,9 @@ func clone() -> RefCounted:
 	c.moves_to_collapse = moves_to_collapse
 	c.moves_made = moves_made
 	c.won = won
+	c.toll = toll
+	c.wallet = wallet
+	c.toll_blocked = toll_blocked
 	c.lost = lost
 	c.lost_reason = lost_reason
 	c._next_id = _next_id
@@ -358,6 +456,7 @@ func _act_walk(d: Vector3i) -> Dictionary:
 func _act_grab(d: Vector3i) -> Dictionary:
 	var t := player + d
 	if blocks.has(t):
+		last_grab = "push"
 		var dest := t + d
 		if fixed.has(t):
 			return _fail("Bloque fijo")
@@ -368,7 +467,7 @@ func _act_grab(d: Vector3i) -> Dictionary:
 		if blocks.has(dest):
 			return _push_row(t, d)
 		if kind_at(t) == Kind.ICE:  # el hielo se desliza hasta chocar con algo o hasta salir de la huella
-			while in_bounds(dest):
+			while in_footprint(dest):
 				var n := dest + d
 				if blocks.has(n) or n == player:
 					break
@@ -376,6 +475,7 @@ func _act_grab(d: Vector3i) -> Dictionary:
 		_move_block(t, dest)
 		return _ok()
 	if blocks.has(player - d):
+		last_grab = "pull"
 		if fixed.has(player - d):
 			return _fail("Bloque fijo")
 		if kind_at(player - d) == Kind.HEAVY and not perks.has("fuerza_bruta"):
@@ -389,8 +489,16 @@ func _act_grab(d: Vector3i) -> Dictionary:
 				_set_player(h)
 				_arrive(d)
 				return _ok()
-			# Sin piso atrás no se puede tirar: el bloque tirado quedaría encima del borde del que te agarrarías y no hay
-			# borde que agarrar entre dos cubos. Colgarse se hace a propósito (Espacio + dirección), no tirando.
+			# Sin piso atrás (como en Catherine): el bloque tirado viene a donde estabas y vos retrocedés al vacío, quedando colgado del bloque en el que estabas parado
+			# (que ahora tiene el bloque encima: no se puede trepar de vuelta, hay que moverse de costado por el borde).
+			if blocks.has(player + DOWN) and not blocks.has(h) and in_hang_reach(h):
+				if kind_at(player + DOWN) == Kind.ICE and not perks.has("garras_de_hielo"):
+					return _fail("Hielo: no hay de dónde agarrarse")
+				_move_block(player - d, player)
+				_set_player(h)
+				hang_dir = -d
+				last_grab = "pull"
+				return _ok()
 			return _fail("No se puede tirar: no hay piso atrás")
 		_move_block(player - d, player)
 		_set_player(t)
@@ -433,6 +541,17 @@ func _act_hang_over(d: Vector3i) -> Dictionary:
 	return _ok()
 
 
+## Soltarse del borde (se cae si abajo no hay nada): lo que hace apretar Espacio estando colgado.
+func release_hang() -> Dictionary:
+	if hang_dir == Vector3i.ZERO:
+		return {"ok": false, "msg": ""}
+	var keep := release_with_opposite
+	release_with_opposite = true
+	var res := try_action(-hang_dir, Mode.HANG)
+	release_with_opposite = keep
+	return res
+
+
 func _act_hanging(d: Vector3i) -> Dictionary:
 	var w := hang_dir
 	if d == w:  # trepar al bloque
@@ -443,6 +562,8 @@ func _act_hanging(d: Vector3i) -> Dictionary:
 		hang_dir = Vector3i.ZERO
 		return _ok()
 	if d == -w:  # soltarse
+		if not release_with_opposite:
+			return _fail("Para soltarte, apretá Espacio")
 		hang_dir = Vector3i.ZERO
 		return _ok()
 	# Hacia un costado: avanzar por el borde o doblar una esquina.
@@ -484,10 +605,15 @@ func _arrive(d: Vector3i) -> void:
 func _slide(d: Vector3i) -> void:
 	for _i in SLIDE_LIMIT:
 		var t := player + d
-		if not in_bounds(t) or blocks.has(t):
+		if blocks.has(t):
 			return
-		if perks.has("ojo_de_hielo") and (not in_bounds(t + d) or blocks.has(t + d)):
+		if perks.has("ojo_de_hielo") and (not in_footprint(t + d) or blocks.has(t + d)):
 			return  # Ojo de hielo: se frena una celda antes del choque
+		if not in_footprint(t):   # resbaló hasta el borde de la torre: no frena, se cae
+			lost = true
+			lost_reason = "Caíste al vacío"
+			_set_player(Vector3i(t.x, maxi(t.y - 3, -3), t.z))
+			return
 		_set_player(t)
 		if kind_at(player + DOWN) != Kind.ICE:  # salió del hielo (o no hay apoyo: cae)
 			return
@@ -536,6 +662,23 @@ func _on_goal() -> bool:
 	return true
 
 
+## ¿Se puede pagar el peaje del duende con lo que traés y lo que juntaste?
+func can_pay_toll() -> bool:
+	return toll <= 0 or wallet + claridad >= toll
+
+
+## Si estás en la meta y el portal está encendido (pagaste el peaje), ganás; si no, el duende no lo enciende y la torre sigue (la fila de abajo no espera).
+func _try_win() -> bool:
+	toll_blocked = false
+	if not _on_goal():
+		return false
+	if not can_pay_toll():
+		toll_blocked = true
+		return false
+	won = true
+	return true
+
+
 func _after_action() -> void:
 	moves_made += 1
 	if _crack_id >= 0 and positions.has(_crack_id) and player != _crack_from:
@@ -560,8 +703,7 @@ func _after_action() -> void:
 		var pr: int = platform_row.get(blocks.get(player + DOWN, -1), 0)
 		if pr > reached_row:
 			reached_row = pr
-	if _on_goal():
-		won = true
+	if _try_win():
 		return
 	_tick_bombs()
 	if lost:
@@ -692,6 +834,7 @@ func _collapse_bottom() -> void:
 		if c.y == floor_y:
 			_remove_block(c)
 	floor_y += 1
+	standing = {}   # la estructura que quedó sobre la fila que cayó se sigue sosteniendo de sus vecinos (así es el juego); desde acá sólo caen los apoyos que se saquen después
 
 
 ## Las copias (clone) comparten los diccionarios de bloques hasta que una escribe: la mayoría de las acciones (caminar, trepar, colgarse) no
@@ -703,6 +846,7 @@ func _own_maps() -> void:
 		kind_of = kind_of.duplicate()
 		bomb_timer = bomb_timer.duplicate()
 		purified = purified.duplicate()
+		standing = standing.duplicate()
 		_maps_shared = false
 
 
@@ -721,12 +865,15 @@ func _move_block(from: Vector3i, to: Vector3i) -> void:
 	blocks.erase(from)
 	blocks[to] = id
 	positions[id] = to
+	if from.y == to.y:
+		standing.erase(id)   # (empujado o tirado: se sostiene de sus vecinos, como los que cuelgan desde el principio)
 
 
 func _remove_block(c: Vector3i) -> void:
 	_own_maps()
 	_blocks_dirty = true
 	var id: int = blocks[c]
+	standing.erase(id)
 	zob ^= zob_hash(c, kind_of.get(id, 0))
 	blocks.erase(c)
 	if fixed.has(c):
@@ -737,6 +884,19 @@ func _remove_block(c: Vector3i) -> void:
 	bomb_timer.erase(id)  # una bomba que cae al vacío queda desactivada
 	positions.erase(id)
 	removed_ids.append(id)
+
+
+## Anota los bloques que están apoyados sobre otro bloque (desde ese momento, si les sacan el apoyo caen aunque tengan vecinos al costado).
+func mark_standing() -> void:
+	var ids: Array = []
+	for c in blocks:
+		if blocks.has(c + DOWN) and not standing.has(blocks[c]):
+			ids.append(blocks[c])
+	if not ids.is_empty():
+		_own_maps()
+		for id in ids:
+			standing[id] = true
+	_standing_ready = true
 
 
 func _has_neighbor(c: Vector3i) -> bool:
@@ -760,30 +920,85 @@ func _settle() -> void:
 			changed = true
 
 
-## Bloques sin ningún vecino (ni apoyo por arista) caen hasta tocar algo; si no hay nada, caen al vacío.
+## Qué bloques están sostenidos: los que se conectan con un ancla (el núcleo, los anclados con el consumible y el piso de abajo mientras tenga algún vecino) por una cadena de apoyos.
+## Apoya: lo que está apoyado encima, lo que descansa sobre la arista de un bloque más bajo y, pegado al núcleo, cualquier bloque. Además los que "cuelgan desde el principio"
+## (las plataformas) y los que se movieron empujándolos se sostienen de cualquier vecino de al lado o de arriba que esté sostenido: así una plataforma pegada al núcleo no cae,
+## pero un grupo de bloques que sólo se sostienen entre sí (sin ancla) sí.
+func _held_cells() -> Dictionary:
+	var held := {}
+	var queue: Array[Vector3i] = []
+	for c in blocks:
+		var id: int = blocks[c]
+		if fixed.has(c) or anchored.has(id) or (c.y <= floor_y and _has_neighbor(c)):
+			held[c] = true
+			queue.append(c)
+	var i := 0
+	while i < queue.size():
+		var s: Vector3i = queue[i]
+		i += 1
+		var up := s + UP
+		if blocks.has(up) and not held.has(up):
+			held[up] = true
+			queue.append(up)
+		for n in EDGE_SUPPORT:   # los que descansan sobre la arista de s (están un nivel más arriba y al costado)
+			var e: Vector3i = s - n
+			if blocks.has(e) and not held.has(e):
+				held[e] = true
+				queue.append(e)
+		var s_fixed := fixed.has(s)
+		for n in NEIGHBORS:
+			var o: Vector3i = s + n
+			if not blocks.has(o) or held.has(o):
+				continue
+			if s_fixed or not standing.has(blocks[o]):   # el núcleo sostiene lo que toca; un bloque que cuelga (o que se movió) se sostiene de un vecino sostenido
+				held[o] = true
+				queue.append(o)
+	return held
+
+
+## Los bloques que no están sostenidos caen hasta tocar algo; si no hay nada, caen al vacío.
 func _settle_blocks() -> bool:
 	if lazy_settle and not _blocks_dirty:
 		return false   # ningún bloque cambió desde que todo estaba firme: no hay nada que revisar (caminar, trepar o colgarse no mueven bloques)
 	var moved := false
-	var again := true
-	var skipped := false   # algún bloque sin vecinos se sostiene sólo por el jugador: hay que volver a mirarlo cuando éste se mueva
-	while again:
-		again = false
-		var cells := blocks.keys()
-		cells.sort_custom(func(a, b): return a.y < b.y)
-		for c in cells:
-			if not blocks.has(c) or fixed.has(c) or _has_neighbor(c) or anchored.has(blocks[c]):
+	var skipped := false   # algún bloque sin sostén se apoya sólo en el jugador: hay que volver a mirarlo cuando éste se mueva
+	var guard := 0
+	while guard < 400:
+		guard += 1
+		var marks: Array = []   # los que tienen algo debajo cuentan como apoyados (si después lo pierden, caen)
+		for c in blocks:
+			if blocks.has(c + DOWN) and not standing.has(blocks[c]):
+				marks.append(blocks[c])
+		if not marks.is_empty():
+			_own_maps()
+			for id in marks:
+				standing[id] = true
+		var held := _held_cells()
+		var loose: Array = []
+		for c in blocks:
+			if not held.has(c):
+				loose.append(c)
+		if loose.is_empty():
+			break
+		loose.sort_custom(func(a, b): return a.y < b.y)
+		var progressed := false
+		for c in loose:
+			if not blocks.has(c):
 				continue
 			var below: Vector3i = c + DOWN
 			if below == player:
 				skipped = true
 				continue  # apoyado sobre el jugador
+			if blocks.has(below):
+				continue  # (otro suelto que no pudo caer todavía)
 			if c.y <= floor_y:
 				_remove_block(c)
 			else:
 				_move_block(c, below)
-			again = true
+			progressed = true
 			moved = true
+		if not progressed:
+			break
 	_blocks_dirty = skipped
 	return moved
 
@@ -942,8 +1157,7 @@ func use_item_at(id: String, cell: Vector3i) -> Dictionary:
 		if hang_dir == Vector3i.ZERO and blocks.has(player + DOWN):
 			last_safe = player
 		_purify_trail()
-		if _on_goal():
-			won = true
+		_try_win()
 		return {"ok": true, "msg": "Teletransporte"}
 	var kind: int = CONVERTERS[id]
 	var bid: int = blocks[cell]
@@ -1005,4 +1219,5 @@ static func from_dict(d: Dictionary) -> RefCounted:
 		for id in ids:
 			t.platform_row[id] = int(k)
 	t.recompute_zob()
+	t.mark_standing()
 	return t

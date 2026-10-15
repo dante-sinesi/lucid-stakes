@@ -79,19 +79,19 @@ func test_profile() -> void:
 	run.towers_cleared = 10
 	run.trials_cleared = 3
 	run.max_stage = 11
-	check(Profile.luz_for_run(run, false) == 10 * 3 + 3 * 12 and Profile.luz_for_run(run, true) == 66 + 100, "Luz: 3 por torre, 12 por prueba, 100 por escapar")
+	check(Profile.luz_for_run(run, false) == 10 * 5 + 3 * 20 and Profile.luz_for_run(run, true) == 110 + 100, "Luz: 5 por torre, 20 por prueba, 100 por escapar")
 	run.scenario_id = "glaciar"
-	check(Profile.luz_for_run(run, false) == int(round(66 * 1.5)), "el escenario multiplica la Luz")
+	check(Profile.luz_for_run(run, false) == int(round(110 * 1.5)), "el escenario multiplica la Luz")
 	run.scenario_id = "pesadilla"
 	var gained := Profile.record_run(run, false)
-	check(gained == 66 and Profile.luz() == 66 and Profile.data.runs == 1 and Profile.data.best_stage == 11 and Profile.data.trials_cleared == 3, "record_run suma Luz y estadisticas")
-	check(Profile.can_enter("glaciar") and Profile.pay_entry("glaciar") and Profile.luz() == 66 - 15, "con Luz se paga la entrada")
+	check(gained == 110 and Profile.luz() == 110 and Profile.data.runs == 1 and Profile.data.best_stage == 11 and Profile.data.trials_cleared == 3, "record_run suma Luz y estadisticas")
+	check(Profile.can_enter("glaciar") and Profile.pay_entry("glaciar") and Profile.luz() == 110 - 15, "con Luz se paga la entrada")
 	# Se guarda y se carga
 	Profile.grant_ability("pies_ligeros")
 	Profile.data = {}
 	Profile._loaded_from = ""
 	Profile.load_profile()
-	check(Profile.luz() == 51 and Profile.has_ability("pies_ligeros") and int(Profile.data.runs) == 1, "el perfil se guarda y se carga")
+	check(Profile.luz() == 95 and Profile.has_ability("pies_ligeros") and int(Profile.data.runs) == 1, "el perfil se guarda y se carga")
 	# Archivo roto: se ignora
 	var f := FileAccess.open(Profile.path, FileAccess.WRITE)
 	f.store_string("esto no es json {{{")
@@ -184,9 +184,9 @@ func test_price_and_casino() -> void:
 	var run := RunState.new()
 	check(Roulette.run_price(run) == 50, "el precio de la ficha normal")
 	run.price_mult = 0.75
-	check(Roulette.run_price(run) == 38 and Roulette.price(10, 0.5) == 34 and Roulette.price(1) == 50, "el escenario puede abaratar la ficha")
+	check(Roulette.run_price(run) == 38 and Roulette.price(10, 0.5) == 43 and Roulette.price(1) == 50, "el escenario puede abaratar la ficha")
 	var lay := Room.layout(1, 3)
-	check(lay.tier == 3 and Room.layout(1).tier == 0 and Room.layout(27, 0).tier == 0, "el escenario puede fijar el nivel del casino")
+	check(lay.tier == 3 and Room.layout(1).tier == 0 and Room.layout(15, 0).tier == 0, "el escenario puede fijar el nivel del casino")
 	var v := Room.build_voxels(1, 3)
 	check(v.solid.size() > Room.build_voxels(1).solid.size(), "el gran casino de la etapa 1 es mas grande que la taberna")
 
@@ -199,7 +199,7 @@ func test_flow() -> void:
 	main.start_game("glaciar")
 	check(main.run.scenario_id == "pesadilla" and Profile.luz() == 0, "sin Luz alcanza con el gratuito: no se entra al de pago")
 	await wait_tower(main)
-	check(main.run.trial_schedule.size() == 9 and main.run.next_trial_text(1) != "", "al empezar se sortean las pruebas")
+	check(main.run.trial_schedule.size() == 5 and main.run.next_trial_text(1) != "", "al empezar se sortean las pruebas")
 	main.open_main_menu()
 	# Con Luz: se paga la entrada y rigen las reglas del escenario
 	Profile.data.luz = 100
@@ -218,7 +218,7 @@ func test_flow() -> void:
 	main.run.towers_cleared = 4
 	var before := Profile.luz()
 	main.end_run(false, "x")
-	check(Profile.luz() == before + int(round(12 * 1.8)) and main.run_end.luz_row.visible and main.run_end.luz_gain.value == int(round(12 * 1.8)) and main.run_end.luz_total_counter.value == Profile.luz(), "el fin del run da Luz (multiplicada) y la muestra con el sol")
+	check(Profile.luz() == before + int(round(20 * 1.8)) and main.run_end.luz_row.visible and main.run_end.luz_gain.value == int(round(20 * 1.8)) and main.run_end.luz_total_counter.value == Profile.luz(), "el fin del run da Luz (multiplicada) y la muestra con el sol")
 	check(not all_text(main.run_end).contains("Luz"), "la pantalla de fin de run no nombra la Luz con texto")
 	# El escenario viaja en el guardado
 	var run2 := RunState.new()

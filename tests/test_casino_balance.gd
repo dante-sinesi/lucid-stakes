@@ -31,6 +31,7 @@ func make_run(tier: int, claridad := 5000) -> RunState:
 	run.stage = 3
 	run.claridad = claridad
 	Rules.enter(run, tier)
+	Rules.accept(run)   # (la regla rige sólo si se habló con el tabernero)
 	return run
 
 

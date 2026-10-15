@@ -33,6 +33,7 @@ func make_run(tier: int, claridad := 5000) -> RunState:
 	run.claridad = claridad
 	run.stage = 1
 	Rules.enter(run, tier)
+	Rules.accept(run)
 	return run
 
 
@@ -59,16 +60,19 @@ func test_fiado() -> void:
 	check(res3.won and res3.rules.refund == 0, "ganar no activa el fiado")
 	# una visita nueva lo vuelve a dar
 	Rules.enter(run, 0)
+	Rules.accept(run)
 	var res4 := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 7)
 	check(res4.rules.refund > 0, "en otra visita vuelve a haber fiado")
 	# en las tragamonedas y el blackjack también
 	Rules.enter(run, 0)
+	Rules.accept(run)
 	var s := Slots.new(run, rng)
 	s.start()
 	s.reels = [0, 1, 2]
 	var sr := s.collect()
 	check(sr.claridad == 0 and sr.rules.refund == int(round(s.price * 0.5)), "las tragamonedas sin premio devuelven la mitad")
 	Rules.enter(run, 0)
+	Rules.accept(run)
 	var bj := Blackjack.new(run, rng)
 	bj.deal([Vector2i(10, 0), Vector2i(10, 1), Vector2i(9, 2), Vector2i(8, 3), Vector2i(2, 0)])   # se saca desde el final: el jugador 2, 9 / el crupier 10, 10 (no, ver abajo)
 	bj.stand()
@@ -99,6 +103,7 @@ func test_racha() -> void:
 	check(run.casino_visit.streak == 1, "un empate no corta la racha")
 	# con una apuesta de la ruleta que da un ítem (no claridad) también cuenta la victoria
 	Rules.enter(run, 1)
+	Rules.accept(run)
 	var res := Roulette.resolve(run, Roulette.Bet.RANGO, [1, 2, 3, 4, 5, 6, 7, 8, 9], rng, 3)
 	check(res.won and run.casino_visit.streak == 1, "ganar un premio en la ruleta suma a la racha")
 

@@ -4,6 +4,7 @@ extends Control
 const UI := preload("res://scripts/menu_ui.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
 const OptionsScreen := preload("res://scripts/options_screen.gd")
+const BlockGuideScreen := preload("res://scripts/block_guide_screen.gd")
 const Loc := preload("res://scripts/loc.gd")
 
 signal resume
@@ -16,6 +17,7 @@ var buttons := {}
 var column: VBoxContainer
 var center: CenterContainer
 var options: Control
+var guide: Control
 
 
 func _init() -> void:
@@ -39,12 +41,16 @@ func _init() -> void:
 	_button("reiniciar", Loc.t("Reintentar la torre"), false, func(): restart_tower.emit())
 	_button("menu", Loc.t("Volver al menú principal"), false, func(): to_main_menu.emit())
 	_button("abandonar", Loc.t("Abandonar el run"), false, func(): abandon_run.emit())
+	_button("guia", Loc.t("Guía de bloques"), false, func(): show_guide(true))
 	_button("opciones", Loc.t("Opciones"), false, func(): show_options(true))
 	_button("salir", Loc.t("Salir del juego"), false, func(): quit_game.emit())
 	options = OptionsScreen.new()
 	options.back.connect(func(): show_options(false))
 	options.language_changed.connect(func(): language_changed.emit())
 	add_child(options)
+	guide = BlockGuideScreen.new()
+	guide.back.connect(func(): show_guide(false))
+	add_child(guide)
 
 
 func _button(id: String, text: String, primary: bool, action: Callable) -> void:
@@ -62,8 +68,28 @@ func set_restart_cost(cost: int, free := false) -> void:
 	buttons["abandonar"].visible = not free
 
 
+## La primera vez, en el tutorial, no se puede volver al menú principal ni abandonar.
+func set_tutorial_lock(on: bool) -> void:
+	buttons["menu"].visible = not on
+	if on:
+		buttons["abandonar"].visible = false
+
+
+## Muestra u oculta la guía de bloques dentro de la pausa.
+func show_guide(on: bool) -> void:
+	center.visible = not on
+	guide.visible = on
+	if on:
+		options.visible = false
+		guide.refresh()
+		guide.focus_default()
+	else:
+		buttons["guia"].grab_focus()
+
+
 ## Muestra u oculta las opciones dentro de la pausa.
 func show_options(on: bool) -> void:
+	guide.visible = false
 	center.visible = not on
 	options.visible = on
 	if on:

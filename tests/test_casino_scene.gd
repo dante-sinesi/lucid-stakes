@@ -18,7 +18,7 @@ func check(cond: bool, label: String) -> void:
 
 func make(claridad := 300) -> Array:
 	var run := RunState.new()
-	run.stage = 14   # el casino de la distribucion clasica (nivel 3 de la sala)
+	run.stage = 8   # el casino de la distribucion clasica (nivel 3 de la sala)
 	run.claridad = claridad
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
