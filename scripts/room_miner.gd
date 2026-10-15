@@ -644,6 +644,33 @@ func _try_tall(child: Dictionary, parent_path: Array) -> bool:
 	return false
 
 
+## Elige una sala del archivo para cambiarla: primero un casillero de dificultad (bloques que hay que mover), con más probabilidad cuantos más bloques pide, y dentro de él una sala.
+## Así las salas difíciles, que son pocas, se cambian tanto como las fáciles, que son muchas, y la frontera avanza.
+func pick_parent(shape: String, h: int) -> Dictionary:
+	var prefix := "%s|%d|" % [shape, h]
+	var keys: Array = []
+	for k in archive:
+		if String(k).begins_with(prefix):
+			keys.append(k)
+	if keys.is_empty():
+		return {}
+	var total := 0.0
+	var weights: Array = []
+	for k in keys:
+		var moved := float(int(archive[k][0].opt.get("moved", 1)))
+		var w := pow(1.0 + moved, 1.5)   # (los casilleros de más bloques movidos, que son los que faltan, se eligen más)
+		weights.append(w)
+		total += w
+	var roll := rng.randf() * total
+	var chosen: Array = archive[keys[keys.size() - 1]]
+	for i in keys.size():
+		roll -= float(weights[i])
+		if roll <= 0.0:
+			chosen = archive[keys[i]]
+			break
+	return chosen[rng.randi_range(0, chosen.size() - 1)]
+
+
 func pick_combo() -> Array:
 	return combos_list[rng.randi_range(0, combos_list.size() - 1)]
 
@@ -667,17 +694,17 @@ func step() -> void:
 		if try_child(seed_room):
 			stats.seeds_ok = int(stats.seeds_ok) + 1
 	elif tall and r < 0.55:   # extender: más desorden sobre una sala alta que ya se sabe resolver
-		var par: Dictionary = list[rng.randi_range(0, list.size() - 1)]
+		var par: Dictionary = pick_parent(combo[0], combo[1])
 		var ext := scramble_from(par, rng.randi_range(2, 8))
 		if ext.is_empty():
 			_fail("ext_" + last_why)
 			return
 		try_child(ext)
 	elif r < seed_p + cross_p and list.size() >= 2:
-		var pa: Dictionary = list[rng.randi_range(0, list.size() - 1)]
-		try_child(crossover(pa, list[rng.randi_range(0, list.size() - 1)]), pa.path)
+		var pa: Dictionary = pick_parent(combo[0], combo[1])
+		try_child(crossover(pa, pick_parent(combo[0], combo[1])), pa.path)
 	else:
-		var par2: Dictionary = list[rng.randi_range(0, list.size() - 1)]
+		var par2: Dictionary = pick_parent(combo[0], combo[1])
 		try_child(mutate(par2), par2.path)
 
 
