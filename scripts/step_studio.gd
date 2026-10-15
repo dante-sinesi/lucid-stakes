@@ -593,7 +593,7 @@ func _on_view_input(ev: InputEvent) -> void:
 			_user_cam = true
 		if _dragging == "orbit":
 			yaw -= mm.relative.x * 0.4
-			pitch = clampf(pitch + mm.relative.y * 0.4, 4.0, 88.0)
+			pitch = clampf(pitch + mm.relative.y * 0.4, -80.0, 88.0)
 			_place_cam()
 		elif _dragging == "pan":
 			var right := cam.global_transform.basis.x

@@ -8,7 +8,7 @@ const RoomLib := preload("res://scripts/room_lib.gd")
 const RoomView := preload("res://scripts/room_view.gd")
 const StudioModel := preload("res://scripts/studio_model.gd")
 
-const TOOLS := [["select", "Seleccionar"], ["add", "Agregar bloque arriba"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["move", "Mover a otra columna"], ["add_side", "Agregar pegado a una cara"], ["delete_gap", "Borrar y dejar el hueco"]]
+const TOOLS := [["select", "Seleccionar"], ["add", "Agregar bloque (clic en una cara, como en Minecraft)"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["move", "Mover a otra columna"], ["delete_gap", "Borrar y dejar el hueco"]]
 const SHAPE_NAMES := {"3x3": "Chica (3x3)", "3x5": "Mediana (3x5)", "3x8": "Grande (3x8)", "L": "L", "U": "U"}
 const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["moved", "Bloques distintos"], ["moves", "Pasos"], ["h", "Altura"], ["reciente", "Recientes"]]
 
@@ -768,7 +768,7 @@ func _on_view_input(ev: InputEvent) -> void:
 			_user_cam = true
 		if _dragging == "orbit":
 			yaw -= mm.relative.x * 0.4
-			pitch = clampf(pitch + mm.relative.y * 0.4, 4.0, 88.0)
+			pitch = clampf(pitch + mm.relative.y * 0.4, -80.0, 88.0)
 			_place_cam()
 		elif _dragging == "pan":
 			var right := cam.global_transform.basis.x
@@ -782,13 +782,15 @@ func click_at(pos: Vector2) -> void:
 	var st = model.view_state()
 	if st == null:
 		return
-	if tool == "add_side":
+	if tool == "add" or tool == "add_side":   # el bloque va pegado a la cara que se toca, donde sea (también en el aire, como en Minecraft)
 		var f := RoomView.pick_face(cam, pos, st)
 		if f.hit.x == -1000:
 			return
 		var q: Vector3i = f.prev
 		if model.add_block_at(Vector2i(q.x, q.z), q.y, kind_pick):
 			after_edit()
+			if not RoomLib.is_stable(model.current):
+				_set_status("Ojo: ese bloque no tiene en qué apoyarse (se caería). Pegalo a otro bloque o ponele algo abajo.")
 		else:
 			_set_status(model.message)
 		return
@@ -822,7 +824,7 @@ func click_cell(c: Vector3i) -> void:
 			else:
 				_set_status(model.message)
 		"delete":
-			if y >= 1 and model.delete_block(cell, y):
+			if y >= 1 and model.delete_block(cell, y, true):   # (los de arriba quedan donde están si se sostienen solos, como en Minecraft)
 				after_edit()
 			else:
 				_set_status(model.message if model.message != "" else "Ahí no hay un bloque para borrar.")
@@ -861,7 +863,7 @@ func set_tool(name: String) -> void:
 		if TOOLS[i][0] == name and tool_opt != null:
 			tool_opt.select(i)
 	_refresh_view()
-	var hints := {"select": "Clic en un bloque para seleccionarlo (y marcar sus variantes).", "add": "Clic en una columna (o en el piso): se agrega un bloque arriba.", "delete": "Clic en un bloque para borrarlo.", "type": "Clic en un bloque: cambia al tipo elegido.", "move": "Clic en el bloque que querés mover y después en la columna destino.", "add_side": "Clic en la cara de un bloque: se agrega un bloque pegado a esa cara (puede quedar en el aire si se sostiene de sus vecinos).", "delete_gap": "Clic en un bloque para borrarlo; los de arriba quedan donde están si se sostienen solos."}
+	var hints := {"select": "Clic en un bloque para seleccionarlo (y marcar sus variantes).", "add": "Clic en la cara de un bloque (o del piso): se agrega un bloque pegado a esa cara, donde quieras.", "delete": "Clic en un bloque para borrarlo.", "type": "Clic en un bloque: cambia al tipo elegido.", "move": "Clic en el bloque que querés mover y después en la columna destino.", "add_side": "Clic en la cara de un bloque: se agrega un bloque pegado a esa cara (puede quedar en el aire si se sostiene de sus vecinos).", "delete_gap": "Clic en un bloque para borrarlo; los de arriba quedan donde están si se sostienen solos."}
 	_set_status(str(hints.get(name, "")))
 
 

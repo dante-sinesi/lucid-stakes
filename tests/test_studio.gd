@@ -2,6 +2,7 @@ extends SceneTree
 ## Pruebas de la interfaz del Estudio de salas (scripts/studio.gd): se usa como lo haría una persona (filtrar, elegir, editar con las herramientas, deshacer, guardar, variantes, reproducir).
 ## Ejecutar: GAME_SANDBOX=1 tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_studio.gd
 const RoomLib := preload("res://scripts/room_lib.gd")
+const RoomView := preload("res://scripts/room_view.gd")
 const RoomPack := preload("res://scripts/room_pack.gd")
 const RoomMiner := preload("res://scripts/room_miner.gd")
 const StudioModel := preload("res://scripts/studio_model.gd")
@@ -225,6 +226,28 @@ func test_ui() -> void:
 	var rooms_before: int = studio.model.rooms.size()
 	studio.do_create_variants()
 	check(studio.model.rooms.size() >= rooms_before, "crear variantes no pierde salas")
+	# poner un bloque con un clic en la cara de otro, como en Minecraft (también al costado, en el aire)
+	studio.select_room(studio.model.rooms[0].id)
+	studio.set_tool("add")
+	studio.set_kind_pick("n")
+	await _frames(3)
+	var st0 = studio.model.view_state()
+	var target := Vector3i(-1, -1, -1)
+	for c in st0.blocks:   # un bloque suelto con la cara de arriba a la vista (no tapada por otro) y lugar encima
+		if c.y < 1 or st0.fixed.has(c) or st0.blocks.has(c + Vector3i(0, 1, 0)) or c.y + 1 > int(studio.model.current.h) - 1:
+			continue
+		var f = RoomView.pick_face(studio.cam, studio.cam.unproject_position(Vector3(c.x + 0.5, c.y + 0.98, c.z + 0.5)), st0)
+		if f.hit == c and f.prev == c + Vector3i(0, 1, 0):
+			target = c
+			break
+	if target.x != -1:
+		var n0: int = studio.model.block_count()
+		studio.click_at(studio.cam.unproject_position(Vector3(target.x + 0.5, target.y + 0.98, target.z + 0.5)))
+		await _frames(2)
+		check(studio.model.block_count() == n0 + 1 and RoomLib.block_char(studio.model.current, Vector2i(target.x, target.z), target.y + 1) == "n", "un clic en la cara de arriba de un bloque pone otro encima")
+		studio.do_undo()
+	else:
+		print("  (no hubo un bloque con la cara de arriba a la vista para probar el clic)")
 	# filtro por tipo de bloque
 	studio.f_kind.select(1 + studio.KIND_FILTERS.find("b"))
 	studio.refresh_list()
