@@ -250,10 +250,193 @@ static func verify_exact(room: Dictionary, cap := 60000, max_ms := 60000) -> Dic
 
 ## Completa y deja coherente la sala con el resultado de una evaluación (camino, métricas, hashes).
 static func apply_result(room: Dictionary, path: Array, proof: String, lower: int, states: int) -> void:
+	path = simplify_path(room, path)
 	var st := path_stats(room, path)
 	room.path = path
 	room.opt = {"moves": path.size(), "lower": lower, "grabs": st.grabs, "moved": st.moved, "proof": proof, "states": states}
 	finalize(room)
+
+
+# --- caminos más cortos y poda -----------------------------------------------------------------------------------------------
+
+## Camino a pie (sin mover bloques) del jugador hasta `target` sobre el simulador `t`: búsqueda por anchura sobre las posiciones del jugador. null si no hay.
+static func walk_path(t, target: Vector3i, limit := 4000) -> Variant:
+	if t.player == target and t.hang_dir == Vector3i.ZERO:
+		return []
+	var seen_pos := {t.player: true}
+	var queue: Array = [[t, []]]
+	var qi := 0
+	while qi < queue.size() and seen_pos.size() < limit:
+		var node: Array = queue[qi]
+		qi += 1
+		for d in TowerLogic.DIRS:
+			var n = node[0].clone()
+			var r: Dictionary = n.try_action(d, TowerLogic.Mode.MOVE)
+			if not r.ok or n.lost or n.hang_dir != Vector3i.ZERO or seen_pos.has(n.player):
+				continue
+			seen_pos[n.player] = true
+			var path: Array = node[1].duplicate()
+			path.append({"dir": d, "mode": TowerLogic.Mode.MOVE})
+			if n.player == target:
+				return path
+			queue.append([n, path])
+	return null
+
+
+## Saca las vueltas de un camino: (1) si el jugador vuelve a un estado (mismos bloques, misma posición) en el que ya estuvo, se tira todo lo que hizo en el medio; (2) cada tramo de pasos
+## caminando se cambia por el camino a pie más corto entre sus extremos. Es exacto: el camino resultante resuelve la sala y nunca es más largo. Si el camino no resuelve la sala, se devuelve igual.
+static func simplify_path(room: Dictionary, path: Array) -> Array:
+	if path.is_empty():
+		return path
+	var best: Array = path
+	for _round in 3:
+		var a := _remove_cycles(room, best)
+		var b := _compress_walks(room, a)
+		if b.size() >= best.size():
+			break
+		if not replay(room, b).ok:
+			break
+		best = b
+	return best
+
+
+static func _remove_cycles(room: Dictionary, path: Array) -> Array:
+	var t = build_state(room)
+	var keys: Array = [Solver.state_key(t)]
+	var seen := {keys[0]: 0}
+	var out: Array = []
+	for a in path:
+		var r: Dictionary = t.try_action(a.dir, a.mode)
+		if not r.ok or t.lost:
+			return path
+		var k: Vector3i = Solver.state_key(t)
+		if seen.has(k):
+			var idx: int = seen[k]
+			for i in range(idx + 1, keys.size()):
+				seen.erase(keys[i])
+			keys.resize(idx + 1)
+			out.resize(idx)
+		else:
+			out.append(a)
+			keys.append(k)
+			seen[k] = out.size()
+	return out
+
+
+static func _compress_walks(room: Dictionary, path: Array) -> Array:
+	var t = build_state(room)
+	var out: Array = []
+	var i := 0
+	while i < path.size():
+		if path[i].mode != TowerLogic.Mode.MOVE:
+			if not t.try_action(path[i].dir, path[i].mode).ok or t.lost:
+				return path
+			out.append(path[i])
+			i += 1
+			continue
+		var j := i
+		while j < path.size() and path[j].mode == TowerLogic.Mode.MOVE:
+			j += 1
+		var after = t.clone()   # el final del tramo: tiene que dejar los bloques como estaban y al jugador sin colgarse
+		var ok := true
+		for k in range(i, j):
+			if not after.try_action(path[k].dir, path[k].mode).ok or after.lost:
+				ok = false
+				break
+		var run: Array = path.slice(i, j)
+		if ok and after.zob == t.zob and after.hang_dir == Vector3i.ZERO and t.hang_dir == Vector3i.ZERO:
+			var w = walk_path(t, after.player, 600)
+			if w != null and w.size() < run.size():
+				run = w
+		for a in run:
+			if not t.try_action(a.dir, a.mode).ok or t.lost:
+				return path
+			out.append(a)
+		i = j
+	return out
+
+
+## Mejora el tramo final del camino con el verificador exacto: desde un estado cerca del final la sala que queda es chica y el solucionador la resuelve con garantía. Se prueba desde cada vez más atrás
+## mientras el solucionador termine; se queda con el estado más lejano desde el que terminó. Devuelve el camino (igual si no mejoró) y cuántos pasos del final quedaron probados como mínimos.
+static func improve_tail(room: Dictionary, path: Array, cap := 20000, max_ms := 4000, step := 6) -> Dictionary:
+	var h: int = room.h
+	var best: Array = path
+	var proven := 0
+	var t = build_state(room)
+	var states: Array = [t.clone()]
+	for a in path:
+		if not t.try_action(a.dir, a.mode).ok or t.lost:
+			return {"path": path, "proven": 0}
+		states.append(t.clone())
+	var k := path.size() - step
+	while k >= 0:
+		var s = states[k].clone()
+		var res: Dictionary = Solver.solve(s, h + 1, {"max_states": cap, "goal_ids": s.goal_ids, "admissible": true, "max_ms": max_ms})
+		if res.status != "solved":
+			break
+		var cand: Array = path.slice(0, k)
+		cand.append_array(res.path)
+		if cand.size() <= best.size():
+			best = cand
+		proven = res.path.size()
+		k -= step
+	if best.size() < path.size() and not replay(room, best).ok:
+		return {"path": path, "proven": 0}
+	return {"path": best, "proven": proven}
+
+
+## Poda el relleno: saca de la sala los bloques que no hacen falta. Un candidato (sacar toda una columna, o el bloque de arriba de una) se acepta si la sala sigue siendo coherente,
+## el camino que trae todavía la resuelve y no se puede resolver caminando. Se repite hasta que no se pueda sacar nada más. {room, removed}. La sala tiene que traer un camino que la resuelva.
+static func prune(room: Dictionary, rng: RandomNumberGenerator = null, max_ms := 60000) -> Dictionary:
+	var out := copy_room(room)
+	if out.path.is_empty() or not replay(out, out.path).ok:
+		return {"room": out, "removed": 0}
+	var r := rng if rng != null else RandomNumberGenerator.new()
+	var deadline := Time.get_ticks_msec() + max_ms
+	var removed := 0
+	var h: int = out.h
+	var progress := true
+	var whole := true   # primero columnas enteras, después los bloques de arriba
+	while progress and Time.get_ticks_msec() < deadline:
+		progress = false
+		var cells: Array = out.cols.keys()
+		for i in range(cells.size() - 1, 0, -1):
+			var j := r.randi_range(0, i)
+			var tmp = cells[i]
+			cells[i] = cells[j]
+			cells[j] = tmp
+		for c in cells:
+			if Time.get_ticks_msec() > deadline:
+				break
+			if not out.cols.has(c):
+				continue
+			var ks: String = out.cols[c]
+			var cand := copy_room(out)
+			var drop := ks.length() if whole else 1
+			if drop >= ks.length():
+				cand.cols.erase(c)
+			else:
+				cand.cols[c] = ks.substr(0, ks.length() - 1)
+			if _prune_ok(cand, out.path, h):
+				out = cand
+				removed += drop
+				progress = true
+		if not progress and whole:
+			whole = false
+			progress = true
+	if removed > 0:
+		out.slots = {}
+		out.variants = []
+		finalize(out)
+	return {"room": out, "removed": removed}
+
+
+static func _prune_ok(cand: Dictionary, path: Array, h: int) -> bool:
+	if not replay(cand, path).ok:
+		return false
+	var t = build_state(cand)
+	var plain: Dictionary = Solver.solve(t, h + 1, {"max_states": 40000, "goal_ids": t.goal_ids, "no_grab": true, "max_ms": 8000})
+	return plain.status == "unsolvable"
 
 
 # --- hashes ---------------------------------------------------------------------------------------------------------------

@@ -311,7 +311,7 @@ func verify(max_ms := 5000) -> Dictionary:
 			if int(st.moved) >= 1:
 				var proof := "sin_probar"
 				var lower: int = int(current.opt.get("lower", h)) if not current.opt.is_empty() else h
-				RoomLib.apply_result(current, current.path, proof, maxi(lower, h), 0)
+				RoomLib.apply_result(current, current.path, proof, maxi(lower, h), 0)   # (saca las vueltas del camino)
 				verified = true
 				return {"ok": true, "why": "", "moves": current.path.size(), "moved": st.moved, "grabs": st.grabs, "reused": true}
 	var ev := RoomLib.evaluate(current, {"cap": 6000 + 200 * h, "max_ms": max_ms, "h_weight": 1.0 if h <= 8 else 1.6})
@@ -337,10 +337,66 @@ func verify_exact(cap := 80000, max_ms := 60000) -> Dictionary:
 	if res.proof == "exacta":
 		RoomLib.apply_result(current, res.path, "exacta", int(res.moves), int(res.states))
 	elif res.proof == "cota":
+		var before: int = current.path.size()
+		var o := optimize_path()   # (no se probó todo: al menos se mejora el tramo final y se sacan las vueltas)
 		current.opt = current.opt.duplicate()
-		current.opt.proof = "cota"
+		current.opt.proof = "exacta" if o.exact else "cota"
 		current.opt.lower = maxi(int(current.opt.get("lower", 0)), int(res.lower))
+		if o.exact:
+			current.opt.lower = current.path.size()
+			return {"proof": "exacta", "moves": current.path.size(), "lower": current.path.size()}
+		return {"proof": "cota", "moves": -1, "lower": res.lower, "improved": before - current.path.size()}
 	return {"proof": res.proof, "moves": res.moves, "lower": res.lower}
+
+
+## Saca las vueltas del camino y mejora su tramo final con el verificador exacto. {before, after, proven, exact}. No cambia la sala, sólo su camino.
+func optimize_path() -> Dictionary:
+	if current.is_empty() or current.path.is_empty():
+		return {"before": 0, "after": 0, "proven": 0, "exact": false}
+	var before: int = current.path.size()
+	var p := RoomLib.simplify_path(current, current.path)
+	var imp := RoomLib.improve_tail(current, p, 20000, 4000)
+	var best: Array = imp.path
+	var exact: bool = int(imp.proven) >= best.size()
+	if best.size() < before or exact:
+		var proof := "exacta" if exact else str(current.opt.get("proof", "sin_probar"))
+		var src: String = str(current.opt.get("source", ""))
+		RoomLib.apply_result(current, best, proof, best.size() if exact else int(current.opt.get("lower", current.h)), int(current.opt.get("states", 0)))
+		if src != "":
+			current.opt.source = src
+		verified = true
+		dirty = true
+	return {"before": before, "after": current.path.size(), "proven": imp.proven, "exact": exact}
+
+
+## Poda el relleno de la sala actual (lo que no hace falta para su camino ni para que no se pueda resolver caminando). Devuelve cuántos bloques sacó.
+func prune_current() -> int:
+	if current.is_empty():
+		return 0
+	if not verified:
+		var v := verify()
+		if not v.ok:
+			message = "la sala no se resuelve: no se puede podar"
+			return 0
+	var res := RoomLib.prune(current, null, 40000)
+	if int(res.removed) <= 0:
+		message = "no hay nada que sacar"
+		return 0
+	_push_undo()
+	var src: String = str(current.opt.get("source", ""))
+	var proof: String = str(current.opt.get("proof", "sin_probar"))
+	var lower: int = int(current.opt.get("lower", current.h))
+	current = res.room
+	current.origin = "manual" if current.origin != "autor" else "autor"
+	if original_id != "":
+		current.parent = original_id
+	RoomLib.apply_result(current, current.path, "sin_probar" if proof == "exacta" else proof, lower, 0)
+	if src != "":
+		current.opt.source = src
+	dirty = true
+	verified = true
+	play_state = null
+	return int(res.removed)
 
 
 # --- guardar --------------------------------------------------------------------------------------------------------------------

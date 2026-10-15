@@ -47,6 +47,19 @@ La O no se hace (por lo que implica subir). Las arenas chicas no admiten cualqui
 - Velocidad: de 1 a 5 evaluaciones por segundo por copia según las alturas; las salas altas rinden unas 20 por minuto por copia.
 - De las verificaciones exactas de salas altas, casi todas encuentran un camino más corto que el plantado (esperable: el plantado incluye el desorden y su deshacer).
 
+## Caminos más cortos y poda (14/10, tercera versión)
+
+**El problema que se vio en el Estudio:** la sala "L 12p m4 g7 93 0078e52e" mostraba 93 pasos "más cortos", casi todos vueltas caminando alrededor de la base. Es el camino *plantado* de las salas altas: el desorden se hace con caminatas al azar y su camino al revés las incluye todas, y el panel lo mostraba como si fuera el mínimo.
+
+**Qué se hizo (`room_lib.gd`):**
+- `simplify_path`: (1) si el jugador vuelve a un estado en el que ya estuvo (mismos bloques y misma posición) se tira todo lo del medio; (2) cada tramo caminando se cambia por el camino a pie más corto entre sus extremos. Es exacto (el resultado resuelve la sala y nunca es más largo) y se aplica siempre en `apply_result`, en el empaquetador (acorta los caminos de bibliotecas viejas: basta volver a correr `empaquetar.bat`) y al verificar en el Estudio. Esa sala bajó de 93 a 27 pasos.
+- `improve_tail`: desde un estado cerca del final la sala que queda es chica y el verificador exacto la resuelve con garantía; se prueba desde cada vez más atrás. Esa sala bajó de 27 a 17 (los últimos 14 pasos probados como mínimos). Si todo el camino queda probado, la sala queda con **prueba exacta**. En el Estudio: botón **Mejorar camino** (y **Verificar a fondo** lo usa cuando no alcanza el presupuesto).
+- El panel dice ahora **"camino conocido (el mínimo puede ser menor)"** salvo cuando la prueba es exacta, que dice "camino más corto".
+- En las 6 salas altas medidas, 456 pasos pasaron a 146 sólo por sacar vueltas. En la corrida de comparación (2 copias, 7 minutos) el camino medio de las salas altas pasó de 79 a 19 pasos.
+- Efecto en la dificultad medida: como los bloques distintos movidos y los agarres se calculan sobre el camino, bajaron (ahora cuentan sólo lo que el camino mueve de verdad): 1: 167, 2: 59, 3: 8, 4: 3 salas. Es una medida más honesta, no un retroceso.
+
+**Poda del relleno (`RoomLib.prune`):** se prueba sacar cada columna entera y después el bloque de arriba de cada una; se acepta si la sala sigue coherente, el camino todavía la resuelve y no se puede resolver caminando. El minero la aplica a cada sala antes de que entre al archivo y el Estudio tiene el botón **Podar relleno**. Resultado medido: **saca poco** (en la corrida de comparación, 328 bloques de 240 salas; las salas chicas pasan de 18,9 a 17,4 bloques de promedio y las altas de 88 a 83): casi toda la masa es estructura necesaria. Una escalera a pie de 20 pisos con columnas macizas necesita unos 190 bloques y las columnas que impiden caminar también hacen falta. **La masa no sale con poda: sale de cambiar la forma de representar las salas** (bloques sueltos apoyados en sus vecinos, como los escalones colgados de un pilar, en lugar de columnas macizas desde el piso). Queda como propuesta a conversar.
+
 ## El Estudio
 
 Izquierda: la biblioteca (filtros por forma, pisos, bloques movidos, estado, origen, prueba y búsqueda por id/familia/patrón; orden por bloques movidos, pasos, altura o recientes) y **Sala nueva**. Centro: la sala dibujada con los minibloques y el shader del juego. Derecha: datos de la sala, herramientas y salas parecidas con su miniatura.

@@ -92,5 +92,26 @@ func _init() -> void:
 	var res3 := RoomPack.pack(dir, dir.path_join("lib3.jsonl"), {"min_moved": 3})
 	check(res3.kept <= res.kept and res3.weak >= res.weak, "con un mínimo mayor quedan menos salas (%d)" % res3.kept)
 	check(RoomPack.load_library(dir.path_join("no_existe.rooms")).is_empty(), "una biblioteca que no existe se lee vacía")
+	# un camino lleno de vueltas se acorta al empaquetar
+	var ldir := dir + "/lazy"
+	_clean(ldir)
+	var lazy := RoomLib.copy_room(first)
+	var loop := [{"dir": Vector3i(1, 0, 0), "mode": 0}, {"dir": Vector3i(-1, 0, 0), "mode": 0}]
+	var wander: Array = []
+	for i in 8:
+		wander.append_array(loop)
+	wander.append_array(first.path)
+	lazy.path = wander
+	if RoomLib.replay(lazy, wander).ok:
+		RoomLib.apply_result(lazy, wander, "sin_probar", lazy.h, 0)   # (apply_result ya simplifica: se escribe el camino largo a mano)
+		lazy.path = wander
+		lazy.opt = lazy.opt.duplicate()
+		lazy.opt.moves = wander.size()
+		RoomLib.append_line(ldir.path_join("a.jsonl"), lazy)
+		var lres := RoomPack.collect(ldir, ldir.path_join("out.jsonl"), {})
+		check(lres.rooms.size() == 1 and int(lres.get("shortened", 0)) == 1, "el empaquetador acorta el camino con vueltas")
+		if lres.rooms.size() == 1:
+			check(lres.rooms[0].path.size() < wander.size() and RoomLib.replay(lres.rooms[0], lres.rooms[0].path).ok, "el camino acortado resuelve la sala (%d -> %d)" % [wander.size(), lres.rooms[0].path.size()])
+			check(int(lres.rooms[0].opt.moves) == lres.rooms[0].path.size(), "las métricas siguen al camino nuevo")
 	print("tests del empaquetador terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)

@@ -243,6 +243,10 @@ func _build_ui() -> void:
 	ver_row.add_child(_button("Verificar", do_verify))
 	ver_row.add_child(_button("Verificar a fondo", do_verify_exact))
 	right.add_child(ver_row)
+	var opt_row := HBoxContainer.new()
+	opt_row.add_child(_button("Podar relleno", do_prune))
+	opt_row.add_child(_button("Mejorar camino", do_optimize))
+	right.add_child(opt_row)
 	var save_row := HBoxContainer.new()
 	save_btn = _button("Guardar", do_save)
 	save_new_btn = _button("Como nueva", do_save_new)
@@ -481,7 +485,8 @@ func _refresh_info() -> void:
 	if o.has("moves"):
 		var proof := str(o.get("proof", "sin_probar"))
 		var proof_txt: String = {"exacta": "[color=#7fe08a]exacta: es el mínimo[/color]", "cota": "[color=#e0c860]cota: entre %d y %d[/color]" % [int(o.get("lower", 0)), int(o.moves)], "sin_probar": "[color=#e0a060]sin probar el mínimo[/color]"}.get(proof, proof)
-		t += "camino más corto: [b]%d pasos[/b] · %d agarres · [b]%d bloques distintos[/b] · %s%s\n" % [int(o.moves), int(o.get("grabs", 0)), int(o.get("moved", 0)), proof_txt, " · camino plantado" if str(o.get("source", "")) == "plantada" else ""]
+		var label := "camino más corto" if proof == "exacta" else "camino conocido (el mínimo puede ser menor)"
+		t += "%s: [b]%d pasos[/b] · %d agarres · [b]%d bloques distintos[/b] · %s%s\n" % [label, int(o.moves), int(o.get("grabs", 0)), int(o.get("moved", 0)), proof_txt, " · camino plantado" if str(o.get("source", "")) == "plantada" else ""]
 	elif o.has("error"):
 		t += "[color=#ff7070]no se resuelve: %s[/color]\n" % str(o.error)
 	else:
@@ -768,6 +773,31 @@ func do_verify_exact() -> void:
 			_set_status("No alcanzó el presupuesto: el mínimo está entre %d y %d pasos." % [int(r.lower), model.current.path.size()])
 		_:
 			_set_status("No se pudo verificar: %s" % str(r.get("why", r.proof)))
+	refresh_all()
+
+
+func do_prune() -> void:
+	if not model.has_current():
+		return
+	var n := model.prune_current()
+	if n > 0:
+		_set_status("Se sacaron %d bloques de relleno; la sala sigue siendo válida." % n)
+	else:
+		_set_status(model.message if model.message != "" else "No hay relleno para sacar.")
+	sel = {}
+	refresh_all()
+
+
+func do_optimize() -> void:
+	if not model.has_current():
+		return
+	if not model.verified:
+		model.verify()
+	var r := model.optimize_path()
+	if r.exact:
+		_set_status("Camino probado como el mínimo: %d pasos (eran %d)." % [int(r.after), int(r.before)])
+	else:
+		_set_status("Camino de %d pasos (eran %d); los últimos %d están probados como mínimos." % [int(r.after), int(r.before), int(r.proven)])
 	refresh_all()
 
 

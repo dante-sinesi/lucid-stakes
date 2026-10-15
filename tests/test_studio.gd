@@ -203,6 +203,25 @@ func test_ui() -> void:
 	var rooms_before: int = studio.model.rooms.size()
 	studio.do_create_variants()
 	check(studio.model.rooms.size() >= rooms_before, "crear variantes no pierde salas")
+	# podar el relleno y mejorar el camino con los botones
+	studio.model.revert()
+	studio.select_room(studio.model.rooms[0].id)
+	var empty_cell := Vector2i(-9, -9)
+	for c in RoomLib.free_cells(studio.model.current.shape):
+		if studio.model.column(c) == "" and studio.model.can_add(c) == "":
+			empty_cell = c
+			break
+	studio.set_tool("add")
+	studio.click_cell(Vector3i(empty_cell.x, 0, empty_cell.y))
+	await _frames(2)
+	if studio.model.verified:
+		var before_prune: int = studio.model.block_count()
+		studio.do_prune()
+		check(studio.status.text.find("Se sacaron") != -1 and studio.model.block_count() < before_prune, "el botón Podar relleno saca bloques: %s" % studio.status.text)
+	studio.do_optimize()
+	check(studio.status.text.find("Camino") != -1, "el botón Mejorar camino responde: %s" % studio.status.text)
+	check(studio.info.text.find("camino") != -1, "el panel muestra el camino")
+	studio.do_revert()
 	# reproducción
 	var back: Dictionary = studio.model.filtered({"sort": "moves"})[0]
 	var okb: bool = studio.select_room(back.id)

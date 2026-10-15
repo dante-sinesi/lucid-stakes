@@ -27,6 +27,9 @@ var current_shape := ""
 var climb_bias := 0.0      # sin nada que empujar o tirar: probabilidad de preferir un paso que sube (para llegar a lo alto de la escalera, donde hay bloques para desordenar)
 var walk_bias := 0.0       # probabilidad de caminar hacia el bloque más cercano cuando no hay nada que empujar
 var last_info := ""
+var prune_on := true         # sacar el relleno de cada sala que entra al archivo
+var prune_ms := 20000
+var polish_max_path := 90   # el tramo final del camino se mejora con el verificador exacto en salas con caminos de hasta esta cantidad de pasos
 var last_why := ""         # por qué falló el último desorden
 var tall_h := 9            # desde esta altura el solucionador ya no llega a resolver salas de partida: se construyen con la solución plantada (ver scramble_from)
 var combos_list: Array = []
@@ -47,6 +50,7 @@ func _init(cfg: Dictionary = {}) -> void:
 	exact_cap = int(cfg.get("exact_cap", exact_cap))
 	exact_ms = int(cfg.get("exact_ms", exact_ms))
 	write_lines = bool(cfg.get("write", true))
+	prune_on = bool(cfg.get("prune", prune_on))
 	rng.seed = int(cfg.get("seed", 1 + miner_id * 7919))
 	var shapes: Array = cfg.get("shapes", RoomLib.SHAPES)
 	var h_lo := int(cfg.get("h_lo", RoomLib.MIN_H))
@@ -619,10 +623,45 @@ func try_child(child: Dictionary, parent_path: Array = []) -> bool:
 	RoomLib.apply_result(child, ev.path, "sin_probar", child.h, int(ev.states))
 	child.origin = "minero"
 	child.stamp = int(Time.get_unix_time_from_system())
+	child = _polish(child)
+	if child.is_empty():
+		return false
 	if insert(child):
 		stats.inserted = int(stats.inserted) + 1
 		return true
 	return false
+
+
+## Antes de que una sala entre al archivo: se le saca el relleno (lo que no hace falta para su camino ni para que no se pueda resolver caminando) y se mejora el tramo final de su camino con el
+## verificador exacto (si todo el camino queda probado, la sala queda con prueba exacta). {} si después de podar resulta una sala que ya se vio.
+func _polish(room: Dictionary) -> Dictionary:
+	var out := room
+	if prune_on:
+		var before_id: String = room.id
+		var pr := RoomLib.prune(room, rng, prune_ms)
+		if int(pr.removed) > 0:
+			out = pr.room
+			stats.pruned = int(stats.get("pruned", 0)) + int(pr.removed)
+			var source: String = str(room.opt.get("source", ""))
+			RoomLib.apply_result(out, out.path, "sin_probar", out.h, int(room.opt.get("states", 0)))
+			if source != "":
+				out.opt.source = source
+			if out.id != before_id:
+				if seen.has(out.id):
+					stats.dup = int(stats.dup) + 1
+					return {}
+				seen[out.id] = true
+	if out.path.size() <= polish_max_path:
+		var imp := RoomLib.improve_tail(out, out.path, 8000, 1500)
+		if imp.path.size() < out.path.size() or int(imp.proven) >= imp.path.size():
+			var source2: String = str(out.opt.get("source", ""))
+			var full: bool = int(imp.proven) >= imp.path.size()
+			RoomLib.apply_result(out, imp.path, "exacta" if full else "sin_probar", imp.path.size() if full else out.h, int(out.opt.get("states", 0)))
+			if source2 != "":
+				out.opt.source = source2
+			if imp.path.size() < room.path.size():
+				stats.polished = int(stats.get("polished", 0)) + 1
+	return out
 
 
 ## Sala alta: vale si su camino plantado la resuelve y no se puede resolver caminando (esa búsqueda es exacta y chica). Su dificultad queda como cota superior: `proof` "sin_probar" y `opt.source` "plantada".
@@ -649,6 +688,9 @@ func _try_tall(child: Dictionary, parent_path: Array) -> bool:
 	child.opt.source = "plantada"
 	child.origin = "minero"
 	child.stamp = int(Time.get_unix_time_from_system())
+	child = _polish(child)
+	if child.is_empty():
+		return false
 	if insert(child):
 		stats.inserted = int(stats.inserted) + 1
 		return true

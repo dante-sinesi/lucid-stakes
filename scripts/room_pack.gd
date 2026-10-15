@@ -45,6 +45,15 @@ static func collect(in_dir: String, out_path: String, opts: Dictionary = {}) -> 
 		if again.id != r.id:
 			res.invalid += 1
 			continue
+		if bool(opts.get("simplify", true)):   # (saca las vueltas de los caminos viejos: es exacto)
+			var shorter := RoomLib.simplify_path(r, r.path)
+			if shorter.size() < r.path.size():
+				var src: String = str(r.opt.get("source", ""))
+				var proof: String = str(r.opt.get("proof", "sin_probar"))
+				RoomLib.apply_result(r, shorter, "sin_probar" if proof == "exacta" else proof, int(r.opt.get("lower", r.h)), int(r.opt.get("states", 0)))
+				if src != "":
+					r.opt.source = src
+				res["shortened"] = int(res.get("shortened", 0)) + 1
 		if int(r.opt.get("moved", 0)) < min_moved and r.origin != "autor":
 			res.weak += 1
 			continue

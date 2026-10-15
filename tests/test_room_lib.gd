@@ -3,6 +3,7 @@ extends SceneTree
 
 const RoomLib := preload("res://scripts/room_lib.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
+const Solver := preload("res://scripts/solver.gd")
 
 var fails := 0
 
@@ -21,6 +22,7 @@ func _init() -> void:
 	test_validate()
 	test_evaluate_and_exact()
 	test_files()
+	test_paths_and_prune()
 	print("tests de la biblioteca de salas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -258,3 +260,65 @@ func test_files() -> void:
 	b.opt = {"proof": "exacta", "moves": 5}
 	check(RoomLib.better(a, b).opt.proof == "exacta", "la prueba exacta gana a la que no está probada")
 	DirAccess.remove_absolute(path)
+
+
+## Sacar las vueltas de un camino, mejorar su final con el verificador exacto y podar el relleno.
+func test_paths_and_prune() -> void:
+	var r := sample_room()
+	var ev := RoomLib.evaluate(r, {"cap": 6000})
+	check(ev.ok, "la sala de prueba se evalúa")
+	var base: Array = ev.path
+	# un camino con vueltas al principio (ir y volver caminando) se simplifica al original o más corto
+	var loop := [{"dir": Vector3i(1, 0, 0), "mode": TowerLogic.Mode.MOVE}, {"dir": Vector3i(-1, 0, 0), "mode": TowerLogic.Mode.MOVE}]
+	var wander: Array = []
+	for i in 6:
+		wander.append_array(loop)
+	wander.append_array(base)
+	check(RoomLib.replay(r, wander).ok, "el camino con vueltas igual resuelve la sala")
+	var simple := RoomLib.simplify_path(r, wander)
+	check(RoomLib.replay(r, simple).ok, "el camino simplificado resuelve la sala")
+	check(simple.size() <= base.size() and simple.size() < wander.size(), "las vueltas desaparecen (%d -> %d, el original tenía %d)" % [wander.size(), simple.size(), base.size()])
+	check(RoomLib.simplify_path(r, simple).size() == simple.size(), "simplificar dos veces no cambia nada")
+	check(RoomLib.simplify_path(r, []).is_empty(), "un camino vacío queda vacío")
+	var broken: Array = base.duplicate()
+	broken.pop_back()
+	check(RoomLib.simplify_path(r, broken).size() == broken.size(), "un camino que no resuelve se devuelve igual")
+	# la cola exacta: en una sala chica todo el camino queda probado y es el mínimo
+	var imp := RoomLib.improve_tail(r, simple, 20000, 8000)
+	check(RoomLib.replay(r, imp.path).ok and imp.path.size() <= simple.size(), "mejorar la cola deja un camino válido y no más largo")
+	var ex := RoomLib.verify_exact(r, 80000, 60000)
+	if ex.proof == "exacta":
+		check(int(imp.proven) >= imp.path.size() and imp.path.size() == int(ex.moves), "en una sala chica todo el camino queda probado y es el mínimo (%d y %d)" % [imp.path.size(), int(ex.moves)])
+	# la poda: se agrega un bloque de relleno que no sirve y se saca; lo que hace falta se queda
+	var rr := RoomLib.copy_room(r)
+	RoomLib.apply_result(rr, imp.path, "exacta", imp.path.size(), 0)
+	var junk := RoomLib.copy_room(rr)
+	var added := false
+	for c in RoomLib.free_cells("3x3"):
+		if junk.cols.has(c):
+			continue
+		var cand := RoomLib.copy_room(junk)
+		cand.cols[c] = "nn"
+		if RoomLib.replay(cand, cand.path).ok:
+			var t = RoomLib.build_state(cand)
+			var pl: Dictionary = Solver.solve(t, cand.h + 1, {"max_states": 40000, "goal_ids": t.goal_ids, "no_grab": true})
+			if pl.status == "unsolvable":
+				junk = cand
+				added = true
+				break
+	if added:
+		RoomLib.finalize(junk)
+		var pr := RoomLib.prune(junk, null, 30000)
+		check(int(pr.removed) >= 2, "la poda saca el relleno que no hace falta (%d bloques)" % int(pr.removed))
+		check(RoomLib.replay(pr.room, pr.room.path).ok, "la sala podada se resuelve con su camino")
+		check(pr.room.id != junk.id, "podar cambia el id")
+		check(RoomLib.prune(pr.room, null, 30000).removed == 0, "podar dos veces no saca nada más")
+		for c in pr.room.cols:
+			var ks: String = pr.room.cols[c]
+			var cand2 := RoomLib.copy_room(pr.room)
+			if ks.length() == 1:
+				cand2.cols.erase(c)
+			else:
+				cand2.cols[c] = ks.substr(0, ks.length() - 1)
+			check(not RoomLib._prune_ok(cand2, pr.room.path, pr.room.h), "no se puede sacar más: el bloque de arriba de la columna %s hace falta" % str(c))
+	check(int(RoomLib.prune(RoomLib.make_room("3x3", 5)).removed) == 0, "una sala sin camino no se poda")

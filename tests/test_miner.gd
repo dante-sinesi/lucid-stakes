@@ -79,6 +79,8 @@ func test_seeds_and_changes() -> void:
 			ok += 1
 			check(RoomLib.validate_structure(s) == "", "la semilla alta %s %d es coherente" % [pair[0], pair[1]])
 			check(RoomLib.replay(s, s.path).ok, "el camino plantado de %s %d resuelve la sala" % [pair[0], pair[1]])
+			var simple := RoomLib.simplify_path(s, s.path)
+			check(RoomLib.replay(s, simple).ok and simple.size() <= s.path.size(), "el camino simplificado de %s %d resuelve la sala y no es más largo (%d -> %d)" % [pair[0], pair[1], s.path.size(), simple.size()])
 			break
 		check(ok > 0, "sale al menos una semilla alta de %s de %d pisos" % [pair[0], pair[1]])
 	# los cambios no tocan al padre y dejan salas coherentes
@@ -139,6 +141,27 @@ func test_mining_small() -> void:
 		var pl: Dictionary = Solver.solve(t, r.h + 1, {"max_states": 40000, "goal_ids": t.goal_ids, "no_grab": true})
 		check(pl.status == "unsolvable", "la sala %s no se resuelve caminando (%s)" % [r.shape, pl.status])
 		check(int(r.opt.moved) >= 1 and int(r.opt.grabs) >= 1, "la sala pide mover bloques")
+	# la poda: casi todas las salas del archivo no tienen relleno que sacar (se poda al entrar; las verificadas con otro camino pueden tener alguno)
+	var minimal := 0
+	var checked_prune := 0
+	for i in mini(14, sample.size()):
+		var rm: Dictionary = sample[i]
+		var removable := false
+		for c in rm.cols:
+			var ks: String = rm.cols[c]
+			var cand := RoomLib.copy_room(rm)
+			if ks.length() == 1:
+				cand.cols.erase(c)
+			else:
+				cand.cols[c] = ks.substr(0, ks.length() - 1)
+			if RoomLib._prune_ok(cand, rm.path, rm.h):
+				removable = true
+				break
+		checked_prune += 1
+		if not removable:
+			minimal += 1
+	check(minimal >= int(0.7 * float(checked_prune)), "las salas del archivo están podadas (%d de %d sin relleno)" % [minimal, checked_prune])
+	check(int(m.stats.get("pruned", 0)) > 0, "el minero sacó relleno (%d bloques)" % int(m.stats.get("pruned", 0)))
 	# el archivo: cada línea es una sala y las salas del archivo en memoria están
 	var f := RoomLib.read_file(m.out_path)
 	check(f.bad == 0 and f.rooms.size() >= n, "el .jsonl tiene al menos las salas del archivo (%d de %d, malas %d)" % [f.rooms.size(), n, f.bad])

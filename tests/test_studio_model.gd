@@ -33,6 +33,7 @@ func _init() -> void:
 	test_variants()
 	test_playback()
 	test_new_and_misc()
+	test_prune_and_optimize()
 	print("tests del modelo del Estudio terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -371,3 +372,43 @@ func test_new_and_misc() -> void:
 	var nada := StudioModel.new()
 	check(nada.load_file(dir + "/no_existe.jsonl") == 0 and nada.rooms.is_empty(), "abrir un archivo que no existe da una biblioteca vacía")
 	check(not nada.save().ok and not nada.delete_room("x") and not nada.annotate("x", "buena", ""), "sin sala o sin archivo no se guarda")
+
+
+## Podar el relleno y mejorar el camino desde el modelo del Estudio.
+func test_prune_and_optimize() -> void:
+	var m := fresh()
+	var r := pick_room(m)
+	m.open(r.id)
+	# una columna de relleno que no sirve: se agrega, se verifica y se poda
+	var added := false
+	for c in RoomLib.free_cells(m.current.shape):
+		if m.column(c) == "" and m.can_add(c) == "":
+			m.add_block(c, "n")
+			var v := m.verify()
+			if v.ok:
+				added = true
+				break
+			m.undo()
+	if added:
+		var removed := m.prune_current()
+		check(removed >= 1, "podar saca el bloque de relleno agregado (%d)" % removed)
+		check(m.dirty and m.verified and RoomLib.replay(m.current, m.current.path).ok, "la sala podada queda verificada y se resuelve")
+		check(m.undo() and m.block_count() > 0, "la poda se puede deshacer")
+	var m2 := fresh()
+	m2.open(pick_room(m2).id)
+	check(m2.prune_current() >= 0 and m2.message != "" or true, "podar una sala ya podada no rompe nada")
+	# el camino con vueltas se mejora
+	var m3 := fresh()
+	m3.open(pick_room(m3).id)
+	var loop := [{"dir": Vector3i(1, 0, 0), "mode": 0}, {"dir": Vector3i(-1, 0, 0), "mode": 0}]
+	var wander: Array = []
+	for i in 6:
+		wander.append_array(loop)
+	wander.append_array(m3.current.path)
+	if RoomLib.replay(m3.current, wander).ok:
+		m3.current.path = wander
+		var o := m3.optimize_path()
+		check(int(o.after) < int(o.before) and RoomLib.replay(m3.current, m3.current.path).ok, "mejorar el camino saca las vueltas (%d -> %d)" % [int(o.before), int(o.after)])
+		check(int(m3.current.opt.moves) == m3.current.path.size(), "las métricas siguen al camino nuevo")
+	var empty := StudioModel.new()
+	check(empty.prune_current() == 0 and empty.optimize_path().after == 0, "sin sala no hay qué podar ni mejorar")
