@@ -169,6 +169,19 @@ static func is_stable(room: Dictionary) -> bool:
 	return before.size() == t.blocks.size() and before.hash() == t.blocks.hash()
 
 
+## Las celdas de los bloques que se caerían al empezar (la sala no es estable). Un bloque se sostiene si apoya sobre otro sostenido, si apoya en la arista de uno un piso más abajo, o si no tiene nada debajo y toca de costado a uno sostenido;
+## un bloque que apoya sobre otro NO se cuelga de los costados. Tocarse sólo en diagonal hacia arriba no sostiene.
+static func unsupported_cells(room: Dictionary) -> Array:
+	var t = build_state(room)
+	var before: Dictionary = t.positions.duplicate()
+	t._settle()
+	var out: Array = []
+	for id in before:
+		if not t.positions.has(id) or t.positions[id] != before[id]:
+			out.append(before[id])
+	return out
+
+
 ## Cantidad de bloques sueltos de la sala (sin contar el piso ni el pilar de salida).
 static func block_count(room: Dictionary) -> int:
 	var n := 0
