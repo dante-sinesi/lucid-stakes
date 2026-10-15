@@ -16,3 +16,4 @@ docs/.obsidian/
 # Bibliotecas de salas generadas (se pasan por los mineros y el empaquetador, no se versionan)
 biblioteca/
 biblioteca_*/
+biblioteca_*.jsonl
