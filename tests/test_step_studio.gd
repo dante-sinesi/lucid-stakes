@@ -31,13 +31,13 @@ func _init() -> void:
 	# una ventana de 6 x 1: pasillo; la salida al final
 	studio._resize_window("d", 1)
 	studio._resize_window("w", 6)
-	studio._resize_window("h", 3)
 	check(int(studio.current.d) == 1 and int(studio.current.w) == 6, "se cambia el tamaño de la ventana")
 	studio.set_tool("entry")
 	studio.click_face(Vector3i(0, 0, 0), Vector3i(0, 1, 0))
 	studio.set_tool("exit")
 	studio.click_face(Vector3i(5, 0, 0), Vector3i(5, 1, 0))
 	check(studio.current.entry == [0, 1, 0] and studio.current.exit == [5, 1, 0], "entrada y salida")
+	check(int(studio.current.h) == 3, "la altura mínima es 3")
 	# un bloque de pinchos en el medio, de tipo pinchos
 	studio.kind_pick = K.SPIKES
 	studio.set_tool("add")
@@ -45,6 +45,13 @@ func _init() -> void:
 	check(studio.current.blocks.size() == 1 and studio.current.blocks[0][3] == K.SPIKES, "agregar un bloque de pinchos")
 	studio.click_face(Vector3i(2, 0, 0), Vector3i(2, 1, 0))
 	check(studio.current.blocks.size() == 1, "no se agrega dos veces en la misma celda")
+	# la altura sale sola: un bloque de fin (rojo) alto la sube
+	studio.set_tool("exit")
+	studio.click_face(Vector3i(5, 5, 0), Vector3i(5, 6, 0))
+	check(studio.current.exit == [5, 6, 0] and int(studio.current.h) == 5, "poner el bloque de fin más arriba sube la altura sola (%d)" % int(studio.current.h))
+	studio.click_face(Vector3i(5, 0, 0), Vector3i(5, 1, 0))
+	check(studio.current.exit == [5, 1, 0] and int(studio.current.h) == 3, "y al bajarlo la altura vuelve a 3")
+	studio.set_tool("add")
 	studio.click_face(Vector3i(9, 0, 0), Vector3i(9, 1, 0))
 	check(studio.current.blocks.size() == 1, "fuera de la ventana no se agrega")
 	check(studio.undo() and studio.current.blocks.size() == 0 or studio.current.blocks.size() == 1, "deshacer anda")

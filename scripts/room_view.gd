@@ -64,6 +64,14 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 	if st == null:
 		return
 	var top := float(room.h)
+	var start_block := Vector3i(-999, -999, -999)
+	var end_block := Vector3i(-999, -999, -999)
+	if room.has("start_block"):   # (los pasos lo traen)
+		start_block = room.start_block
+		end_block = room.end_block
+	elif room.has("entry") and room.has("exit") and room.entry is Vector2i:
+		start_block = Vector3i(room.entry.x, 0, room.entry.y)
+		end_block = Vector3i(room.exit.x, int(room.h), room.exit.y)
 	var hl := {}
 	for c in highlight:
 		hl[c] = true
@@ -79,6 +87,12 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 		elif fixed:   # el piso
 			model_kind = TowerLogic.Kind.NORMAL
 			tint = Color(0.42, 0.42, 0.52)
+		if c == start_block:   # el bloque de inicio (verde) y el de fin (rojo)
+			model_kind = TowerLogic.Kind.NORMAL
+			tint = Color(0.25, 1.6, 0.45)
+		elif c == end_block:
+			model_kind = TowerLogic.Kind.NORMAL
+			tint = Color(1.9, 0.25, 0.25)
 		elif kind == TowerLogic.Kind.NORMAL:
 			tint = Color.from_hsv(lerpf(0.62, 0.05, clampf(float(c.y) / maxf(top, 1.0), 0.0, 1.0)), 0.55, 1.0)
 			tint = Color(tint.r * 1.15, tint.g * 1.15, tint.b * 1.15)

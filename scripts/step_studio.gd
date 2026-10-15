@@ -7,9 +7,9 @@ const StepLib := preload("res://scripts/step_lib.gd")
 const RoomView := preload("res://scripts/room_view.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 
-const TOOLS := [["add", "Agregar bloque (clic en una cara)"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["entry", "Mover la entrada (clic en una cara)"], ["exit", "Mover la salida (clic en una cara)"], ["hole", "Pozo en el piso (alternar)"], ["slab", "Marcar el tramo repetible (dos clics)"]]
+const TOOLS := [["add", "Agregar bloque (clic en una cara)"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["entry", "Poner el bloque de inicio, verde (clic en una cara)"], ["exit", "Poner el bloque de fin, rojo (clic en una cara)"], ["hole", "Pozo en el piso (alternar)"], ["slab", "Marcar el tramo repetible (dos clics)"]]
 const HINTS := {"add": "Clic en la cara de un bloque o del piso: se agrega un bloque del tipo elegido pegado a esa cara.", "delete": "Clic en un bloque para borrarlo.", "type": "Clic en un bloque: cambia al tipo elegido.",
-	"entry": "Clic en una cara: el jugador empieza parado en la celda que toca esa cara.", "exit": "Clic en una cara: el jugador tiene que quedar parado ahí (la plataforma de salida es fija).",
+	"entry": "Clic en una cara: el jugador empieza parado sobre ese bloque, que se pinta de verde (si no hay bloque, se pone uno fijo).", "exit": "Clic en una cara: el jugador tiene que quedar parado sobre ese bloque, que se pinta de rojo y es fijo. La altura de la sala sale de dónde lo pongas.",
 	"hole": "Clic en una celda del piso: se quita o se vuelve a poner (un pozo).", "slab": "Clic en la primera columna del tramo y después en la última (a lo largo del eje elegido)."}
 const KINDS := [0, 1, 4, 3, 6, 7, 2, 5]
 
@@ -201,8 +201,10 @@ func _build_ui() -> void:
 	right.add_child(_label("Ventana (celdas)"))
 	w_spin = _spin(2, StepLib.MAX_SIDE, 6, func(v): _resize_window("w", int(v)))
 	d_spin = _spin(1, StepLib.MAX_SIDE, 3, func(v): _resize_window("d", int(v)))
-	h_spin = _spin(1, StepLib.MAX_H, 5, func(v): _resize_window("h", int(v)))
-	right.add_child(_row("largo x", [w_spin, _label("ancho z"), d_spin, _label("alto"), h_spin]))
+	h_spin = _spin(1, StepLib.MAX_H, 5, func(_v): pass)
+	h_spin.editable = false
+	h_spin.tooltip_text = "La altura sale sola: la del bloque más alto o la del bloque de fin (rojo)."
+	right.add_child(_row("largo x", [w_spin, _label("ancho z"), d_spin, _label("alto (sola)"), h_spin]))
 	right.add_child(_label("Herramienta (botón izquierdo)"))
 	tool_opt = OptionButton.new()
 	for t in TOOLS:
@@ -456,7 +458,7 @@ func refresh_all() -> void:
 func _refresh_form() -> void:
 	_suppress = true
 	var has := not current.is_empty()
-	for c in [name_edit, note_edit, w_spin, d_spin, h_spin, rep_check, axis_opt, from_spin, to_spin, min_spin, max_spin, view_spin]:
+	for c in [name_edit, note_edit, w_spin, d_spin, rep_check, axis_opt, from_spin, to_spin, min_spin, max_spin, view_spin]:
 		if c is BaseButton:
 			(c as BaseButton).disabled = not has
 		elif c is SpinBox:
@@ -531,7 +533,8 @@ func _refresh_view() -> void:
 	if st == null:
 		RoomView.populate(blocks_root, null, {"h": 5, "entry": Vector2i.ZERO})
 		return
-	var room := {"h": int(inst.h), "entry": Vector2i(int(inst.entry[0]), int(inst.entry[2])), "entry_y": int(inst.entry[1])}
+	var room := {"h": int(inst.h), "entry": Vector2i(int(inst.entry[0]), int(inst.entry[2])), "entry_y": int(inst.entry[1]),
+		"start_block": Vector3i(int(inst.entry[0]), int(inst.entry[1]) - 1, int(inst.entry[2])), "end_block": Vector3i(int(inst.exit[0]), int(inst.exit[1]) - 1, int(inst.exit[2]))}
 	var hl: Array = []
 	var rep: Dictionary = current.repeat
 	if bool(rep.on):
@@ -546,23 +549,6 @@ func _refresh_view() -> void:
 				for x in int(inst.w):
 					hl.append(Vector3i(x, 0, v))
 	RoomView.populate(blocks_root, st, room, play_state != null or true, hl)
-	# la salida: un aro verde sobre la plataforma
-	var ex := Vector3i(int(inst.exit[0]), int(inst.exit[1]), int(inst.exit[2]))
-	var mark := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.36
-	cyl.bottom_radius = 0.36
-	cyl.height = 0.05
-	mark.mesh = cyl
-	var mm := StandardMaterial3D.new()
-	mm.albedo_color = Color(1.0, 0.25, 0.8)
-	mm.emission_enabled = true
-	mm.emission = Color(1.0, 0.25, 0.8)
-	mm.emission_energy_multiplier = 0.9
-	mark.material_override = mm
-	mark.position = Vector3(ex.x + 0.5, ex.y + 0.03, ex.z + 0.5)
-	mark.name = "salida"
-	blocks_root.add_child(mark)
 
 
 func set_view_r(r: int) -> void:
@@ -667,9 +653,20 @@ func _changed() -> void:
 	play_path = []
 	_stop_play()
 	play_state = null
+	_auto_height()
 	StepLib.finalize(current)
 	current.results = {}
 	refresh_all()
+
+
+## La altura de la ventana sale de lo más alto que hay: el bloque más alto o el bloque de fin (rojo), con un mínimo de 3.
+func _auto_height() -> void:
+	var top := 3
+	for b in current.blocks:
+		top = maxi(top, int(b[1]))
+	top = maxi(top, int(current.exit[1]) - 1)
+	top = maxi(top, int(current.entry[1]) - 1)
+	current.h = mini(top, StepLib.MAX_H)
 
 
 func undo() -> bool:
@@ -780,8 +777,8 @@ func click_face(hit: Vector3i, prev: Vector3i) -> void:
 		return
 	match tool:
 		"add":
-			if prev.x < 0 or prev.x >= int(current.w) or prev.z < 0 or prev.z >= int(current.d) or prev.y < 1 or prev.y > int(current.h):
-				_set_status("Eso queda fuera de la ventana: agrandala arriba a la derecha.")
+			if prev.x < 0 or prev.x >= int(current.w) or prev.z < 0 or prev.z >= int(current.d) or prev.y < 1 or prev.y > StepLib.MAX_H:
+				_set_status("Eso queda fuera de la ventana (el ancho y el largo se cambian a la derecha; el alto llega hasta %d)." % StepLib.MAX_H)
 				return
 			if _block_index(prev) >= 0:
 				_set_status("Ahí ya hay un bloque.")
@@ -809,7 +806,7 @@ func click_face(hit: Vector3i, prev: Vector3i) -> void:
 			current.blocks[j][3] = kind_pick
 			_changed()
 		"entry", "exit":
-			if prev.x < 0 or prev.x >= int(current.w) or prev.z < 0 or prev.z >= int(current.d) or prev.y < 1 or prev.y > int(current.h) + 1:
+			if prev.x < 0 or prev.x >= int(current.w) or prev.z < 0 or prev.z >= int(current.d) or prev.y < 1 or prev.y > StepLib.MAX_H + 1:
 				_set_status("Eso queda fuera de la ventana.")
 				return
 			if _block_index(prev) >= 0:
