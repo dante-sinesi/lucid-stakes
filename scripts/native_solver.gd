@@ -88,6 +88,8 @@ static func _run(text: String, tag: String) -> Dictionary:
 		return {}
 	f.store_string(text)
 	f.close()
+	if OS.has_environment("NATIVO_GUARDAR"):   # para depurar el programa nativo: se conserva la última entrada
+		DirAccess.copy_absolute(fin, OS.get_environment("NATIVO_GUARDAR"))
 	var code := OS.execute(exe_path(), PackedStringArray([fin, fout]), [], true)
 	var res := {}
 	if code == 0 and FileAccess.file_exists(fout):

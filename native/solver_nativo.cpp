@@ -78,8 +78,11 @@ struct Data {
 	vector<int> list;
 };
 
+static long long wVersion = 0;   // cuenta cada cambio de los bloques de W (mover, sacar, anotar apoyados): si no cambió, la configuración es la misma
+static Data W;   // el estado de trabajo: las acciones se prueban sobre él y se deshacen (ver snapshot y restore)
+
 struct Sim {
-	shared_ptr<Data> d;
+	Data *d = &W;
 	i64 zob = 0;
 	V p = {0, 0, 0};
 	V hang = {0, 0, 0};
@@ -88,9 +91,24 @@ struct Sim {
 	int crackCell = -1;
 };
 
-static inline void own(Sim &s) {
-	if (s.d.use_count() > 1) s.d = make_shared<Data>(*s.d);
+static inline void own(Sim &) {}
+
+static vector<int> snapList;
+static vector<u8> snapVal;
+// Guarda los bloques de W (todo lo que no es cero en W.g está en W.list) para poder deshacer una acción.
+static inline void snapshot() {
+	snapList = W.list;
+	snapVal.resize(snapList.size());
+	for (size_t i = 0; i < snapList.size(); i++) snapVal[i] = W.g[snapList[i]];
 }
+static inline void restore() {
+	for (int ci : W.list) W.g[ci] = 0;
+	W.list = snapList;
+	for (size_t i = 0; i < snapList.size(); i++) W.g[snapList[i]] = snapVal[i];
+}
+struct RestoreGuard {
+	~RestoreGuard() { restore(); }
+};
 static inline u8 dynAt(const Sim &s, V c) {
 	int i = cellIdx(c);
 	return i < 0 ? 0 : s.d->g[i];
@@ -136,6 +154,7 @@ static void removeBlock(Sim &s, V c) {
 	s.d->g[i] = 0;
 	listErase(s.d->list, i);
 	s.dirty = true;
+	wVersion++;
 }
 
 static void moveBlock(Sim &s, V from, V to) {
@@ -146,6 +165,7 @@ static void moveBlock(Sim &s, V from, V to) {
 	s.d->g[fi] = 0;
 	listErase(s.d->list, fi);
 	s.dirty = true;
+	wVersion++;
 	if (ti < 0) {   // salió del mundo que se simula: cae al vacío
 		s.zob ^= zobHash(from, k);
 		return;
@@ -158,6 +178,12 @@ static void moveBlock(Sim &s, V from, V to) {
 
 // --- gravedad ---------------------------------------------------------------------------------------------------------------------
 static vector<int> heldStamp;
+static vector<u8> T;          // celdas que sostiene directamente un bloque fijo: la de encima, las apoyadas en su arista y las pegadas (se llena en buildRoot)
+static vector<u8> lowCell;    // celdas a la altura del piso de abajo (floorY o menos)
+static vector<u8> interior;   // celdas con todos sus vecinos dentro de la grilla (se puede usar aritmética de índices)
+static const int OFFY = GX * GZ;
+static const int nbOff[6] = {1, -1, GX, -GX, OFFY, -OFFY};
+static const int edgeOff[4] = {-1 + OFFY, 1 + OFFY, -GX + OFFY, GX + OFFY};   // - EDGE_SUPPORT
 static int stampNow = 0;
 
 static inline bool heldAt(int ci) { return heldStamp[ci] == stampNow; }
@@ -175,27 +201,27 @@ static bool settleBlocks(Sim &s) {
 	own(s);
 	bool moved = false, skipped = false;
 	int guard = 0;
-	vector<int> queue;
-	vector<int> loose;
+	static vector<int> queue;
+	static vector<int> loose;
 	while (guard < 400) {
 		guard++;
 		for (int ci : s.d->list) {
 			u8 &f = s.d->g[ci];
-			if (!(f & STAND) && has(s, cellOf(ci) + DOWN)) f |= STAND;
+			if (!(f & STAND) && has(s, cellOf(ci) + DOWN)) {
+				f |= STAND;
+				wVersion++;
+			}
 		}
 		stampNow++;
 		queue.clear();
-		for (int fc : fixedCells) {
-			heldStamp[fc] = stampNow;
-			queue.push_back(fc);
-		}
-		for (int ci : s.d->list) {   // el piso de abajo se sostiene solo mientras tenga algún vecino
-			V c = cellOf(ci);
-			if (c.y > floorY) continue;
-			bool nb = false;
-			for (int k = 0; k < 6 && !nb; k++) nb = has(s, c + NEIGHBORS[k]);
-			for (int k = 0; k < 4 && !nb; k++) nb = has(s, c + EDGE_SUPPORT[k]);
-			if (nb && !heldAt(ci)) {
+		for (int ci : s.d->list) {   // lo que sostiene directamente un bloque fijo (T), y el piso de abajo, que se sostiene solo mientras tenga algún vecino
+			bool seed = T[ci] != 0;
+			if (!seed && lowCell[ci]) {
+				V c = cellOf(ci);
+				for (int k = 0; k < 6 && !seed; k++) seed = has(s, c + NEIGHBORS[k]);
+				for (int k = 0; k < 4 && !seed; k++) seed = has(s, c + EDGE_SUPPORT[k]);
+			}
+			if (seed) {
 				heldStamp[ci] = stampNow;
 				queue.push_back(ci);
 			}
@@ -203,6 +229,28 @@ static bool settleBlocks(Sim &s) {
 		size_t qi = 0;
 		while (qi < queue.size()) {
 			int sc = queue[qi++];
+			if (interior[sc]) {
+				int ui = sc + OFFY;
+				if (s.d->g[ui] && !heldAt(ui)) {
+					heldStamp[ui] = stampNow;
+					queue.push_back(ui);
+				}
+				for (int k = 0; k < 4; k++) {
+					int ei = sc + edgeOff[k];
+					if (s.d->g[ei] && !heldAt(ei)) {
+						heldStamp[ei] = stampNow;
+						queue.push_back(ei);
+					}
+				}
+				for (int k = 0; k < 6; k++) {
+					int oi = sc + nbOff[k];
+					if (s.d->g[oi] && !heldAt(oi) && !(s.d->g[oi] & STAND)) {
+						heldStamp[oi] = stampNow;
+						queue.push_back(oi);
+					}
+				}
+				continue;
+			}
 			V sv = cellOf(sc);
 			int ui = cellIdx(sv + UP);
 			if (ui >= 0 && s.d->g[ui] && !heldAt(ui)) {
@@ -216,11 +264,10 @@ static bool settleBlocks(Sim &s) {
 					queue.push_back(ei);
 				}
 			}
-			bool sFixed = S[sc] != 0;
 			for (int k = 0; k < 6; k++) {
 				int oi = cellIdx(sv + NEIGHBORS[k]);
 				if (oi < 0 || !s.d->g[oi] || heldAt(oi)) continue;
-				if (sFixed || !(s.d->g[oi] & STAND)) {
+				if (!(s.d->g[oi] & STAND)) {
 					heldStamp[oi] = stampNow;
 					queue.push_back(oi);
 				}
@@ -465,8 +512,9 @@ static bool standingReady = false, startDirty = true;
 
 static Sim buildRoot() {
 	Sim s;
-	s.d = make_shared<Data>();
-	s.d->g.assign(CELLS, 0);
+	W.g.assign(CELLS, 0);
+	W.list.clear();
+	s.d = &W;
 	s.zob = 0;
 	for (auto &b : blocksIn) {
 		int i = cellIdx(b.c);
@@ -482,6 +530,28 @@ static Sim buildRoot() {
 			s.d->g[i] = PRESENT | b.kind | (b.goal ? GOALF : 0) | (b.standing ? STAND : 0);
 			s.d->list.push_back(i);
 			if (b.kind == ICE) anyIce = true;
+		}
+	}
+	T.assign(CELLS, 0);
+	lowCell.assign(CELLS, 0);
+	interior.assign(CELLS, 0);
+	for (int i = 0; i < CELLS; i++) {
+		V c = cellOf(i);
+		lowCell[i] = c.y <= floorY ? 1 : 0;
+		int ax = c.x + OFF, az = c.z + OFF;
+		interior[i] = (ax >= 1 && ax <= GX - 2 && az >= 1 && az <= GZ - 2 && c.y >= 1 && c.y <= GY - 2) ? 1 : 0;
+	}
+	for (int fc : fixedCells) {
+		V v = cellOf(fc);
+		int i = cellIdx(v + UP);
+		if (i >= 0) T[i] = 1;
+		for (int k = 0; k < 4; k++) {
+			i = cellIdx(v - EDGE_SUPPORT[k]);
+			if (i >= 0) T[i] = 1;
+		}
+		for (int k = 0; k < 6; k++) {
+			i = cellIdx(v + NEIGHBORS[k]);
+			if (i >= 0) T[i] = 1;
 		}
 	}
 	s.p = startP;
@@ -555,24 +625,36 @@ struct Node {
 	bool dirty, won;
 };
 
-static vector<vector<u8>> cfgData;   // lista ordenada de (celda, banderas) de los bloques dinámicos
-static vector<u8> packCfg(const Sim &s, vector<int> &tmp) {
-	tmp = s.d->list;
-	sort(tmp.begin(), tmp.end());
-	vector<u8> out;
-	out.reserve(tmp.size() * 3);
-	for (int ci : tmp) {
-		out.push_back((u8)(ci & 255));
-		out.push_back((u8)((ci >> 8) & 255));
-		out.push_back(s.d->g[ci]);
+// Las configuraciones de bloques de los nodos, una detrás de otra en un solo arreglo: tres bytes por bloque (celda en dos bytes y banderas).
+static vector<u8> cfgBytes;
+static vector<unsigned> cfgOff(1, 0);
+struct CfgView {
+	const u8 *p;
+	size_t n;
+	size_t size() const { return n; }
+	u8 operator[](size_t i) const { return p[i]; }
+};
+static inline CfgView cfgGet(int i) { return {cfgBytes.data() + cfgOff[i], cfgOff[i + 1] - cfgOff[i]}; }
+static inline int cfgCount() { return (int)cfgOff.size() - 1; }
+static inline void cfgReset() {
+	cfgBytes.clear();
+	cfgOff.assign(1, 0);
+}
+static int addCfg(const Sim &s) {
+	for (int ci : s.d->list) {
+		cfgBytes.push_back((u8)(ci & 255));
+		cfgBytes.push_back((u8)((ci >> 8) & 255));
+		cfgBytes.push_back(s.d->g[ci]);
 	}
-	return out;
+	cfgOff.push_back((unsigned)cfgBytes.size());
+	return cfgCount() - 1;
 }
 static Sim simFromNode(const Node &n, i64 zob) {
 	Sim s;
-	s.d = make_shared<Data>();
-	s.d->g.assign(CELLS, 0);
-	const vector<u8> &c = cfgData[n.cfg];
+	for (int ci : W.list) W.g[ci] = 0;
+	W.list.clear();
+	s.d = &W;
+	CfgView c = cfgGet(n.cfg);
 	s.d->list.reserve(c.size() / 3);
 	for (size_t i = 0; i < c.size(); i += 3) {
 		int ci = c[i] | (c[i + 1] << 8);
@@ -622,17 +704,16 @@ static void excavate(Sim &root, ofstream &out) {
 	vector<EdgeRec> edges;
 	vector<i64> nodeZob;
 	vector<int> tmp;
-	cfgData.clear();
+	cfgReset();
 	nodes.reserve(1 << 18);
 	idx.reserve(1 << 20);
-	cfgData.push_back(packCfg(root, tmp));
-	cfgIndex[root.zob] = 0;
+	addCfg(root);
 	nodes.push_back({0, root.p, root.hang, 0, -1, 255, root.dirty, root.won});
 	nodeZob.push_back(root.zob);
 	idx[keyOf(root)] = 0;
 	bool capped = false;
 	// agrega (o encuentra) el estado `n` que sale de `ui` con la acción (di, m); -1 si ya no entran más nodos
-	auto visit = [&](Sim &n, int ui, int di, int m) -> int {
+	auto visit = [&](Sim &n, int ui, int di, int m, bool changed) -> int {
 		Key k = keyOf(n);
 		auto it = idx.find(k);
 		int vi;
@@ -644,16 +725,7 @@ static void excavate(Sim &root, ofstream &out) {
 				return -1;
 			}
 			int cfg = nodes[ui].cfg;
-			if (n.zob != nodeZob[ui]) {
-				auto cp = cfgIndex.find(n.zob);
-				if (cp == cfgIndex.end()) {
-					cfgData.push_back(packCfg(n, tmp));
-					cfg = (int)cfgData.size() - 1;
-					cfgIndex[n.zob] = cfg;
-				} else {
-					cfg = cp->second;
-				}
-			}
+			if (changed) cfg = addCfg(n);
 			nodes.push_back({cfg, n.p, n.hang, nodes[ui].g + 1, ui, (u8)(di * 3 + m), n.dirty, n.won});
 			nodeZob.push_back(n.zob);
 			vi = (int)nodes.size() - 1;
@@ -670,7 +742,7 @@ static void excavate(Sim &root, ofstream &out) {
 			int di = exPath[i + 1] == 'E' ? 0 : (exPath[i + 1] == 'W' ? 1 : (exPath[i + 1] == 'S' ? 2 : 3));
 			Sim n = cur;
 			if (!tryAction(n, DIRS[di], m) || n.lost) break;
-			int vi = visit(n, prev, di, m);
+			int vi = visit(n, prev, di, m, true);
 			if (vi < 0) break;
 			prev = vi;
 			cur = n;
@@ -692,9 +764,12 @@ static void excavate(Sim &root, ofstream &out) {
 					V ht = base.p + dd;
 					if (has(base, ht) || has(base, ht + DOWN) || has(base, ht + DOWN + DOWN)) continue;
 				}
+				snapshot();
+				RestoreGuard rg;
+				long long ver0 = wVersion;
 				Sim n = base;
 				if (!tryAction(n, dd, m) || n.lost) continue;
-				visit(n, ui, di, m);
+				visit(n, ui, di, m, wVersion != ver0);
 			}
 		}
 	}
@@ -730,10 +805,10 @@ static void excavate(Sim &root, ofstream &out) {
 		}
 	}
 	// candidatos: una disposición de bloques (con el jugador donde mejor le quede) expresable en columnas apoyadas en el piso
-	vector<signed char> exprOk(cfgData.size(), -1);
+	vector<signed char> exprOk(cfgCount(), -1);
 	auto expressible = [&](int cfg) -> bool {
 		if (exprOk[cfg] >= 0) return exprOk[cfg] != 0;
-		const vector<u8> &c = cfgData[cfg];
+		CfgView c = cfgGet(cfg);
 		vector<int> cells;
 		for (size_t j = 0; j < c.size(); j += 3) cells.push_back(c[j] | (c[j + 1] << 8));
 		sort(cells.begin(), cells.end());
@@ -788,7 +863,7 @@ static void excavate(Sim &root, ofstream &out) {
 	for (int i = 0; i < (int)cands.size() && i < exTopK; i++) {
 		const Lay &cd = cands[i];
 		out << "CAND " << cd.d << " " << cd.g << " ";
-		const vector<u8> &c = cfgData[nodes[cd.node].cfg];
+		CfgView c = cfgGet(nodes[cd.node].cfg);
 		bool first = true;
 		for (size_t j = 0; j < c.size(); j += 3) {
 			int ci = c[j] | (c[j + 1] << 8);
@@ -897,11 +972,10 @@ int main(int argc, char **argv) {
 	nodes.reserve(1 << 16);
 	best.reserve(1 << 18);
 	vector<int> tmp;
-	cfgData.clear();
+	cfgReset();
 	{
-		cfgData.push_back(packCfg(root, tmp));
-		cfgIndex[root.zob] = 0;
-		Node n0 = {0, root.p, root.hang, 0, -1, 255, root.dirty, root.won};
+		addCfg(root);
+			Node n0 = {0, root.p, root.hang, 0, -1, 255, root.dirty, root.won};
 		nodes.push_back(n0);
 		best[keyOf(root)] = 0;
 	}
@@ -955,6 +1029,9 @@ int main(int argc, char **argv) {
 					V ht = base.p + dd;
 					if (has(base, ht) || has(base, ht + DOWN) || has(base, ht + DOWN + DOWN)) continue;
 				}
+				snapshot();
+				RestoreGuard rg;
+				long long ver0 = wVersion;
 				Sim n = base;
 				if (!tryAction(n, dd, mode2) || n.lost) continue;
 				Key k = keyOf(n);
@@ -963,16 +1040,7 @@ int main(int argc, char **argv) {
 				if (it != best.end() && it->second <= ng) continue;
 				best[k] = ng;
 				int cfg = cur.cfg;
-				if (n.d != base.d) {
-					auto cp = cfgIndex.find(n.zob);
-					if (cp == cfgIndex.end()) {
-						cfgData.push_back(packCfg(n, tmp));
-						cfg = (int)cfgData.size() - 1;
-						cfgIndex[n.zob] = cfg;
-					} else {
-						cfg = cp->second;
-					}
-				}
+				if (wVersion != ver0) cfg = addCfg(n);
 				Node nn = {cfg, n.p, n.hang, ng, idx, (u8)(di * 3 + mode2), n.dirty, n.won};
 				nodes.push_back(nn);
 				int nf = ng + heuristic(n);

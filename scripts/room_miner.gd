@@ -270,6 +270,7 @@ func _bottom_reachable(path: Array[Vector2i], used: Dictionary, arena: Dictionar
 
 func _clean(cols: Dictionary) -> Dictionary:
 	for c in cols.keys():
+		cols[c] = RoomLib._trim_gaps(String(cols[c]))
 		if String(cols[c]) == "":
 			cols.erase(c)
 	return cols

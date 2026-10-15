@@ -42,4 +42,7 @@ foreach ($t in $tools) {
 	Remove-Item -Recurse -Force $tmp
 	Write-Host ("   " + $pck + " (" + [math]::Round((Get-Item $pck).Length / 1KB) + " KB)")
 }
+# el solucionador nativo (C++): sin él el minero y el Estudio andan igual pero mucho más despacio (se arma con native\construir.bat)
+$nativo = Join-Path $root "tools\solver_nativo.exe"
+if (Test-Path $nativo) { Copy-Item $nativo (Join-Path $out "solver_nativo.exe") -Force; Write-Host "   solver_nativo.exe" } else { Write-Host "AVISO: falta tools\solver_nativo.exe (native\construir.bat): los programas van a usar el solucionador lento" }
 Write-Host "Listo. Programas en $out"
