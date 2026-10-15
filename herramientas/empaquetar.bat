@@ -4,9 +4,9 @@ rem Uso:  empaquetar.bat [carpeta_de_los_mineros] [archivo_de_salida]
 rem   salida .jsonl = texto (la abre el Estudio y se puede leer);  salida .rooms = comprimida (la que viajara con el juego)
 setlocal
 set IN=%~f1
-if "%IN%"=="" set IN=%~dp0..\biblioteca
+if "%IN%"=="" set IN=%~dp0..\bibliotecas\minero
 set OUT=%~f2
-if "%OUT%"=="" set OUT=%IN%\biblioteca.jsonl
+if "%OUT%"=="" set OUT=%~dp0..\bibliotecas\biblioteca.jsonl
 cd /d "%~dp0.."
 set EXE=build\herramientas\Empaquetador.console.exe
 if exist "tools\Godot_v4.7.2-stable_win64_console.exe" set EXE=

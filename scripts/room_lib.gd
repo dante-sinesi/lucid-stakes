@@ -267,17 +267,21 @@ static func path_stats(room: Dictionary, path: Array) -> Dictionary:
 	var t = build_state(room)
 	var moved := {}
 	var grabs := 0
+	var levels := {}
+	var max_y := 0
 	for a in path:
 		var before: Dictionary = {}
 		if a.mode == TowerLogic.Mode.GRAB:
 			before = t.positions.duplicate()
 			grabs += 1
+			levels[t.player.y] = true
+			max_y = maxi(max_y, t.player.y)
 		t.try_action(a.dir, a.mode)
 		if a.mode == TowerLogic.Mode.GRAB:
 			for id in t.positions:
 				if before.get(id, t.positions[id]) != t.positions[id]:
 					moved[id] = true
-	return {"moved": moved.size(), "grabs": grabs}
+	return {"moved": moved.size(), "grabs": grabs, "levels": levels.size(), "reach": float(max_y) / float(maxi(int(room.h), 1))}
 
 
 # --- resolver y evaluar -----------------------------------------------------------------------------------------------------
@@ -330,9 +334,81 @@ static func apply_result(room: Dictionary, path: Array, proof: String, lower: in
 	path = simplify_path(room, path)
 	var st := path_stats(room, path)
 	room.path = path
-	room.opt = {"moves": path.size(), "lower": lower, "grabs": st.grabs, "moved": st.moved, "proof": proof, "states": states}
+	room.opt = {"moves": path.size(), "lower": lower, "grabs": st.grabs, "moved": st.moved, "proof": proof, "states": states, "levels": st.levels, "reach": snappedf(float(st.reach), 0.01)}
 	room.opt["diff"] = difficulty(room.opt)
 	finalize(room)
+
+
+# --- calidad: especiales necesarios ---------------------------------------------------------------------------------------------
+
+const SPECIAL_CHARS := ["i", "c", "b", "k", "t", "s"]
+
+
+## Resuelve la sala con el solucionador exacto (camino más corto, y entre los más cortos el de menos agarres), comprueba que no se resuelva caminando y que pida mover bloques. La sala con el resultado, o {}.
+static func exact_room(room: Dictionary, cap := 600000, max_ms := 15000) -> Dictionary:
+	var t = build_state(room)
+	var res: Dictionary = Solver.solve(t.clone(), int(room.h) + 1, {"max_states": cap, "goal_ids": t.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": max_ms})
+	if res.status != "solved":
+		return {}
+	var plain: Dictionary = Solver.solve(t, int(room.h) + 1, {"max_states": 60000, "goal_ids": t.goal_ids, "no_grab": true, "max_ms": 8000})
+	if plain.status != "unsolvable":
+		return {}
+	if int(path_stats(room, res.path).moved) < 1:
+		return {}
+	var r := copy_room(room)
+	apply_result(r, res.path, "exacta", int(res.moves), int(res.states))
+	return r
+
+
+static func _replace_kind(room: Dictionary, ch: String, only_cell = null, only_y := 0) -> Dictionary:
+	var r := copy_room(room)
+	r.path = []
+	r.opt = {}
+	for c in r.cols.keys():
+		var ks: String = r.cols[c]
+		var out := ""
+		for i in ks.length():
+			var swap: bool = ks[i] == ch and (only_cell == null or (c == only_cell and i + 1 == only_y))
+			out += "n" if swap else ks[i]
+		r.cols[c] = out
+	return r
+
+
+## Los bloques especiales de la sala que NO hacen falta (sacarlos, cambiándolos por comunes, no cambia ni los pasos ni los agarres del camino más corto) se cambian por comunes.
+## {room, needed: [caracteres de tipo que quedan y sí hacen falta], changed: cuántos bloques se cambiaron}. {} si la sala ya no se resuelve.
+static func audit_specials(room: Dictionary, cap := 600000, max_ms := 15000) -> Dictionary:
+	var cur := exact_room(room, cap, max_ms)
+	if cur.is_empty():
+		return {}
+	var changed := 0
+	for ch in SPECIAL_CHARS:
+		var count := 0
+		for c in cur.cols:
+			count += String(cur.cols[c]).count(ch)
+		if count == 0:
+			continue
+		var all_n := exact_room(_replace_kind(cur, ch), cap, max_ms)
+		if not all_n.is_empty() and int(all_n.opt.moves) == int(cur.opt.moves) and int(all_n.opt.grabs) == int(cur.opt.grabs):
+			cur = all_n   # ese tipo era de adorno en toda la sala
+			changed += count
+			continue
+		if count < 2:
+			continue
+		for c in cur.cols.keys():   # el tipo hace falta: se prueba bloque por bloque
+			var ks: String = cur.cols.get(c, "")
+			for i in ks.length():
+				if ks[i] != ch:
+					continue
+				var one := exact_room(_replace_kind(cur, ch, c, i + 1), cap, max_ms)
+				if not one.is_empty() and int(one.opt.moves) == int(cur.opt.moves) and int(one.opt.grabs) == int(cur.opt.grabs):
+					cur = one
+					changed += 1
+	var needed: Array = []
+	for ch in SPECIAL_CHARS:
+		for c in cur.cols:
+			if String(cur.cols[c]).contains(ch) and not needed.has(ch):
+				needed.append(ch)
+	return {"room": cur, "needed": needed, "changed": changed}
 
 
 # --- caminos más cortos y poda -----------------------------------------------------------------------------------------------

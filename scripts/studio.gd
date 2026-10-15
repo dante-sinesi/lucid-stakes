@@ -577,6 +577,9 @@ func _refresh_info() -> void:
 		var proof_txt: String = {"exacta": "[color=#7fe08a]exacta: es el mínimo[/color]", "cota": "[color=#e0c860]cota: entre %d y %d[/color]" % [int(o.get("lower", 0)), int(o.moves)], "sin_probar": "[color=#e0a060]sin probar el mínimo[/color]"}.get(proof, proof)
 		var label := "camino más corto" if proof == "exacta" else "camino conocido (el mínimo puede ser menor)"
 		t += "dificultad [b]%d %%[/b]: %d empujes o tirones de %d pasos · %d bloques distintos\n" % [roundi(float(o.get("diff", 0.0)) * 100.0), int(o.get("grabs", 0)), int(o.moves), int(o.get("moved", 0))]
+		if o.has("reach"):
+			t += "los empujes llegan hasta el piso %d de %d (en %d pisos distintos)%s
+" % [roundi(float(o.reach) * float(r.h)), int(r.h), int(o.get("levels", 0)), "" if float(o.reach) >= 0.5 else "  [color=#e0a060]· casi todo es una escalera con un miniacertijo al principio[/color]"]
 		t += "%s (%d pasos) · %s%s\n" % [label, int(o.moves), proof_txt, " · camino plantado" if str(o.get("source", "")) == "plantada" else ""]
 	elif o.has("error"):
 		t += "[color=#ff7070]no se resuelve: %s[/color]\n" % str(o.error)

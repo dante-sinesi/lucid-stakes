@@ -1,6 +1,6 @@
 @echo off
 rem Pone en marcha varias copias del minero (una por nucleo, mas o menos). Cada una escribe su propio archivo en la misma carpeta.
-rem Uso:  minero_varios.bat [cantidad] [carpeta_de_salida]      (por defecto la mitad de los procesadores y la carpeta "biblioteca")
+rem Uso:  minero_varios.bat [cantidad] [carpeta_de_salida]      (por defecto la mitad de los procesadores y la carpeta bibliotecas\minero)
 setlocal
 set N=%1
 if "%N%"=="" (
@@ -8,7 +8,7 @@ if "%N%"=="" (
 )
 if %N% LSS 1 set N=1
 set OUT=%2
-if "%OUT%"=="" set OUT=%~dp0..\biblioteca
+if "%OUT%"=="" set OUT=%~dp0..\bibliotecas\minero
 for /L %%i in (1,1,%N%) do (
 	start "Minero %%i" /min cmd /c ""%~dp0minero.bat" %%i "%OUT%""
 )

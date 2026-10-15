@@ -97,3 +97,17 @@ Idea de Dante: partir del final y armar hacia atrás con "movimientos invertidos
 ## Estudio: ver solo la sala
 
 Botones "Ver solo la sala (Tab)" (oculta la lista y los paneles; Tab o "Mostrar paneles" vuelve), "Desde atrás del personaje" (la cámara detrás de la llegada mirando a la salida) y "Vista en diagonal". `tests/shot_sala.gd` guarda la captura de la sala sola.
+
+## Calidad de la biblioteca (auditoría, 15/10)
+
+Dante revisó la biblioteca de la corrida con todos los tipos y encontró tres problemas:
+
+1. **Salas "rotas" y sin especiales visibles.** Era un `Estudio.exe` viejo (armado antes de agregar bomba, catapulta, trampa y pinchos al formato): los tipos que no conocía los dibujaba y simulaba como bloques comunes, así que el camino no resolvía la sala. En esta PC los lanzadores usan ahora el proyecto (no los .exe) y los .exe se rearmaron; `tests/check_replay_all.gd` repite el camino de todas las salas con el código actual (las 9 875 resuelven).
+2. **Hielo y arenisca sin utilidad.** Los especiales venían de cambios al azar y de las semillas: la mayoría eran de adorno. `empaquetar --audit` (`RoomLib.audit_specials`) cambia por comunes los que no hacen falta (los pasos y los agarres del camino más corto no cambian al sacarlos) y deja anotado en `opt.specials` cuáles sí hacen falta. De 9 875 salas, 2 920 bloques de adorno pasaron a comunes (≈30 %).
+3. **"Escalera con un miniacertijo al principio".** Es real, y es casi todo lo de 9 o más pisos: en el 97 % de esas salas los empujes ocurren sólo en la mitad de abajo (son escaleras plantadas). `opt.reach` mide hasta qué altura llegan los empujes; el empaquetador con `--min-reach=0.5` descarta las que no pasan. La biblioteca quedó con **3 801 salas** (de 9 875), de las cuales sólo 46 tienen 9 o más pisos. Hacer salas altas de verdad (un acertijo por piso) pide encadenar pasos: es lo que habilitan los pasos (`docs/pasos.md`).
+
+Salas con especiales **necesarios** (tras la auditoría): bomba 457, hielo 217, pinchos 212, trampa 201, catapulta 116, arenisca 110. El minero ahora también limpia los especiales de adorno de lo que excava, y el archivo y la elección de padres favorecen los empujes repartidos hasta arriba (`reach`).
+
+## Carpetas
+
+`bibliotecas/biblioteca.jsonl` (para el Estudio), `bibliotecas/minero/miner_N.jsonl` (los mineros retoman de ahí; hoy trae la biblioteca auditada como semilla), `bibliotecas/pasos/pasos.jsonl`. Se borraron las 22 carpetas sueltas de las corridas (sólo había una sala "manual", de una prueba).

@@ -1,9 +1,9 @@
 @echo off
 rem Estudio de salas: ver, jugar, corregir y anotar las salas de una biblioteca.
-rem Uso:  estudio.bat [archivo.jsonl o archivo.rooms]      (por defecto biblioteca\biblioteca.jsonl)
+rem Uso:  estudio.bat [archivo.jsonl o archivo.rooms]      (por defecto bibliotecas\biblioteca.jsonl)
 setlocal
 set LIB=%~f1
-if "%LIB%"=="" set LIB=%~dp0..\biblioteca\biblioteca.jsonl
+if "%LIB%"=="" set LIB=%~dp0..\bibliotecas\biblioteca.jsonl
 cd /d "%~dp0.."
 set EXE=build\herramientas\Estudio.exe
 if exist "tools\Godot_v4.7.2-stable_win64_console.exe" set EXE=

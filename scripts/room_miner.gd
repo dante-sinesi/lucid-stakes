@@ -101,7 +101,7 @@ static func group_key(room: Dictionary) -> String:
 
 
 static func cell_key(room: Dictionary) -> String:
-	return "%s|%d|%d|%d|%s" % [room.shape, room.h, mini(int(room.opt.get("grabs", 0)), 24), int(clampf(float(room.opt.get("diff", 0.0)), 0.0, 0.99) * 10.0), special_types(room)]
+	return "%s|%d|%d|%d|%s|%d" % [room.shape, room.h, mini(int(room.opt.get("grabs", 0)), 24), int(clampf(float(room.opt.get("diff", 0.0)), 0.0, 0.99) * 10.0), special_types(room), mini(int(float(room.opt.get("reach", 0.5)) * 3.0), 2)]
 
 
 func archive_size() -> int:
@@ -143,7 +143,7 @@ func _store(room: Dictionary) -> void:
 ## Entre las salas de un mismo casillero se prefiere la más difícil (más empujes y tirones sobre el total de pasos).
 func _score(room: Dictionary) -> float:
 	var o: Dictionary = room.opt
-	return float(o.get("diff", 0.0)) * 100.0 + float(o.get("grabs", 0)) + 0.01 * float(o.get("moved", 0))
+	return float(o.get("diff", 0.0)) * 100.0 + float(o.get("grabs", 0)) + 0.01 * float(o.get("moved", 0)) + 6.0 * float(o.get("reach", 0.5))   # (los empujes repartidos hasta arriba valen más que los de un miniacertijo al pie de una escalera)
 
 
 ## Entra la sala al archivo si el casillero tiene lugar o si es mejor que la peor de él. Escribe la línea en el .jsonl. true si entró.
@@ -731,7 +731,7 @@ func pick_parent(shape: String, h: int) -> Dictionary:
 	var weights: Array = []
 	for k in keys:
 		var o0: Dictionary = archive[k][0].opt
-		var w := pow(1.0 + float(o0.get("grabs", 1)), 1.5) * (0.25 + float(o0.get("diff", 0.0)))   # (los casilleros de más agarres y más dificultad, que son los que faltan, se eligen más)
+		var w := pow(1.0 + float(o0.get("grabs", 1)), 1.5) * (0.25 + float(o0.get("diff", 0.0))) * (0.4 + float(o0.get("reach", 0.5)))   # (los casilleros de más agarres y más dificultad, que son los que faltan, se eligen más)
 		weights.append(w)
 		total += w
 	var roll := rng.randf() * total
@@ -802,6 +802,11 @@ func _excavate_step(par: Dictionary) -> void:
 			continue
 		stats.valid = int(stats.valid) + 1
 		RoomLib.apply_result(room, res.path, "exacta", int(res.moves), int(res.states))
+		if not _special_blocks(room).is_empty():   # (los especiales que no hacen falta pasan a comunes)
+			var cl := _special_cleanup(room, true)
+			if not cl.is_empty():
+				room = cl
+				RoomLib.finalize(room)
 		room.opt.source = "excavada"
 		room.origin = "minero"
 		room.stamp = int(Time.get_unix_time_from_system())
@@ -841,7 +846,7 @@ func _special_blocks(room: Dictionary) -> Array:
 
 
 ## Un bloque especial que no cambia el camino más corto (mismos pasos y mismos agarres) es adorno: se lo cambia por uno común. Devuelve la sala sin adornos, o {} si no queda ningún especial que importe.
-func _special_cleanup(room: Dictionary) -> Dictionary:
+func _special_cleanup(room: Dictionary, keep_plain := false) -> Dictionary:
 	var cur := room
 	for sb in _special_blocks(room):
 		var c: Vector2i = sb[0]
@@ -854,7 +859,7 @@ func _special_cleanup(room: Dictionary) -> Dictionary:
 		var ex := _exact_room(cand)
 		if not ex.is_empty() and int(ex.opt.moves) == int(cur.opt.moves) and int(ex.opt.grabs) == int(cur.opt.grabs):
 			cur = ex
-	return cur if not _special_blocks(cur).is_empty() else {}
+	return cur if keep_plain or not _special_blocks(cur).is_empty() else {}
 
 
 ## Variantes con bloques especiales: a una sala del archivo se le cambia el tipo de uno o dos bloques, o se le agrega un bloque especial, y se queda con las que siguen resolviéndose, siguen pidiendo mover bloques y

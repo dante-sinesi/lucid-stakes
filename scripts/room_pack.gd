@@ -37,7 +37,11 @@ static func collect(in_dir: String, out_path: String, opts: Dictionary = {}) -> 
 				best[r.id] = r
 	var ids: Array = best.keys()
 	ids.sort()
+	var shard_i := int(opts.get("shard_i", 0))
+	var shard_n := int(opts.get("shard_n", 1))
 	for id in ids:
+		if shard_n > 1 and int(("0x" + String(id).substr(0, 8)).hex_to_int()) % shard_n != shard_i:
+			continue
 		var r: Dictionary = best[id]
 		if int(r.rules) != RoomLib.RULES_VERSION:
 			res.old_rules += 1
@@ -60,6 +64,22 @@ static func collect(in_dir: String, out_path: String, opts: Dictionary = {}) -> 
 				if src != "":
 					r.opt.source = src
 				res["shortened"] = int(res.get("shortened", 0)) + 1
+		if bool(opts.get("audit", false)):   # (calidad: los especiales que no hacen falta pasan a comunes y el camino se vuelve a calcular con el verificador exacto)
+			var au := RoomLib.audit_specials(r, int(opts.get("rerate_cap", 600000)), 15000)
+			if au.is_empty():
+				res.invalid += 1
+				continue
+			var src5: String = str(r.opt.get("source", ""))
+			r = au.room
+			if src5 != "":
+				r.opt.source = src5
+			r.opt["specials"] = "".join(au.needed)
+			res["audited"] = int(res.get("audited", 0)) + 1
+			res["specials_removed"] = int(res.get("specials_removed", 0)) + int(au.changed)
+		var min_reach := float(opts.get("min_reach", 0.0))
+		if min_reach > 0.0 and float(r.opt.get("reach", 1.0)) < min_reach and r.origin != "autor":
+			res["low_reach"] = int(res.get("low_reach", 0)) + 1
+			continue
 		var rerate_min := int(opts.get("rerate", 0))
 		if rerate_min > 0 and int(r.opt.get("grabs", 0)) >= rerate_min:   # (vuelve a calcular el camino más corto, y entre los más cortos el de menos agarres: así se mide la dificultad)
 			var ver := RoomLib.verify_exact(r, int(opts.get("rerate_cap", 1500000)), int(opts.get("rerate_ms", 60000)))
