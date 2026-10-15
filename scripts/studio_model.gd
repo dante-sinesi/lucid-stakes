@@ -83,6 +83,17 @@ func filtered(filters: Dictionary = {}) -> Array:
 			continue
 		if r.h < int(filters.get("h_lo", 0)) or r.h > int(filters.get("h_hi", 99)):
 			continue
+		var kind := str(filters.get("kind", ""))
+		if kind != "":
+			var found := false
+			for c in r.cols:
+				if String(r.cols[c]).contains(kind):
+					found = true
+					break
+			if not found:
+				continue
+			if bool(filters.get("kind_needed", false)) and not str(r.opt.get("specials", "")).contains(kind):
+				continue   # (la auditoría dejó anotados en opt.specials los especiales que hacen falta)
 		if text != "" and not (str(r.id).begins_with(text) or str(r.family).begins_with(text) or str(r.pattern).begins_with(text)):
 			continue
 		out.append(r)

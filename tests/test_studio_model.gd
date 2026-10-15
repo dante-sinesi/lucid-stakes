@@ -36,6 +36,7 @@ func _init() -> void:
 	test_prune_and_optimize()
 	test_difficulty_filters()
 	test_gaps()
+	test_kind_filter()
 	print("tests del modelo del Estudio terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -492,3 +493,26 @@ func test_gaps() -> void:
 	var after: String = m.current.cols.get(tall, "")
 	check(m.block_count() == n_before - 1 and (after == ks0.substr(1) or after == "." + ks0.substr(1)), "los de arriba bajan o quedan según se sostengan (%s -> %s)" % [ks0, after])
 	check(m.undo() or true, "deshacer")
+
+
+func test_kind_filter() -> void:
+	var m := StudioModel.new()
+	var a := RoomLib.make_room("3x5", 5)
+	a.cols = {Vector2i(1, 0): "nb", Vector2i(2, 0): "n"}
+	a.opt = {"moves": 5, "grabs": 1, "moved": 1, "diff": 0.2, "specials": "b"}
+	RoomLib.finalize(a)
+	var b := RoomLib.make_room("3x5", 5)
+	b.cols = {Vector2i(1, 0): "nk", Vector2i(2, 0): "nnn"}
+	b.opt = {"moves": 5, "grabs": 1, "moved": 1, "diff": 0.2}
+	RoomLib.finalize(b)
+	var c := RoomLib.make_room("3x5", 5)
+	c.cols = {Vector2i(1, 0): "nnn"}
+	c.opt = {"moves": 5, "grabs": 1, "moved": 1, "diff": 0.2}
+	RoomLib.finalize(c)
+	m.rooms = [a, b, c]
+	check(m.filtered({"kind": "b"}).size() == 1 and m.filtered({"kind": "b"})[0].id == a.id, "filtrar las salas con bomba")
+	check(m.filtered({"kind": "k"}).size() == 1 and m.filtered({"kind": "k"})[0].id == b.id, "filtrar las salas con catapulta")
+	check(m.filtered({"kind": "i"}).is_empty(), "ninguna sala con hielo")
+	check(m.filtered({"kind": "b", "kind_needed": true}).size() == 1, "con bomba y necesaria")
+	check(m.filtered({"kind": "k", "kind_needed": true}).is_empty(), "la catapulta de la otra sala no está marcada como necesaria")
+	check(m.filtered({}).size() == 3, "sin filtro de bloque están todas")

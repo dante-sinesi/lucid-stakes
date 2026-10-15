@@ -209,7 +209,8 @@ func test_ui() -> void:
 	studio.set_tool("select")
 	var vcell := Vector2i(-9, -9)
 	for c in studio.model.current.cols:
-		vcell = c
+		if RoomLib.block_char(studio.model.current, c, 1) != "":   # (con un bloque sobre el piso: las salas pueden tener huecos)
+			vcell = c
 	studio.click_cell(Vector3i(vcell.x, 1, vcell.y))
 	await _frames(2)
 	check(studio.sel.cell == vcell and studio.sel.y == 1, "seleccionar un bloque")
@@ -224,6 +225,12 @@ func test_ui() -> void:
 	var rooms_before: int = studio.model.rooms.size()
 	studio.do_create_variants()
 	check(studio.model.rooms.size() >= rooms_before, "crear variantes no pierde salas")
+	# filtro por tipo de bloque
+	studio.f_kind.select(1 + studio.KIND_FILTERS.find("b"))
+	studio.refresh_list()
+	check(studio.filters().get("kind", "") == "b", "el filtro de bloque llega a los filtros")
+	studio.clear_filters()
+	check(studio.f_kind.selected == 0 and not studio.filters().has("kind"), "limpiar filtros saca el de bloque")
 	# ver solo la sala y desde atrás del personaje
 	studio.set_view_only(true)
 	check(not studio.left_panel.visible and not studio.right_panel.visible and studio.show_panels_btn.visible, "ver solo la sala oculta los paneles")

@@ -12,6 +12,9 @@ const TOOLS := [["select", "Seleccionar"], ["add", "Agregar bloque arriba"], ["d
 const SHAPE_NAMES := {"3x3": "Chica (3x3)", "3x5": "Mediana (3x5)", "3x8": "Grande (3x8)", "L": "L", "U": "U"}
 const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["moved", "Bloques distintos"], ["moves", "Pasos"], ["h", "Altura"], ["reciente", "Recientes"]]
 
+## Tipos de bloque por los que se puede filtrar (caracteres de la sala): hielo, arenisca, bomba, catapulta (trampolín), trampa, pinchos y pesado.
+const KIND_FILTERS := ["i", "c", "b", "k", "t", "s", "h"]
+
 var model := StudioModel.new()
 var lib_path := ""
 var yaw := 35.0
@@ -52,6 +55,8 @@ var f_hhi: SpinBox
 var f_moves: SpinBox
 var f_grabs: SpinBox
 var f_diff: SpinBox
+var f_kind: OptionButton
+var f_kind_needed: CheckBox
 var f_status: OptionButton
 var f_origin: OptionButton
 var f_proof: OptionButton
@@ -198,6 +203,16 @@ func _build_ui() -> void:
 	row3.add_child(f_origin)
 	row3.add_child(f_proof)
 	left.add_child(row3)
+	var row4 := HBoxContainer.new()
+	row4.add_child(_label("Con bloque"))
+	f_kind = _option(["(cualquiera)"] + KIND_FILTERS.map(func(k): return String(StudioModel.KIND_NAMES[k])), func(_i): refresh_list())
+	row4.add_child(f_kind)
+	f_kind_needed = CheckBox.new()
+	f_kind_needed.text = "solo si hace falta"
+	f_kind_needed.tooltip_text = "Solo las salas donde ese bloque es necesario (sacarlo cambia el camino más corto). Requiere una biblioteca depurada con --audit."
+	f_kind_needed.toggled.connect(func(_on): refresh_list())
+	row4.add_child(f_kind_needed)
+	left.add_child(row4)
 	f_text = LineEdit.new()
 	f_text.placeholder_text = "buscar por id, familia o patrón"
 	f_text.text_changed.connect(func(_t): refresh_list())
@@ -446,6 +461,9 @@ func filters() -> Dictionary:
 	var f := {"sort": SORTS[f_sort.selected][0], "h_lo": int(f_hlo.value), "h_hi": int(f_hhi.value), "min_moves": int(f_moves.value), "min_grabs": int(f_grabs.value), "min_diff": f_diff.value / 100.0, "text": f_text.text}
 	if f_shape.selected > 0:
 		f["shape"] = RoomLib.SHAPES[f_shape.selected - 1]
+	if f_kind.selected > 0:
+		f["kind"] = KIND_FILTERS[f_kind.selected - 1]
+		f["kind_needed"] = f_kind_needed.button_pressed
 	if f_status.selected > 0:
 		f["status"] = RoomLib.STATUSES[f_status.selected - 1]
 	if f_origin.selected > 0:
@@ -464,6 +482,8 @@ func clear_filters() -> void:
 	f_grabs.value = 0
 	f_diff.value = 0
 	f_status.select(0)
+	f_kind.select(0)
+	f_kind_needed.button_pressed = false
 	f_origin.select(0)
 	f_proof.select(0)
 	f_text.text = ""
