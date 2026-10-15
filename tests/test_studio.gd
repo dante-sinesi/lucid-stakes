@@ -135,7 +135,9 @@ func test_ui() -> void:
 	studio.click_cell(Vector3i(cell.x, 0, cell.y))
 	await _frames(2)
 	check(studio.model.block_count() == b0 + 1 and studio.model.dirty, "la herramienta Agregar suma un bloque")
-	check(studio.model.verified or studio.status.text.begins_with("Sin solución"), "se verifica sola tras editar")
+	check(not studio.model.verified and studio.status.text.find("sin verificar") != -1, "editar NO verifica solo: avisa que falta verificar (%s)" % studio.status.text)
+	studio.do_verify()
+	check(studio.model.verified or studio.status.text.begins_with("Sin solución"), "Verificar resuelve la sala")
 	var ks_before: String = studio.model.column(cell)
 	# tipo
 	studio.set_kind_pick("i")

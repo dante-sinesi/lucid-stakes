@@ -875,13 +875,17 @@ func set_kind_pick(k: String) -> void:
 # --- acciones -----------------------------------------------------------------------------------------------------------------------
 
 ## Después de cada cambio: se vuelve a verificar la sala y se redibuja todo.
-func after_edit() -> void:
+## Después de cada cambio se redibuja todo, pero la sala NO se vuelve a resolver: eso se hace sólo cuando se pulsa Verificar, Mejorar camino o Podar relleno (con `verify`).
+func after_edit(verify := false) -> void:
 	sel = {} if sel.is_empty() or RoomLib.block_char(model.current, sel.cell, int(sel.y)) == "" else sel
-	var v := model.verify(3000)
-	if v.ok:
-		_set_status("Verificada: %d empujes o tirones de %d pasos (dificultad %d %%)%s." % [int(v.grabs), int(v.moves), roundi(100.0 * float(v.grabs) / maxf(float(v.moves), 1.0)), " (se conservó el camino)" if v.reused else ""])
-	else:
-		_set_status("Sin solución: %s." % str(v.why))
+	if verify:
+		var v := model.verify(3000)
+		if v.ok:
+			_set_status("Verificada: %d empujes o tirones de %d pasos (dificultad %d %%)%s." % [int(v.grabs), int(v.moves), roundi(100.0 * float(v.grabs) / maxf(float(v.moves), 1.0)), " (se conservó el camino)" if v.reused else ""])
+		else:
+			_set_status("Sin solución: %s." % str(v.why))
+	elif not model.verified:
+		_set_status("Sala cambiada, todavía sin verificar (Verificar o Mejorar camino la resuelven).")
 	refresh_all()
 	_select_in_list()
 
@@ -889,7 +893,7 @@ func after_edit() -> void:
 func do_verify() -> void:
 	if not model.has_current():
 		return
-	after_edit()
+	after_edit(true)
 
 
 func do_verify_exact() -> void:
