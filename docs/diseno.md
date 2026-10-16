@@ -504,3 +504,53 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
   columna a otra mientras pida más agarres. Salen acertijos de 14 a 32 movimientos con 5 a 9 agarres; cuesta ~20 s por sala.
 - Entra en el plan junto con las salas de cajas (cuentan juntas: hasta 2 seguidas y 5 por torre). Un acertijo sin colgarse no es lo mismo que uno con colgarse: el camino guardado puede usar Espacio para
   soltarse (en el juego se suelta con Espacio).
+
+## 46. Casino y torre como un solo sistema: el duende al final del casino (diseño acordado, a implementar)
+
+Decidido con Dante el 2026-10-16; todavía **no está implementado el ciclo nuevo** (sí lo de morir sin costo de claridad, ver más abajo). La simulación es `tests/sim_economia.gd` y las mediciones, `tests/sim_ingresos.gd` y `tests/probe_rtp.gd`.
+
+### El ciclo
+1. **Torre** (puzzle): da claridad por purificar y, en el piso, **monedas** sueltas por tipo de juego (ruleta, tragamonedas, blackjack). El HUD de la torre muestra el precio que cobrará el duende al final del casino.
+2. **Casino**: el jugador tiene un **mínimo fijo de jugadas por visita** (3 de partida) que se pagan con monedas, no con claridad, más las monedas extra que juntó. Las jugadas de más se pagan con claridad. Mesas de distinta varianza con las probabilidades visibles, tienda de boosts y consumibles.
+3. **Puerta trasera, el duende**: cobra de verdad el precio de la etapa (se descuenta la claridad). El peaje que hoy cobra el duende en el portal de la torre (§42) se muda acá.
+4. **Torre siguiente.**
+
+### Cuando no se llega a pagar
+- Se pierde **una vida** y se vuelve a subir **la misma torre** (no se genera otra).
+- La claridad juntada en el intento fallido **se conserva**.
+- Sin vidas termina el run.
+- **La deuda o fiado está descartada** (hay que quitar o replantear la regla "Fiado" de la taberna).
+
+### Vidas y reintentos
+- Las vidas se recuperan con el consumible **Vida extra** de la ruleta. Ese consumible tiene que poder usarse **también dentro del casino**; hoy sólo se puede usar en la torre. *(pendiente)*
+- **Morir en la torre ya no cuesta claridad**: el costo es la vida que se pierde (`RunState.restart_cost(dead)` da 0). Reiniciar por voluntad (menú de pausa) sigue costando `25 + 2 por etapa` por reintento de la misma torre. El Tótem sigue sirviendo (salva la vida). **El Seguro** del gran casino (60 % del primer reintento) sólo cubre ya los reinicios por voluntad: conviene replantear su sentido. *(hecho en el código; falta repensar el Seguro)*
+- Los boosts deberían **multiplicar** (no sólo sumar) para seguir la curva: hoy ninguno multiplica el ingreso de la torre (el que más se acerca es Mano de oro, que sube el paso de la racha).
+
+### La economía, medida
+- **Ingreso de una torre** siguiendo el camino mínimo (claridad, 2 torres por etapa): etapa 1: 193 · 3: 292 · 5: 156 · 8: 215 · 10: 260 · 12: 198 · 15: 404. Es muy irregular y **no crece con la dificultad**: las salas difíciles empujan más y un empuje no purifica ningún bloque, así que corta la racha. Una recta lo ajusta (`179 + 8,7 × etapa`: 187 en la 1 y 310 en la 15).
+- **Ficha**: 50 en la etapa 1 y 106 en la 15. **Rendimiento de las mesas** (premio medio sobre el precio): ruleta 0,91 a 0,96, tragamonedas 0,915 (reteniendo bien), blackjack 0,979. Las mesas devuelven valor sobre todo en ítems, no en claridad (sólo la bolsa de luz devuelve claridad).
+- **Peaje de hoy**: `40 + 4 × etapa` (44 a 100): del 23 % al 32 % del ingreso. No aprieta.
+
+### Curvas del precio del duende que se compararon
+| Etapa | Ingreso (recta) | actual | lineal | por ingreso | suave | exp (la de la charla) |
+|---|---|---|---|---|---|---|
+| 1 | 188 | 44 | 45 | 47 | 50 | 50 |
+| 5 | 223 | 60 | 83 | 91 | 79 | 122 |
+| 10 | 267 | 80 | 131 | 161 | 139 | 373 |
+| 15 | 310 | 100 | 178 | 248 | 244 | 1137 |
+
+(lineal: `45 + 9,5 × (etapa−1)` · por ingreso: 25 % del ingreso en la etapa 1, subiendo a 80 % en la 15 · suave: `50 × 1,12^(etapa−1)` · exp: `50 × 1,25^(etapa−1)`.)
+
+**Resultado de la simulación** (4000 runs por curva y por habilidad; modelo en el encabezado de `sim_economia.gd`, con supuestos señalados): todas las curvas menos la exponencial dan casi lo mismo, porque el precio nunca supera el ingreso y lo que decide el run es morir en la torre. En cambio **la exponencial es una pared**: en la etapa 15 el duende cobraría 1137, unas 3,7 veces el ingreso; con todos los boosts de claridad que el modelo supone (+14 % cada uno) sólo se llega a ×1,8, y gana el 7 al 12 % de los jugadores.
+- La conclusión es que **el precio y el ingreso hay que pensarlos juntos**: o el precio sigue al ingreso (curva *por ingreso*, de ~47 a ~250: sobra siempre algo para jugar de más y el final aprieta sin ser imposible), o se hacen **boosts que multipliquen de verdad el ingreso** (×1,5 a ×3) y entonces se puede usar una curva más empinada.
+- Lo que sobra después de pagar (claridad para jugadas extra) es de ~75 por visita al principio a ~500 al final con la curva por ingreso; con la actual, ~700. Es lo que hay que balancear con el tamaño de las recompensas de las mesas.
+
+### Propuesta de arranque (a confirmar)
+Curva **por ingreso**: `precio(etapa) = (179 + 8,75 × etapa) × (0,25 + 0,55 × (etapa−1)/14)`, redondeado, y revisarla después de medir más torres (el ingreso real es irregular). Jugadas mínimas por visita: 3 con monedas.
+
+### Pendiente
+- Monedas en la torre (ítems recogibles por tipo de juego), contador en el HUD y el precio del duende visible desde el casino anterior.
+- Mover el duende y el peaje a la puerta trasera del casino (hoy está en el portal de la torre).
+- Usar la Vida extra dentro del casino; quitar o replantear la regla de la taberna ("Fiado") y el Seguro.
+- Boosts multiplicativos y su efecto en la curva; más mediciones de ingreso (con las torres de la biblioteca, que cambian el ingreso).
+- Lore: los bloques y mesas son recuerdos que se reescriben al apostar certeza (claridad); el tabernero subió, apostó y se quedó.

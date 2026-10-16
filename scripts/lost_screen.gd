@@ -65,6 +65,9 @@ func show_loss(reason: String, cost: int, can_afford := true, free := false) -> 
 	if free:
 		retry_button.set_label(Loc.t("Reintentar"))
 		hint_label.text = ""
+	elif cost == 0:
+		retry_button.set_label(Loc.t("Reintentar"))
+		hint_label.text = ""
 	elif can_afford:
 		retry_button.set_label(Loc.f("Reintentar (−%d de claridad)", [cost]))
 		hint_label.text = ""

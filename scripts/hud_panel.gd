@@ -1,5 +1,5 @@
 extends VBoxContainer
-## La ventana de la partida, arriba a la izquierda: los corazones (chicos), la etapa y, al final, la claridad (y la racha cuando hay).
+## La ventana de la partida, arriba a la izquierda: los corazones (chicos), la etapa y, al final, la claridad (la racha sólo aparece en el cartel de ganancia, no acá).
 ## Es la única información fija que se ve jugando; lo demás (la próxima prueba, la regla de la casa) lo cuenta el tabernero.
 
 const LivesHud := preload("res://scripts/lives_hud.gd")
@@ -10,7 +10,6 @@ const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 var lives
 var stage_label: Control
 var clarity
-var streak_label: Control
 var toll_label: Control      # lo que cobra el duende del portal de salida
 
 
@@ -36,12 +35,6 @@ func _init(with_stage := true) -> void:
 	toll_label.color = Color(0.55, 0.9, 0.4)
 	toll_label.visible = false
 	add_child(toll_label)
-	if with_stage:
-		streak_label = VoxelLabel.new()
-		streak_label.cube = 3.0
-		streak_label.color = Color(1.0, 0.93, 0.5)
-		streak_label.visible = false
-		add_child(streak_label)
 	resized.connect(queue_redraw)
 	minimum_size_changed.connect(queue_redraw)
 

@@ -116,9 +116,10 @@ var hud: Control              # texto de depuración (semilla, contadores...): s
 var debug_hud := false
 var stage_label: Control     # "Etapa 5/27" y el piso en que estás
 var hud_panel               # la ventana de la partida: corazones, etapa, claridad y racha
-var streak_label: Control    # multiplicador de la racha (sólo con racha)
 var banner: Control
 var toast: Control
+var _gain_tween: Tween     # el desvanecer del cartel de ganancia (uno solo a la vez)
+var _toast_tween: Tween    # y el del aviso
 var gain_label: Control
 var _mesh_corrupt: SphereMesh
 var _goal_mesh: BoxMesh
@@ -311,7 +312,6 @@ func _build_hud() -> void:
 	lives_hud = hud_panel.lives
 	stage_label = hud_panel.stage_label
 	clarity_counter = hud_panel.clarity
-	streak_label = hud_panel.streak_label
 	trial_label = _label(layer, 3, Color(1.0, 0.85, 0.35))
 	trial_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	trial_label.align = VoxelLabel.Align.CENTER
@@ -917,7 +917,10 @@ func _flash_gain(text: String) -> void:
 	gain_label.text = text
 	gain_label.modulate.a = 1.0
 	juice.pop(gain_label)
-	create_tween().tween_property(gain_label, "modulate:a", 0.0, 1.8)
+	if _gain_tween != null:   # (un solo desvanecer a la vez: si quedaban los de las ganancias anteriores pisaban la transparencia y el cartel no volvía a verse)
+		_gain_tween.kill()
+	_gain_tween = create_tween()
+	_gain_tween.tween_property(gain_label, "modulate:a", 0.0, 1.8)
 
 
 ## Texto que se muestra sobre un tipo de bloque: sólo la bomba lleva su cuenta (se actualiza en _refresh).
@@ -1590,7 +1593,10 @@ func _flash(msg: String) -> void:
 	toast.text = msg
 	toast.modulate.a = 1.0
 	juice.pop(toast, 1.2)
-	create_tween().tween_property(toast, "modulate:a", 0.0, 1.4)
+	if _toast_tween != null:
+		_toast_tween.kill()
+	_toast_tween = create_tween()
+	_toast_tween.tween_property(toast, "modulate:a", 0.0, 1.4)
 
 
 func _refresh() -> void:
@@ -1603,12 +1609,10 @@ func _refresh() -> void:
 	if lab_active:
 		trial_label.visible = false
 		stage_label.text = "LABORATORIO\n%d. %s" % [lab_station + 1, Lab.STATIONS[lab_station].name]
-		streak_label.visible = false
 		hud.text = "LABORATORIO   estación %d/%d: %s" % [lab_station + 1, Lab.count(), Lab.STATIONS[lab_station].id]
 	elif tutorial_index >= 0:
 		trial_label.visible = false
 		stage_label.text = Loc.f("Tutorial\nLección %d/%d", [tutorial_index + 1, Tutorial.count()])
-		streak_label.visible = false
 		hud.text = "TUTORIAL   Lección %d/%d: %s" % [tutorial_index + 1, Tutorial.count(), Tutorial.lessons()[tutorial_index].title]
 	else:
 		stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, FINAL_STAGE, " *" if not trial.is_empty() else ""])
@@ -1616,9 +1620,6 @@ func _refresh() -> void:
 		if not trial.is_empty():
 			trial_label.text = Loc.f("* Prueba: %s\n%s", [Loc.t(trial.name), Loc.t(trial.desc)])
 			trial_label.color = Color(1.0, 0.85, 0.35)
-		streak_label.visible = logic.streak >= 2
-		if streak_label.visible:
-			streak_label.text = Loc.f("Racha ×%.1f", [logic.streak_mult(logic.streak)])
 		hud.text = prof_text + "\nCaída de la fila base en %d (cada %d)    Altura %d/%d    Movimientos %d    %s\nRacha %d (×%.1f)    Mejor racha %d    Purificados %d    Semilla %d" % [
 		logic.moves_to_collapse, logic.collapse_every, logic.player.y, logic.goal_y, logic.moves_made, state,
 		logic.streak, logic.streak_mult(logic.streak), logic.best_streak, logic.purified_count, seed_value]
@@ -1975,11 +1976,11 @@ func request_restart() -> void:
 	if not run.can_afford(cost):
 		end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost]))
 		return
-	var free_by: String = "totem" if (cost == 0 and dead and not run.insurance) else "seguro"
+	var free_by: String = "totem" if (dead and run.consumables.has("totem") and not run.item_blocked("totem")) else ("vida" if dead else "seguro")
 	run.spend(cost)
 	run.note_retry(dead)
 	restart()
-	_flash(Loc.f("Reintento: −%d de claridad", [cost]) if cost > 0 else (Loc.t("Reintento gratis: el Tótem te dio otra vida") if free_by == "totem" else Loc.t("Reintento gratis: el seguro lo cubre")))
+	_flash(Loc.f("Reintento: −%d de claridad", [cost]) if cost > 0 else (Loc.t("Reintento gratis: el Tótem te dio otra vida") if free_by == "totem" else (Loc.t("Reintento sin costo de claridad: ya perdiste una vida") if free_by == "vida" else Loc.t("Reintento gratis: el seguro lo cubre"))))
 
 
 ## Termina el run y muestra el resumen.

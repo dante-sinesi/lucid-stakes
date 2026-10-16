@@ -67,15 +67,15 @@ func test_restart_flow() -> void:
 	main.request_restart()
 	check(main.run.claridad == 25 and main.run.retries == 2, "el segundo cuesta 50")
 	check(main.run.restart_cost() == 75 and not main.run.can_afford_restart(), "el tercero ya no se puede pagar")
-	# al perder, el aviso dice cuanto cuesta (o que ya no alcanza)
+	# al perder (morir no cuesta claridad: el costo ya es la vida) se puede reintentar aunque no quede claridad
 	main.logic.lost = true
 	main.logic.lost_reason = "Caíste al vacío"
 	main._on_anim_done()
 	check(main.lost_screen.visible and main.lost_screen.title_label.text == "Caíste al vacío", "al perder aparece la pantalla de derrota con el motivo")
-	check(main.lost_screen.hint_label.text.contains("No te alcanza") and main.lost_screen.hint_label.text.contains("75") and main.lost_screen.retry_button.text == "Terminar el run", "sin claridad el boton pasa a Terminar el run y dice cuanto costaba")
+	check(main.lost_screen.retry_button.text == "Reintentar" and main.lost_screen.hint_label.text == "", "después de morir el botón es Reintentar, sin costo de claridad, aunque no alcance la claridad")
+	var lives_before: int = main.run.lives
 	main.lost_screen.retry_button.pressed.emit()
-	check(main.run_over and main.run_end.visible and main.in_menu, "sin claridad para reintentar el run termina")
-	check(main.run_end.reason_label.text.contains("No te alcanza"), "la pantalla de fin dice el motivo")
+	check(not main.run_over and main.run.claridad == 25 and main.run.lives == lives_before - 1 and not main.logic.lost, "reintentar después de morir no cobra claridad: cuesta una vida")
 	main.queue_free()
 	await process_frame
 	# aviso con claridad suficiente
@@ -86,9 +86,9 @@ func test_restart_flow() -> void:
 	main.logic.lost = true
 	main.logic.lost_reason = "Caíste al vacío"
 	main._on_anim_done()
-	check(main.lost_screen.visible and main.lost_screen.retry_button.text.contains("−25") and main.lost_screen.menu_button.text == "Salir al menú principal", "al perder se muestran los botones Reintentar (con su costo) y Salir al menu")
+	check(main.lost_screen.visible and main.lost_screen.retry_button.text == "Reintentar" and main.lost_screen.menu_button.text == "Salir al menú principal", "al perder se muestran los botones Reintentar y Salir al menu")
 	main.lost_screen.retry_button.pressed.emit()
-	check(not main.lost_screen.visible and main.run.claridad == 475 and main.run.retries == 1 and not main.logic.lost, "Reintentar con el boton cobra, vuelve a empezar y esconde la pantalla")
+	check(not main.lost_screen.visible and main.run.claridad == 500 and main.run.retries == 1 and not main.logic.lost, "Reintentar con el boton no cobra claridad, vuelve a empezar y esconde la pantalla")
 	# entrenamiento: gratis
 	main.logic.lost = false
 	main._set_training(true)

@@ -237,12 +237,11 @@ func test_hud() -> void:
 	check(main.debug_hud and main.hud.visible, "F2 muestra los textos de depuracion")
 	main._unhandled_input(f2)
 	check(not main.debug_hud and not main.hud.visible, "F2 otra vez los oculta")
-	# Lo que si ve el jugador: etapa, claridad y racha (la cuenta de la fila de abajo ya no se muestra)
+	# Lo que si ve el jugador: etapa y claridad (la racha sólo sale en el cartel de ganancia; la cuenta de la fila de abajo ya no se muestra)
 	check(main.stage_label.text.contains("Etapa") and not main.stage_label.text.contains("Piso"), "se ve la etapa, sin el piso")
-	check(not main.streak_label.visible, "sin racha no se muestra el multiplicador")
+	check(main.hud_panel.get("streak_label") == null, "la racha no está en la ventana de la partida: sólo sale en el cartel de ganancia")
 	main.logic.streak = 3
 	main._refresh()
-	check(main.streak_label.visible and main.streak_label.text.contains("Racha"), "con racha se muestra el multiplicador")
 	# Casino: sin textos de ayuda
 	main.enter_casino()
 	var cl: Array = []

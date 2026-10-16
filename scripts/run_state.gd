@@ -81,9 +81,9 @@ func next_trial_text(from_stage: int) -> String:
 	return Loc.f("Próxima prueba: %s (en %d etapa%s)", [Loc.t(n.trial.name), n.left, "" if n.left == 1 else "s"])
 
 
-## `dead`: se reintenta después de morir (el Tótem, si lo tenés, lo hace gratis); el seguro vale siempre.
+## `dead`: se reintenta después de morir: no cuesta claridad (el costo ya es la vida que se pierde; el Tótem la salva). Reiniciar por voluntad sí cuesta, salvo con seguro.
 func restart_cost(dead := false) -> int:
-	if insurance or (dead and _totem_works()):
+	if dead or insurance:
 		return 0
 	var base := (RESTART_BASE + 2 * maxi(stage - 1, 0)) * (1 + tower_retries)   # (la mitad de la ficha de la ruleta de esa etapa)
 	return maxi(int(round(base * (1.0 - restart_discount))), 1)
@@ -98,7 +98,7 @@ func note_retry(dead := false) -> void:
 	if dead and _totem_works():
 		use_consumable("totem")
 		saved_by_totem = true
-	elif insurance:
+	elif insurance and not dead:   # (morir ya es gratis: el seguro queda para un reinicio por voluntad)
 		insurance = false
 	if dead and not saved_by_totem:
 		lives = maxi(lives - 1, 0)
