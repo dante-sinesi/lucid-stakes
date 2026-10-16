@@ -562,3 +562,69 @@ Pedido de Dante: **desde la etapa 8 no se puede pasar sin habilidades o consumib
 - Usar la Vida extra dentro del casino; quitar o replantear la regla de la taberna ("Fiado") y el Seguro.
 - Boosts multiplicativos y su efecto en la curva; más mediciones de ingreso (con las torres de la biblioteca, que cambian el ingreso).
 - Lore: los bloques y mesas son recuerdos que se reescriben al apostar certeza (claridad); el tabernero subió, apostó y se quedó.
+
+## 47. Boosts y consumibles que disparan la ganancia, bolsas de claridad grandes y una ruleta menos saturada (diseño, a implementar)
+
+Motivo: la pared de precios del §46 (de la etapa 8 en adelante el duende cobra de 7 a 15 veces lo que rinde una torre) sólo se puede pasar con boosts que multipliquen el ingreso. Hay que diseñar ese catálogo, y la ruleta, que ya reparte demasiado, tiene que seguir siendo manejable.
+
+### Cuánto hay que subir el ingreso
+Torre de referencia (medida): ~90 bloques purificados, ~1,3 de claridad por bloque (los comunes dan 1; hielo, agrietado, pesado y trampa 2; catapulta y pinchos 3; bomba 5), racha media ×2,2 (la racha sube 0,5 por acción seguida y tiene tope ×4). Ingreso = bloques × (claridad por bloque + extras) × racha. Hacen falta ~×6 en la etapa 8 (precio 1761) y ~×15 en la 15 (4683); si en las primeras etapas se ahorra algo, un poco menos. Las palancas y lo que dan sobre la torre de referencia:
+
+| Palanca | Qué cambia | Efecto aproximado |
+|---|---|---|
+| **+N de claridad por bloque purificado** | el término base (1,3) | +1: ×1,8 · +2: ×2,5 · +3: ×3,3 · (suman entre sí: +1, +2 y +3 juntos: ×5,6) |
+| **Multiplicador fijo** | todo lo que se junta en la torre | ×1,5, ×2 (se multiplican entre sí: ×3) |
+| **Racha** | la racha media (2,2) | que empujar y tirar no la corten y tope ×8: ~×1,7 |
+| **Premios por acciones** | claridad suelta por piso nuevo, por empujar, por colgarse | +60 a +160 por torre |
+| **Descuento del duende** | el precio | −15 % (hasta 2) o −30 % una vez |
+
+Con 5 lugares de boosts (7 con *Mente abierta*): *Pies de luz* (+1) + *Pies de oro* (+2) + *Cosecha doble* (×2) da ~×6,6: alcanza para la etapa 8. Con *Midas* (+3), *Cosecha* (×1,5) y *Racha imparable*, además: ~×28: alcanza para la 15 con margen. O sea: **hay que armar una build** (6 de 7 lugares), como en Balatro.
+
+### Boosts nuevos (se quedan todo el run; ocupan un lugar)
+| Boost | Nivel | Efecto |
+|---|---|---|
+| **Cosecha doble** | épico | Toda la claridad que juntás en la torre vale ×2. |
+| **Racha imparable** | épico | Empujar y tirar no cortan la racha; el tope sube de ×4 a ×8. |
+| **Midas** | épico | Purificar un bloque da +3 de claridad. |
+| **Cosecha** | raro | La claridad de la torre vale ×1,5 (se multiplica con *Cosecha doble*). |
+| **Pies de oro** | raro | Purificar un bloque da +2 de claridad (suma con *Pies de luz*). |
+| **Buen ojo** | raro | Los bloques especiales (hielo, bomba, catapulta, trampa, pinchos, agrietado, pesado) dan el doble. |
+| **Escalador** | raro | Cada piso nuevo que alcanzás por primera vez da +5. |
+| **Empuje rentable** | raro | Cada bloque que empujás o tirás da +1. |
+| **Interés** | raro | Al salir del casino, la claridad que te queda crece un 25 % (hasta +150). |
+| **Descuento del duende** | raro (se acumula, hasta 2) | El duende cobra un 15 % menos. |
+| **Bolsillo de luz** | común | Empezás cada torre con +40 de claridad (como *Ahorro*, que da +20). |
+
+### Consumibles nuevos (se gastan)
+| Consumible | Nivel | Efecto |
+|---|---|---|
+| **Poción de cosecha** | común | La claridad de la torre actual vale ×2 (se multiplica con los boosts). |
+| **Imán de luz** | común | Purifica de golpe todos los bloques a 2 o menos de vos (con la racha y los multiplicadores de ese momento). |
+| **Baraja de racha** | común | La racha pasa a ×4 ya. |
+| **Reloj de arena** | común | Pausa la caída de la fila base 10 movimientos (el *Freno* son 5). |
+| **Lluvia de luz** | raro | Purifica todos los bloques de tu capa. |
+| **Soborno** | raro | El duende de este casino cobra un 30 % menos. |
+
+### Bolsas de claridad más grandes (la ficha de la etapa por el multiplicador)
+| Premio | Nivel | Devuelve | En la etapa 8 (ficha 78) |
+|---|---|---|---|
+| Bolsa de luz (ya está) | consumible | ×1,4 | 109 |
+| **Bolsa pesada** | común | ×3 | 234 |
+| **Saquito de oro** | raro | ×6 | 468 |
+| **Cofre de luz** | épico | ×15 | 1170 |
+| **Tesoro del soñador** | épico | ×40 | 3120 (más que el precio de la etapa 8) |
+
+### Pesos para que la ruleta siga rindiendo ~0,95
+Los valores de los premios nuevos se dan dentro de la media de su nivel (épicos ~640, raros ~210, comunes ~100: es una unidad de balance, no lo que valen en el juego). Con estos pesos el rendimiento por apuesta queda en **épico 0,99 · raro 0,96 · común 0,95 · consumible 0,94** (antes 0,95, 0,96, 0,91 y 0,94): Cofre de luz peso 0,25, Tesoro 0,05, Saquito de oro 0,25, Bolsa pesada 1,5, el resto 1. La probabilidad de que un premio sea una bolsa: 4 % en épico, 1 % en raro, 9 % en común, 60 % en consumible.
+
+### La ruleta saturada
+Hoy salen 30 premios distintos (4 épicos, 9 raros, 10 comunes y 7 consumibles) y con lo nuevo serían **51 (9, 19, 16 y 7)**. Para conseguir un épico concreto con un pleno hacen falta ~117 jugadas en promedio. Propuestas, de menos a más cambio:
+1. **Pool dinámico**: no salen los boosts que ya tenés (no se apilan) ni los consumibles cuando no te caben, ni nada que el escenario bloquea. Hoy se sortea igual y, si ya lo tenías, se convierte en la mitad en claridad. *(Cambio chico, siempre conviene.)*
+2. **Vitrina por visita** *(la recomendada)*: en cada visita al casino se muestran, por nivel, unos pocos premios (3 épicos, 4 raros, 4 comunes, 3 consumibles) y la ruleta sólo sortea entre esos. La vitrina se sortea con la semilla del run y la etapa (se ve en la mesa). Para tener un premio concreto: esperar a que aparezca (un épico concreto sale en ~1 de cada 3 visitas) y apostar por su nivel. **Rotar la vitrina** cuesta una ficha (y sube en cada rotación de esa visita): es otro sumidero de claridad.
+3. **Tienda** (servicio nuevo): vende 3 premios por visita, a elegir, a ~1,6 veces el costo esperado de conseguirlos jugando: caro pero seguro.
+4. **Deseo**: se marca un premio de la vitrina y cada jugada perdida de su nivel suma polvo de deseo; con suficiente, el próximo premio de ese nivel es el elegido. *(Lo dejaría para después, si 1 a 3 no alcanzan.)*
+5. **Bloqueo por Luz**: los premios nuevos nacen bloqueados (`locked`, se desbloquean con Luz en el Despertar, como ya pasa con otros): al principio de la carrera el catálogo es más chico y crece con el progreso.
+
+### Pendiente
+- Implementar los efectos (`TowerLogic.apply_perks`, `use_item` y la claridad en `_purify_trail`), el catálogo en `items.gd`, la vitrina y la tienda.
+- Volver a medir el ingreso con las builds (`tests/sim_ingresos.gd` con boosts), y que la simulación del §46 use los multiplicadores para ver cuántos runs llegan a la etapa 15.
