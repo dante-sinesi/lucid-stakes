@@ -55,7 +55,7 @@ func _scene() -> void:
 	run.claridad = 10
 	var c = CasinoScene.new()
 	c.quick = true
-	c.toll = RunState.toll_for(3)
+	c.toll_base = RunState.toll_for(3)
 	root.add_child(c)
 	c.setup(run, rng)
 	var left_n := [0]
@@ -70,7 +70,7 @@ func _scene() -> void:
 	run.claridad = RunState.toll_for(3) + 7
 	var c2 = CasinoScene.new()
 	c2.quick = true
-	c2.toll = RunState.toll_for(3)
+	c2.toll_base = RunState.toll_for(3)
 	root.add_child(c2)
 	c2.setup(run, rng)
 	c2.left.connect(func(): left_n[0] += 1)

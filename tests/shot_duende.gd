@@ -23,5 +23,5 @@ func _init() -> void:
 	for i in 40:
 		await process_frame
 	root.get_texture().get_image().save_png(args[0] if args.size() > 0 else "capturas/duende.png")
-	print("guardada ", main.casino.toll)
+	print("guardada ", main.casino.toll_base)
 	quit(0)

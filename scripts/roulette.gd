@@ -11,6 +11,7 @@ const Items := preload("res://scripts/items.gd")
 const RunState := preload("res://scripts/run_state.gd")
 const Loc := preload("res://scripts/loc.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
+const Showcase := preload("res://scripts/showcase.gd")
 
 const POCKETS := 13          # casillas 0..12
 const HOUSE := 0             # la casa
@@ -83,11 +84,7 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 			"prize": {}, "converted": false, "claridad_delta": -cost}
 	if not res.won:
 		return _with_rules(run, res, cost, 0, bet)
-	var prize := Items.pick(BETS[bet].tier, rng)
-	var rerolls := 0
-	while run.item_blocked(str(prize.id)) and rerolls < 20:   # (lo que el escenario inhabilita no sale)
-		prize = Items.pick(BETS[bet].tier, rng)
-		rerolls += 1
+	var prize := Showcase.pick(run, BETS[bet].tier, rng)   # (de la vitrina de la visita; no sale lo que ya tenés ni lo que el escenario inhabilita)
 	res.prize = prize
 	var reward := 0
 	if prize.type == Items.Type.CLARITY:

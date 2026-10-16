@@ -4,6 +4,7 @@ extends Control
 ## Se cierra con el botón, con un clic fuera de la ventana o con Esc.
 
 const Roulette := preload("res://scripts/roulette.gd")
+const Showcase := preload("res://scripts/showcase.gd")
 const Items := preload("res://scripts/items.gd")
 const Icons := preload("res://scripts/item_icons.gd")
 const ClarityIcon := preload("res://scripts/clarity_icon.gd")
@@ -17,14 +18,15 @@ signal closed
 
 var bet := Roulette.Bet.PLENO
 var panel: Control
+var run   # (el run: con él la ventana muestra la vitrina de la visita y no todo el catálogo)
 var tabs := {}
 var list: VBoxContainer
 var title: Control
 
 
 ## Filas de la ventana para una apuesta: [{id, name, desc, prob}] (prob en 0..1).
-static func rows_for(bet_kind: int) -> Array:
-	var pool := Items.by_tier(Roulette.BETS[bet_kind].tier)
+static func rows_for(bet_kind: int, run = null) -> Array:
+	var pool: Array[Dictionary] = Showcase.pool(run, Roulette.BETS[bet_kind].tier) if run != null else Items.by_tier(Roulette.BETS[bet_kind].tier)   # (con vitrina: los premios de esta visita)
 	var wsum := 0.0
 	for it in pool:
 		wsum += it.weight
@@ -105,7 +107,7 @@ func show_bet(bet_kind: int) -> void:
 	for ch in list.get_children():
 		ch.queue_free()
 		list.remove_child(ch)
-	for r in rows_for(bet_kind):
+	for r in rows_for(bet_kind, run):
 		list.add_child(_make_row(r))
 	MenuAnim.stagger(list.get_children(), 0.04, 0.22, 0.05)   # al cambiar de apuesta, las filas entran una tras otra
 

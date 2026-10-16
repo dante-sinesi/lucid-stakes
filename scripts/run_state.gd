@@ -17,6 +17,8 @@ var stage := 1
 var claridad := 0
 var boosts: Array[String] = []
 var consumables: Array[String] = []
+var showcase := {}        # la vitrina de esta visita al casino (ver showcase.gd)
+var toll_bribe := false   # Soborno: el duende de este casino cobra menos (se gasta al pagar)
 var casino_spent := 0   # estadísticas del run
 var casino_won := 0
 var retries := 0          # reintentos de torre en todo el run
@@ -54,6 +56,29 @@ func scenario() -> Dictionary:
 ## La prueba de una etapa de este run ({} si es común).
 func trial_at(st: int) -> Dictionary:
 	return Trials.for_stage(trial_schedule, st)
+
+
+const TOLL_DISCOUNT := 0.15   # Descuento del duende (por cada uno, hasta 2)
+const BRIBE_DISCOUNT := 0.30   # Soborno
+const INTEREST := 0.25   # Interés: lo que crece la claridad que queda al salir del casino
+const INTEREST_CAP := 150   # (con un tope)
+
+
+## Lo que cobra de verdad el duende: el precio de la etapa (`toll_for`) con los descuentos (boosts Descuento del duende y el Soborno).
+func toll_after_discounts(base: int) -> int:
+	if base <= 0:
+		return 0
+	var cut := TOLL_DISCOUNT * float(boosts.count("descuento_duende")) + (BRIBE_DISCOUNT if toll_bribe else 0.0)
+	return maxi(int(round(float(base) * (1.0 - minf(cut, 0.9)))), 1)
+
+
+## Al salir del casino: con el boost Interés, la claridad que queda crece (con tope). Devuelve lo que ganó.
+func apply_interest() -> int:
+	if not boosts.has("interes") or claridad <= 0:
+		return 0
+	var g := mini(int(round(float(claridad) * INTEREST)), INTEREST_CAP)
+	gain(g)
+	return g
 
 
 ## La curva del duende (docs/diseno.md §46). Se construye sobre lo que rinde una torre (medido con tests/sim_ingresos.gd: la recta `INCOME_BASE + INCOME_SLOPE × etapa`;
@@ -107,9 +132,13 @@ static func wall_toll() -> float:
 	return total + float(WALL_MARGIN)
 
 
-## Filas (pisos) de la torre de la etapa `stage`: 25 hasta la 5 y dos más por etapa después, hasta 41 (la torre crece con la dificultad; cuesta más generarla).
+const TOWER_ROWS_FIRST := 50    # pisos de la torre de la etapa 1 (docs/diseno.md §48)
+const TOWER_ROWS_LAST := 100    # y de la etapa 15
+
+
+## Filas (pisos) de la torre de la etapa `stage`: de TOWER_ROWS_FIRST (50) en la etapa 1 a TOWER_ROWS_LAST (100) en la 15, de a poco (la torre crece con la dificultad; cuesta más generarla).
 static func rows_for(stage: int) -> int:
-	return clampi(25 + 2 * maxi(stage - 5, 0), 25, 41)
+	return TOWER_ROWS_FIRST + int(round(float(TOWER_ROWS_LAST - TOWER_ROWS_FIRST) * float(clampi(stage, 1, 15) - 1) / 14.0))
 
 
 ## La próxima prueba desde la etapa `from_stage`: {trial, left} ({} si no quedan); `left` son las etapas que faltan (0 = es la de `from_stage`).
@@ -226,7 +255,7 @@ func consumable_capacity() -> int:
 func has_room_for(item: Dictionary) -> bool:
 	match item.type:
 		Items.Type.BOOST:
-			return boosts.size() < boost_capacity() and (item.get("stack", false) or not boosts.has(item.id))
+			return boosts.size() < boost_capacity() and ((item.get("stack", false) and boosts.count(item.id) < int(item.get("max_stack", 99))) or not boosts.has(item.id))
 		Items.Type.CONSUMABLE:
 			return consumables.size() < consumable_capacity()
 	return false
@@ -286,7 +315,7 @@ func to_dict() -> Dictionary:
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "collapse_bonus": collapse_bonus,
 			"scenario_id": scenario_id, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad,
-			"vault": vault, "vault_stage": vault_stage, "insurance": insurance, "lives": lives, "bonus_lives": bonus_lives}
+			"vault": vault, "vault_stage": vault_stage, "insurance": insurance, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
 
 
 func _schedule_out() -> Dictionary:
@@ -323,6 +352,9 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.vault = int(d.get("vault", 0))
 	r.vault_stage = int(d.get("vault_stage", 0))
 	r.insurance = bool(d.get("insurance", false))
+	r.toll_bribe = bool(d.get("toll_bribe", false))
+	var sc = d.get("showcase", {})
+	r.showcase = sc.duplicate(true) if sc is Dictionary else {}
 	for st in d.get("trial_schedule", {}):
 		r.trial_schedule[int(st)] = str(d.trial_schedule[st])
 	r.bonus_lives = int(d.get("bonus_lives", 0))

@@ -28,7 +28,7 @@ static const int SLIDE_LIMIT = 40;
 enum Kind { NORMAL = 0, ICE = 1, BOMB = 2, CATAPULT = 3, CRACKED = 4, HEAVY = 5, TRAP = 6, SPIKES = 7 };
 
 static const int OFF = 8;
-static const int GX = 28, GZ = 28, GY = 44;
+static const int GX = 28, GZ = 28, GY = 160;   // capas: las torres llegan a 100 pisos (y el solucionador usa las coordenadas absolutas de la torre)
 static const int CELLS = GX * GZ * GY;
 
 static int sizeX = 8, sizeZ = 8, floorY = 0, goalY = 0;

@@ -64,8 +64,9 @@ const PITCH_NORMAL := -35.264   # ángulo isométrico
 const SIZE_NORMAL := 17.0
 const SIZE_MIN := 6.0
 const SIZE_MAX := 36.0
+const GOAL_TOP_LIFT := 0.52   # a qué altura (desde el centro del cubo de salida) va la losa de ondas de su cara de arriba
 const PITCH_MIN := -86.0
-const PITCH_MAX := -10.0
+const PITCH_MAX := 80.0     # (positivo = mirando desde abajo del horizonte, como en el editor)
 const TOP_VIEW_PITCH := -52.0    # desde este ángulo (mirando desde arriba) se ocultan las capas que tapan al personaje
 const MOUSE_SENS := 0.28         # grados por píxel
 const ZOOM_FACTOR := 1.1
@@ -924,6 +925,54 @@ func _make_fx() -> CPUParticles3D:
 	return p
 
 
+## El cubo de salida: un cubo claro y luminoso con bordes dorados y, en la cara de arriba, las ondas del portal (como las puertas del casino).
+func _make_goal_cube() -> Node3D:
+	var g := Node3D.new()
+	g.name = "goal"
+	var body := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3.ONE * 1.015
+	body.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.97, 0.86)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.93, 0.7)
+	mat.emission_energy_multiplier = 0.9
+	mat.roughness = 0.4
+	body.material_override = mat
+	g.add_child(body)
+	for axis in 3:   # los 12 bordes dorados
+		for a in [-0.5, 0.5]:
+			for b in [-0.5, 0.5]:
+				var bar := MeshInstance3D.new()
+				var m := BoxMesh.new()
+				var size := Vector3.ONE * 0.075
+				size[axis] = 1.07
+				m.size = size
+				bar.mesh = m
+				bar.material_override = _goal_mat
+				var p := Vector3.ZERO
+				p[(axis + 1) % 3] = a
+				p[(axis + 2) % 3] = b
+				bar.position = p
+				g.add_child(bar)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.86, 0.86)
+	var top := MeshInstance3D.new()
+	top.mesh = quad
+	top.material_override = goal_mat
+	top.rotation_degrees.x = -90.0
+	top.position = Vector3(0, GOAL_TOP_LIFT, 0)
+	g.add_child(top)
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.9, 0.6)
+	light.omni_range = 3.2
+	light.light_energy = 0.6
+	light.position = Vector3(0, 0.9, 0)
+	g.add_child(light)
+	return g
+
+
 func _build_fx_assets() -> void:
 	_goal_mesh = BoxMesh.new()
 	_goal_mesh.size = Vector3(0.9, 0.05, 0.9)
@@ -995,24 +1044,12 @@ func _build_goal() -> void:
 	if logic.goal_y >= 1000:
 		return   # las lecciones sin meta (cámara, tirar) no tienen portal: no se camina a ningún lado, así que tampoco hay rayo
 	# La baldosa va sobre el bloque meta (ver _refresh) y lo sigue si se lo mueve. Encima, el portal (ondas, dos paños cruzados) y el duende que lo enciende por un peaje.
-	var portal := Node3D.new()
-	goal_mat = ShaderMaterial.new()
+	goal_mat = ShaderMaterial.new()   # las ondas de los portales del casino, claras y doradas: van en la cara de arriba del cubo de salida (ver _make_goal_cube)
 	goal_mat.shader = PORTAL_SHADER
-	goal_mat.set_shader_parameter("col_a", Color(0.55, 0.38, 0.05))
-	goal_mat.set_shader_parameter("col_b", Color(1.0, 0.8, 0.2))
-	goal_mat.set_shader_parameter("col_c", Color(1.0, 0.97, 0.7))
-	goal_mat.set_shader_parameter("cells", Vector2(6.0, 12.0))
-	for yaw in [0.0, 90.0]:
-		var quad := QuadMesh.new()
-		quad.size = Vector2(1.3, 2.0)
-		var mi := MeshInstance3D.new()
-		mi.mesh = quad
-		mi.material_override = goal_mat
-		mi.rotation_degrees.y = yaw
-		portal.add_child(mi)
-	portal.position = _w(logic.goal_cell) + Vector3(0, 1.5, 0)
-	add_child(portal)
-	goal_nodes.append(portal)
+	goal_mat.set_shader_parameter("col_a", Color(0.95, 0.78, 0.3))
+	goal_mat.set_shader_parameter("col_b", Color(1.0, 0.93, 0.6))
+	goal_mat.set_shader_parameter("col_c", Color(1.0, 1.0, 0.92))
+	goal_mat.set_shader_parameter("cells", Vector2(5.0, 5.0))
 	_update_goal_light()
 
 
@@ -1725,21 +1762,10 @@ func _refresh() -> void:
 		# Meta: el bloque-portal (goal_block) lleva la baldosa dorada y el haz de luz, que lo siguen si se lo mueve.
 		# Sin bloque-portal (torres de prueba) cualquier bloque de la capa superior vale y lleva baldosa.
 		var is_top: bool = (id == logic.goal_block) if logic.goal_block >= 0 else (pos.y == logic.goal_y - 1 and not logic.fixed.has(pos))
-		var tile: Node = node.get_node_or_null("goal")
-		if is_top and tile == null:
-			var gt := MeshInstance3D.new()
-			gt.name = "goal"
-			gt.mesh = _goal_mesh
-			gt.material_override = _goal_mat
-			gt.position = Vector3(0, 0.49, 0)
-			node.add_child(gt)
-			tile = gt
-		if is_top and logic.goal_block >= 0 and not goal_nodes.is_empty():
-			goal_nodes[0].position = _w(pos) + Vector3(0, 1.5, 0)
-			goal_nodes[0].visible = node.visible  # el portal se ve sólo cuando se ve su bloque
-			if goal_nodes.size() > 1:
-				goal_nodes[1].position = _w(pos) + Vector3(0.32, 0.5, 0.32)
-				goal_nodes[1].visible = node.visible
+		var tile: Node3D = node.get_node_or_null("goal")   # la meta es un cubo especial (luminoso, claro, con bordes dorados y las ondas del portal arriba): hijo del bloque, lo sigue si se lo mueve
+		if is_top and tile == null and goal_mat != null:
+			tile = _make_goal_cube()
+			node.add_child(tile)
 		if tile != null:
 			tile.visible = is_top
 		# Partículas: sólo en los bloques con la cara de arriba libre y cerca del jugador.
@@ -1800,7 +1826,7 @@ func enter_casino(restoring := false) -> void:
 	add_child(casino)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	casino.toll = 0 if training or lab_active or tutorial_index >= 0 or (test_mode and not toll_in_tests) else RunState.toll_for(run.stage)   # el duende de la puerta de salida cobra la torre que se acaba de superar
+	casino.toll_base = 0 if training or lab_active or tutorial_index >= 0 or (test_mode and not toll_in_tests) else RunState.toll_for(run.stage)   # el duende de la puerta de salida cobra la torre que se acaba de superar
 	casino.setup(run, rng)
 	_apply_casino_light()
 	casino.left.connect(leave_casino)

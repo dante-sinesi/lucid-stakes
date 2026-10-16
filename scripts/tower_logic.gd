@@ -86,6 +86,8 @@ var trail: Array[Vector3i] = []   # celdas que ocupó el jugador durante la últ
 var last_purified: Array[int] = []  # ids purificados en la última acción (para la vista)
 var last_gain := 0                # claridad ganada en la última acción
 var claridad := 0
+var harvest_potion := false      # Poción de cosecha: la claridad de esta torre vale el doble
+var max_floor := 0               # el piso más alto al que llegó el jugador (Escalador: cada piso nuevo da claridad)
 var streak := 0                   # acciones seguidas que purificaron algo nuevo
 var best_streak := 0
 var purified_count := 0
@@ -389,6 +391,8 @@ func clone() -> RefCounted:
 	c._maps_shared = true
 	_maps_shared = true
 	c.claridad = claridad
+	c.harvest_potion = harvest_potion
+	c.max_floor = max_floor
 	c.streak = streak
 	c.best_streak = best_streak
 	c.purified_count = purified_count
@@ -704,6 +708,7 @@ func _after_action() -> void:
 	if hang_dir == Vector3i.ZERO and blocks.has(player + DOWN):
 		last_safe = player
 	_purify_trail()
+	_action_bonuses()
 	if not platform_row.is_empty():
 		var pr: int = platform_row.get(blocks.get(player + DOWN, -1), 0)
 		if pr > reached_row:
@@ -755,7 +760,7 @@ func streak_mult(n: int) -> float:
 	if perks.has("sin_racha"):   # prueba "Sin racha": el multiplicador no sube
 		return 1.0
 	var step := 1.0 if perks.has("mano_de_oro") else STREAK_STEP
-	var cap := 6.0 if perks.has("racha_larga") else STREAK_MAX_MULT
+	var cap := 8.0 if perks.has("racha_imparable") else (6.0 if perks.has("racha_larga") else STREAK_MAX_MULT)
 	return minf(1.0 + step * maxi(n - 1, 0), cap)
 
 
@@ -764,6 +769,54 @@ func clarity_at(c: Vector3i) -> int:
 	if fixed.has(c):
 		return FIXED_CLARITY
 	return CLARITY[kind_at(c)]
+
+
+const CLIMB_BONUS := 2     # Escalador: claridad por cada piso nuevo
+const PUSH_BONUS := 1      # Empuje rentable: claridad por cada bloque que se empuja o tira
+const POCKET_START := 60   # Bolsillo de luz: claridad con la que se empieza la torre
+
+
+## Lo que dan Escalador (pisos nuevos) y Empuje rentable (empujes y tirones) después de cada acción.
+func _action_bonuses() -> void:
+	if track_purify:
+		if perks.has("escalador") and player.y > max_floor:
+			_earn(float((player.y - max_floor) * CLIMB_BONUS))
+		if perks.has("empuje_rentable") and last_grab != "":
+			_earn(float(PUSH_BONUS))
+	max_floor = maxi(max_floor, player.y)
+
+
+## Cuánto multiplica a la claridad que se junta en la torre: Cosecha doble (×2), Cosecha (×1,5) y la Poción de cosecha (×2); se multiplican entre sí.
+func harvest_mult() -> float:
+	var m := 1.0
+	if perks.has("cosecha_doble"):
+		m *= 2.0
+	if perks.has("cosecha"):
+		m *= 1.5
+	if harvest_potion:
+		m *= 2.0
+	return m
+
+
+## Claridad de más por cada bloque purificado: Pies de luz +1, Pies de oro +2, Midas +3 (suman).
+func flat_per_block() -> int:
+	return (1 if perks.has("pies_de_luz") else 0) + (2 if perks.has("pies_de_oro") else 0) + (3 if perks.has("midas") else 0)
+
+
+## Lo que da purificar el bloque de la celda `c`, con Buen ojo (los especiales dan el doble) y lo que se suma por bloque.
+func block_clarity(c: Vector3i) -> int:
+	var base := clarity_at(c)
+	if perks.has("buen_ojo") and not fixed.has(c) and kind_at(c) != Kind.NORMAL:
+		base *= 2
+	return base + flat_per_block()
+
+
+## Suma claridad ya multiplicada por la cosecha y la anota como ganada en esta acción.
+func _earn(n: float) -> int:
+	var g := int(round(n * harvest_mult()))
+	claridad += g
+	last_gain += g
+	return g
 
 
 ## Purifica los bloques sobre los que estuvo el jugador en la última acción (y el del que cuelga).
@@ -780,8 +833,15 @@ func _purify_trail() -> void:
 			for dd in DIRS:
 				extra.append(b + dd)
 		cells.append_array(extra)
+	_purify_cells(cells, true)
+
+
+## Purifica esos bloques (y desactiva las bombas): da claridad por cada uno nuevo, por la racha y por los multiplicadores. `from_trail`: es lo que pisó el jugador
+## en la acción (si no purificó nada nuevo, la racha se corta, salvo con Racha imparable cuando la acción fue empujar o tirar); si no, es un consumible.
+func _purify_cells(cells: Array[Vector3i], from_trail: bool) -> int:
 	var seen := {}
 	var base := 0
+	var got_new := 0
 	for b in cells:
 		if seen.has(b) or not blocks.has(b):
 			continue
@@ -795,17 +855,18 @@ func _purify_trail() -> void:
 		_own_maps()
 		purified[id] = true
 		last_purified.append(id)
-		base += clarity_at(b) + (1 if perks.has("pies_de_luz") else 0)
+		base += block_clarity(b)
+		got_new += 1
 	if not track_purify:
-		return
-	if last_purified.is_empty():
-		streak = 0
-		return
+		return 0
+	if got_new == 0:
+		if from_trail and not (perks.has("racha_imparable") and last_grab != ""):
+			streak = 0
+		return 0
 	streak += 1
 	best_streak = maxi(best_streak, streak)
-	last_gain = int(round(base * streak_mult(streak)))
-	claridad += last_gain
-	purified_count += last_purified.size()
+	purified_count += got_new
+	return _earn(float(base) * streak_mult(streak))
 
 
 const BOMB_RADIUS2 := 5   # la zona de una bomba: celdas a distancia (al cuadrado) de 5 o menos de ella
@@ -1058,6 +1119,10 @@ func apply_perks(boost_ids: Array) -> void:
 			bomb_timer[id] += 3
 	if perks.has("ahorro"):  # cada etapa se arranca con 20 de claridad
 		claridad += 20
+	if perks.has("bolsillo_de_luz"):
+		claridad += POCKET_START
+	harvest_potion = false
+	max_floor = player.y
 
 
 ## Cambia el tipo de un bloque (mantiene la huella del estado al día).
@@ -1076,6 +1141,36 @@ func use_item(id: String) -> Dictionary:
 	if won or lost:
 		return {"ok": false, "msg": ""}
 	match id:
+		"pocion_de_cosecha":
+			if harvest_potion:
+				return {"ok": false, "msg": "Ya tenés la cosecha doble en esta torre"}
+			harvest_potion = true
+			return {"ok": true, "msg": "Poción de cosecha: la claridad de esta torre vale el doble"}
+		"iman_de_luz", "lluvia_de_luz":
+			var cells: Array[Vector3i] = []
+			for c in blocks:
+				var near: bool = false
+				if id == "iman_de_luz":
+					var d: Vector3i = c - player
+					near = d.x * d.x + d.y * d.y + d.z * d.z <= 4
+				else:
+					near = c.y == player.y - 1
+				if near:
+					cells.append(c)
+			last_purified.clear()
+			last_gain = 0
+			var got := _purify_cells(cells, false)
+			if last_purified.is_empty():
+				return {"ok": false, "msg": "No hay nada por purificar"}
+			return {"ok": true, "msg": "+%d de claridad (%d bloques)" % [got, last_purified.size()]}
+		"baraja_de_racha":
+			streak = maxi(streak, 7)
+			return {"ok": true, "msg": "Racha ×4"}
+		"reloj_de_arena":
+			collapse_pause += 10
+			return {"ok": true, "msg": "Reloj de arena: la fila de abajo se detiene 10 movimientos"}
+		"soborno":
+			return {"ok": false, "msg": "Se usa en el casino, frente al duende"}
 		"freno":
 			collapse_pause += 5
 			return {"ok": true, "msg": "Freno: la fila de abajo se detiene 5 movimientos"}

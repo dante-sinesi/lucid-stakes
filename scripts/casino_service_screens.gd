@@ -4,6 +4,7 @@ extends RefCounted
 ## en el run (hay que guardar).
 
 const Services := preload("res://scripts/casino_services.gd")
+const Showcase := preload("res://scripts/showcase.gd")
 const Items := preload("res://scripts/items.gd")
 const ItemSlot := preload("res://scripts/item_slot.gd")
 const UI := preload("res://scripts/menu_ui.gd")
@@ -21,6 +22,7 @@ static func make(id: String) -> Control:
 	match id:
 		"taller": return TallerScreen.new()
 		"caja": return CajaScreen.new()
+		"tienda": return TiendaScreen.new()
 	return SeguroScreen.new()
 
 
@@ -28,6 +30,7 @@ static func make(id: String) -> Control:
 class Base extends Control:
 	signal resolved
 	signal closed
+	signal open_shop   ## se pidió ir a la tienda (las estaciones tienen un botón; la tienda no)
 
 	var run
 	var rng: RandomNumberGenerator
@@ -67,6 +70,11 @@ class Base extends Control:
 		var gap := Control.new()
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(gap)
+		if service_id != "tienda":
+			var shop_button := UI.button("Tienda", false, 3.0, 20, false)
+			shop_button.name = "tienda"
+			shop_button.pressed.connect(func(): open_shop.emit())
+			top.add_child(shop_button)
 		exit_button = UI.button("Salir", false, 3.0, 16, false)
 		exit_button.name = "salir"
 		exit_button.pressed.connect(func(): request_close())
@@ -209,6 +217,83 @@ class TallerScreen extends Base:
 		swap_button.set_label(Loc.f("Cambiar (−%d)", [Services.swap_price(run)]))
 		sell_button.disabled = false
 		swap_button.disabled = Services.swap_options(run, sel_kind, sel_index).is_empty() or not run.can_afford(Services.swap_price(run))
+
+
+## La tienda: tres premios de la visita (uno épico, uno raro y uno común), a la venta a precio fijo. Caro pero seguro.
+class TiendaScreen extends Base:
+	var offers_row: HBoxContainer
+	var info: Control
+	var buy_button: Button
+	var sel := ""   # id de la oferta elegida
+	var slots := {}
+
+	func _init() -> void:
+		service_id = "tienda"
+
+	func _build_body() -> void:
+		offers_row = HBoxContainer.new()
+		offers_row.add_theme_constant_override("separation", 26)
+		offers_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.add_child(offers_row)
+		info = UI.label(col, "", 2.5, Draw.MARBLE, true, 900)
+		info.custom_minimum_size = Vector2(900, 70)
+		info.vcenter = true
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.add_child(row)
+		buy_button = button(row, Loc.t("Comprar"), "comprar", func(): buy(), true, 44)
+		message = UI.label(col, "", 2.5, Color(0.9, 0.86, 1.0), true, 900)
+		message.custom_minimum_size = Vector2(900, 40)
+		message.vcenter = true
+
+	func select(id: String) -> void:
+		sel = id
+		_refresh()
+
+	func buy() -> void:
+		var res: Dictionary = Showcase.buy(run, sel)
+		if res.ok:
+			Sfx.play("coin")
+			say(Loc.f("Compraste %s (−%d de claridad).", [Loc.t(str(Items.get_item(sel).name)), int(res.price)]), GOOD)
+			sel = ""
+			resolved.emit()
+		else:
+			say(Loc.t(str(res.error)), BAD)
+		_refresh()
+
+	func _refresh() -> void:
+		super._refresh()
+		slots.clear()
+		for ch in offers_row.get_children():
+			ch.queue_free()
+			offers_row.remove_child(ch)
+		var offers := Showcase.shop_offers(run)
+		for it in offers:
+			var box := VBoxContainer.new()
+			box.add_theme_constant_override("separation", 6)
+			var slot := ItemSlot.new()
+			slot.item_id = str(it.id)
+			slot.interactive = true
+			slot.pressed.connect(select.bind(str(it.id)))
+			slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			box.add_child(slot)
+			slots[str(it.id)] = slot
+			var price := UI.label(box, str(Showcase.shop_price(run, it)), 3, UI.GOLD if run.can_afford(Showcase.shop_price(run, it)) else BAD, false)
+			price.name = "precio_" + str(it.id)
+			offers_row.add_child(box)
+		if offers.is_empty():
+			UI.label(offers_row, Loc.t("Ya no queda nada en la vitrina de la tienda."), 2.5, Color(0.6, 0.55, 0.7))
+		if sel == "" or Items.get_item(sel).is_empty() or not Showcase.shop_offers(run).any(func(o): return o.id == sel):
+			sel = ""
+			info.text = Loc.t("Tocá un premio para ver qué hace.")
+			buy_button.disabled = true
+			buy_button.set_label(Loc.t("Comprar"))
+			return
+		var item := Items.get_item(sel)
+		var p := Showcase.shop_price(run, item)
+		info.text = "%s: %s" % [Loc.t(str(item.name)), Loc.t(str(item.desc))]
+		buy_button.set_label(Loc.f("Comprar (−%d)", [p]))
+		buy_button.disabled = not run.can_afford(p)
 
 
 ## Casino: guardar claridad con interés para el casino siguiente.

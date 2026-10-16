@@ -5,6 +5,7 @@ extends Control
 ## Uso: crear, add_child, setup(run, rng). Emite `spun(result)` al terminar cada giro y `closed` al salir.
 
 const Roulette := preload("res://scripts/roulette.gd")
+const Showcase := preload("res://scripts/showcase.gd")
 const Items := preload("res://scripts/items.gd")
 const Wheel := preload("res://scripts/roulette_wheel.gd")
 const UI := preload("res://scripts/menu_ui.gd")
@@ -43,6 +44,7 @@ var price_counter          # [ícono] precio de la ficha
 var bet_buttons := {}
 var spin_button: Button
 var prizes_button: Button
+var rotate_button: Button
 var exit_button: Button
 var prizes_window
 var result_label: Control
@@ -92,6 +94,11 @@ func _build() -> void:
 	prizes_button.name = "premios"
 	prizes_button.pressed.connect(open_prizes)
 	top.add_child(prizes_button)
+	rotate_button = UI.button("Rotar vitrina", false, 3.0, 36)
+	rotate_button.name = "rotar"
+	rotate_button.pressed.connect(rotate_showcase)
+	top.add_child(rotate_button)
+	top.move_child(rotate_button, prizes_button.get_index())
 	exit_button = UI.button("Salir", false, 3.0, 16, false)
 	exit_button.name = "salir"
 	exit_button.pressed.connect(func(): closed.emit())
@@ -142,6 +149,7 @@ func _build() -> void:
 	col.add_child(spin_button)
 
 	prizes_window = PrizesWindow.new()
+	prizes_window.run = run
 	add_child(prizes_window)
 	flash_rect = ColorRect.new()
 	flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -163,6 +171,20 @@ func _process(delta: float) -> void:
 		if _tick_t >= interval:
 			_tick_t = 0.0
 			Sfx.play("tick", 0.9 + randf() * 0.2)
+
+
+## Rota la vitrina (se sortean otros premios de la visita): cuesta una ficha, y una más por cada rotación que ya se hizo en esta visita.
+func rotate_showcase() -> void:
+	if state == State.SPINNING or run.showcase.is_empty():
+		return
+	if not Showcase.rotate(run, rng):
+		result_label.text = Loc.f("Rotar la vitrina cuesta %d de claridad", [Showcase.rotate_cost(run)])
+		return
+	shown_claridad = run.claridad
+	resolved.emit()
+	_refresh()
+	result_label.text = Loc.t("La vitrina cambió: mirá los premios")
+	prizes_window.open_for(bet)
 
 
 func open_prizes() -> void:
@@ -370,6 +392,9 @@ func _refresh() -> void:
 	var need: int = Roulette.BETS[bet].count - selected.size()
 	spin_button.disabled = not can_spin()
 	prizes_button.disabled = state == State.SPINNING
+	rotate_button.visible = not run.showcase.is_empty()
+	rotate_button.text = Loc.f("Rotar vitrina (%d)", [Showcase.rotate_cost(run)])
+	rotate_button.disabled = state == State.SPINNING or not run.can_afford(Showcase.rotate_cost(run))
 	if state == State.RESULT:
 		return   # queda el mensaje del resultado hasta que se toque otra casilla o apuesta
 	result_label.color = Color(0.9, 0.86, 1.0)

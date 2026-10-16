@@ -10,6 +10,7 @@ const Items := preload("res://scripts/items.gd")
 const Roulette := preload("res://scripts/roulette.gd")
 const Loc := preload("res://scripts/loc.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
+const Showcase := preload("res://scripts/showcase.gd")
 
 const SYMBOLS: Array[String] = ["cubo", "hielo", "bomba", "sol", "corona"]
 const NAMES: Array[String] = ["Cubo", "Hielo", "Bomba", "Sol", "Corona"]
@@ -118,8 +119,10 @@ func collect() -> Dictionary:
 	var item := {}
 	var converted := false
 	if p.kind == "triple" and p.symbol == CROWN:   # el premio gordo trae además un boost épico
-		item = Items.pick(Items.Tier.EPICO, rng)
-		if not run.take(item):   # sin lugar (o boost repetido): se convierte en claridad, la mitad de su valor
+		item = Showcase.pick(run, Items.Tier.EPICO, rng)
+		if item.type == Items.Type.CLARITY:   # (una bolsa grande: va entera como claridad)
+			reward += int(round(float(item.mult) * ficha))
+		elif not run.take(item):   # sin lugar (o boost repetido): se convierte en claridad, la mitad de su valor
 			converted = true
 			reward += int(round(Items.value_of(item, ficha) * 0.5))
 	run.gain(reward)

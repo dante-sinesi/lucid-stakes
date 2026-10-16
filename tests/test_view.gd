@@ -53,7 +53,7 @@ func _init() -> void:
 		all_corrupt = all_corrupt and n.mesh == expected
 		if n.get_meta("kind") != TowerLogic.Kind.BOMB:
 			jagged = jagged and BlockModels.voxel_count(mk, BlockModels.State.CORRUPT) < BlockModels.voxel_count(mk, BlockModels.State.PURE)
-		white_tint = white_tint and ((n.material_override as ShaderMaterial).get_shader_parameter("tint") as Color).is_equal_approx(main._stage_tint())
+		white_tint = white_tint and (n.get_meta("in_zone", false) or ((n.material_override as ShaderMaterial).get_shader_parameter("tint") as Color).is_equal_approx(main._stage_tint()))   # (los de la zona de una bomba van rojizos)
 	check(all_corrupt and not main.block_nodes.is_empty(), "al empezar todos los bloques usan su modelo corrupto")
 	check(jagged, "un bloque corrupto tiene menos minibloques que su version purificada (es irregular)")
 	check(white_tint, "los bloques corruptos van con el tinte de la etapa (el modelo ya es oscuro y se aclara con las etapas)")

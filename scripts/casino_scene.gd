@@ -43,7 +43,7 @@ signal keeper_talk(lines: Array)   ## se habló con el tabernero: lo que dice (e
 const STEP_TIME := 0.14
 const PITCH := -35.264
 const PITCH_MIN := -86.0
-const PITCH_MAX := -10.0
+const PITCH_MAX := 80.0   # (positivo = mirando desde abajo del horizonte, como en el editor)
 const MOUSE_SENS := 0.28       # grados por píxel (igual que en la torre)
 const ARROW_SPEED := 110.0     # grados por segundo al girar con las flechas
 const ZOOM_FACTOR := 1.1
@@ -83,7 +83,9 @@ var story := false            # modo historia (tutorial): la ruleta no se abre y
 var input_locked := false     # mientras habla el tabernero no se camina
 var portals: Array[MeshInstance3D] = []   # los portales de las paredes
 const Goblin := preload("res://scripts/goblin.gd")
-var toll := 0                 # lo que cobra el duende de la puerta de salida (0: no cobra; tutorial, entrenamiento y pruebas)
+const Items := preload("res://scripts/items.gd")
+const Showcase := preload("res://scripts/showcase.gd")
+var toll_base := 0            # el precio del duende de la puerta de salida (0: no cobra; tutorial, entrenamiento y pruebas); lo que se paga sale de acá con los descuentos (toll_now)
 var _exit_warned := false     # ya se avisó que no alcanza: si se insiste, se vuelve a subir la torre
 var _goblin: Node3D
 var _arrow: Node3D            # flecha que marca la puerta de salida
@@ -104,6 +106,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	if not story:
 		vault_paid = Services.enter(run)   # expira el seguro sin usar y se paga la caja fuerte del casino anterior
 		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
+		Showcase.enter(run, rng)   # la vitrina de premios de esta visita (showcase.gd)
 	_build_room()
 	_build_portals()
 	_build_player()
@@ -190,8 +193,12 @@ func _build_portals() -> void:
 
 
 ## El duende de la puerta de salida: junto a la puerta, cobra el precio de la torre que sigue. El portal se apaga hasta que alcanza para pagarle.
+func toll_now() -> int:
+	return run.toll_after_discounts(toll_base)
+
+
 func _build_goblin() -> void:
-	if toll <= 0:
+	if toll_base <= 0:
 		return
 	_goblin = Goblin.build()
 	_goblin.scale = Vector3.ONE * 1.9
@@ -202,13 +209,14 @@ func _build_goblin() -> void:
 
 ## El portal de salida brilla sólo si alcanza para pagar; el precio se ve arriba a la izquierda (en rojo si falta).
 func _update_toll_ui() -> void:
+	var price := toll_now()
 	if hud_panel != null:
-		hud_panel.set_toll(toll, run.claridad < toll)
+		hud_panel.set_toll(price, run.claridad < price)
 	if not portals.is_empty():
 		var mat := portals[0].material_override as ShaderMaterial
 		if mat != null:
-			mat.set_shader_parameter("lit", 1.0 if run.claridad >= toll else 0.0)
-	if run.claridad >= toll:
+			mat.set_shader_parameter("lit", 1.0 if run.claridad >= price else 0.0)
+	if run.claridad >= price:
 		_exit_warned = false
 
 
@@ -275,6 +283,7 @@ func _build_hud() -> void:
 	left_bar.tip = item_tip
 	left_bar.setup(run, ItemBar.Kind.CONSUMABLE, false)
 	left_bar.discarded.connect(_on_item_discarded)
+	left_bar.slot_pressed.connect(use_consumable_slot)
 	right_bar = ItemBar.new()
 	layer.add_child(right_bar)
 	right_bar.edge = 1
@@ -306,6 +315,35 @@ func cell_position(c: Vector2i) -> Vector3:
 func _place_player() -> void:
 	player_node.position = cell_position(cell)
 	player_node.rotation.y = atan2(facing.x, facing.y)
+
+
+## Usa un consumible dentro del casino: sólo los que sirven acá (Vida extra y Soborno; los demás son de la torre).
+func use_consumable_slot(slot: int) -> void:
+	if busy or leaving or input_locked or screen != null or story or slot >= run.consumables.size():
+		return
+	var id: String = run.consumables[slot]
+	if not Items.CASINO_USABLE.has(id):
+		_flash(Loc.t("Ese consumible sólo se usa en la torre"))
+		return
+	if run.item_blocked(id):
+		_flash(Loc.t("No funciona en este escenario"))
+		return
+	if id == "vida_extra":
+		if not run.add_life():
+			_flash(Loc.f("Ya tenés las %d vidas", [run.max_lives()]))
+			return
+		run.use_consumable(id)
+		_flash(Loc.t("¡Una vida más!"))
+	elif id == "soborno":
+		if toll_base <= 0 or run.toll_bribe:
+			_flash(Loc.t("El duende no cobra, o ya lo sobornaste"))
+			return
+		run.toll_bribe = true
+		run.use_consumable(id)
+		_flash(Loc.f("El duende te cobra un 30 %% menos: %d", [toll_now()]))
+	Sfx.play("item")
+	_refresh_hud()
+	changed.emit()
 
 
 ## Se tiró un ítem con clic derecho en una barra: se actualiza el HUD y se avisa para guardar.
@@ -345,16 +383,21 @@ func step(dir: Vector2i) -> String:
 	var n := cell + dir
 	if not Room.in_room(n, lay):
 		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida: el duende cobra
-			if toll > 0 and run.claridad < toll:
+			var price := toll_now()
+			if price > 0 and run.claridad < price:
 				if _exit_warned:   # insistió sin poder pagar: se vuelve a subir la torre
 					leaving = true
 					failed_to_pay.emit()
 					return "exit"
 				_exit_warned = true
-				_flash(Loc.f("El duende pide %d de claridad: te faltan %d. Si insistís, volvés a subir la torre y perdés una vida.", [toll, toll - run.claridad]))
+				_flash(Loc.f("El duende pide %d de claridad: te faltan %d. Si insistís, volvés a subir la torre y perdés una vida.", [price, price - run.claridad]))
 				return "blocked"
-			if toll > 0:
-				run.spend(toll)
+			if price > 0:
+				run.spend(price)
+				run.toll_bribe = false   # (el soborno vale para una sola vez)
+				var interest: int = run.apply_interest()
+				if interest > 0:
+					_flash(Loc.f("Interés: +%d de claridad", [interest]))
 				_refresh_hud()
 			leaving = true
 			left.emit()
@@ -487,6 +530,10 @@ func _open_screen(new_screen: Control) -> void:
 	screen.setup(run, rng, quick)
 	screen.closed.connect(close_roulette)
 	screen.resolved.connect(func(): changed.emit())
+	if screen.has_signal("open_shop"):   # las estaciones de servicio tienen un botón para pasar a la tienda
+		screen.open_shop.connect(func():
+			close_roulette()
+			_open_screen(ServiceScreens.make("tienda")))
 	hud_layer.visible = false   # el juego ocupa toda la pantalla: la interfaz del casino no se ve detras
 
 
@@ -610,6 +657,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		"mover_derecha": step(_dir_for_screen(1, -1))
 		"mover_atras": step(_dir_for_screen(-1, -1))
 		"mover_izquierda": step(_dir_for_screen(-1, 1))
+		"consumible_1": use_consumable_slot(0)
+		"consumible_2": use_consumable_slot(1)
+		"consumible_3": use_consumable_slot(2)
+		"consumible_4": use_consumable_slot(3)
 		_:
 			if event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 				interact()

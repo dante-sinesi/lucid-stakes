@@ -13,6 +13,7 @@ func _init() -> void:
 		var stage := int(sg)
 		var prof := Gen.profile_for_stage(stage)
 		for k in seeds:
+			var t0 := Time.get_ticks_msec()
 			var res: Dictionary = Rooms.generate_stage(500 + stage * 31 + k * 7919, RunState.rows_for(stage), prof.difficulty, {"pace": prof.pace, "combo": prof.combo, "bias": prof.bias, "scenario": ""})
 			if not res.ok:
 				print("INGRESO etapa %d: no se generó" % stage)
@@ -21,5 +22,5 @@ func _init() -> void:
 			lg.track_purify = true
 			for a in res.path:
 				lg.try_action(a.dir, a.mode)
-			print("INGRESO etapa=%d semilla=%d claridad=%d movimientos=%d purificados=%d filas=%d" % [stage, k, lg.claridad, res.path.size(), lg.purified_count, RunState.rows_for(stage)])
+			print("INGRESO etapa=%d semilla=%d claridad=%d movimientos=%d purificados=%d filas=%d pisos=%d ms=%d" % [stage, k, lg.claridad, res.path.size(), lg.purified_count, RunState.rows_for(stage), int(res.logic.goal_y), Time.get_ticks_msec() - t0])
 	quit(0)

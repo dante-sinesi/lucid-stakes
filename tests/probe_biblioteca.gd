@@ -1,5 +1,5 @@
 extends SceneTree
-## Torres armadas con la biblioteca: para cada etapa (STAGES, "1,5,10,15") y semilla (SEEDS, 2) muestra las salas que entraron y cuánto tardó. Variables: STAGES, SEEDS, SEED0.
+## (ROWS=filas fija las filas de la torre.) Torres armadas con la biblioteca: para cada etapa (STAGES, "1,5,10,15") y semilla (SEEDS, 2) muestra las salas que entraron y cuánto tardó. Variables: STAGES, SEEDS, SEED0.
 const Rooms := preload("res://scripts/rooms.gd")
 const Gen := preload("res://scripts/tower_gen.gd")
 const RunState := preload("res://scripts/run_state.gd")
@@ -18,7 +18,7 @@ func _init() -> void:
 		var prof := Gen.profile_for_stage(stage)
 		for k in seeds:
 			var t1 := Time.get_ticks_msec()
-			var res: Dictionary = Rooms.generate_stage(seed0 + k * 7919, RunState.rows_for(stage), prof.difficulty, {"pace": prof.pace, "combo": prof.combo, "bias": prof.bias, "scenario": ""})
+			var res: Dictionary = Rooms.generate_stage(seed0 + k * 7919, (int(OS.get_environment("ROWS")) if OS.get_environment("ROWS") != "" else RunState.rows_for(stage)), prof.difficulty, {"pace": prof.pace, "combo": prof.combo, "bias": prof.bias, "scenario": ""})
 			if not res.ok:
 				fails += 1
 				print("etapa %d semilla %d: FALLA %s" % [stage, k, str(res.get("error", ""))])
@@ -26,6 +26,7 @@ func _init() -> void:
 			var parts: Array = []
 			for r in res.rooms:
 				parts.append("%s%d" % [("L:" + str(r.twist).substr(0, 4)) if r.idea == "biblioteca" else str(r.idea), r.h])
-			print("etapa %d (d=%.2f) semilla %d: filas %d, %d movs, %d ms · %s" % [stage, prof.difficulty, k, res.rows if typeof(res.rows) == TYPE_INT else 0, res.path.size(), Time.get_ticks_msec() - t1, " ".join(parts)])
+			print("etapa %d (d=%.2f) semilla %d: filas %d, %d movs, %d ms · %s" % [stage, prof.difficulty, k, int(res.logic.goal_y), res.path.size(), Time.get_ticks_msec() - t1, " ".join(parts)])
+	print("diagnóstico biblioteca: ", Rooms.lib_stats)
 	print("fallos: ", fails)
 	quit(1 if fails > 0 else 0)

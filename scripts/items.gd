@@ -76,7 +76,57 @@ const ALL: Array[Dictionary] = [
 		"desc": "Devuelve 1,4 veces lo que pagaste por la ficha, en claridad."},
 	{"id": "ancla_chica", "name": "Ancla chica", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 2, "value": 70,
 		"desc": "Un bloque de tu elección no cae aunque pierda sus vecinos (una etapa)."},
+	# ---- los que disparan la ganancia (docs/diseno.md §47): sin ellos no se pasa de la etapa 8 (la pared del duende, §46) ----
+	# épicos
+	{"id": "cosecha_doble", "name": "Cosecha doble", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 650,
+		"desc": "Toda la claridad que juntás en la torre vale el doble."},
+	{"id": "racha_imparable", "name": "Racha imparable", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 620,
+		"desc": "Empujar y tirar no cortan la racha, y el tope del multiplicador sube a ×8."},
+	{"id": "midas", "name": "Midas", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 640,
+		"desc": "Purificar un bloque da +3 de claridad."},
+	# raros
+	{"id": "cosecha", "name": "Cosecha", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 230,
+		"desc": "La claridad que juntás en la torre vale ×1,5 (se multiplica con Cosecha doble)."},
+	{"id": "pies_de_oro", "name": "Pies de oro", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 215,
+		"desc": "Purificar un bloque da +2 de claridad (suma con Pies de luz)."},
+	{"id": "buen_ojo", "name": "Buen ojo", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 200,
+		"desc": "Los bloques especiales dan el doble de claridad al purificarlos."},
+	{"id": "escalador", "name": "Escalador", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 210,
+		"desc": "Cada piso nuevo que alcanzás por primera vez da claridad de más."},
+	{"id": "empuje_rentable", "name": "Empuje rentable", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 190,
+		"desc": "Cada bloque que empujás o tirás da +1 de claridad."},
+	{"id": "interes", "name": "Interés", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 215,
+		"desc": "Al salir del casino, la claridad que te queda crece un 25 % (con un tope)."},
+	{"id": "descuento_duende", "name": "Descuento del duende", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220, "stack": true, "max_stack": 2,
+		"desc": "El duende cobra un 15 % menos. Se acumula (hasta 2)."},
+	{"id": "lluvia_de_luz", "name": "Lluvia de luz", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200,
+		"desc": "Purifica todos los bloques de tu capa."},
+	{"id": "soborno", "name": "Soborno", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 190, "casino": true,
+		"desc": "Se usa en el casino: el duende cobra un 30 % menos esta vez."},
+	# comunes
+	{"id": "bolsillo_de_luz", "name": "Bolsillo de luz", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 100,
+		"desc": "Empezás cada torre con claridad de regalo."},
+	{"id": "pocion_de_cosecha", "name": "Poción de cosecha", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 100,
+		"desc": "La claridad de esta torre vale el doble (se multiplica con los boosts)."},
+	{"id": "iman_de_luz", "name": "Imán de luz", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 95,
+		"desc": "Purifica de golpe todos los bloques a 2 cubos o menos de vos."},
+	{"id": "baraja_de_racha", "name": "Baraja de racha", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90,
+		"desc": "La racha pasa a ×4 ya."},
+	{"id": "reloj_de_arena", "name": "Reloj de arena", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 95,
+		"desc": "Pausa la caída de la fila base durante 10 movimientos."},
+	# bolsas de claridad grandes (la ficha de la etapa por el multiplicador)
+	{"id": "bolsa_pesada", "name": "Bolsa pesada", "type": Type.CLARITY, "tier": Tier.COMUN, "weight": 1.5, "mult": 3.0,
+		"desc": "Devuelve 3 veces lo que pagaste por la ficha, en claridad."},
+	{"id": "saquito_de_oro", "name": "Saquito de oro", "type": Type.CLARITY, "tier": Tier.RARO, "weight": 0.25, "mult": 6.0,
+		"desc": "Devuelve 6 veces lo que pagaste por la ficha, en claridad."},
+	{"id": "cofre_de_luz", "name": "Cofre de luz", "type": Type.CLARITY, "tier": Tier.EPICO, "weight": 0.25, "mult": 15.0,
+		"desc": "Devuelve 15 veces lo que pagaste por la ficha, en claridad."},
+	{"id": "tesoro", "name": "Tesoro del soñador", "type": Type.CLARITY, "tier": Tier.EPICO, "weight": 0.05, "mult": 40.0,
+		"desc": "Devuelve 40 veces lo que pagaste por la ficha, en claridad."},
 ]
+
+## Consumibles que se pueden usar dentro del casino (los demás sólo en la torre).
+const CASINO_USABLE: Array[String] = ["vida_extra", "soborno"]
 
 
 ## ¿El consumible se usa eligiendo un bloque con el mouse?

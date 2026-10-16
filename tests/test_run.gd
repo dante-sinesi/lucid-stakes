@@ -154,7 +154,7 @@ func test_end_screen() -> void:
 	r.retries = 3
 	r.moves = 987
 	r.boosts.assign(["freno_inexistente"])
-	check(RunState.rows_for(1) == 25 and RunState.rows_for(5) == 25 and RunState.rows_for(8) == 31 and RunState.rows_for(15) == 41, "las torres crecen con la etapa: 25 filas hasta la 5, hasta 41")
+	check(RunState.rows_for(1) == 50 and RunState.rows_for(8) == 75 and RunState.rows_for(15) == 100 and RunState.rows_for(4) < RunState.rows_for(5), "las torres crecen con la etapa: de 50 filas en la etapa 1 a 100 en la 15")
 	var rows := RunEnd.summary_rows(r, false)
 	check(rows[0] == ["Etapa alcanzada", "7 / 15", false] and rows[1][1] == "6" and rows[2][1] == "1234" and rows[3][1] == "300" and rows[4][1] == "450" and rows[5][1] == "3" and rows[6][1] == "987", "el resumen trae etapa, torres, claridad, ruleta, reintentos y movimientos")
 	check(RunEnd.summary_rows(r, true)[0][1] == "15 / 15", "si escapaste figura 15 / 15")

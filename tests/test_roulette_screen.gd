@@ -65,13 +65,13 @@ func test_selection() -> void:
 	check(s.prizes_window.visible, "el boton Premios abre la ventana")
 	var rows: Array = PrizesWindow.rows_for(Roulette.Bet.PLENO)
 	var names := rows.map(func(r): return r.name)
-	check(names.has("Segundo aliento") and rows.size() == 4, "el pleno muestra sus 4 premios epicos")
+	check(names.has("Segundo aliento") and rows.size() == Items.by_tier(Items.Tier.EPICO).size(), "sin vitrina el pleno muestra todos los premios épicos del catálogo")
 	var total := 0.0
 	for r in rows:
 		total += r.prob
 	check(is_equal_approx(total, Roulette.probability(Roulette.Bet.PLENO)), "las probabilidades de los premios suman la de acertar la apuesta (1/13)")
 	check(PrizesWindow.percent_text(1.0 / 52.0) == "1,9 %", "la probabilidad se muestra con coma: 1,9 %")
-	check(s.prizes_window.list.get_child_count() == 4 and s.prizes_window.tabs[Roulette.Bet.PLENO].button_pressed, "la ventana lista una fila por premio y marca la apuesta")
+	check(s.prizes_window.list.get_child_count() == rows.size() and s.prizes_window.tabs[Roulette.Bet.PLENO].button_pressed, "la ventana lista una fila por premio y marca la apuesta")
 	s.prizes_window.show_bet(Roulette.Bet.RANGO)
 	var rango_names := PrizesWindow.rows_for(Roulette.Bet.RANGO).map(func(r): return r.name)
 	check(rango_names.has("Bolsa de luz") and s.prizes_window.list.get_child_count() == rango_names.size(), "el rango muestra premios basicos, con Bolsa de luz")

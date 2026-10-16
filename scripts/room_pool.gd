@@ -12,6 +12,37 @@ static var _mutex := Mutex.new()
 static var _rooms: Array = []
 static var _loaded := false
 static var override_path := ""   # (pruebas) otra biblioteca
+static var _reach_cache := {}
+
+
+## Las celdas (x, z) por las que pasa algo al seguir el camino de la sala: el jugador y cualquier bloque (un bloque empujado puede salir de la arena). Para poner la sala en la torre
+## todas tienen que estar adentro de la torre y fuera del core (si no, el camino que sirve en la sala sola falla: un empuje contra el core, un paso fuera de la huella).
+static func reach_cells(room: Dictionary) -> Array:
+	_mutex.lock()
+	var hit = _reach_cache.get(room.id)
+	_mutex.unlock()
+	if hit != null:
+		return hit
+	var t = RoomLib.build_state(room)
+	var seen := {}
+	var out: Array = []
+	var note := func(c: Vector3i) -> void:
+		var v := Vector2i(c.x, c.z)
+		if not seen.has(v):
+			seen[v] = true
+			out.append(v)
+	note.call(t.player)
+	for id in t.positions:
+		note.call(t.positions[id])
+	for a in room.path:
+		t.try_action(a.dir, a.mode)
+		note.call(t.player)
+		for id in t.positions:
+			note.call(t.positions[id])
+	_mutex.lock()
+	_reach_cache[room.id] = out
+	_mutex.unlock()
+	return out
 
 
 ## Todas las salas con su calificación: {room, rating, kinds (caracteres de bloque que usa), unlock (dificultad desde la que puede salir)}.
