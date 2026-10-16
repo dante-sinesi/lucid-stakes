@@ -189,6 +189,66 @@ func _trial(kind: String, root: Control) -> void:
 			_centered(root, "Niebla", 8.0, GOLD, 572.0, true)
 			_centered(root, "Sólo ves unos pocos pisos por encima de vos.", 3.0, WHITE, 640.0)
 
+## ---- Versión final elegida por Dante: el Farolero, HUD tipo cuadro de texto, cartel de la prueba sin fondo ----
+
+## Cara del Farolero (12 x 13 cubitos): un farol de hierro con asa, llama con ojos y boca, y los bracitos a los costados.
+const FAROL := ["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYEEYYEEYk.", ".kYEEYYEEYk.",
+		"aakYYYYYYkaa", ".kYEYYYYEYk.", ".kOYEEEEYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."]
+const FAROL_PAL := {"k": Color(0.16, 0.14, 0.18), "Y": Color(1.0, 0.86, 0.35), "E": Color(0.18, 0.1, 0.05), "O": Color(1.0, 0.55, 0.15),
+		"a": Color(0.3, 0.27, 0.32), "b": Color(0.3, 0.27, 0.32)}
+
+
+func _dialogue_final(device: String, has_lives: bool, root: Control) -> void:
+	var ox := 120.0
+	var oy := 720.0 - BOX_H - 14.0
+	var box := Canvas.new()
+	box.painter = func(ci):
+		Draw.card(ci, Rect2(Vector2(ox, oy), Vector2(BOX_W, BOX_H - 10.0)), 6.0, 0, 0.1, 4242, false, -1.0)
+		var s := 7.0
+		var origin := Vector2(ox + 48, oy + 24)
+		ci.draw_rect(Rect2(origin - Vector2(8, 8), Vector2(12 * s + 16, 13 * s + 16)), Color(0.05, 0.03, 0.09))
+		for y in FAROL.size():
+			var row: String = FAROL[y]
+			for x in row.length():
+				if row[x] == ".":
+					continue
+				var col: Color = FAROL_PAL.get(row[x], Color.MAGENTA)
+				var p := origin + Vector2(x, y) * s
+				ci.draw_rect(Rect2(p, Vector2(s, s)), col)
+				ci.draw_rect(Rect2(p, Vector2(s, maxf(s * 0.18, 1.0))), col.lightened(0.3))
+				ci.draw_rect(Rect2(p + Vector2(0, s * 0.82), Vector2(s, maxf(s * 0.18, 1.0))), col.darkened(0.35))
+		# la luz de la llama sobre el cuadro
+		ci.draw_circle(origin + Vector2(6, 6) * s, 62.0, Color(1.0, 0.8, 0.3, 0.07))
+		if device == "mando":
+			ci.draw_circle(Vector2(ox + 220, oy + 158), 17.0, Color(0.25, 0.7, 0.35))
+			ci.draw_circle(Vector2(ox + 540, oy + 158), 17.0, Color(0.85, 0.3, 0.25))
+		else:   # teclas: 1 y 2
+			Draw.card(ci, Rect2(Vector2(ox + 196, oy + 136), Vector2(48, 44)), 4.0, 1, 0.0, 21, true, -1.0)
+			Draw.card(ci, Rect2(Vector2(ox + 516, oy + 136), Vector2(48, 44)), 4.0, 0, 0.0, 22, false, -1.0)
+	root.add_child(box)
+	var txt := "Son 260 de claridad para seguir. ¿Pagás, o volvés a subir esta torre?"
+	if not has_lives:
+		txt = "Son 260 de claridad, y ya no te queda ninguna vida. ¿Pagás, o dejás que todo se apague?"
+	_label(root, "Farolero", 3.0, GOLD, Vector2(ox + 176, oy + 22))
+	_label(root, "
+".join(VFont.wrap(txt, 330)), 2.5, WHITE, Vector2(ox + 176, oy + 62))
+	var k1 := "A" if device == "mando" else "1"
+	var k2 := "B" if device == "mando" else "2"
+	var off := 0.0 if device == "mando" else 0.0
+	var c1 := Color(0.02, 0.1, 0.03) if device == "mando" else Color(1, 0.95, 0.7)
+	var c2 := Color(0.1, 0.02, 0.02) if device == "mando" else WHITE
+	_label(root, k1, 2.5, c1, Vector2(ox + (213 if device == "mando" else 213), oy + 148))
+	_label(root, "Pagar 260", 2.5, Color(1, 0.95, 0.7), Vector2(ox + (250 if device == "mando" else 262), oy + 148))
+	_label(root, k2, 2.5, c2, Vector2(ox + (533 if device == "mando" else 533), oy + 148))
+	_label(root, "Rehacer la torre  -1 vida" if has_lives else "Abandonar", 2.5, WHITE, Vector2(ox + (570 if device == "mando" else 582), oy + 148))
+
+
+func _trial_final(root: Control) -> void:
+	_centered(root, "Prueba", 3.0, Color(0.85, 0.7, 0.3), 516.0)
+	_centered(root, "Niebla", 8.0, GOLD, 548.0, true)
+	_centered(root, "Sólo ves unos pocos pisos por encima de vos.", 3.0, WHITE, 650.0)
+
+
 
 func _hide_real_hud(n: Node) -> void:
 	if n.name == "ventana_partida" and n is CanvasItem:
@@ -218,11 +278,42 @@ func _init() -> void:
 	main.stage_number = 2
 	main.run.stage = 2
 	main.run.claridad = 300
-	if mode == "casino":
+	if mode.begins_with("casino"):
 		main.enter_casino(true)
 	for i in 40:
 		await process_frame
 	_hide_real_hud(main)
+	if mode.ends_with("2"):
+		var variants: Array = [["teclado", true], ["mando", true], ["teclado", false], ["mando", false]] if mode == "casino2" else [["vis", 1.0], ["des", 0.35]]
+		for v in variants:
+			var layer2 := CanvasLayer.new()
+			layer2.layer = 50
+			root.add_child(layer2)
+			var top2 := Control.new()
+			top2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			top2.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			layer2.add_child(top2)
+			_hud("A", top2)
+			var tag := ""
+			if mode == "casino2":
+				_dialogue_final(v[0], v[1], top2)
+				tag = "%s_%s" % [v[0], "vidas" if v[1] else "sinvidas"]
+			else:
+				var tr := Control.new()
+				tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+				tr.modulate.a = v[1]
+				top2.add_child(tr)
+				_trial_final(tr)
+				tag = v[0]
+			for i in 12:
+				await process_frame
+			root.get_texture().get_image().save_png("%s_final_%s.png" % [prefix, tag])
+			layer2.queue_free()
+			await process_frame
+		print("maquetas finales listas: ", mode)
+		quit(0)
+		return
 	for kind in ["A", "B", "C"]:
 		var layer := CanvasLayer.new()
 		layer.layer = 50
