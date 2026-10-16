@@ -345,9 +345,9 @@ func test_ice() -> void:
 
 
 func test_bomb() -> void:
-	# La cuenta avanza cuando el jugador esta en la fila de la bomba y explota al llegar a 0.
+	# La cuenta avanza cuando el jugador esta dentro de la zona de la bomba (esfera de distancia^2 <= 5) y explota al llegar a 0.
 	var t := fresh()
-	t.add_block(Vector3i(4, 1, 4), false, BOMB, 3)
+	t.add_block(Vector3i(3, 1, 3), false, BOMB, 3)
 	t.try_action(E)
 	check(t.bomb_timer.values() == [2] and not t.lost, "primer movimiento: 3 -> 2")
 	t.try_action(W)
@@ -355,13 +355,20 @@ func test_bomb() -> void:
 	check(t.lost and t.lost_reason.contains("bomba"), "al llegar a 0 la bomba explota")
 	check(t.blocks.is_empty(), "la explosion tira toda la torre")
 
-	# Una bomba en una fila superior no cuenta mientras el jugador esta abajo.
+	# Una bomba lejos (fuera de la zona) no cuenta.
 	t = fresh()
 	t.add_block(Vector3i(4, 1, 4))
 	t.add_block(Vector3i(4, 2, 4), false, BOMB, 2)
 	for i in 4:
 		t.try_action(E if i % 2 == 0 else W)
-	check(not t.lost and t.bomb_timer.values() == [2], "una bomba de otra fila no avanza")
+	check(not t.lost and t.bomb_timer.values() == [2], "una bomba fuera de la zona no avanza")
+
+	# Una bomba en otra capa pero cerca (dentro de la esfera) sí cuenta.
+	t = fresh()
+	t.add_block(Vector3i(3, 1, 3))
+	t.add_block(Vector3i(3, 2, 3), false, BOMB, 4)
+	t.try_action(E)
+	check(t.bomb_timer.values() == [3], "una bomba de otra capa pero dentro de la zona cuenta")
 
 	# Una bomba que cae al vacio queda desactivada.
 	t = ledge()

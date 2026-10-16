@@ -574,9 +574,12 @@ static void afterAction(Sim &s) {
 		s.won = true;
 		return;
 	}
-	if (anyBomb) {   // una bomba cuenta sólo cuando el jugador está en su fila; al llegar a 0 explota
+	if (anyBomb) {   // una bomba cuenta sólo cuando el jugador está dentro de su zona (esfera de radio² 5); al llegar a 0 explota
 		for (int ci : s.d->list) {
-			if ((s.d->g[ci] & 7) != BOMB || !s.d->tm[ci] || cellOf(ci).y != s.p.y) continue;
+			if ((s.d->g[ci] & 7) != BOMB || !s.d->tm[ci]) continue;
+			V bc = cellOf(ci);
+			int dx = bc.x - s.p.x, dy = bc.y - s.p.y, dz = bc.z - s.p.z;
+			if (dx * dx + dy * dy + dz * dz > 5) continue;
 			s.d->tm[ci]--;
 			wVersion++;
 			if (s.d->tm[ci] == 0) {   // explota: la torre se derrumba

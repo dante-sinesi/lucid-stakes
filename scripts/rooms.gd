@@ -735,7 +735,7 @@ static func _lib_candidate(st: Dictionary, ey: int, room: Dictionary, sym: Array
 			if not _free(st, m, ey + i, ey + i):
 				return {}
 			var kd := int(RoomLib.KIND_OF_CHAR.get(ks[i], K.NORMAL))
-			blocks.append({"c": Vector3i(m.x, ey + i, m.y), "kind": kd, "fixed": false, "timer": RoomLib.BOMB_FUSE if kd == K.BOMB else 0})
+			blocks.append({"c": Vector3i(m.x, ey + i, m.y), "kind": kd, "fixed": false, "timer": int(room.get("fuse", RoomLib.BOMB_FUSE)) if kd == K.BOMB else 0})
 	var path: Array = []
 	var pos: Vector2i = walk[strip[0]].prev if not strip.is_empty() else spot   # (el camino a pie: de la llegada, celda por celda, hasta la entrada)
 	for c in strip:
@@ -2906,7 +2906,7 @@ static func _c_bomba(ctx: Dictionary) -> Dictionary:
 			cols[cell] = {"h": 2, "kind": K.HEAVY}
 	if path.size() - 1 < 5:
 		return {}
-	return {"cols": cols, "goal": chain[chain.size() - 1], "rect": true, "rect_cells": [ctx.arrival], "bomb": gate, "slack": 2 if ctx.twist == "justa" else 3}   # (la acción con que se llega a la sala ya cuenta una vez)
+	return {"cols": cols, "goal": chain[chain.size() - 1], "rect": true, "rect_cells": [ctx.arrival], "bomb": gate, "slack": 3 if ctx.twist == "justa" else 4}   # (la acción con que se llega a la sala ya cuenta una vez)
 
 
 ## Trampolín: la salida es una columna alta de pesados (no se trepa) y hay una catapulta suelta: hay que llevarla pegada a la columna y pisarla para salir disparado hacia arriba y
@@ -3240,13 +3240,13 @@ static func _error_cost(win, path: Array, ey: int, h: int, rng: RandomNumberGene
 	return float(dead) / float(maxi(tested, 1))
 
 
-## Cuántos movimientos a ras del piso (donde corre la cuenta de la bomba) hace falta dar antes de pisar la bomba.
+## Cuántos movimientos dentro de la zona de la bomba (ver TowerLogic.in_bomb_zone) hace falta dar hasta pisarla.
 static func _floor_ticks(lg, path: Array, ey: int, bomb_cell: Vector2i) -> int:
 	var replay = lg.clone()
 	var ticks := 0
 	for a in path:
 		replay.try_action(a.dir, a.mode)
-		if replay.player.y == ey:
+		if TowerLogic.in_bomb_zone(Vector3i(bomb_cell.x, ey, bomb_cell.y), replay.player):
 			ticks += 1
 		var id: int = lg.blocks.get(Vector3i(bomb_cell.x, ey, bomb_cell.y), -1)
 		if id >= 0 and not replay.bomb_timer.has(id):

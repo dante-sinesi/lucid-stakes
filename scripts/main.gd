@@ -819,6 +819,40 @@ func _model_for(node: MeshInstance3D, id: int) -> ArrayMesh:
 	return BlockModels.mesh_for(model_kind, state)
 
 
+const BOMB_ZONE_TINT := Color(1.0, 0.55, 0.5)   # tinte de los bloques que están dentro de la zona de una bomba
+const BOMB_ZONE_RADIUS := 2.74   # radio de la esfera que se dibuja: deja adentro las celdas a distancia² <= 5 (centros hasta 2,24) y afuera las de 8 (2,83)
+
+
+## La zona roja translúcida de una bomba con cuenta (hija del bloque: lo sigue cuando se mueve); se saca cuando la bomba se desactiva.
+func _update_bomb_zone(node: MeshInstance3D, active: bool) -> void:
+	var zone: Node = node.get_node_or_null("zone")
+	if not active:
+		if zone != null:
+			zone.queue_free()
+			node.remove_child(zone)
+		return
+	if zone != null:
+		return
+	var sphere := SphereMesh.new()
+	sphere.radius = BOMB_ZONE_RADIUS
+	sphere.height = BOMB_ZONE_RADIUS * 2.0
+	sphere.radial_segments = 32
+	sphere.rings = 16
+	var zm := StandardMaterial3D.new()
+	zm.albedo_color = Color(1.0, 0.12, 0.08, 0.16)
+	zm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	zm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	zm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	zm.no_depth_test = false
+	zm.disable_receive_shadows = true
+	var mi := MeshInstance3D.new()
+	mi.name = "zone"
+	mi.mesh = sphere
+	mi.material_override = zm
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.add_child(mi)
+
+
 ## Aspecto de un bloque: su modelo (corrupto o purificado), el tinte, y el brillo (aviso de caída, bomba, purificado).
 func _style_block(node: MeshInstance3D, id: int) -> void:
 	var mat := node.material_override as ShaderMaterial
@@ -829,7 +863,10 @@ func _style_block(node: MeshInstance3D, id: int) -> void:
 		node.mesh = model
 	# Los bloques normales purificados toman el color de su altura; el resto ya trae sus colores en el modelo.
 	var normal_pure: bool = pure and kind == TowerLogic.Kind.NORMAL and not logic.fixed.has(logic.positions[id])
-	mat.set_shader_parameter("tint", node.get_meta("base") if normal_pure else _stage_tint())
+	var tint: Color = node.get_meta("base") if normal_pure else _stage_tint()
+	if node.get_meta("in_zone", false):   # dentro de la zona de una bomba con cuenta: rojizo
+		tint = tint * BOMB_ZONE_TINT
+	mat.set_shader_parameter("tint", tint)
 	var glow := Color.BLACK
 	var energy := 0.0
 	if kind == TowerLogic.Kind.BOMB and logic.bomb_timer.has(id):
@@ -1632,9 +1669,18 @@ func _refresh() -> void:
 	# Aviso: la fila base tiembla durante los últimos movimientos antes de caer (ver _style_block).
 	var warn: bool = logic.collapse_every < 1000 and logic.moves_to_collapse <= TREMBLE_MOVES
 	max_height = maxi(max_height, logic.player.y)
+	var bomb_cells: Array[Vector3i] = []   # las bombas con cuenta: lo que está en su zona se tiñe de rojo
+	for bid in logic.bomb_timer:
+		bomb_cells.append(logic.positions[bid])
 	for id in block_nodes:
 		var node: MeshInstance3D = block_nodes[id]
 		var pos: Vector3i = logic.positions[id]
+		var zoned := false
+		for bc in bomb_cells:
+			if TowerLogic.in_bomb_zone(bc, pos):
+				zoned = true
+				break
+		node.set_meta("in_zone", zoned)
 		var cur_kind: int = logic.kind_at(pos)
 		if node.get_meta("kind") != cur_kind:  # un consumible cambió el tipo (hielo a roca, catapulta de bolsillo)
 			node.set_meta("kind", cur_kind)
@@ -1647,11 +1693,14 @@ func _refresh() -> void:
 			var lab: Label3D = node.get_node("tag")
 			if logic.bomb_timer.has(id):
 				lab.text = str(logic.bomb_timer[id])
-				# Cuenta activa (roja) cuando el jugador está en su fila; congelada (gris) si no.
-				lab.modulate = Color(1.0, 0.25, 0.2) if pos.y == logic.player.y else Color(0.75, 0.75, 0.75)
+				# Cuenta activa (roja) cuando el jugador está en su zona; congelada (gris) si no.
+				lab.modulate = Color(1.0, 0.25, 0.2) if TowerLogic.in_bomb_zone(pos, logic.player) else Color(0.75, 0.75, 0.75)
 			else:
 				lab.text = "✓"  # desactivada por purificación
 				lab.modulate = Color(0.5, 1.0, 0.55)
+			_update_bomb_zone(node, logic.bomb_timer.has(id))
+		elif node.has_node("zone"):   # (un consumible la convirtió en otra cosa)
+			_update_bomb_zone(node, false)
 		# Meta: el bloque-portal (goal_block) lleva la baldosa dorada y el haz de luz, que lo siguen si se lo mueve.
 		# Sin bloque-portal (torres de prueba) cualquier bloque de la capa superior vale y lleva baldosa.
 		var is_top: bool = (id == logic.goal_block) if logic.goal_block >= 0 else (pos.y == logic.goal_y - 1 and not logic.fixed.has(pos))
