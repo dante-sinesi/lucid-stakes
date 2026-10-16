@@ -44,6 +44,7 @@ var min_diff := 0.0         # la sala armada tiene que tener al menos esta dific
 var total_moves := 0
 var total_grabs := 0
 var total_tech := 0
+var min_tech := 0.0         # la sala armada tiene que tener al menos esta dificultad de técnica (empujar, tirar, colgarse, patinar y saltar con catapulta sobre pasos)
 
 
 func _init(seed_value := 1) -> void:
@@ -102,6 +103,10 @@ func build(shape_name: String, target_h: int, techniques: Array = [], max_module
 	var ratio := float(total_grabs) / maxf(float(total_moves), 1.0)
 	if ratio < min_diff:
 		last_why = "dificultad %d %% (se pedía %d %%)" % [roundi(100.0 * ratio), roundi(100.0 * min_diff)]
+		return {}
+	var tech_ratio := float(total_tech) / maxf(float(total_moves), 1.0)
+	if tech_ratio < min_tech:
+		last_why = "dificultad de técnica %d %% (se pedía %d %%)" % [roundi(100.0 * tech_ratio), roundi(100.0 * min_tech)]
 		return {}
 	var step := _step(start, pos, "Torre %s de %d pisos" % [shape, pos.y - 1])
 	step.note = "Módulos: " + " → ".join(modules.map(func(m): return str(m.kind)))

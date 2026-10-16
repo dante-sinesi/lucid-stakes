@@ -20,6 +20,7 @@ func _init() -> void:
 		var t0 := Time.get_ticks_msec()
 		gen.transport_min_ratio = float(_env("TR", "0.4"))
 		gen.min_diff = float(_env("MIND", "0"))
+		gen.min_tech = float(_env("MINT", "0"))
 		var r := gen.build(shape, h, techs)
 		var secs := (Time.get_ticks_msec() - t0) / 1000.0
 		if r.is_empty():
