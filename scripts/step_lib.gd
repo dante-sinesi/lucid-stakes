@@ -7,6 +7,7 @@ extends RefCounted
 ##   format, kind "paso", name, note, id (hash), stamp
 ##   w, d, h        ventana: x en 0..w-1, z en 0..d-1, bloques en y = 1..h
 ##   blocks         [[x, y, z, tipo], ...]  tipo = TowerLogic.Kind (0 común, 1 hielo, 2 bomba, 3 catapulta, 4 agrietado, 5 pesado, 6 trampa, 7 pinchos)
+##   fixed          [[x, y, z], ...]  bloques inmóviles que no caen (el núcleo de la torre, por ejemplo); y desde 0
 ##   holes          [[x, z], ...]  celdas del piso que no existen (pozos: se cruza colgado o saltando)
 ##   entry, exit    [x, y, z]  celda donde está parado el jugador (y >= 1). La salida se apoya en un bloque fijo (la plataforma de salida); la entrada también si no hay nada abajo.
 ##   repeat         {on, axis ("x" | "z"), from, to, min, max}: las columnas from..to (a lo largo del eje) se repiten r veces, con r entre min y max
@@ -24,7 +25,7 @@ const KIND_NAMES := {0: "común", 1: "hielo", 2: "bomba", 3: "catapulta", 4: "ag
 
 
 static func make_step(name := "Paso nuevo", w := 6, d := 3, h := 5) -> Dictionary:
-	return {"format": FORMAT, "kind": "paso", "name": name, "note": "", "id": "", "stamp": 0, "w": w, "d": d, "h": h, "blocks": [], "holes": [],
+	return {"format": FORMAT, "kind": "paso", "name": name, "note": "", "id": "", "stamp": 0, "w": w, "d": d, "h": h, "blocks": [], "fixed": [], "holes": [],
 		"entry": [0, 1, 1], "exit": [w - 1, 1, 1], "repeat": {"on": false, "axis": "x", "from": 1, "to": 1, "min": 1, "max": 4}, "results": {}}
 
 
@@ -51,6 +52,13 @@ static func validate(step: Dictionary) -> String:
 		if seen.has(Vector3i(x, y, z)):
 			return "dos bloques en la misma celda"
 		seen[Vector3i(x, y, z)] = true
+	for f in step.get("fixed", []):
+		var fc := Vector3i(int(f[0]), int(f[1]), int(f[2]))
+		if fc.x < 0 or fc.x >= w or fc.z < 0 or fc.z >= d or fc.y < 0 or fc.y > h + 1:
+			return "hay un bloque fijo fuera de la ventana"
+		if seen.has(fc):
+			return "un bloque fijo está sobre otro bloque"
+		seen[fc] = true
 	for port in [step.entry, step.exit]:
 		var p := Vector3i(int(port[0]), int(port[1]), int(port[2]))
 		if p.x < 0 or p.x >= w or p.z < 0 or p.z >= d or p.y < 1 or p.y > h + 1:
@@ -124,6 +132,21 @@ static func instantiate(step: Dictionary, r: int) -> Dictionary:
 				var c4: Array = ho.duplicate()
 				c4[hi] = hv + i * k
 				holes.append(c4)
+	var fixed: Array = []
+	for fb in step.get("fixed", []):
+		var fv := int(fb[ax])
+		if fv < a:
+			fixed.append(fb.duplicate())
+		elif fv > b:
+			var cf: Array = fb.duplicate()
+			cf[ax] = fv + shift
+			fixed.append(cf)
+		else:
+			for i in r:
+				var cf2: Array = fb.duplicate()
+				cf2[ax] = fv + i * k
+				fixed.append(cf2)
+	out.fixed = fixed
 	out.blocks = blocks
 	out.holes = holes
 	for key in ["entry", "exit"]:
@@ -158,6 +181,10 @@ static func build_state(step: Dictionary):
 			if not holes.has(Vector2i(x, z)):
 				t.add_block(Vector3i(x, 0, z), true)
 	var goal_cell := exit + Vector3i(0, -1, 0)
+	for f in step.get("fixed", []):
+		var fc := Vector3i(int(f[0]), int(f[1]), int(f[2]))
+		if not t.blocks.has(fc):
+			t.add_block(fc, true)
 	for b in step.blocks:
 		var c := Vector3i(int(b[0]), int(b[1]), int(b[2]))
 		if platforms.has(c):
@@ -179,6 +206,9 @@ static func build_state(step: Dictionary):
 static func _supported_by_block(step: Dictionary, p: Vector3i) -> bool:
 	if p.y - 1 == 0:
 		return true
+	for f in step.get("fixed", []):
+		if int(f[0]) == p.x and int(f[1]) == p.y - 1 and int(f[2]) == p.z:
+			return true
 	for b in step.blocks:
 		if int(b[0]) == p.x and int(b[1]) == p.y - 1 and int(b[2]) == p.z:
 			return true
@@ -221,6 +251,23 @@ static func examples() -> Array:
 	air.note = "Sin piso: el bloque verde (inicio) y el rojo (fin) están en el aire. Se patina por el camino de hielo, se frena en el bloque común, y se vuelve a patinar."
 	finalize(air)
 	out.append(air)
+	return out
+
+
+## Las celdas de los bloques sueltos del paso que se caerían al empezar (el paso no es estable).
+static func unsupported_cells(step: Dictionary) -> Array:
+	var t = build_state(step)
+	var before: Dictionary = t.positions.duplicate()
+	var fixed_ids := {}
+	for c in t.fixed:
+		fixed_ids[int(t.blocks[c])] = true
+	t._settle()
+	var out: Array = []
+	for id in before:
+		if fixed_ids.has(id):
+			continue
+		if not t.positions.has(id) or t.positions[id] != before[id]:
+			out.append(before[id])
 	return out
 
 
@@ -329,12 +376,16 @@ static func finalize(step: Dictionary) -> void:
 	for b in step.blocks:
 		bs.append("%d,%d,%d,%d" % [int(b[0]), int(b[1]), int(b[2]), int(b[3])])
 	bs.sort()
+	var fs: Array = []
+	for f in step.get("fixed", []):
+		fs.append("%d,%d,%d" % [int(f[0]), int(f[1]), int(f[2])])
+	fs.sort()
 	var hs: Array = []
 	for ho in step.holes:
 		hs.append("%d,%d" % [int(ho[0]), int(ho[1])])
 	hs.sort()
 	var rep: Dictionary = step.repeat
-	var text := "w%d d%d h%d|B%s|H%s|E%s|X%s|R%s" % [int(step.w), int(step.d), int(step.h), ";".join(bs), ";".join(hs), str(step.entry), str(step.exit), ("%s%d-%d:%d-%d" % [rep.axis, int(rep.from), int(rep.to), int(rep.min), int(rep.max)]) if bool(rep.on) else "-"]
+	var text := "w%d d%d h%d|B%s|F%s|H%s|E%s|X%s|R%s" % [int(step.w), int(step.d), int(step.h), ";".join(bs), ";".join(fs), ";".join(hs), str(step.entry), str(step.exit), ("%s%d-%d:%d-%d" % [rep.axis, int(rep.from), int(rep.to), int(rep.min), int(rep.max)]) if bool(rep.on) else "-"]
 	step.id = text.sha256_text().substr(0, 32)
 	step.format = FORMAT
 
@@ -349,6 +400,8 @@ static func from_dict(d: Dictionary) -> Dictionary:
 	s.stamp = int(d.get("stamp", 0))
 	for b in d.get("blocks", []):
 		s.blocks.append([int(b[0]), int(b[1]), int(b[2]), int(b[3])])
+	for f in d.get("fixed", []):
+		s.fixed.append([int(f[0]), int(f[1]), int(f[2])])
 	for ho in d.get("holes", []):
 		s.holes.append([int(ho[0]), int(ho[1])])
 	var e: Array = d.get("entry", s.entry)
