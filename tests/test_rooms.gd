@@ -6,6 +6,8 @@ const Rooms := preload("res://scripts/rooms.gd")
 const Gen := preload("res://scripts/tower_gen.gd")
 const Scenarios := preload("res://scripts/scenarios.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
+const RoomPool := preload("res://scripts/room_pool.gd")
+const RunState := preload("res://scripts/run_state.gd")
 
 var fails := 0
 
@@ -23,6 +25,7 @@ func _init() -> void:
 	test_taller()
 	test_chica()
 	test_mediana()
+	test_biblioteca()
 	print("tests de las salas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -179,3 +182,35 @@ func test_mediana() -> void:
 		lg.try_action(a.dir, a.mode)
 	check(lg.won and not lg.lost, "el camino de la sala mediana gana sobre la torre tal cual sale")
 	check(grabs >= 6, "y pide mover muchos bloques (%d agarres)" % grabs)
+
+
+## Torres con la biblioteca de salas (data/salas.rooms): la biblioteca carga, la calificación sube con la dificultad, y las torres de la etapa 1, 8 y 15 salen con salas de la biblioteca y con la solución válida.
+func test_biblioteca() -> void:
+	var all := RoomPool.all()
+	check(all.size() > 1000, "la biblioteca del juego tiene salas (%d)" % all.size())
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var low := RoomPool.pick(rng, 0.0, 0, 6, 8, {}, 20)
+	var high := RoomPool.pick(rng, 1.0, 0, 6, 8, {}, 20)
+	var avg_low := 0.0
+	for e in low:
+		avg_low += float(e.rating) / maxf(low.size(), 1)
+		check(float(e.unlock) <= 0.0001, "en la primera etapa no sale ninguna sala con bloques especiales")
+	var avg_high := 0.0
+	for e in high:
+		avg_high += float(e.rating) / maxf(high.size(), 1)
+	check(avg_high > avg_low + 0.2, "las salas de la etapa 15 son más difíciles que las de la 1 (%.2f contra %.2f)" % [avg_high, avg_low])
+	for stage in [1, 8, 15]:
+		var prof := Gen.profile_for_stage(stage)
+		var res := Rooms.generate_stage(11 + stage, RunState.rows_for(stage), prof.difficulty, {"pace": prof.pace, "combo": prof.combo, "bias": prof.bias, "scenario": ""})
+		check(res.ok, "la torre de la etapa %d sale con la biblioteca" % stage)
+		if not res.ok:
+			continue
+		var n := 0
+		for r in res.rooms:
+			n += 1 if r.idea == "biblioteca" else 0
+		check(n >= 1, "la torre de la etapa %d usa salas de la biblioteca (%d)" % [stage, n])
+		var lg = res.logic.clone()
+		for a in res.path:
+			lg.try_action(a.dir, a.mode)
+		check(lg.player.y >= res.logic.goal_y, "la solución de la etapa %d llega al portal" % stage)
