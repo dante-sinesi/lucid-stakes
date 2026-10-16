@@ -15,6 +15,7 @@ const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["moved"
 ## Tipos de bloque por los que se puede filtrar (caracteres de la sala): hielo, arenisca, bomba, catapulta (trampolín), trampa, pinchos y pesado.
 const KIND_FILTERS := ["i", "c", "b", "k", "t", "s", "h"]
 
+var _unsupported: Array = []   # los bloques que se caerían (se marcan en rojo)
 var model := StudioModel.new()
 var lib_path := ""
 var yaw := 35.0
@@ -572,7 +573,8 @@ func _refresh_view() -> void:
 	if st == null:
 		RoomView.populate(blocks_root, null, {})
 		return
-	RoomView.populate(blocks_root, st, model.current, true, _highlight_cells())
+	_unsupported = RoomLib.unsupported_cells(model.current) if RoomLib.has_gaps(model.current) else []
+	RoomView.populate(blocks_root, st, model.current, true, _highlight_cells(), _unsupported)
 
 
 func _refresh_info() -> void:
@@ -603,6 +605,8 @@ func _refresh_info() -> void:
 		t += "%s (%d pasos) · %s%s\n" % [label, int(o.moves), proof_txt, " · camino plantado" if str(o.get("source", "")) == "plantada" else ""]
 	elif o.has("error"):
 		t += "[color=#ff7070]no se resuelve: %s[/color]\n" % str(o.error)
+		if not _unsupported.is_empty():
+			t += "[color=#ff7070]%d bloques se caerían (están marcados en rojo): un bloque que apoya sobre otro no se cuelga de los costados, y tocarse sólo en diagonal no sostiene.[/color]\n" % _unsupported.size()
 	else:
 		t += "[color=#e0a060]sin verificar[/color]\n"
 	if model.dirty:
