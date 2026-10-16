@@ -205,7 +205,7 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 	var token = opts.get("cancel_token", null)
 	var ideas := catalog(str(opts.get("scenario", "")), difficulty)
 	var order := plan(rng, 16, difficulty, ideas)
-	var use_lib: bool = bool(opts.get("library", true)) and OS.get_environment("SIN_BIBLIOTECA") == "" and OS.get_environment("IDEA_ONLY") == "" and not SCENARIO_IDEAS.has(str(opts.get("scenario", ""))) and not RoomPool.all().is_empty()
+	var use_lib: bool = bool(opts.get("library", true)) and rows >= LIB_MIN_ROWS and OS.get_environment("SIN_BIBLIOTECA") == "" and OS.get_environment("IDEA_ONLY") == "" and not SCENARIO_IDEAS.has(str(opts.get("scenario", ""))) and not RoomPool.all().is_empty()
 	var base := _new_base(rows + (LIB_EXTRA_CORE if use_lib else 0))   # (con la biblioteca `rows` es el MÍNIMO de pisos: se agregan salas hasta llegar, y la última pone el portal; el core sobrante se recorta)
 	var st := {"tower": base.tower, "sim": base.sim, "path": [], "row_moves": [] as Array[int], "shapes": [] as Array[String],
 			"infos": [], "reserved": {Vector3i(START.x, 1, START.y): true}, "states": 0, "solves": 0, "used": {}, "last_twist": {}, "last_idea": ""}
@@ -633,6 +633,7 @@ static func _candidate(name: String, ctx: Dictionary) -> Dictionary:
 
 # --- salas de la biblioteca -----------------------------------------------------------------------------------------------------------------------
 
+const LIB_MIN_ROWS := 40   # con menos pisos (el tutorial, las pruebas) se usa el generador de siempre, de altura fija; con más, la biblioteca y `rows` es el mínimo
 const LIB_EXTRA_CORE := 24   # pisos de más que se le arman al core mientras se genera (la última sala puede pasarse del mínimo; el sobrante se recorta)
 const LIB_PICKS := 80   # salas de la biblioteca que se miran por lugar de la torre (mirar si entra es barato)
 const LIB_ROOMS := 24   # y las que se comprueban de verdad (lo caro)

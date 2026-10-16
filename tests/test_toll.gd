@@ -45,7 +45,7 @@ func _scene() -> void:
 	while main.generating or main.logic == null:
 		await process_frame
 	check(main.logic.toll == 0, "la torre ya no cobra peaje (el duende está en la puerta de salida del casino)")
-	check(main.goal_nodes.size() == 1, "en la meta sólo está el portal")
+	check(main.goal_nodes.is_empty(), "la meta es un cubo especial hijo del bloque (no hay nodos sueltos)")
 	main.queue_free()
 	await process_frame
 	# el duende de la puerta del casino

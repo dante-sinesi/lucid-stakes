@@ -1719,7 +1719,9 @@ func _refresh() -> void:
 		logic.streak, logic.streak_mult(logic.streak), logic.best_streak, logic.purified_count, seed_value]
 	var total: int = run.claridad + logic.claridad
 	_update_goal_light()
-	hud_panel.set_toll(0)
+	var show_toll: bool = not training and not lab_active and tutorial_index < 0 and not (test_mode and not toll_in_tests)   # (lo que cobrará el duende de la puerta del casino: se ve durante toda la torre, en rojo si con lo que traés y lo que juntaste todavía no alcanza)
+	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
+	hud_panel.set_toll(next_toll, run.claridad + logic.claridad < next_toll)
 	if total > clarity_counter.value:
 		juice.pop(clarity_counter, 1.25)
 	clarity_counter.value = total

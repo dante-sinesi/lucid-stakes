@@ -84,22 +84,24 @@ func apply_interest() -> int:
 ## La curva del duende (docs/diseno.md §46). Se construye sobre lo que rinde una torre (medido con tests/sim_ingresos.gd: la recta `INCOME_BASE + INCOME_SLOPE × etapa`;
 ## lo más que se vio fue 1,5 veces la recta) y tiene una pared: **a partir de la etapa WALL_STAGE no se puede pagar sin boosts ni consumibles que suban la ganancia**,
 ## ni siquiera juntando lo máximo en cada torre y sin gastar nada en el casino.
-const INCOME_BASE := 179.0
-const INCOME_SLOPE := 8.75
-const INCOME_CEIL := 1.5       # lo máximo que junta una torre sin boosts, sobre la recta
+static var income_base := 340.0     # (variables, no constantes: el bot las cambia por variable de entorno para probar curvas, tests/bot_runs.gd)
+static var income_slope := 25.0
+static var income_ceil := 1.5       # lo máximo que junta una torre sin boosts, sobre la recta
 const WALL_STAGE := 8          # desde acá hay que tener boosts que disparen la ganancia
-const WALL_GROWTH := 1.15      # lo que crece el precio cada etapa después de la pared
-const WALL_MARGIN := 50        # lo que se pasa del presupuesto máximo el precio de la pared
+static var wall_growth := 1.20      # lo que crece el precio cada etapa después de la pared
+static var wall_margin := 50        # lo que se pasa del presupuesto máximo el precio de la pared
+static var pre_wall_from := 0.45    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
+static var pre_wall_to := 0.75      # ...y esta en la etapa anterior a la pared
 
 
 ## Lo que rinde una torre de esa etapa en promedio (la recta de las torres medidas).
 static func income_fit(stage: int) -> float:
-	return INCOME_BASE + INCOME_SLOPE * float(maxi(stage, 1))
+	return income_base + income_slope * float(maxi(stage, 1))
 
 
 ## Lo máximo que puede juntar una torre de esa etapa sin boosts (juego perfecto, con un margen sobre lo medido).
 static func income_ceiling(stage: int) -> float:
-	return INCOME_CEIL * income_fit(stage)
+	return income_ceil * income_fit(stage)
 
 
 ## Cuánto puede tener como mucho un jugador sin boosts al llegar al duende de la etapa `stage`: todo lo que juntó (al máximo) en las torres hasta ahí, sin gastar nada en el casino,
@@ -118,8 +120,8 @@ static func max_budget_without_boosts(stage: int) -> float:
 static func toll_for(stage: int) -> int:
 	var s := maxi(stage, 1)
 	if s < WALL_STAGE:
-		return int(round(income_fit(s) * (0.45 + 0.30 * float(s - 1) / float(WALL_STAGE - 2))))
-	return int(round(wall_toll() * pow(WALL_GROWTH, float(s - WALL_STAGE))))
+		return int(round(income_fit(s) * (pre_wall_from + (pre_wall_to - pre_wall_from) * float(s - 1) / float(WALL_STAGE - 2))))
+	return int(round(wall_toll() * pow(wall_growth, float(s - WALL_STAGE))))
 
 
 ## El precio en la etapa de la pared: el presupuesto máximo sin boosts (lo que juntaría un jugador perfecto sin gastar nada) más un margen.
@@ -129,7 +131,7 @@ static func wall_toll() -> float:
 		total += income_ceiling(k)
 		if k < WALL_STAGE:
 			total -= float(toll_for(k))
-	return total + float(WALL_MARGIN)
+	return total + float(wall_margin)
 
 
 const TOWER_ROWS_FIRST := 50    # pisos de la torre de la etapa 1 (docs/diseno.md §48)

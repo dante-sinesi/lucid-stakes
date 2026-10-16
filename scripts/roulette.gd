@@ -23,15 +23,15 @@ const BETS := {
 	Bet.MITAD: {"name": "Mitad", "count": 6, "tier": Items.Tier.COMUN},
 	Bet.RANGO: {"name": "Rango", "count": 9, "tier": Items.Tier.CONSUMIBLE},
 }
-const BASE_PRICE := 50
+static var base_price := 50   # (variables: el bot las cambia por variable de entorno)
 ## La ficha sube PRICE_STEP por etapa: 50 en la etapa 1 y 106 en la 15. Una torre da, siguiendo el camino mínimo, entre ~190 de
 ## claridad (etapa 1) y ~390 (etapas altas), así que cada tirada cuesta alrededor de un cuarto de lo que se junta en la etapa.
-const PRICE_STEP := 4
+static var price_step := 4
 
 
 ## Precio de la ficha en una etapa (igual para las cuatro apuestas).
 static func price(stage: int, mult := 1.0) -> int:
-	return maxi(int(round((BASE_PRICE + PRICE_STEP * (maxi(stage, 1) - 1)) * mult)), 1)
+	return maxi(int(round((base_price + price_step * (maxi(stage, 1) - 1)) * mult)), 1)
 
 
 ## Lo que cuesta la ficha en un run (los escenarios pueden abaratarla).
