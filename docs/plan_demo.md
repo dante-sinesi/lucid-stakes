@@ -2,6 +2,14 @@
 
 Fecha: 2026-10-16. Rama base: `feature/juego-completo` (une la biblioteca de salas, el colgado, las bombas por zona, el casino con el duende, los boosts, las torres altas y el bot). Este documento ordena todo lo que falta para tener una demo que se pueda dar a jugar a gente de afuera, y lo organiza para desarrollarlo de corrido. Lo marcado **(a confirmar)** es una decisión de Dante.
 
+## Decisiones de Dante (2026-10-16) — mandan sobre el resto del documento
+
+1. **Alcance:** la demo cubre **los dos primeros casinos**, es decir: tutorial + torre 1 + casino 1 + duende + torre 2 + casino 2 + duende, y ahí termina (el fin de la demo se muestra al pagarle al segundo duende). Donde más abajo dice "etapas 1 a 7", leer "etapas 1 y 2" (banco de torres: 12 por etapa para esas dos; la colina, las bombas y la prueba de la etapa 3 quedan fuera). **A confirmar:** que "primeros dos casinos" sea exactamente esto (si fuera hasta el tercer casino, se suma la etapa 3 y su prueba).
+2. **El editor de modelos es una herramienta de desarrollo** (como el Estudio de salas): lo usa Dante para crear cubos, personajes y cosméticos, y después Claude los integra al juego. No es para que los jugadores hagan los suyos: no va en el menú del juego ni en la exportación; se abre con su propio `.bat`. Se descartan los botones "probar en el juego" para jugadores y todo lo de compartir/importar de usuarios.
+3. **Fuera de la demo:** monedas dentro de la torre y jugadas mínimas. **Blackjack y tragamonedas** quedan en el casino pero bloqueados: al elegirlos muestran un cartel "Disponible en el juego completo" (en español y en inglés). La ruleta, la vitrina y la tienda sí están.
+4. **Mando desde el día 1:** toda pantalla nueva y vieja se diseña con mando (movimiento, empujar, colgarse, deshacer, cámara, navegación de menús con foco visible, casino, tienda, tutorial con los botones del mando). Sube a requisito de todos los bloques, no es opcional (ver F).
+5. **No se arranca nada hasta que Dante lo diga explícitamente.** Este documento es sólo planificación.
+
 ## 0. Qué es la demo
 
 - **Contenido (propuesta):** el tutorial, las etapas **1 a 7** (la taberna, el salón y el comienzo de la colina del duende), las pruebas de las etapas 3 y 6, el casino completo (ruleta, tragamonedas, blackjack, vitrina, tienda y los premios de ganancia y de casino), vidas, reintentos, los dados de la pantalla de carga, cosméticos y los personajes desbloqueables dentro de esas etapas (el gatito en la 4 y el perrito con la primera prueba).
