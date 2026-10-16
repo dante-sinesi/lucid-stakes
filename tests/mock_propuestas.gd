@@ -249,6 +249,157 @@ func _trial_final(root: Control) -> void:
 	_centered(root, "Sólo ves unos pocos pisos por encima de vos.", 3.0, WHITE, 650.0)
 
 
+## ---- Tercera corrida: Farolín en 3D, opciones lado a lado con flechas (teclado) o stick (mando), prueba al pausar ----
+
+static func _fbox(parent: Node3D, pos: Vector3, size: Vector3, color: Color, glow := 0.0) -> void:
+	var m := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = size
+	m.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.roughness = 0.9
+	if glow > 0.0:
+		mat.emission_enabled = true
+		mat.emission = color
+		mat.emission_energy_multiplier = glow
+	m.material_override = mat
+	m.position = pos
+	parent.add_child(m)
+
+
+## Farolín en 3D (unos 0,55 de alto, los pies en y = 0, mirando hacia +z): farol de hierro con asa, llama con ojos y sonrisa, brazos y patitas.
+static func _farolin3d() -> Node3D:
+	var r := Node3D.new()
+	r.name = "farolin"
+	var iron := Color(0.16, 0.14, 0.18)
+	var iron2 := Color(0.3, 0.27, 0.32)
+	var glow := Color(1.0, 0.8, 0.3)
+	var dark := Color(0.25, 0.1, 0.02)
+	_fbox(r, Vector3(-0.06, 0.06, 0), Vector3(0.06, 0.12, 0.07), iron2)
+	_fbox(r, Vector3(0.06, 0.06, 0), Vector3(0.06, 0.12, 0.07), iron2)
+	_fbox(r, Vector3(0, 0.145, 0), Vector3(0.22, 0.05, 0.22), iron)
+	_fbox(r, Vector3(0, 0.27, 0), Vector3(0.17, 0.2, 0.17), glow, 1.6)
+	for sx in [-1, 1]:
+		for sz in [-1, 1]:
+			_fbox(r, Vector3(0.09 * sx, 0.27, 0.09 * sz), Vector3(0.025, 0.21, 0.025), iron)
+	_fbox(r, Vector3(0, 0.385, 0), Vector3(0.24, 0.04, 0.24), iron)
+	_fbox(r, Vector3(0, 0.425, 0), Vector3(0.13, 0.04, 0.13), iron)
+	_fbox(r, Vector3(0, 0.505, 0), Vector3(0.11, 0.02, 0.02), iron)
+	_fbox(r, Vector3(-0.055, 0.465, 0), Vector3(0.02, 0.08, 0.02), iron)
+	_fbox(r, Vector3(0.055, 0.465, 0), Vector3(0.02, 0.08, 0.02), iron)
+	_fbox(r, Vector3(-0.04, 0.31, 0.092), Vector3(0.035, 0.055, 0.012), dark)
+	_fbox(r, Vector3(0.04, 0.31, 0.092), Vector3(0.035, 0.055, 0.012), dark)
+	_fbox(r, Vector3(0, 0.235, 0.092), Vector3(0.09, 0.02, 0.012), dark)
+	_fbox(r, Vector3(-0.045, 0.25, 0.092), Vector3(0.02, 0.02, 0.012), dark)
+	_fbox(r, Vector3(0.045, 0.25, 0.092), Vector3(0.02, 0.02, 0.012), dark)
+	_fbox(r, Vector3(-0.145, 0.24, 0), Vector3(0.05, 0.13, 0.05), iron2)
+	_fbox(r, Vector3(0.145, 0.24, 0), Vector3(0.05, 0.13, 0.05), iron2)
+	var light := OmniLight3D.new()
+	light.position = Vector3(0, 0.28, 0.15)
+	light.light_color = Color(1.0, 0.75, 0.35)
+	light.light_energy = 1.3
+	light.omni_range = 2.0
+	r.add_child(light)
+	return r
+
+
+## Triángulo que apunta a la izquierda (dir = -1) o a la derecha (dir = 1), de alto 2r, con la punta en `c`.
+func _tri(ci: CanvasItem, c: Vector2, dir: int, r: float, col: Color) -> void:
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(dir * r, 0), c + Vector2(-dir * r * 0.6, -r), c + Vector2(-dir * r * 0.6, r)]), col)
+
+
+func _dialogue_v3(device: String, has_lives: bool, sel: int, can_pay: bool, root: Control) -> void:
+	var ox := 120.0
+	var oy := 720.0 - BOX_H - 14.0
+	var box := Canvas.new()
+	box.painter = func(ci):
+		Draw.card(ci, Rect2(Vector2(ox, oy), Vector2(BOX_W, BOX_H - 10.0)), 6.0, 0, 0.1, 4242, false, -1.0)
+		var s := 7.0
+		var origin := Vector2(ox + 48, oy + 24)
+		ci.draw_rect(Rect2(origin - Vector2(8, 8), Vector2(12 * s + 16, 13 * s + 16)), Color(0.05, 0.03, 0.09))
+		for y in FAROL.size():
+			var row: String = FAROL[y]
+			for x in row.length():
+				if row[x] == ".":
+					continue
+				var col: Color = FAROL_PAL.get(row[x], Color.MAGENTA)
+				var p := origin + Vector2(x, y) * s
+				ci.draw_rect(Rect2(p, Vector2(s, s)), col)
+				ci.draw_rect(Rect2(p, Vector2(s, maxf(s * 0.18, 1.0))), col.lightened(0.3))
+				ci.draw_rect(Rect2(p + Vector2(0, s * 0.82), Vector2(s, maxf(s * 0.18, 1.0))), col.darkened(0.35))
+		var st1 := 3 if not can_pay else (1 if sel == 0 else 0)
+		Draw.card(ci, Rect2(Vector2(ox + 240, oy + 138), Vector2(230, 52)), 4.0, st1, 0.0, 5, sel == 0 and can_pay, -1.0)
+		Draw.card(ci, Rect2(Vector2(ox + 484, oy + 138), Vector2(400, 52)), 4.0, 1 if sel == 1 else 0, 0.0, 6, sel == 1, -1.0)
+		var keycol := Color(0.9, 0.88, 0.8)
+		if device == "mando":
+			ci.draw_circle(Vector2(ox + 204, oy + 164), 22.0, Color(0.2, 0.2, 0.26))
+			ci.draw_arc(Vector2(ox + 204, oy + 164), 22.0, 0.0, TAU, 24, keycol, 2.0)
+			_tri(ci, Vector2(ox + 191, oy + 164), -1, 7.0, keycol)
+			_tri(ci, Vector2(ox + 217, oy + 164), 1, 7.0, keycol)
+			ci.draw_circle(Vector2(ox + 960, oy + 164), 20.0, Color(0.25, 0.7, 0.35))
+		else:
+			Draw.card(ci, Rect2(Vector2(ox + 176, oy + 140), Vector2(48, 48)), 4.0, 0, 0.0, 31, false, -1.0)
+			Draw.card(ci, Rect2(Vector2(ox + 896, oy + 140), Vector2(48, 48)), 4.0, 0, 0.0, 32, false, -1.0)
+			Draw.card(ci, Rect2(Vector2(ox + 954, oy + 140), Vector2(76, 48)), 4.0, 0, 0.0, 33, false, -1.0)
+			_tri(ci, Vector2(ox + 191, oy + 164), -1, 9.0, keycol)
+			_tri(ci, Vector2(ox + 929, oy + 164), 1, 9.0, keycol)
+	root.add_child(box)
+	var txt := "Son 260 de claridad para seguir. ¿Pagás, o volvés a subir esta torre?"
+	if not has_lives:
+		txt = "Son 260 de claridad, y ya no te queda ninguna vida. ¿Pagás, o dejás que todo se apague?"
+	if not can_pay:
+		txt = "Son 260 de claridad y te faltan 40. Sin luz no hay camino: ¿volvés a subir la torre?"
+	_label(root, "Farolín", 3.0, GOLD, Vector2(ox + 176, oy + 22))
+	_label(root, "\n".join(VFont.wrap(txt, 330)), 2.5, WHITE, Vector2(ox + 176, oy + 62))
+	_label(root, "Pagar 260", 2.5, Color(0.5, 0.45, 0.45) if not can_pay else Color(1, 0.95, 0.7), Vector2(ox + 280, oy + 154))
+	_label(root, "Rehacer la torre  -1 vida" if has_lives else "Abandonar", 2.5, WHITE, Vector2(ox + 510, oy + 154))
+	if device == "mando":
+		_label(root, "A", 2.5, Color(0.02, 0.1, 0.03), Vector2(ox + 953, oy + 154))
+	else:
+		_label(root, "Enter", 1.8, WHITE, Vector2(ox + 966, oy + 158))
+
+
+func _run_v3(main, mode: String, prefix: String) -> void:
+	var variants: Array = []
+	if mode == "casino3":
+		variants = [["tec_pagar", "teclado", true, 0, true], ["tec_rehacer", "teclado", true, 1, true], ["pad_sinvidas", "mando", false, 0, true],
+				["pad_abandonar", "mando", false, 1, true], ["tec_noalcanza", "teclado", true, 1, false]]
+		var c = main.casino
+		if c._goblin != null:
+			c._goblin.visible = false
+			var f := _farolin3d()
+			f.scale = Vector3.ONE * 3.3
+			f.position = c._goblin.position + Vector3(-0.9, 0.0, -0.1)
+			f.rotation_degrees.y = 45.0
+			c.add_child(f)
+		c.player_node.rotation.y = deg_to_rad(45.0)   # (aparece de frente a la cámara)
+	else:
+		variants = [["vis"], ["pausa"]]
+	for v in variants:
+		var layer := CanvasLayer.new()
+		layer.layer = 99
+		root.add_child(layer)
+		var top := Control.new()
+		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		top.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		layer.add_child(top)
+		_hud("A", top)
+		if mode == "casino3":
+			_dialogue_v3(v[1], v[2], v[3], v[4], top)
+		else:
+			if v[0] == "pausa":
+				main.pause_game()
+			_trial_final(top)
+		for i in 14:
+			await process_frame
+		root.get_texture().get_image().save_png("%s_v3_%s.png" % [prefix, v[0]])
+		layer.queue_free()
+		await process_frame
+	print("tercera corrida lista: ", mode)
+	quit(0)
+
+
 
 func _hide_real_hud(n: Node) -> void:
 	if n.name == "ventana_partida" and n is CanvasItem:
@@ -283,6 +434,9 @@ func _init() -> void:
 	for i in 40:
 		await process_frame
 	_hide_real_hud(main)
+	if mode.ends_with("3"):
+		await _run_v3(main, mode, prefix)
+		return
 	if mode.ends_with("2"):
 		var variants: Array = [["teclado", true], ["mando", true], ["teclado", false], ["mando", false]] if mode == "casino2" else [["vis", 1.0], ["des", 0.35]]
 		for v in variants:
