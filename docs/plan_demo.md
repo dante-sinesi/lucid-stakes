@@ -2,6 +2,15 @@
 
 Fecha: 2026-10-16. Rama base: `feature/juego-completo` (une la biblioteca de salas, el colgado, las bombas por zona, el casino con el duende, los boosts, las torres altas y el bot). Este documento ordena todo lo que falta para tener una demo que se pueda dar a jugar a gente de afuera, y lo organiza para desarrollarlo de corrido. Lo marcado **(a confirmar)** es una decisión de Dante.
 
+## PRIMER PUNTO A RESOLVER (antes que cualquier otro): "Abandonar el run" cuelga el juego
+
+- **Síntoma (Dante):** al pulsar "Abandonar el run" en el menú de pausa el juego se congela.
+- **Dónde:** `pause_menu.gd:43` emite `abandon_run` → `main.gd:1929` hace `resume_game()` y `end_run(false, "Abandonaste el run.")` (`main.gd:2105`).
+- **Hipótesis principal (a verificar, no confirmada):** `end_run` llama a `_cancel_jobs()` y a `_close_balance()`; si `_cancel_jobs` espera (`wait_to_finish`) a los hilos de generación de la torre actual y de la siguiente (prefetch de dos etapas, con torres de 50 a 100 pisos y el solucionador), la espera dura minutos o nunca termina (la generación de una torre de la etapa 14 llegó a más de un minuto) y el hilo principal queda bloqueado. Otras sospechas: `casino.queue_free()` con hilos vivos, `run_end.show_summary` con datos de una torre sin terminar, o `Profile.record_run` con un run sin torre.
+- **Cómo se resuelve:** reproducirlo primero (prueba que arma un run, deja generando la etapa siguiente, abandona y exige que `end_run` vuelva en pocos cuadros); cancelar la generación **sin esperar** (bandera de cancelación revisada por los hilos y por el puente al solucionador, y los hilos se juntan más tarde, en segundo plano o al salir) y que `end_run` nunca bloquee el hilo principal. Si el problema es otro, se corrige la causa real.
+- **También revisar los demás caminos que cancelan generación:** "Volver al menú principal", "Reintentar la torre", salir del juego, perder la última vida, y el nuevo "Abandonar" de Farolín. Todos deben volver al instante.
+- **Cierre:** `tests/test_abandonar.gd` (abandona en la torre, en el casino, durante la generación y en el tutorial) y se agrega a la batería. Va en su propia rama (`fix/abandonar-run`) y se mezcla antes de seguir.
+
 ## Decisiones de Dante (2026-10-16) — mandan sobre el resto del documento
 
 1. **Alcance (corregido por Dante):** la demo llega **hasta alcanzar el segundo casino**, es decir las etapas necesarias para eso. Como cada etapa (torre) termina en su casino, el segundo casino se alcanza al terminar la **torre 2**: tutorial + torre 1 + casino 1 (+ duende) + torre 2 + casino 2. Dante aclaró que no recuerda en qué etapa aparece; en el código cada etapa termina en un casino, así que es la etapa 2. **Pendiente de decidir:** si el fin de la demo se muestra al *entrar* al casino 2 (se juega la ruleta/vitrina/tienda una vez) o al pagarle al duende de ese casino. Propuesta: se puede jugar el casino 2 completo y la pantalla de cierre sale al pagar su duende (o fallar). Donde más abajo dice "etapas 1 a 7", leer "etapas 1 y 2" (banco de torres: 12 por etapa para esas dos; la colina, las bombas y la prueba de la etapa 3 quedan fuera).
@@ -53,6 +62,8 @@ Fecha: 2026-10-16. Rama base: `feature/juego-completo` (une la biblioteca de sal
 - **Criterios para darla por cerrada:** (1) un jugador nuevo termina el tutorial y entiende el bucle torre → casino → duende sin explicación externa; (2) 10 partidas completas seguidas sin un solo error ni torre que no se genere; (3) arranca la etapa 1 en menos de 5 segundos y cualquier etapa de la demo en menos de 10; (4) todas las pruebas automáticas en verde; (5) la exportación funciona en una máquina limpia; (6) al menos 5 personas de afuera la jugaron y los problemas que marcaron más de una vez están arreglados.
 
 ## 1. Orden y dependencias
+
+**Orden de arranque acordado:** (0) arreglar "Abandonar el run" (ver arriba); (1) quitar la guía de bloques; (2) la regla de Shift sin bloque; (3) Farolín, decisiones con flechas, cartel de la prueba, HUD y avisos; luego A, C y B del esquema de abajo.
 
 ```
 A. Cierre de lo hecho ─┬─ B. Tutorial nuevo ──────────────┐
