@@ -1,0 +1,174 @@
+# Plan para cerrar la demo
+
+Fecha: 2026-10-16. Rama base: `feature/juego-completo` (une la biblioteca de salas, el colgado, las bombas por zona, el casino con el duende, los boosts, las torres altas y el bot). Este documento ordena todo lo que falta para tener una demo que se pueda dar a jugar a gente de afuera, y lo organiza para desarrollarlo de corrido. Lo marcado **(a confirmar)** es una decisión de Dante.
+
+## 0. Qué es la demo
+
+- **Contenido (propuesta):** el tutorial, las etapas **1 a 7** (la taberna, el salón y el comienzo de la colina del duende), las pruebas de las etapas 3 y 6, el casino completo (ruleta, tragamonedas, blackjack, vitrina, tienda y los premios de ganancia y de casino), vidas, reintentos, los dados de la pantalla de carga, cosméticos y los personajes desbloqueables dentro de esas etapas (el gatito en la 4 y el perrito con la primera prueba).
+- **Fin de la demo:** al superar la etapa 7 y pagarle al duende, una pantalla de cierre: resumen del run, mensaje de "esto es la demo", y un botón de lista de deseos (una dirección configurable; la conexión con Steam queda afuera).
+- **Fuera de la demo:** las etapas 8 a 15, la pared de las builds, los escenarios (Glaciar, Ruinas, Polvorín, Relojería, Gran Casino, Compromiso), las habilidades persistentes de fin de pesadilla.
+- **Criterios para darla por cerrada:** (1) un jugador nuevo termina el tutorial y entiende el bucle torre → casino → duende sin explicación externa; (2) 10 partidas completas seguidas sin un solo error ni torre que no se genere; (3) arranca la etapa 1 en menos de 5 segundos y cualquier etapa de la demo en menos de 10; (4) todas las pruebas automáticas en verde; (5) la exportación funciona en una máquina limpia; (6) al menos 5 personas de afuera la jugaron y los problemas que marcaron más de una vez están arreglados.
+
+## 1. Orden y dependencias
+
+```
+A. Cierre de lo hecho ─┬─ B. Tutorial nuevo ──────────────┐
+                       ├─ C. Banco de torres + carga ─────┤
+                       ├─ D. Fin de la demo ──────────────┤
+                       ├─ E. Números grandes y juice ─────┼─ G. Prueba con gente ─ H. Arreglos ─ L. Exportación
+                       ├─ F. Robustez y opciones ─────────┤
+                       ├─ I. Cubos con variantes + Editor de modelos
+                       └─ J. Contenido (salas con bomba, variedad) [minado en segundo plano]
+K. Localización y créditos (se cierra al final de B, D, E)
+```
+Lo que va primero: A, y enseguida C (el banco de torres) y B (el tutorial), porque definen la primera impresión. I (editor de modelos) es lo más grande y puede avanzar en paralelo con todo lo demás; J corre en segundo plano (minero).
+
+## A. Cierre de lo ya hecho
+
+1. Batería de pruebas completa en verde (hoy sólo falla `test_loc` por el texto de créditos con relleno).
+2. Revisión de `feature/juego-completo` y merge a `main` cuando Dante lo diga (una rama por cambio, regla del proyecto).
+3. Limpiar: sacar el diagnóstico de `rooms.gd` (`lib_stats`, `prof`, `IDEA_LOG`) o dejarlo bajo variable de entorno; quitar `GOAL_*` sin uso.
+4. Actualizar `docs/diseno.md` (§46 a §49 ya están) y la memoria.
+
+## B. Tutorial nuevo
+
+El tutorial actual enseña moverse, empujar, tirar y colgarse, la cámara, deshacer, los dados y una torre de verdad. Falta lo nuevo.
+- **Lección de las bombas:** una torre chica con una bomba y su zona roja titilando: "mientras estés dentro de la zona roja, la cuenta baja; salí o apagala pisándola".
+- **Lección del casino y el duende:** al terminar la torre, el tabernero explica que el duende de la puerta cobra, dónde se ve el precio (arriba a la izquierda, en rojo si falta), y qué pasa si no se alcanza (se pierde una vida y se vuelve a subir la misma torre). Práctica: pagar el primer peaje de verdad.
+- **Lección de la ruleta con vitrina:** mostrar los premios de la visita, probar *Rotar vitrina*, comprar algo en la *Tienda*.
+- **Lección de las builds:** el primer boost de ganancia (regalado: *Pies de luz* o *Midas*) y cómo cambia lo que se junta, con el cartel de ganancia y la racha.
+- **Vidas y reintentos:** morir no cuesta claridad, cuesta una vida.
+- **Guion:** el tabernero en español rioplatense, mismo tono; traducción al inglés en `loc_en_story.gd`. Se puede saltear con una tecla después de la primera vez.
+- **Pruebas:** `test_tutorial.gd` ampliado (cada lección se resuelve con el camino que trae, el texto no se corta, todo traducido).
+
+## C. Banco de torres y tiempos de carga
+
+- **Qué:** un banco de torres ya generadas para las etapas de la demo (12 por etapa, 84 en total), empaquetado y comprimido en `data/torres_demo.torres`, con una herramienta que lo arma con el generador del juego (`tests/bot_banco.gd` ya genera las torres; falta el empaquetador y un verificador que repite cada camino).
+- **Cómo se usa:** al arrancar una etapa de la demo se elige una torre del banco (sin repetir en el run); la generación en vivo queda para el juego final y como respaldo si el banco no alcanza. Ventaja: carga instantánea y torres ya probadas.
+- **Resiliencia:** si falla la generación o el banco, reintentar con otra torre del banco y nunca dejar al jugador en una pantalla de carga infinita; mensaje claro si pasa algo raro.
+- **Tareas:** formato `.torres` y `TowerBank` (carga única, mutex, lectura comprimida desde `res://`); integración en `main.gd` (`_start_job`); incluir `data/*.torres` en el preset de exportación; prueba de que cada torre del banco se gana con su camino, que no hay dos iguales y que cada etapa tiene al menos 12.
+- **Tiempo de carga objetivo:** etapa 1 en menos de 5 s, cualquier etapa en menos de 10 s.
+
+## D. Fin de la demo
+
+- Pantalla de cierre al superar la etapa 7: resumen del run (etapa alcanzada, torres, claridad, vidas, boosts y cosméticos), mensaje "gracias por jugar la demo", botón de lista de deseos (dirección en una constante), botón de jugar de nuevo y de volver al menú.
+- Modo demo (`Demo.ENABLED`): limita a 7 etapas, esconde lo que no entra (escenarios bloqueados con un cartel "en el juego completo"), y ajusta el tabernero final. Una constante, para que el juego final no se rompa.
+- Pruebas: terminar el run de la demo con el bot y ver que sale la pantalla; el modo demo apagado no cambia nada.
+
+## E. Números grandes y juice
+
+El juego tiene que poder romperse con los puntos sin romper la pantalla.
+- **Formato de números:** un `NumberFormat` (1,2 mil; 3,4 M; 5,6 B) usado por el contador de claridad, el cartel de ganancia, el precio del duende, las fichas, las pantallas del casino y el resumen; ancho de los contadores a prueba de 9 dígitos. Prueba: ningún número rompe el diseño con 10^9.
+- **Cartel de ganancia con peso:** la claridad ganada se anima según su tamaño (más grande, más tiempo y más fuerte), con sonido que sube con la racha y las multiplicaciones; mostrar el multiplicador completo (×3 de cosecha y ×4 de racha).
+- **Casino:** premios grandes con un golpe de pantalla; la pantalla de ganaste/perdiste ya existe, falta darle escala al premio mayor.
+- **Pruebas:** capturas con 10^3, 10^6 y 10^9.
+
+## F. Robustez y opciones
+
+- **Guardado:** probar continuar un run guardado en medio de la torre, en el casino y en la pantalla de carga; migración de guardados viejos (formato con `showcase`, `toll_bribe`).
+- **Errores:** nunca cerrar el juego por una torre mala; registro (`user://registro.log`) con la semilla y las acciones cuando algo falla; botón "reportar" que abre la carpeta.
+- **Opciones:** revisar video (resolución, pantalla completa, calidad), audio (música, efectos), idioma, controles reasignables, rosa de los vientos; sumar opción de "reducir efectos" (sin temblor de pantalla ni destellos) y de tamaño de texto.
+- **Mando:** movimiento y acciones con mando (stick, A para empujar, B para colgarse, etc.) y navegación de menús. Es opcional para la demo; se hace si hay tiempo (decisión de Dante).
+- **Rendimiento:** medir en una máquina vieja (cuadros por segundo con una torre de 70 pisos, tiempo de carga del casino, memoria en una hora de juego).
+
+## G. Prueba con gente de afuera
+
+- **Protocolo:** 5 a 10 personas, una sola sesión de 45 minutos cada una, sin explicarles nada; se anota dónde se traban, qué no entienden, cuándo se aburren.
+- **Telemetría local:** el juego anota en `user://telemetria.jsonl` (sólo en la máquina) por cada torre: etapa, intentos, muertes y causa, claridad ganada, tiempo; por cada visita al casino: qué compró, cuántas veces jugó, cuánto sobró; y cómo termina el run. Un botón en el menú de opciones abre la carpeta para que me la manden.
+- **Uso:** con esos datos se calibra la tasa de muerte del bot (hoy 3 % a 20 %, inventada) y la curva de la colina; se vuelve a correr el bot y se ajusta.
+- **Entregable:** un informe con los 10 problemas principales y cuáles se arreglan antes de lanzar.
+
+## H. Arreglos de la prueba
+
+Lo que salga de G (se estima 1 a 2 días de arreglos). Se deja un margen explícito en el cronograma porque es donde más sorpresas hay.
+
+## I. Cubos con variantes y editor de modelos
+
+Pedido de Dante: que los cubos no tengan un solo diseño (variantes para darle variedad a las torres) y un editor de cubos, personajes y cosméticos, como el de las salas.
+
+### I.1 Formato de modelo
+Hoy todo se arma por código: los bloques en `block_models.gd` (5×5×5 minibloques por tipo y estado, con colores en los vértices), los personajes en `characters.gd` (cajas con colores) y los cosméticos en `cosmetics.gd` (cajas encima de un punto de anclaje del personaje). El editor necesita un formato de datos:
+- **Modelo voxel** (JSON, una línea por modelo): `{id, tipo ("bloque" | "cosmetico" | "personaje"), nombre, tamaño [x,y,z], paleta [colores], voxeles [[x,y,z,índice]], anclas, estado, variante_de, notas, version}`.
+- **Bloques:** 5×5×5 (o 8×8×8 más adelante) por `tipo` de bloque (común, hielo, bomba, catapulta, agrietado, pesado, trampa, pinchos, núcleo) y `estado` (corrupto, purificado, desactivado). Cada tipo y estado tiene una **lista de variantes**; la variante de cada cubo en la torre se elige por un número que sale de su celda inicial (estable: el mismo cubo siempre se ve igual en la misma torre, y la torre se ve distinta a la siguiente).
+- **Cosméticos:** un modelo con un ancla (`gorro` sobre la cabeza, `prenda` sobre el torso, y luego `cara` y `espalda`); tamaño libre dentro de una caja (por ejemplo 12×12×12 minibloques para el gorro).
+- **Personajes:** un conjunto de partes con voxeles (cabeza, torso, brazo izquierdo y derecho, pierna izquierda y derecha) cada una con su pivote, porque la animación de pasos y el estirar y aplastar mueven partes. Los humanos (Dante y Gaby) y los animalitos pasan al formato de datos.
+- **Carpeta:** `data/modelos/*.jsonl`, versionada (es arte del juego, no datos generados), cargada por un `ModelLib` (como `RoomLib`).
+
+### I.2 Variantes de cubos
+- Primero sin editor: generar automáticamente 3 a 4 variantes por tipo y estado a partir del diseño actual (otras semillas de desorden, voxeles sueltos en otros lugares, bordes distintos) para que las torres ya se vean con variedad.
+- `BlockModels.mesh_for(tipo, estado, variante)`; `main.gd` elige la variante por celda (`_make_block`) y la mantiene al moverse el bloque.
+- La lógica del juego no cambia (sólo es visual); se mantiene la regla de que la cara de arriba esté cubierta (`top_coverage`) para que se vea que se puede pisar.
+- Pruebas: todas las variantes tienen la cara de arriba cubierta, se parecen entre sí lo suficiente para leerse como el mismo tipo (mismo color base), y el tiempo de armar los modelos no sube.
+
+### I.3 Editor de modelos
+Escena `editor_modelos.tscn` y `scripts/editor_modelos.gd` (más `modelo_vista.gd` y `modelo_datos.gd`), con el mismo estilo del Estudio de salas:
+- **Pintar en 3D:** clic para poner un minibloque en la cara tocada (como el editor de salas, estilo Minecraft), clic derecho para sacarlo, selección de color de la paleta, cuentagotas, relleno de una capa, **simetría** (espejo en x y z), rotar el modelo y cámara libre (arriba y abajo del horizonte).
+- **Capas:** ver una capa a la vez para pintar con precisión; deshacer y rehacer (Ctrl+Z, Ctrl+Y).
+- **Paleta:** colores editables, paletas guardadas (la del juego por etapa), y un modo "tinte de la etapa" para ver cómo queda a distintas alturas (el bloque normal purificado toma el color de su altura).
+- **Lista de modelos** a la izquierda con filtro por tipo (bloque, cosmético, personaje), por estado y por rareza; **variantes** de cada bloque en una tira para elegir cuál se edita; botones de duplicar, borrar y marcar como "versión del juego".
+- **Vista previa:** al lado, el modelo en la escena real (iluminación del juego, sobre una torre chica, o puesto en el personaje que se elija); para personajes, una animación de caminar y de saltar.
+- **Verificación a pedido:** cara de arriba cubierta (bloques), tamaño dentro de la caja (cosméticos), partes completas (personajes), cantidad de minibloques (para vigilar el costo de dibujo).
+- **Guardado:** a `data/modelos/` (JSONL), con un botón "probar en el juego" que abre una torre y deja el modelo puesto.
+- **Importar de código:** un botón "pasar al editor" para cada diseño actual (los bloques, personajes y cosméticos que hoy están en código), así se parte de lo que ya hay.
+
+### I.4 Integración en el juego
+- `BlockModels`, `Characters` y `Cosmetics` leen primero `ModelLib` (si hay un modelo del id, lo usan) y caen al diseño por código si no (así lo viejo no se rompe).
+- El menú de Personaje muestra los cosméticos creados con el editor con su rareza (la rareza se edita en el editor).
+- Los dados de la pantalla de carga entregan también los cosméticos nuevos (ya sortean entre `Cosmetics.ALL`).
+
+### I.5 Pruebas y documentos
+`tests/test_modelos.gd` (formato, carga, variantes estables, ida y vuelta guardar y leer), pruebas del editor como las del Estudio (pintar, deshacer, simetría, guardar), capturas, y `docs/editor_modelos.md`.
+
+### I.6 Tamaño
+Es lo más grande del plan. Orden interno: formato y `ModelLib` → variantes automáticas en el juego → editor básico (pintar, paleta, guardar) → vista previa y verificación → personajes con partes y animación → cosméticos con anclas. Si el tiempo aprieta para la demo, se entrega hasta las variantes automáticas y el editor de bloques y cosméticos, y el editor de personajes queda para después.
+
+## J. Contenido de salas
+
+- **Salas con bomba:** hoy la biblioteca no tiene ninguna que necesite la bomba (se vuelven comunes con la regla de zona esférica). Hay que minerar con el foco en bombas (`--types=b`, `--focus=bomba` con la cuenta afinada) para tener al menos 60 salas con bomba verificadas; la bomba aparece en la etapa 7, última de la demo, pero conviene tener variedad.
+- **Variedad:** meta de la demo: al menos 300 salas distintas (por familia) en las dificultades de las etapas 1 a 7 y las cuatro formas con alturas variadas. Hoy hay 3755; lo que falta es revisar que haya suficiente de cada dificultad y forma en esas etapas.
+- **Calidad:** una pasada por el Estudio con las salas que más salen (revisar visualmente, descartar las feas o confusas, marcar las buenas).
+- Corre en segundo plano (minero), sin bloquear el resto.
+
+## K. Localización y créditos
+
+- Inglés completo (los tests de traducciones dejan de fallar), créditos reales (nombres), textos nuevos del tutorial, del fin de la demo y del editor.
+- `test_loc.gd` en verde.
+
+## L. Exportación
+
+- Presets de Windows (y, si se quiere, Linux): iconos, versión, `data/*.rooms`, `data/*.torres` y `data/modelos/*` incluidos; sin el solucionador nativo (cae a GDScript sólo para los tramos de respiro).
+- Script de construcción (`construir_demo.ps1`): exporta, copia, comprime y calcula el tamaño.
+- Prueba en una máquina limpia: instalar, abrir, jugar la demo entera, cerrar, volver a abrir y continuar.
+- Registro de cambios y número de versión.
+
+## Cronograma estimado (trabajo en una sola sesión de desarrollo, en orden)
+
+| Orden | Bloque | Tamaño |
+|---|---|---|
+| 1 | A. Cierre de lo hecho | chico |
+| 2 | C. Banco de torres y carga | mediano |
+| 3 | B. Tutorial nuevo | mediano |
+| 4 | E. Números grandes y juice | mediano |
+| 5 | D. Fin de la demo | chico |
+| 6 | F. Robustez y opciones (sin mando) | mediano |
+| 7 | I.1 a I.2 Formato y variantes de cubos | mediano |
+| 8 | I.3 a I.5 Editor de modelos | **grande** |
+| 9 | J. Contenido (en segundo plano desde el paso 2) | mediano |
+| 10 | K. Localización y créditos | chico |
+| 11 | G. Prueba con gente | depende de Dante (coordinar) |
+| 12 | H. Arreglos | mediano |
+| 13 | L. Exportación | chico |
+
+## Riesgos
+
+- **El balance depende de gente real:** la tasa de muerte y lo que se entiende del duende son suposiciones; por eso G y H tienen un margen aparte.
+- **El editor de modelos puede comerse todo el tiempo:** conviene fijar un alcance mínimo (bloques y cosméticos) y dejar personajes para después si hace falta.
+- **Generación en vivo en el juego final:** el banco resuelve la demo; para el juego final hay que seguir optimizando la generación o armar bancos grandes.
+- **Rendimiento con modelos más detallados:** más minibloques por cubo cuestan más al dibujar; hay que medirlo (el límite es de 5×5×5 por bloque).
+
+## Decisiones a confirmar
+
+1. Qué etapas entran en la demo (propuesta: 1 a 7).
+2. Alcance del editor de modelos para la demo (propuesta: bloques con variantes + cosméticos; personajes si hay tiempo).
+3. Si la demo incluye las monedas y las jugadas mínimas del casino o no (propuesta: no, se dejan para el juego final).
+4. Si entra el mando en la demo (propuesta: no).
