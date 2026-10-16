@@ -820,37 +820,62 @@ func _model_for(node: MeshInstance3D, id: int) -> ArrayMesh:
 
 
 const BOMB_ZONE_TINT := Color(1.0, 0.55, 0.5)   # tinte de los bloques que están dentro de la zona de una bomba
-const BOMB_ZONE_RADIUS := 2.74   # radio de la esfera que se dibuja: deja adentro las celdas a distancia² <= 5 (centros hasta 2,24) y afuera las de 8 (2,83)
+const BOMB_ZONE_PULSE := 0.45   # velocidad del titilar de la zona (ciclos por segundo: lento)
+var _zone_mat: StandardMaterial3D = null
+var _zone_mesh: BoxMesh = null
+var _zone_t := 0.0
 
 
-## La zona roja translúcida de una bomba con cuenta (hija del bloque: lo sigue cuando se mueve); se saca cuando la bomba se desactiva.
-func _update_bomb_zone(node: MeshInstance3D, active: bool) -> void:
-	var zone: Node = node.get_node_or_null("zone")
+## La zona de una bomba con cuenta: bloques rojos transparentes en el aire de su zona (hijos de la bomba: la siguen cuando se mueve), que titilan despacio hasta casi desaparecer. Se sacan al desactivarse.
+func _update_bomb_zone(node: MeshInstance3D, active: bool, bomb_pos: Vector3i) -> void:
+	var zone: MultiMeshInstance3D = node.get_node_or_null("zone")
 	if not active:
 		if zone != null:
-			zone.queue_free()
 			node.remove_child(zone)
+			zone.queue_free()
 		return
-	if zone != null:
+	var air: Array[Vector3i] = []   # las celdas libres de la zona (donde no hay bloque)
+	for dx in range(-2, 3):
+		for dy in range(-2, 3):
+			for dz in range(-2, 3):
+				var d := Vector3i(dx, dy, dz)
+				if d != Vector3i.ZERO and dx * dx + dy * dy + dz * dz <= TowerLogic.BOMB_RADIUS2 and not logic.blocks.has(bomb_pos + d):
+					air.append(d)
+	var sig := str(air)
+	if zone != null and zone.get_meta("sig", "") == sig:
 		return
-	var sphere := SphereMesh.new()
-	sphere.radius = BOMB_ZONE_RADIUS
-	sphere.height = BOMB_ZONE_RADIUS * 2.0
-	sphere.radial_segments = 32
-	sphere.rings = 16
-	var zm := StandardMaterial3D.new()
-	zm.albedo_color = Color(1.0, 0.12, 0.08, 0.16)
-	zm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	zm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	zm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	zm.no_depth_test = false
-	zm.disable_receive_shadows = true
-	var mi := MeshInstance3D.new()
-	mi.name = "zone"
-	mi.mesh = sphere
-	mi.material_override = zm
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.add_child(mi)
+	if _zone_mesh == null:
+		_zone_mesh = BoxMesh.new()
+		_zone_mesh.size = Vector3(0.94, 0.94, 0.94)
+		_zone_mat = StandardMaterial3D.new()
+		_zone_mat.albedo_color = Color(1.0, 0.1, 0.06, 0.1)
+		_zone_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_zone_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_zone_mat.disable_receive_shadows = true
+		_zone_mesh.material = _zone_mat
+	if zone == null:
+		zone = MultiMeshInstance3D.new()
+		zone.name = "zone"
+		zone.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = _zone_mesh
+		zone.multimesh = mm
+		node.add_child(zone)
+	zone.set_meta("sig", sig)
+	var multi: MultiMesh = zone.multimesh
+	multi.instance_count = air.size()
+	for k in air.size():
+		multi.set_instance_transform(k, Transform3D(Basis(), Vector3(air[k])))
+
+
+## El titilar de las zonas de las bombas: de casi transparente a un rojo suave, lento.
+func _pulse_bomb_zones(delta: float) -> void:
+	if _zone_mat == null:
+		return
+	_zone_t += delta
+	var k := 0.5 - 0.5 * cos(_zone_t * TAU * BOMB_ZONE_PULSE)   # 0..1
+	_zone_mat.albedo_color.a = lerpf(0.0, 0.13, k) + 0.02   # nunca del todo invisible: se ve un poco
 
 
 ## Aspecto de un bloque: su modelo (corrupto o purificado), el tinte, y el brillo (aviso de caída, bomba, purificado).
@@ -1231,6 +1256,7 @@ func _process(delta: float) -> void:
 	_update_target_box()
 	juice.process(delta)
 	_bomb_ticking(delta)
+	_pulse_bomb_zones(delta)
 	_arrow_camera(delta)
 	if cam == null or player_node == null:
 		return
@@ -1698,9 +1724,9 @@ func _refresh() -> void:
 			else:
 				lab.text = "✓"  # desactivada por purificación
 				lab.modulate = Color(0.5, 1.0, 0.55)
-			_update_bomb_zone(node, logic.bomb_timer.has(id))
+			_update_bomb_zone(node, logic.bomb_timer.has(id), pos)
 		elif node.has_node("zone"):   # (un consumible la convirtió en otra cosa)
-			_update_bomb_zone(node, false)
+			_update_bomb_zone(node, false, pos)
 		# Meta: el bloque-portal (goal_block) lleva la baldosa dorada y el haz de luz, que lo siguen si se lo mueve.
 		# Sin bloque-portal (torres de prueba) cualquier bloque de la capa superior vale y lleva baldosa.
 		var is_top: bool = (id == logic.goal_block) if logic.goal_block >= 0 else (pos.y == logic.goal_y - 1 and not logic.fixed.has(pos))
