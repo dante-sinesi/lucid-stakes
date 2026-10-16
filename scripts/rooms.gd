@@ -199,6 +199,7 @@ static func generate_stage(seed_value: int, rows: int, difficulty: float, opts: 
 
 
 static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: Dictionary) -> Dictionary:
+	var t_all := Time.get_ticks_usec()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var token = opts.get("cancel_token", null)
@@ -283,7 +284,9 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 	var band := Gen.band_for(difficulty)
 	var close_opts: Dictionary = opts.duplicate()
 	close_opts["slack"] = 3.0   # (de acá se baja: el ritmo final lo elige tightest_n con holgura para equivocarse)
+	var tclose := Time.get_ticks_usec()
 	var res: Dictionary = Gen._close_tower(st.tower, st.sim, st.path, st.row_moves, st.shapes, st.infos, st.states, [], close_opts, difficulty, pace, band, rows)
+	_p("cierre_torre", tclose)
 	if res.ok:
 		res["rooms"] = rooms_done
 		if difficulty >= 0.1:   # la caída se aprieta hasta que sólo se aguanten unos pocos titubeos (cuanto más difícil, menos: 12 a 4 titubeos, o sea 24 a 8 movimientos de más)
@@ -292,7 +295,9 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 			trng.seed = seed_value + 99
 			var grace := 2.0   # (la primera caída tarda el doble: tiempo para explorar)
 			var n_orig: int = int(res.collapse_every)
+			var tt := Time.get_ticks_usec()
 			var n := Metrics.tightest_n(res.logic, res.path, n_orig, k, 0.9, trng, grace)
+			_p("ritmo_de_caida", tt)
 			if Metrics.survival(res.logic, res.path, n, 0, 1, trng, grace) < 1.0:   # (si ninguno sirve con esta gracia, queda el ritmo de antes, que se comprobó con el doble)
 				n = n_orig
 				grace = 2.0
@@ -330,6 +335,7 @@ static func _new_base(rows: int) -> Dictionary:
 	tower.goal_y = rows + 1
 	tower.player = Vector3i(START.x, 1, START.y)
 	var sim0 = tower.clone()
+	sim0.track_purify = false   # (la simulación de la generación no cuenta claridad)
 	sim0.lazy_settle = true   # (sólo se tocan bloques con add_block y con las acciones: ver TowerLogic._settle_blocks)
 	sim0._blocks_dirty = true
 	sim0.goal_y = Gen.BIG
@@ -670,7 +676,9 @@ static func place_library_room(st: Dictionary, ey: int, rng: RandomNumberGenerat
 			for si in order:
 				if tried_room >= LIB_TRIES_PER_ROOM:
 					break
+				var tcand := Time.get_ticks_usec()
 				var cand := _lib_candidate(st, ey, room, SYMS[si], spot, walk)
+				_p("candidatos", tcand)
 				if cand.is_empty():
 					continue
 				tried_room += 1
@@ -679,15 +687,15 @@ static func place_library_room(st: Dictionary, ey: int, rng: RandomNumberGenerat
 				if commits > LIB_ROOMS:
 					return {"ok": false}
 				var ctx := {"idea": "biblioteca", "rng": rng, "st": st, "ey": ey, "h": int(room.h), "arrival": arrival, "twist": str(room.id), "d": difficulty, "strict": 1.0, "pick": 1}
+				if remaining - int(room.h) > 0:   # (si todavía faltan pisos: la salida tiene que dejar lugar a la sala que sigue)
+					var goal_cell: Vector2i = cand.goal
+					var next_ey := ey + int(room.h)
+					ctx["lookahead"] = func(tmp: Dictionary) -> bool: return _lib_walk(tmp, next_ey, goal_cell).size() >= LIB_NEXT_SPOTS
+				var tc := Time.get_ticks_usec()
 				var done := _commit(ctx, cand, "biblioteca", 0, 999, false)
+				_p("commit_biblioteca", tc)
 				if not done.ok:
 					lib_stats["commit_fail"] = int(lib_stats.get("commit_fail", 0)) + 1
-				if done.ok:   # la salida tiene que dejar lugar para la sala que sigue (en una esquina o contra la pared nada entra y la torre se traba más arriba)
-					var next_arrival := Vector2i(st.sim.player.x, st.sim.player.z)
-					if remaining - int(room.h) > 0 and _lib_walk(st, ey + int(room.h), next_arrival).size() < LIB_NEXT_SPOTS:   # (si todavía faltan pisos, la salida tiene que dejar lugar a la sala que sigue)
-						lib_stats["lookahead_fail"] = int(lib_stats.get("lookahead_fail", 0)) + 1
-						_restore(st, base)
-						continue
 				if done.ok:
 					var lu: Dictionary = st.get("lib_used", {})
 					lu[room.id] = true
@@ -699,6 +707,13 @@ static func place_library_room(st: Dictionary, ey: int, rng: RandomNumberGenerat
 					done["room_id"] = room.id
 					return done
 	return {"ok": false}
+
+
+static var prof := {}   # (diagnóstico, GEN_PROF=1) microsegundos gastados en cada parte de la generación
+
+
+static func _p(name: String, t0: int) -> void:
+	prof[name] = int(prof.get(name, 0)) + Time.get_ticks_usec() - t0
 
 
 static var lib_stats := {}   # (diagnóstico) cuántas salas de la biblioteca se probaron y por qué fallaron
@@ -782,7 +797,7 @@ static func _lib_candidate(st: Dictionary, ey: int, room: Dictionary, sym: Array
 		pos = c
 	for a in room.path:
 		path.append({"dir": Vector3i(int(sym[0]) * a.dir.x + int(sym[1]) * a.dir.z, 0, int(sym[2]) * a.dir.x + int(sym[3]) * a.dir.z), "mode": a.mode})
-	return {"cols": {goal: {"h": h, "kind": K.HEAVY}}, "goal": goal, "floor_kinds": floors, "margin": 0, "taller": true, "solution": path, "explicit": blocks}
+	return {"cols": {goal: {"h": h, "kind": K.HEAVY}}, "goal": goal, "floor_kinds": floors, "margin": 0, "taller": true, "trusted": true, "solution": path, "explicit": blocks}
 
 
 static func _lib_map(c: Vector2i, entry: Vector2i, sym: Array, arrival: Vector2i) -> Vector2i:
@@ -3487,24 +3502,32 @@ static func _commit(ctx: Dictionary, cand: Dictionary, name: String, lo: int, hi
 	for b in blocks:
 		tower.add_block(b.c, b.fixed, b.kind, b.timer)
 		sim.add_block(b.c, b.fixed, b.kind, b.timer)
-	var firm = sim.clone()   # nada de lo armado puede caerse solo
-	firm.lazy_settle = false
-	firm._blocks_dirty = true
-	if firm._settle_blocks() or firm.blocks.size() != sim.blocks.size():
-		return _no(8, name)
+	if ctx.has("lookahead") and not ctx.lookahead.call({"tower": tower, "sim": sim, "reserved": st.reserved}):   # (sala de la biblioteca: la salida tiene que dejar lugar a la que sigue; se mira antes de las repeticiones, que son lo caro)
+		return _no(21, name)
+	if not cand.get("trusted", false):   # (las salas de la biblioteca ya vienen verificadas como estables)
+		var firm = sim.clone()   # nada de lo armado puede caerse solo
+		firm.lazy_settle = false
+		firm._blocks_dirty = true
+		if firm._settle_blocks() or firm.blocks.size() != sim.blocks.size():
+			return _no(8, name)
 	var plat_id: int = tower.blocks[blocks[0].c]
 	var per_row: Array[int] = []
 	per_row.resize(h)
 	per_row.fill(0)
 	var reached := 0
+	var added := {}   # las celdas del camino de esta sala (las del anterior ya están reservadas): nada de lo que sigue las puede tapar (ni cortar un salto)
 	for a in solved.path:
 		if not sim.try_action(a.dir, a.mode).ok or sim.lost:
 			return _no(9, name)
+		for c in sim.trail:
+			added[c] = true
+			added[c + Vector3i(0, 1, 0)] = true
 		reached = maxi(reached, clampi(sim.player.y - ey - 1, 0, h - 1))
 		per_row[reached] += 1
 	if sim.player.y != ey + h or sim.blocks.get(sim.player + Vector3i.DOWN, -2) != plat_id:
 		return _no(10, name)
 	var chk = tower.clone()
+	chk.track_purify = false
 	chk.goal_y = Gen.BIG
 	var qi := 0
 	for a in st.path:
@@ -3520,18 +3543,6 @@ static func _commit(ctx: Dictionary, cand: Dictionary, name: String, lo: int, hi
 		return _no(13, name)
 	tower.row_platforms[ey + h - 1] = [plat_id]
 	tower.platform_row[plat_id] = ey + h - 1
-	var walk = tower.clone()   # las celdas del camino quedan reservadas: nada de lo que sigue las puede tapar (ni cortar un salto)
-	var added := {}
-	for a in st.path:
-		walk.try_action(a.dir, a.mode)
-		for c in walk.trail:
-			added[c] = true
-			added[c + Vector3i(0, 1, 0)] = true
-	for a in solved.path:
-		walk.try_action(a.dir, a.mode)
-		for c in walk.trail:
-			added[c] = true
-			added[c + Vector3i(0, 1, 0)] = true
 	# la salida tiene que dejar lugar: la sala que sigue arranca desde ahí y necesita piso al lado
 	var exits := 0
 	var goal: Vector2i = cand.goal

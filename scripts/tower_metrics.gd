@@ -24,6 +24,7 @@ static func survival(tower, path: Array, n: int, k: int, trials: int, rng: Rando
 	var wins := 0
 	for _t in trials:
 		var lg = tower.clone()
+		lg.track_purify = false   # (la claridad no cambia si se gana o no: es lo caro de cada acción)
 		lg.collapse_every = n
 		lg.moves_to_collapse = maxi(int(round(float(n) * grace)), 1)
 		var at := {}
@@ -67,9 +68,10 @@ static func tightest_n(tower, path: Array, n_max: int, k: int, need: float, rng:
 	if survival(tower, path, hi, 0, 1, rng, grace) < 1.0:
 		return n_max
 	var front := maxi(15, path.size() / 4)   # titubeos metidos todos al principio (lo peor: arriba hay poco colchón): sale caro quedarse mucho en las primeras salas
+	var trials := 8 if path.size() < 250 else 5   # (cada intento repasa todo el camino: en una torre larga son menos)
 	while lo < hi:   # (con un n más grande se aguanta más: se busca por bisección)
 		var mid := (lo + hi) / 2
-		if survival(tower, path, mid, 0, 1, rng, grace) >= 1.0 and survival(tower, path, mid, k, 8, rng, grace) >= need and survival(tower, path, mid, front, 8, rng, grace, maxi(path.size() / 4, 20)) >= need:
+		if survival(tower, path, mid, 0, 1, rng, grace) >= 1.0 and survival(tower, path, mid, k, trials, rng, grace) >= need and survival(tower, path, mid, front, trials, rng, grace, maxi(path.size() / 4, 20)) >= need:
 			hi = mid
 		else:
 			lo = mid + 1

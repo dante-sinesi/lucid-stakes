@@ -1172,6 +1172,7 @@ static func _arm(t, n: int) -> void:
 
 static func _replay_wins(tower, path: Array, collapse_every: int) -> bool:
 	var s = tower.clone()
+	s.track_purify = false   # (ganar no depende de la claridad, que es lo caro de cada acción)
 	_arm(s, collapse_every)
 	for a in path:
 		if not s.try_action(a.dir, a.mode).ok or s.lost:

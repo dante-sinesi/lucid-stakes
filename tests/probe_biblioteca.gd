@@ -28,5 +28,6 @@ func _init() -> void:
 				parts.append("%s%d" % [("L:" + str(r.twist).substr(0, 4)) if r.idea == "biblioteca" else str(r.idea), r.h])
 			print("etapa %d (d=%.2f) semilla %d: filas %d, %d movs, %d ms · %s" % [stage, prof.difficulty, k, int(res.logic.goal_y), res.path.size(), Time.get_ticks_msec() - t1, " ".join(parts)])
 	print("diagnóstico biblioteca: ", Rooms.lib_stats)
+	print("tiempos (s): ", Rooms.prof.keys().map(func(k): return "%s %.1f" % [k, float(Rooms.prof[k]) / 1e6]))
 	print("fallos: ", fails)
 	quit(1 if fails > 0 else 0)
