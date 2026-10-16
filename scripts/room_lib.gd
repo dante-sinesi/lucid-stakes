@@ -97,10 +97,10 @@ static func max_height(shape: String) -> int:
 	return clampi(mini(cap, free_cells(shape).size() + 1), MIN_H, MAX_H)
 
 
-static func combos() -> Array:
+static func combos(min_h := MIN_H) -> Array:
 	var out: Array = []
 	for sh in SHAPES:
-		for h in range(MIN_H, max_height(sh) + 1):
+		for h in range(min_h, max_height(sh) + 1):
 			out.append([sh, h])
 	return out
 
@@ -167,6 +167,19 @@ static func is_stable(room: Dictionary) -> bool:
 	var before: Dictionary = t.blocks.duplicate()
 	t._settle()
 	return before.size() == t.blocks.size() and before.hash() == t.blocks.hash()
+
+
+## Las celdas de los bloques que se caerían al empezar (la sala no es estable). Un bloque se sostiene si apoya sobre otro sostenido, si apoya en la arista de uno un piso más abajo, o si no tiene nada debajo y toca de costado a uno sostenido;
+## un bloque que apoya sobre otro NO se cuelga de los costados. Tocarse sólo en diagonal hacia arriba no sostiene.
+static func unsupported_cells(room: Dictionary) -> Array:
+	var t = build_state(room)
+	var before: Dictionary = t.positions.duplicate()
+	t._settle()
+	var out: Array = []
+	for id in before:
+		if not t.positions.has(id) or t.positions[id] != before[id]:
+			out.append(before[id])
+	return out
 
 
 ## Cantidad de bloques sueltos de la sala (sin contar el piso ni el pilar de salida).
@@ -337,6 +350,46 @@ static func apply_result(room: Dictionary, path: Array, proof: String, lower: in
 	room.opt = {"moves": path.size(), "lower": lower, "grabs": st.grabs, "moved": st.moved, "proof": proof, "states": states, "levels": st.levels, "reach": snappedf(float(st.reach), 0.01)}
 	room.opt["diff"] = difficulty(room.opt)
 	finalize(room)
+
+
+# --- técnicas que usa el camino ---------------------------------------------------------------------------------------------------
+
+## Qué hace de verdad el camino de la sala: colgadas, patinazos, saltos de catapulta, pisadas en arenisca (se rompe al bajarte) y trampas desarmadas.
+static func technique_counts(room: Dictionary) -> Dictionary:
+	var t = build_state(room)
+	var f := {"colgadas": 0, "patinazos": 0, "saltos": 0, "arenisca": 0, "trampas": 0}
+	for a in room.path:
+		var before: Vector3i = t.player
+		var kind: int = t.kind_at(before + Vector3i(0, -1, 0))
+		t.try_action(a.dir, a.mode)
+		if a.mode == TowerLogic.Mode.HANG or (t.hang_dir != Vector3i.ZERO and before != t.player and t.player.y == before.y - 1):
+			f.colgadas += 1
+		if a.mode == TowerLogic.Mode.MOVE and t.hang_dir == Vector3i.ZERO and absi(t.player.x - before.x) + absi(t.player.z - before.z) >= 2 and t.player.y == before.y:
+			f.patinazos += 1
+		if t.player.y - before.y >= 3:
+			f.saltos += 1
+		if kind == K.CRACKED and t.player != before:
+			f.arenisca += 1
+		if t.trap_broke:
+			f.trampas += 1
+	return f
+
+
+## ¿El camino usa la técnica del bloque especial `ch` (i hielo: patina; c arenisca: pisa y rompe; k catapulta: salta; t trampa: la desarma; s pinchos: se cuelga; b bomba: la sala la tiene necesaria)?
+static func uses_technique(room: Dictionary, ch: String) -> bool:
+	var f := technique_counts(room)
+	match ch:
+		"i":
+			return int(f.patinazos) > 0
+		"c":
+			return int(f.arenisca) > 0
+		"k":
+			return int(f.saltos) > 0
+		"t":
+			return int(f.trampas) > 0
+		"s":
+			return int(f.colgadas) > 0
+	return true
 
 
 # --- calidad: especiales necesarios ---------------------------------------------------------------------------------------------

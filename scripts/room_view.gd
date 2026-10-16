@@ -56,7 +56,7 @@ static func bounds(room: Dictionary) -> Dictionary:
 
 
 ## Arma los bloques de la sala bajo `parent` (se borra lo que había). `st` es el simulador a dibujar (la sala quieta o una reproducción).
-static func populate(parent: Node3D, st, room: Dictionary, show_player := true, highlight: Array = []) -> void:
+static func populate(parent: Node3D, st, room: Dictionary, show_player := true, highlight: Array = [], warn: Array = []) -> void:
 	register_globals()
 	for ch in parent.get_children():
 		parent.remove_child(ch)
@@ -134,6 +134,20 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 		p.position = Vector3(pc.x + 0.5, pc.y + 0.39, pc.z + 0.5)
 		p.name = "jugador"
 		parent.add_child(p)
+	if not warn.is_empty():   # los bloques que se caerían: marcados en rojo
+		var warn_mat := StandardMaterial3D.new()
+		warn_mat.albedo_color = Color(1.0, 0.1, 0.1, 0.55)
+		warn_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		warn_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		for c in warn:
+			var w := MeshInstance3D.new()
+			var wb := BoxMesh.new()
+			wb.size = Vector3(1.1, 1.1, 1.1)
+			w.mesh = wb
+			w.material_override = warn_mat
+			w.position = world_pos(c)
+			w.name = "sin_apoyo"
+			parent.add_child(w)
 	if not hl.is_empty():
 		var sel_mat := StandardMaterial3D.new()
 		sel_mat.albedo_color = Color(0.2, 0.9, 1.0, 0.35)

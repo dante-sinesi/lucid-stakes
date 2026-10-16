@@ -6,15 +6,18 @@ Un **paso** es una pieza chica de sala que se diseña aparte, se resuelve sola c
 
 - Desde el Estudio de salas: botón **Diseñar pasos…**. O `herramientas\pasos.bat [archivo.jsonl]` (por defecto `pasos\pasos.jsonl`; si no existe se muestran dos ejemplos). Los pasos se guardan en un `.jsonl` con **Guardar**. "Volver al Estudio de salas" vuelve.
 - **Ventana**: largo (x), ancho (z) y alto del paso. El piso es fijo; el jugador empieza parado en la **entrada** y tiene que quedar parado en la **salida** (una plataforma fija con aro magenta).
+- **Sin piso**: botones "Quitar todo el piso" y "Poner todo el piso"; también se quita celda por celda con la herramienta **Borrar** (en un bloque del piso deja un pozo) o con la de pozos. El bloque de inicio (verde) y el de fin (rojo) son siempre fijos, así que pueden estar en el aire.
+- **Inicio y fin**: con la herramienta de inicio (o de fin), un clic en la cara de arriba de un bloque lo vuelve verde (o rojo); un clic en otra cara pone un bloque fijo nuevo pegado a esa cara, también en el aire. La altura de la ventana sale sola.
 - **Herramientas** (botón izquierdo): agregar un bloque pegado a la cara que tocás (se puede en el aire), borrar, cambiar tipo (común, hielo, agrietado, catapulta, trampa, pinchos, bomba, pesado), mover la entrada, mover la salida, **pozo** en el piso (alternar una celda del piso: se cruza colgado o saltando) y **tramo repetible**. Botón derecho: girar la cámara; rueda: acercar; botón del medio: mover. Ctrl+Z / Ctrl+Y deshacen y rehacen, Ctrl+S guarda, Tab muestra solo el paso (hay botones para ver "desde atrás del personaje" y en diagonal).
 - **Tramo repetible**: marcás unas columnas (dos clics en el piso, o las cajas "columnas desde / hasta" con el eje x o z) y el rango de repeticiones ("se repite de 1 a 5 veces"). El paso diseñado tiene el tramo una vez; con r repeticiones se copian esas columnas r veces y todo lo de más allá (la salida, por ejemplo) se corre. Las puertas no pueden estar dentro del tramo. **Ver con N repeticiones** muestra cualquier largo (con otro que no sea 1 no se edita).
 - **Resolver este largo**: el camino más corto demostrado (A* exacto, entre los más cortos el de menos empujes), que se reproduce con la barra y los botones, y lo que hace: pasos, empujes/tirones, colgadas, patinazos, saltos de catapulta, y qué tipos de bloque son **necesarios** (si cambiar ese tipo por común no cambia el camino más corto, dice "de adorno").
 - **Probar todos los largos**: resuelve cada largo del rango por separado y muestra una línea por largo (✓ con sus números, o ✗ con el motivo: sin solución, o más de 400 mil estados sin resolver). El resultado queda en la lista de la izquierda (`[5/5 ✓]`).
 
-## Los dos ejemplos
+## Los ejemplos
 
 - **Fila de pinchos (colgarse)**: una cornisa de bloques con una columna de pinchos y un pozo al lado. Pisar los pinchos es perder, así que la solución es colgarse del borde antes de los pinchos, avanzar por debajo y trepar del otro lado. Con 1 a 5 pinchos seguidos se resuelve en 7 a 11 pasos.
 - **Camino de hielo**: bloques de hielo hasta una plataforma; se patina todo el camino de una vez.
+- **Hielo sin piso (patinar en L)**: nada de suelo, inicio y fin en el aire y dos caminos de hielo en L; se patina, se frena en un bloque común y se vuelve a patinar. El largo del primer camino se repite de 1 a 5.
 
 ## Lo que falta
 

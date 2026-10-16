@@ -15,6 +15,7 @@ const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["moved"
 ## Tipos de bloque por los que se puede filtrar (caracteres de la sala): hielo, arenisca, bomba, catapulta (trampolín), trampa, pinchos y pesado.
 const KIND_FILTERS := ["i", "c", "b", "k", "t", "s", "h"]
 
+var _unsupported: Array = []   # los bloques que se caerían (se marcan en rojo)
 var model := StudioModel.new()
 var lib_path := ""
 var yaw := 35.0
@@ -572,7 +573,8 @@ func _refresh_view() -> void:
 	if st == null:
 		RoomView.populate(blocks_root, null, {})
 		return
-	RoomView.populate(blocks_root, st, model.current, true, _highlight_cells())
+	_unsupported = RoomLib.unsupported_cells(model.current) if RoomLib.has_gaps(model.current) else []
+	RoomView.populate(blocks_root, st, model.current, true, _highlight_cells(), _unsupported)
 
 
 func _refresh_info() -> void:
@@ -603,6 +605,8 @@ func _refresh_info() -> void:
 		t += "%s (%d pasos) · %s%s\n" % [label, int(o.moves), proof_txt, " · camino plantado" if str(o.get("source", "")) == "plantada" else ""]
 	elif o.has("error"):
 		t += "[color=#ff7070]no se resuelve: %s[/color]\n" % str(o.error)
+		if not _unsupported.is_empty():
+			t += "[color=#ff7070]%d bloques se caerían (están marcados en rojo): un bloque que apoya sobre otro no se cuelga de los costados, y tocarse sólo en diagonal no sostiene.[/color]\n" % _unsupported.size()
 	else:
 		t += "[color=#e0a060]sin verificar[/color]\n"
 	if model.dirty:
@@ -875,13 +879,17 @@ func set_kind_pick(k: String) -> void:
 # --- acciones -----------------------------------------------------------------------------------------------------------------------
 
 ## Después de cada cambio: se vuelve a verificar la sala y se redibuja todo.
-func after_edit() -> void:
+## Después de cada cambio se redibuja todo, pero la sala NO se vuelve a resolver: eso se hace sólo cuando se pulsa Verificar, Mejorar camino o Podar relleno (con `verify`).
+func after_edit(verify := false) -> void:
 	sel = {} if sel.is_empty() or RoomLib.block_char(model.current, sel.cell, int(sel.y)) == "" else sel
-	var v := model.verify(3000)
-	if v.ok:
-		_set_status("Verificada: %d empujes o tirones de %d pasos (dificultad %d %%)%s." % [int(v.grabs), int(v.moves), roundi(100.0 * float(v.grabs) / maxf(float(v.moves), 1.0)), " (se conservó el camino)" if v.reused else ""])
-	else:
-		_set_status("Sin solución: %s." % str(v.why))
+	if verify:
+		var v := model.verify(3000)
+		if v.ok:
+			_set_status("Verificada: %d empujes o tirones de %d pasos (dificultad %d %%)%s." % [int(v.grabs), int(v.moves), roundi(100.0 * float(v.grabs) / maxf(float(v.moves), 1.0)), " (se conservó el camino)" if v.reused else ""])
+		else:
+			_set_status("Sin solución: %s." % str(v.why))
+	elif not model.verified:
+		_set_status("Sala cambiada, todavía sin verificar (Verificar o Mejorar camino la resuelven).")
 	refresh_all()
 	_select_in_list()
 
@@ -889,7 +897,7 @@ func after_edit() -> void:
 func do_verify() -> void:
 	if not model.has_current():
 		return
-	after_edit()
+	after_edit(true)
 
 
 func do_verify_exact() -> void:

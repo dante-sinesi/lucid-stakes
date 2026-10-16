@@ -25,6 +25,7 @@ func _init() -> void:
 	test_paths_and_prune()
 	test_difficulty()
 	test_gaps()
+	test_unsupported()
 	print("tests de la biblioteca de salas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -375,3 +376,28 @@ func test_gaps() -> void:
 	check(back.cols[b] == "n.n" and back.id == r.id, "los huecos sobreviven al archivo")
 	var rl := RoomLib.room_from_layout(r, [[a.x, 1, a.y, 0], [a.x, 3, a.y, 5], [b.x, 2, b.y, 1]])
 	check(rl.cols[a] == "n.h" and rl.cols[b] == ".i", "room_from_layout deja huecos donde faltan bloques (%s, %s)" % [rl.cols[a], rl.cols[b]])
+
+
+func test_unsupported() -> void:
+	var r := RoomLib.make_room("3x5", 6)
+	var far: Array = []
+	for c in RoomLib.free_cells("3x5"):
+		if (c - r.entry).length() >= 2.5 and c != r.exit and (c - r.exit).length() >= 1.5:
+			far.append(c)
+	var a: Vector2i = far[0]
+	var diag := Vector2i(-9, -9)
+	var side := Vector2i(-9, -9)
+	for c in far:
+		if absi(c.x - a.x) == 1 and absi(c.y - a.y) == 1:
+			diag = c
+		if (c - a).length() == 1.0:
+			side = c
+	r.cols[a] = "nnn"
+	if diag != Vector2i(-9, -9):
+		r.cols[diag] = ".n"
+		check(RoomLib.unsupported_cells(r) == [Vector3i(diag.x, 2, diag.y)], "un bloque que sólo toca en diagonal se cae y queda marcado (%s)" % str(RoomLib.unsupported_cells(r)))
+		check(RoomLib.validate_structure(r) == "hay bloques sin apoyo", "y la sala no es estable")
+	if side != Vector2i(-9, -9):
+		var r2 := RoomLib.copy_room(r)
+		r2.cols = {a: "nnn", side: ".n"}
+		check(RoomLib.unsupported_cells(r2).is_empty(), "pegado de costado a una columna se sostiene")

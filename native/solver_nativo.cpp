@@ -806,6 +806,9 @@ static string pathText(const vector<Node> &nodes, int idx) {
 // desde cada estado y cuántas de ellas son empujar o tirar (entre los caminos más cortos, el de menos agarres). Los candidatos son los estados donde el jugador está en la entrada, de pie,
 // cuyos bloques sueltos forman columnas apoyadas en el piso (un formato que la biblioteca de salas puede guardar): son salas nuevas, alcanzables desde la inicial, de dificultad exacta conocida.
 static long long exMaxNodes = 1000000;
+static bool exKeepSpecials = false;            // los bloques especiales (todos menos común y pesado) tienen que quedar en su lugar
+static bool exNoFloor = false;                 // sin piso: no se exige que haya piso debajo de cada celda
+static vector<char> exArenaOk;                  // si no está vacío, las celdas (x, z) permitidas (x * 64 + z)
 static int exTopK = 20, exEntryX = 0, exEntryZ = 0, exExitX = -99, exExitZ = -99, exMinD = 0, exColumns = 1, exMaxY = 19;
 
 struct EdgeRec { int u, v; u8 grab; };
@@ -922,8 +925,23 @@ static void excavate(Sim &root, ofstream &out) {
 	}
 	// candidatos: una disposición de bloques (con el jugador donde mejor le quede) expresable en columnas apoyadas en el piso
 	vector<signed char> exprOk(cfgCount(), -1);
+	auto specialsOf = [&](int cfg) {
+		CfgView c = cfgGet(cfg);
+		vector<int> out;
+		for (size_t j = 0; j < c.size(); j += 4) {
+			int k = c[j + 2] & 7;
+			if (k != NORMAL && k != HEAVY) out.push_back((c[j] | (c[j + 1] << 8)) * 8 + k);
+		}
+		sort(out.begin(), out.end());
+		return out;
+	};
+	vector<int> rootSpecials = specialsOf(0);
 	auto expressible = [&](int cfg) -> bool {
 		if (exprOk[cfg] >= 0) return exprOk[cfg] != 0;
+		if (exKeepSpecials && specialsOf(cfg) != rootSpecials) {
+			exprOk[cfg] = 0;
+			return false;
+		}
 		CfgView c = cfgGet(cfg);
 		vector<int> cells;
 		for (size_t j = 0; j < c.size(); j += 4) cells.push_back(c[j] | (c[j + 1] << 8));
@@ -932,7 +950,9 @@ static void excavate(Sim &root, ofstream &out) {
 		for (int ci : cells) {
 			V b = cellOf(ci);
 			if (b.x == exExitX && b.z == exExitZ) continue;   // el pilar de la salida
-			if (b.y < 1 || b.y > exMaxY || !(S[cellIdx({b.x, 0, b.z})])) {
+			bool cellOk = exNoFloor ? true : (S[cellIdx({b.x, 0, b.z})] != 0);
+			if (!exArenaOk.empty() && !exArenaOk[b.x * 64 + b.z]) cellOk = false;
+			if (b.y < 1 || b.y > exMaxY || !cellOk) {
 				ok = false;
 				break;
 			}
@@ -960,7 +980,12 @@ static void excavate(Sim &root, ofstream &out) {
 	}
 	vector<Lay> cands;
 	for (auto &kv : layouts) cands.push_back(kv.second);
-	sort(cands.begin(), cands.end(), [](const Lay &a, const Lay &b) { return a.g != b.g ? a.g > b.g : (a.d != b.d ? a.d > b.d : a.node < b.node); });
+	// se ordena por dificultad (agarres sobre pasos); entre las parecidas, las de más agarres
+	sort(cands.begin(), cands.end(), [](const Lay &a, const Lay &b) {
+		long long l = (long long)a.g * b.d, r = (long long)b.g * a.d;
+		if (l != r) return l > r;
+		return a.g != b.g ? a.g > b.g : a.node < b.node;
+	});
 	long long ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t0).count();
 	int maxd = 0, maxg = 0, wins = 0;
 	for (int i = 0; i < N; i++) {
@@ -1027,7 +1052,24 @@ int main(int argc, char **argv) {
 		else if (tok == "ENTRY") in >> exEntryX >> exEntryZ;
 		else if (tok == "EXIT") in >> exExitX >> exExitZ;
 		else if (tok == "PATH") in >> exPath;
-		else if (tok == "COLUMNS") in >> exColumns;
+		else if (tok == "KEEPSPECIALS") {
+			int v;
+			in >> v;
+			exKeepSpecials = v != 0;
+		} else if (tok == "NOFLOOR") {
+			int v;
+			in >> v;
+			exNoFloor = v != 0;
+		} else if (tok == "ARENA") {
+			int n;
+			in >> n;
+			exArenaOk.assign(64 * 64, 0);
+			for (int i = 0; i < n; i++) {
+				int x, z;
+				in >> x >> z;
+				if (x >= 0 && x < 64 && z >= 0 && z < 64) exArenaOk[x * 64 + z] = 1;
+			}
+		} else if (tok == "COLUMNS") in >> exColumns;
 		else if (tok == "MAXY") in >> exMaxY;
 		else if (tok == "NOGRAB") {
 			int v;
