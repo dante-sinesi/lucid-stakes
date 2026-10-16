@@ -590,6 +590,11 @@ func _act_hanging(d: Vector3i) -> Dictionary:
 		_set_player(g2)
 		hang_dir = -d
 		return _ok()
+	if blocks.has(g2 + DOWN):   # el borde del bloque termina y del otro lado hay piso (el bloque de arriba impide rodearlo colgado): se sube a ese piso y se queda parado
+		hang_dir = Vector3i.ZERO
+		_set_player(g2)
+		_arrive(d)
+		return _ok()
 	return _fail("No se puede avanzar por el borde")
 
 

@@ -523,6 +523,12 @@ static bool actHanging(Sim &s, V d) {
 		s.hang = -d;
 		return true;
 	}
+	if (has(s, g2 + DOWN)) {   // el borde del bloque termina y del otro lado hay piso: se sube a ese piso y queda parado
+		s.hang = ZERO;
+		setP(s, g2);
+		arrive(s, d);
+		return true;
+	}
 	return false;
 }
 
