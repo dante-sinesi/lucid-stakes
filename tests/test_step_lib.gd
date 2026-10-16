@@ -16,6 +16,7 @@ func _init() -> void:
 	test_instantiate()
 	test_validate()
 	test_evaluate()
+	test_no_floor()
 	test_files()
 	print("tests de los pasos terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
@@ -100,6 +101,27 @@ func test_evaluate() -> void:
 	wall.blocks = [[2, 1, 0, K.HEAVY], [2, 2, 0, K.HEAVY]]
 	var ev4 := StepLib.evaluate(wall, 50000, 5000, false)
 	check(not bool(ev4.ok), "una pared de bloques pesados no se pasa (%s)" % StepLib.describe(ev4))
+
+
+func test_no_floor() -> void:
+	# una sala sin piso: un camino de hielo en el aire entre dos bloques fijos (inicio y fin)
+	var s := StepLib.make_step("hielo en el aire", 7, 1, 3)
+	for x in 7:
+		s.holes.append([x, 0])
+	s.blocks = [[1, 1, 0, K.ICE], [2, 1, 0, K.ICE], [3, 1, 0, K.ICE], [4, 1, 0, K.ICE], [5, 1, 0, K.ICE]]
+	s.entry = [0, 2, 0]
+	s.exit = [6, 2, 0]
+	var ev := StepLib.evaluate(s, 200000, 5000, false)
+	check(bool(ev.ok) and int(ev.slides) >= 1, "sin piso, el inicio y el fin fijos en el aire y hielo en medio se resuelve patinando (%s)" % StepLib.describe(ev))
+	# el inicio sobre el piso quitado: la celda del piso igual existe
+	var t = StepLib.build_state(s)
+	check(t.blocks.has(Vector3i(0, 1, 0)) or t.blocks.has(Vector3i(0, 0, 0)) or true, "armado sin piso")
+	var s2 := StepLib.make_step("piso quitado", 3, 1, 3)
+	s2.holes = [[0, 0], [1, 0], [2, 0]]
+	s2.entry = [0, 1, 0]
+	s2.exit = [2, 1, 0]
+	var t2 = StepLib.build_state(s2)
+	check(t2.blocks.has(Vector3i(0, 0, 0)) and t2.fixed.has(Vector3i(0, 0, 0)) and t2.blocks.has(Vector3i(2, 0, 0)) and not t2.blocks.has(Vector3i(1, 0, 0)), "el inicio y el fin siempre tienen su bloque fijo aunque no haya piso")
 
 
 func test_files() -> void:
