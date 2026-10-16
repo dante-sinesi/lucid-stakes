@@ -89,7 +89,7 @@ static var income_slope := 25.0
 static var income_ceil := 1.5       # lo máximo que junta una torre sin boosts, sobre la recta
 const WALL_STAGE := 8          # desde acá hay que tener boosts que disparen la ganancia
 const HILL_START := 3          # hasta esta etapa el precio es el de siempre; de ahí sube de a poco hasta la pared (la colina)
-static var hill_power := 1.5        # 1 = geométrico parejo; más: sube más tarde
+static var hill_power := 1.25        # 1 = geométrico parejo; más: sube más tarde
 static var wall_growth := 1.20      # lo que crece el precio cada etapa después de la pared
 static var wall_margin := 50        # lo que se pasa del presupuesto máximo el precio de la pared
 static var pre_wall_from := 0.60    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
@@ -123,26 +123,40 @@ static func toll_for(stage: int) -> int:
 	var s := maxi(stage, 1)
 	if s <= HILL_START:
 		return int(round(_linear_toll(s)))
-	if s < WALL_STAGE:   # la colina: del precio de la etapa HILL_START al de la pared, geométrico (con hill_power > 1 sube más tarde)
-		var t0 := _linear_toll(HILL_START)
-		var f := pow(float(s - HILL_START) / float(WALL_STAGE - HILL_START), hill_power)
-		return int(round(t0 * pow(wall_toll() / t0, f)))
-	return int(round(wall_toll() * pow(wall_growth, float(s - WALL_STAGE))))
+	var t8 := wall_toll()
+	if s < WALL_STAGE:   # la colina: del precio de la etapa HILL_START al de la etapa de la pared, geométrico (con hill_power > 1 sube más tarde)
+		return int(round(_hill_toll(s, t8)))
+	return int(round(t8 * pow(wall_growth, float(s - WALL_STAGE))))
 
 
-## El precio de las primeras etapas (y la base de la colina): una fracción de lo que rinde una torre, de pre_wall_from en la etapa 1 a pre_wall_to en la anterior a la pared.
+## El precio de las primeras etapas: una fracción de lo que rinde una torre, de pre_wall_from en la etapa 1 a pre_wall_to en la anterior a la pared.
 static func _linear_toll(s: int) -> float:
 	return income_fit(s) * (pre_wall_from + (pre_wall_to - pre_wall_from) * float(s - 1) / float(WALL_STAGE - 2))
 
 
-## El precio en la etapa de la pared: el presupuesto máximo sin boosts (lo que juntaría un jugador perfecto sin gastar nada, pagando los precios "lineales" de antes de la colina) más un margen.
+## El precio de una etapa de la colina (entre HILL_START y la pared) si la pared cobra `t8`.
+static func _hill_toll(s: int, t8: float) -> float:
+	var t0 := _linear_toll(HILL_START)
+	return t0 * pow(t8 / t0, pow(float(s - HILL_START) / float(WALL_STAGE - HILL_START), hill_power))
+
+
+## El precio en la etapa de la pared: el que no se puede pagar sin boosts aunque se junte el máximo en cada torre y no se gaste nada. Como lo que se pagó en la colina ya no se tiene,
+## el precio de la pared depende de los de la colina, y éstos de aquél: se resuelve por iteración (converge enseguida). `wall_margin` se suma de más.
 static func wall_toll() -> float:
-	var total := 0.0
+	var ceilings := 0.0
 	for k in range(1, WALL_STAGE + 1):
-		total += income_ceiling(k)
-		if k < WALL_STAGE:
-			total -= _linear_toll(k)
-	return total + float(wall_margin)
+		ceilings += income_ceiling(k)
+	var t8 := ceilings * 0.5
+	for _i in 30:
+		var paid := 0.0
+		for k in range(1, WALL_STAGE):
+			paid += _linear_toll(k) if k <= HILL_START else _hill_toll(k, t8)
+		var next := ceilings - paid + float(wall_margin)
+		if absf(next - t8) < 0.5:
+			t8 = next
+			break
+		t8 = 0.5 * (t8 + next)
+	return t8
 
 
 const TOWER_ROWS_FIRST := 50    # pisos de la torre de la etapa 1 (docs/diseno.md §48)
