@@ -37,6 +37,8 @@ var excavate_nodes := 1000000   # estados que explora cada excavación
 var excavate_top := 60
 var types_p := 0.0            # probabilidad de dedicar el paso a probar variantes con bloques especiales (hielo, agrietado, bomba, catapulta, trampa, pinchos) sobre una sala del archivo
 var types_eval := 8           # variantes que se prueban por paso
+var focus := ""              # un tipo de bloque especial (i, c, b, k, t, s): el minero sólo cambia y excava salas que lo tienen, y sólo guarda las que lo usan de verdad (colgarse para los pinchos, patinar para el hielo...)
+var diff_weight := 3.0        # qué tanto pesa la dificultad (agarres sobre pasos) al elegir la sala que se cambia o se excava
 var excavate_free := false    # las salas excavadas pueden tener bloques sin columna hasta el piso (sostenidos por sus vecinos)
 var excavate_cap := 500000    # estados que se le dan al solucionador exacto por candidato
 var excavate_eval := 20     # candidatos de cada excavación que se evalúan con el solucionador exacto
@@ -67,13 +69,15 @@ func _init(cfg: Dictionary = {}) -> void:
 	excavate_eval = int(cfg.get("excavate_eval", excavate_eval))
 	excavate_cap = int(cfg.get("excavate_cap", excavate_cap))
 	excavate_free = bool(cfg.get("excavate_free", excavate_free))
+	diff_weight = float(cfg.get("diff_weight", diff_weight))
+	focus = str(cfg.get("focus", focus))
 	types_p = float(cfg.get("types", types_p))
 	types_eval = int(cfg.get("types_eval", types_eval))
 	rng.seed = int(cfg.get("seed", 1 + miner_id * 7919))
 	var shapes: Array = cfg.get("shapes", RoomLib.SHAPES)
 	var h_lo := int(cfg.get("h_lo", RoomLib.MIN_H))
 	var h_hi := int(cfg.get("h_hi", RoomLib.MAX_H))
-	for pair in RoomLib.combos():
+	for pair in RoomLib.combos(h_lo):
 		if shapes.has(pair[0]) and pair[1] >= h_lo and pair[1] <= h_hi:
 			combos_list.append(pair)
 	if out_dir != "":
@@ -646,7 +650,7 @@ func try_child(child: Dictionary, parent_path: Array = []) -> bool:
 	child = _polish(child)
 	if child.is_empty():
 		return false
-	if insert(child):
+	if _focus_ok(child) and insert(child):
 		stats.inserted = int(stats.inserted) + 1
 		return true
 	return false
@@ -723,7 +727,7 @@ func pick_parent(shape: String, h: int) -> Dictionary:
 	var prefix := "%s|%d|" % [shape, h]
 	var keys: Array = []
 	for k in archive:
-		if String(k).begins_with(prefix):
+		if String(k).begins_with(prefix) and (focus == "" or _has_kind(archive[k][0], focus)):
 			keys.append(k)
 	if keys.is_empty():
 		return {}
@@ -731,7 +735,7 @@ func pick_parent(shape: String, h: int) -> Dictionary:
 	var weights: Array = []
 	for k in keys:
 		var o0: Dictionary = archive[k][0].opt
-		var w := pow(1.0 + float(o0.get("grabs", 1)), 1.5) * (0.25 + float(o0.get("diff", 0.0))) * (0.4 + float(o0.get("reach", 0.5)))   # (los casilleros de más agarres y más dificultad, que son los que faltan, se eligen más)
+		var w := pow(1.0 + float(o0.get("grabs", 1)), 0.5) * pow(0.03 + float(o0.get("diff", 0.0)), diff_weight) * (0.4 + float(o0.get("reach", 0.5)))   # (los casilleros de más agarres y más dificultad, que son los que faltan, se eligen más)
 		weights.append(w)
 		total += w
 	var roll := rng.randf() * total
@@ -742,6 +746,20 @@ func pick_parent(shape: String, h: int) -> Dictionary:
 			chosen = archive[keys[i]]
 			break
 	return chosen[rng.randi_range(0, chosen.size() - 1)]
+
+
+func _has_kind(room: Dictionary, ch: String) -> bool:
+	for c in room.cols:
+		if String(room.cols[c]).contains(ch):
+			return true
+	return false
+
+
+## Con foco, sólo entran al archivo las salas que tienen ese bloque y cuyo camino usa su técnica.
+func _focus_ok(room: Dictionary) -> bool:
+	if focus == "":
+		return true
+	return _has_kind(room, focus) and RoomLib.uses_technique(room, focus)
 
 
 func pick_combo() -> Array:
@@ -810,7 +828,7 @@ func _excavate_step(par: Dictionary) -> void:
 		room.opt.source = "excavada"
 		room.origin = "minero"
 		room.stamp = int(Time.get_unix_time_from_system())
-		if insert(room):
+		if _focus_ok(room) and insert(room):
 			stats.inserted = int(stats.inserted) + 1
 			stats.excavated = int(stats.get("excavated", 0)) + 1
 
@@ -869,7 +887,7 @@ func _type_step(par: Dictionary) -> void:
 		_fail("tipos_sin_camino")
 		return
 	stats.type_steps = int(stats.get("type_steps", 0)) + 1
-	var specials := SPECIAL
+	var specials: Array = [focus] if focus != "" else SPECIAL
 	for n in types_eval:
 		var room := RoomLib.copy_room(par)
 		room.path = []
@@ -922,7 +940,7 @@ func _type_step(par: Dictionary) -> void:
 		cleaned.opt.source = "tipos"
 		cleaned.origin = "minero"
 		cleaned.stamp = int(Time.get_unix_time_from_system())
-		if insert(cleaned):
+		if _focus_ok(cleaned) and insert(cleaned):
 			stats.inserted = int(stats.inserted) + 1
 			stats.typed = int(stats.get("typed", 0)) + 1
 

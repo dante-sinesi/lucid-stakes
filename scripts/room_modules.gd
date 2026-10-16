@@ -16,7 +16,7 @@ const UP := Vector3i(0, 1, 0)
 const DOWN := Vector3i(0, -1, 0)
 const CORE_CELLS: Array[Vector2i] = [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4)]
 const WINDOW := 8
-const ALL_TECHNIQUES := ["trampolin", "pinchos", "hielo", "transporte", "escalera"]
+const ALL_TECHNIQUES := ["trampolin", "pinchos", "hielo", "arenisca", "transporte", "escalera"]
 
 var rng := RandomNumberGenerator.new()
 var shape := "3x8"
@@ -32,8 +32,18 @@ var modules: Array = []    # [{kind, moves, text}]
 var last_why := ""
 var used := {}             # cuántas veces se usó cada técnica en esta sala
 var last_kind := ""
+var last_break := {}
+var air := {}               # celdas por las que pasó el jugador o algún bloque suelto en el camino ya armado: los módulos nuevos no pueden poner bloques ahí
+var reasons := {}           # por qué se descartaron las muestras ("técnica:motivo": cantidad)
 var tries := {}
 var eval_cap := 250000
+var best_of := 6            # de cuántas muestras válidas de un módulo se elige la de más dificultad
+var transport_min_grabs := 3   # el transporte sólo vale si el camino más corto tiene al menos tantos empujes y tirones
+var transport_min_ratio := 0.4   # el transporte sólo vale si al menos esta parte de sus pasos son empujes y tirones
+var min_diff := 0.0         # la sala armada tiene que tener al menos esta dificultad (empujes y tirones sobre pasos del camino más corto)
+var total_moves := 0
+var total_grabs := 0
+var total_tech := 0
 
 
 func _init(seed_value := 1) -> void:
@@ -50,6 +60,10 @@ func build(shape_name: String, target_h: int, techniques: Array = [], max_module
 	path = []
 	modules = []
 	tries = {}
+	air = {}
+	total_moves = 0
+	total_grabs = 0
+	total_tech = 0
 	used = {}
 	last_kind = ""
 	arena = {}
@@ -64,7 +78,7 @@ func build(shape_name: String, target_h: int, techniques: Array = [], max_module
 					anchors.append(c)
 	var techs: Array = techniques if not techniques.is_empty() else ALL_TECHNIQUES
 	# el inicio: sobre el bloque verde, pegado al núcleo si lo hay
-	var cells: Array = anchors if not anchors.is_empty() else arena.keys()
+	var cells: Array = arena.keys()
 	var a: Vector2i = cells[rng.randi_range(0, cells.size() - 1)]
 	start = Vector3i(a.x, 2, a.y)
 	pos = start
@@ -85,27 +99,42 @@ func build(shape_name: String, target_h: int, techniques: Array = [], max_module
 	if pos.y - 1 < target_h:
 		last_why = "no se llegó a la altura (%d de %d)" % [pos.y - 1, target_h]
 		return {}
+	var ratio := float(total_grabs) / maxf(float(total_moves), 1.0)
+	if ratio < min_diff:
+		last_why = "dificultad %d %% (se pedía %d %%)" % [roundi(100.0 * ratio), roundi(100.0 * min_diff)]
+		return {}
 	var step := _step(start, pos, "Torre %s de %d pisos" % [shape, pos.y - 1])
 	step.note = "Módulos: " + " → ".join(modules.map(func(m): return str(m.kind)))
+	step.diff_armada = ratio
+	step.diff_tecnica = float(total_tech) / maxf(float(total_moves), 1.0)
 	StepLib.finalize(step)
 	return {"step": step, "path": path, "modules": modules}
 
 
-## El orden en que se prueban las técnicas en este piso: las menos usadas primero (al azar entre las empatadas), sin repetir la del módulo anterior, a lo sumo dos veces cada una, y las escaleras al final como último recurso.
+## El orden en que se prueban las técnicas en este piso: las menos usadas primero (al azar entre las empatadas), sin repetir la del módulo anterior y a lo sumo dos veces cada una; si la dificultad
+## acumulada está por debajo de la pedida, el transporte de bloques (que es todo empujar y tirar) va primero y puede repetirse. Las escaleras al final como último recurso.
 func _module_order(techs: Array, _remaining: int) -> Array:
+	var low := min_diff > 0.0 and total_moves > 0 and float(total_grabs) / float(total_moves) < min_diff
 	var cands: Array = []
 	for t in techs:
-		if t != "escalera" and int(used.get(t, 0)) < 2:
+		if t != "escalera" and (int(used.get(t, 0)) < 2 or (t == "transporte" and int(used.get(t, 0)) < 5)):
 			cands.append(t)
 	for i in range(cands.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
 		var tmp = cands[i]
 		cands[i] = cands[j]
 		cands[j] = tmp
-	cands.sort_custom(func(a, b): return int(used.get(a, 0)) + (3 if a == last_kind else 0) < int(used.get(b, 0)) + (3 if b == last_kind else 0))
+	cands.sort_custom(func(a, b): return _order_key(a, low) < _order_key(b, low))
+	if low:
+		cands.erase("transporte")
+		cands.push_front("transporte")
 	if techs.has("escalera") or cands.is_empty():
 		cands.append("escalera")
 	return cands
+
+
+func _order_key(t: String, low: bool) -> int:
+	return int(used.get(t, 0)) + (3 if t == last_kind else 0) + (-2 if low and t == "transporte" else 0)
 
 
 func _step(entry: Vector3i, exit: Vector3i, name: String, extra: Dictionary = {}) -> Dictionary:
@@ -130,7 +159,12 @@ func _step(entry: Vector3i, exit: Vector3i, name: String, extra: Dictionary = {}
 # --- módulos ----------------------------------------------------------------------------------------------------------------------
 
 func _try_module(kind: String) -> bool:
-	for attempt in 60:
+	var best: Dictionary = {}
+	var best_score := -1.0
+	var found := 0
+	for attempt in (200 if kind == "transporte" else 80):
+		if found >= best_of:
+			break
 		var cand: Dictionary = _sample(kind)
 		if cand.is_empty():
 			continue
@@ -139,40 +173,81 @@ func _try_module(kind: String) -> bool:
 		var new_pos: Vector3i = cand.new_pos
 		var bad := false
 		for c in add:
-			if blocks.has(c) or not _in_arena(c) or c.y > height - 1:
+			if blocks.has(c) or air.has(c) or not _in_arena(c) or c.y > height - 1:
 				bad = true
 		if new_pos.y > height or bad:
+			_no(kind, "fuera")
 			continue
 		# estable (sin la plataforma de salida fija que taparía un apoyo faltante)
 		var stab := _step(start, Vector3i(7, 3, 7), "estable", add)
 		if StepLib.validate(stab) != "" or not StepLib.unsupported_cells(stab).is_empty():
+			_no(kind, "inestable")
 			continue
 		# se resuelve en el contexto de todo lo armado, y el especial hace falta
 		var local := _step(pos, new_pos, kind, add)
 		if StepLib.validate(local) != "":
+			_no(kind, "invalida")
 			continue
 		var ev := StepLib.evaluate(local, eval_cap, 6000, true)
 		if not bool(ev.ok) or int(ev.moves) > 45 or int(ev.moves) < 2:
+			_no(kind, "sin_solucion" if not bool(ev.ok) else "largo")
 			continue
 		var special: int = int(cand.get("special", -1))
 		if special >= 0 and not bool(ev.needed.get(special, false)):
+			_no(kind, "especial_adorno")
+			continue
+		if int(ev.grabs) < int(cand.get("min_grabs", 0)):
+			_no(kind, "pocos_empujes")
 			continue
 		if bool(cand.get("need_grab", false)) and int(ev.grabs) < 1:
+			_no(kind, "sin_empujes")
 			continue
+		if float(cand.get("min_ratio", 0.0)) > 0.0 and float(ev.grabs) / maxf(float(ev.moves), 1.0) < float(cand.min_ratio):
+			_no(kind, "poca_dificultad")
+			continue
+		if cand.has("need_present"):   # el puente de arenisca: sin esos bloques (nada) la sala no se resuelve igual
+			var without := _step(pos, new_pos, kind, add)
+			var kept: Array = []
+			for b in without.blocks:
+				if int(b[3]) != int(cand.need_present):
+					kept.append(b)
+			without.blocks = kept
+			var ev2 := StepLib.evaluate(without, eval_cap, 4000, false)
+			if bool(ev2.ok) and int(ev2.moves) <= int(ev.moves):
+				_no(kind, "no_hace_falta")
+				continue
 		# y todo el camino desde el inicio sigue llegando
 		var full_path: Array = path + ev.path
 		var full := _step(start, new_pos, "sala", add)
 		if not _replay_wins(full, full_path):
+			_no(kind, "camino_roto")
+			last_break = {"prev": path.size(), "local": ev.path.size(), "at": _replay_break(full, full_path), "kind": kind}
 			continue
-		for c in add:
-			blocks[c] = add[c]
-		path = full_path
-		modules.append({"kind": kind, "moves": int(ev.moves), "grabs": int(ev.grabs), "text": StepLib.describe(ev), "from": pos, "to": new_pos})
-		pos = new_pos
-		used[kind] = int(used.get(kind, 0)) + 1
-		last_kind = kind
-		return true
-	return false
+		found += 1
+		var score := float(ev.grabs) / maxf(float(ev.moves), 1.0) * 10.0 + float(ev.grabs) * 0.01
+		if score > best_score:
+			best_score = score
+			best = {"add": add, "new_pos": new_pos, "ev": ev, "full": full, "full_path": full_path}
+	if best.is_empty():
+		return false
+	var ev: Dictionary = best.ev
+	air = _record_air(best.full, best.full_path)
+	for c in best.add:
+		blocks[c] = best.add[c]
+	path = best.full_path
+	total_moves += int(ev.moves)
+	total_grabs += int(ev.grabs)
+	total_tech += int(ev.tech)
+	modules.append({"kind": kind, "moves": int(ev.moves), "grabs": int(ev.grabs), "text": StepLib.describe(ev), "from": pos, "to": best.new_pos})
+	pos = best.new_pos
+	used[kind] = int(used.get(kind, 0)) + 1
+	last_kind = kind
+	return true
+
+
+func _no(kind: String, why: String) -> void:
+	var k := "%s:%s" % [kind, why]
+	reasons[k] = int(reasons.get(k, 0)) + 1
 
 
 func _in_arena(c: Vector3i) -> bool:
@@ -188,12 +263,82 @@ func _replay_wins(step: Dictionary, actions: Array) -> bool:
 	return t.won
 
 
+## Todas las celdas por las que pasa el jugador, o donde está algún bloque suelto, al repetir el camino.
+func _record_air(step: Dictionary, actions: Array) -> Dictionary:
+	var seen := {}
+	var t = StepLib.build_state(step)
+	for c in t.blocks:
+		seen[c] = true
+	seen[t.player] = true
+	for a in actions:
+		t.try_action(a.dir, a.mode)
+		seen[t.player] = true
+		for id in t.positions:
+			seen[t.positions[id]] = true
+	return seen
+
+
+## En qué acción se rompe un camino al repetirlo (-1 si no se rompe antes del final).
+func _replay_break(step: Dictionary, actions: Array) -> int:
+	var t = StepLib.build_state(step)
+	for i in actions.size():
+		var r: Dictionary = t.try_action(actions[i].dir, actions[i].mode)
+		if not r.ok or t.lost:
+			return i
+	return -1
+
+
 func _dir() -> Vector3i:
 	return DIRS[rng.randi_range(0, DIRS.size() - 1)]
 
 
+## Cuántas celdas seguidas de la arena hay desde donde estás parado en la dirección `d` (sin contar la tuya).
+func _room_along(d: Vector3i) -> int:
+	var k := 0
+	while arena.has(Vector2i(pos.x + d.x * (k + 1), pos.z + d.z * (k + 1))):
+		k += 1
+	return k
+
+
+## Una fila de entre `min_n` y `max_n` celdas en una dirección que tenga lugar (y al menos `min_after` celdas más para los escalones): {d, n, after}. {} si ninguna dirección alcanza.
+func _plan_row(min_n: int, max_n: int, min_after := 1) -> Dictionary:
+	var order: Array = DIRS.duplicate()
+	for i in range(order.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp = order[i]
+		order[i] = order[j]
+		order[j] = tmp
+	for d in order:
+		var avail := _room_along(d)
+		var hi := mini(max_n, avail - min_after)
+		if hi >= min_n:
+			var n := rng.randi_range(min_n, hi)
+			return {"d": d, "n": n, "after": avail - n}
+	return {}
+
+
 ## Un módulo al azar de esa técnica: {add: {celda: tipo}, new_pos, special}. {} si esta muestra no tiene sentido.
 func _sample(kind: String) -> Dictionary:
+	# a veces el módulo empieza un paso al costado (por un bloque de conexión), para no pisar el camino de abajo
+	var shift := Vector3i.ZERO
+	if rng.randf() < 0.6:
+		shift = _dir()
+	if shift == Vector3i.ZERO:
+		return _sample_here(kind)
+	var base := pos + shift
+	if not arena.has(Vector2i(base.x, base.z)) or air.has(base) or air.has(base + DOWN) or blocks.has(base + DOWN):
+		return {}
+	var saved := pos
+	pos = base
+	var cand := _sample_here(kind)
+	pos = saved
+	if cand.is_empty():
+		return {}
+	cand.add[base + DOWN] = K.NORMAL
+	return cand
+
+
+func _sample_here(kind: String) -> Dictionary:
 	match kind:
 		"trampolin":
 			return _sample_catapult()
@@ -201,6 +346,8 @@ func _sample(kind: String) -> Dictionary:
 			return _sample_spikes()
 		"hielo":
 			return _sample_ice()
+		"arenisca":
+			return _sample_cracked()
 		"transporte":
 			return _sample_transport()
 		"escalera":
@@ -222,8 +369,11 @@ func _sample_catapult() -> Dictionary:
 
 ## Cornisa de pinchos: una fila de bloques a tu nivel (menos uno) con pinchos adentro, que no se puede cruzar por arriba: hay que colgarse del costado, avanzar por debajo y trepar del otro lado a un escalón.
 func _sample_spikes() -> Dictionary:
-	var d := _dir()
-	var n := rng.randi_range(3, 5)
+	var plan := _plan_row(3, 5)
+	if plan.is_empty():
+		return {}
+	var d: Vector3i = plan.d
+	var n: int = plan.n
 	var add := {}
 	var spikes := rng.randi_range(1, 2)
 	var spike_idx: Array = []
@@ -231,39 +381,100 @@ func _sample_spikes() -> Dictionary:
 		spike_idx.append(rng.randi_range(2, n - 1))
 	for i in range(1, n + 1):
 		add[pos + d * i + DOWN] = K.SPIKES if spike_idx.has(i) else K.NORMAL
-	var top := _steps_after(add, pos + d * (n + 1), d)
+	var top := _steps_after(add, pos + d * (n + 1), d, int(plan.after))
 	return {"add": add, "new_pos": top + UP, "special": K.SPIKES}
 
 
 ## Camino de hielo: una fila de hielo a tu nivel que se patina de una vez hasta un bloque común, y un escalón.
 func _sample_ice() -> Dictionary:
-	var d := _dir()
-	var n := rng.randi_range(3, 6)
+	var plan := _plan_row(3, 6)
+	if plan.is_empty():
+		return {}
+	var d: Vector3i = plan.d
+	var n: int = plan.n
 	var add := {}
 	for i in range(1, n):
 		add[pos + d * i + DOWN] = K.ICE
 	add[pos + d * n + DOWN] = K.NORMAL
-	var top := _steps_after(add, pos + d * (n + 1), d)
+	var top := _steps_after(add, pos + d * (n + 1), d, int(plan.after))
 	return {"add": add, "new_pos": top + UP, "special": K.ICE}
 
 
-## Transporte: una fila de bloques a tu nivel con un hueco, y un bloque suelto sobre la fila delante tuyo: hay que empujarlo hasta el hueco (cae y lo tapa) para poder pasar.
+## Puente de arenisca: una fila de bloques agrietados a tu nivel que se rompen al bajarte de ellos (se cruza una sola vez), y unos escalones. Hace falta si sin esos bloques no se llega.
+func _sample_cracked() -> Dictionary:
+	var plan := _plan_row(2, 5)
+	if plan.is_empty():
+		return {}
+	var d: Vector3i = plan.d
+	var n: int = plan.n
+	var add := {}
+	for i in range(1, n + 1):
+		add[pos + d * i + DOWN] = K.CRACKED
+	var top := _steps_after(add, pos + d * (n + 1), d, int(plan.after))
+	return {"add": add, "new_pos": top + UP, "special": -1, "need_present": K.CRACKED}
+
+
+## ¿La celda (x, z) está pegada al núcleo? (ahí los bloques se sostienen solos)
+func _is_anchor(c: Vector2i) -> bool:
+	return with_core and anchors.has(c)
+
+
+## Transporte, de dos maneras: llevar un bloque suelto hasta un hueco de la fila (cae y lo tapa), o llevarlo hasta el pie de un escalón alto para usarlo de escalón. Hay que empujar y tirar varias veces.
 func _sample_transport() -> Dictionary:
-	var d := _dir()
-	var n := rng.randi_range(4, 6)
-	var gap := rng.randi_range(3, n - 1)
+	return _sample_transport_gap() if rng.randf() < 0.5 else _sample_transport_stone()
+
+
+## Un hueco en la fila con un bloque suelto sobre ella antes del hueco. Lo que queda del otro lado del hueco tiene que sostenerse solo: sólo vale si ahí hay una celda pegada al núcleo.
+func _sample_transport_gap() -> Dictionary:
+	var plan := _plan_row(4, 8)
+	if plan.is_empty():
+		return {}
+	var d: Vector3i = plan.d
+	var n: int = plan.n
+	var gap := rng.randi_range(maxi(3, n - 2), n - 1)
+	var anchored_far := false
+	for i in range(gap + 1, n + 2):
+		if _is_anchor(Vector2i(pos.x + d.x * i, pos.z + d.z * i)):
+			anchored_far = true
+	if not anchored_far:
+		return {}
 	var add := {}
 	for i in range(1, n + 1):
 		if i != gap:
 			add[pos + d * i + DOWN] = K.NORMAL
-	add[pos + d + Vector3i.ZERO] = K.NORMAL   # el bloque suelto sobre la fila, delante tuyo
-	var top := _steps_after(add, pos + d * (n + 1), d)
-	return {"add": add, "new_pos": top + UP, "need_grab": true}
+	var loose: Array = [pos + d * 1]
+	if rng.randf() < 0.3:
+		var c2 := pos + d * rng.randi_range(1, gap - 1)
+		if not loose.has(c2):
+			loose.append(c2)
+	for c in loose:
+		add[c] = K.NORMAL
+	var top := _steps_after(add, pos + d * (n + 1), d, int(plan.after))
+	return {"add": add, "new_pos": top + UP, "need_grab": true, "min_grabs": transport_min_grabs, "min_ratio": transport_min_ratio}
+
+
+## Una piedra: una fila continua, un escalón alto (dos pisos) al final al que no se llega trepando, y un bloque suelto sobre la fila que hay que llevar hasta el pie del escalón para trepar primero a él y después al escalón.
+func _sample_transport_stone() -> Dictionary:
+	var plan := _plan_row(3, 7, 1)
+	if plan.is_empty():
+		return {}
+	var d: Vector3i = plan.d
+	var n: int = plan.n                       # la fila llega hasta la celda n (a tu nivel menos uno)
+	var add := {}
+	for i in range(1, n + 1):
+		add[pos + d * i + DOWN] = K.NORMAL
+	var loose := pos + d * rng.randi_range(1, maxi(1, n - 2))   # sobre la fila
+	add[loose] = K.NORMAL
+	var s_cell := pos + d * (n + 1)           # el escalón de abajo, a tu nivel (apoya en la arista del último bloque de la fila)
+	add[s_cell] = K.NORMAL
+	var p_cell := s_cell + UP                 # el escalón alto, dos pisos más arriba que la fila
+	add[p_cell] = K.NORMAL
+	return {"add": add, "new_pos": p_cell + UP, "need_grab": true, "min_grabs": transport_min_grabs, "min_ratio": transport_min_ratio}
 
 
 ## De 1 a 3 escalones (cada uno un piso más alto y pegado al anterior) que empiezan en `first` (a tu nivel) y siguen en la dirección `d`; los agrega a `add` y devuelve el de más arriba.
-func _steps_after(add: Dictionary, first: Vector3i, d: Vector3i) -> Vector3i:
-	var n := rng.randi_range(1, 3)
+func _steps_after(add: Dictionary, first: Vector3i, d: Vector3i, max_steps := 3) -> Vector3i:
+	var n := rng.randi_range(1, maxi(1, mini(3, max_steps)))
 	var top := first
 	for i in n:
 		top = first + d * i + UP * i
@@ -273,8 +484,11 @@ func _steps_after(add: Dictionary, first: Vector3i, d: Vector3i) -> Vector3i:
 
 ## Escalera: unos escalones seguidos (de 2 a 3 pisos), cada uno un piso más alto y pegado al anterior.
 func _sample_stairs() -> Dictionary:
-	var d := _dir()
-	var n := rng.randi_range(2, 3)
+	var plan := _plan_row(2, 3, 0)
+	if plan.is_empty():
+		return {}
+	var d: Vector3i = plan.d
+	var n: int = plan.n
 	var add := {}
 	for i in range(1, n + 1):
 		add[pos + d * i + UP * (i - 1)] = K.NORMAL

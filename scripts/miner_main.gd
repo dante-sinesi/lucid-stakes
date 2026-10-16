@@ -48,6 +48,10 @@ static func parse_args(args: PackedStringArray) -> Dictionary:
 				cfg.excavate_eval = int(v)
 			"types":
 				cfg.types = float(v)
+			"focus":
+				cfg.focus = v
+			"diff-weight":
+				cfg.diff_weight = float(v)
 			"excavate-free":
 				cfg.excavate_free = int(v) != 0
 	return cfg

@@ -187,7 +187,7 @@ static func sim(s, target_y: int, goal_ids: Dictionary, actions: Array) -> Array
 ## Excavar: explora el grafo de estados cerca de la sala (`t` es el estado de la sala: RoomLib.build_state) y devuelve las salas candidatas más difíciles que se alcanzan desde ella.
 ## {status, nodes, edges, wins, maxd, maxg, cands: [{d, g, blocks: [[x, y, z, tipo], ...]}]}; d y g son los pasos y los agarres exactos (dentro de lo explorado) que faltan desde ese candidato.
 ## {} si el nativo no está o la sala usa algo que no entiende.
-static func excavate(t, entry: Vector2i, exit: Vector2i, path_text := "", max_nodes := 1000000, top_k := 20, min_d := 0, columns_only := true, max_y := 19) -> Dictionary:
+static func excavate(t, entry: Vector2i, exit: Vector2i, path_text := "", max_nodes := 1000000, top_k := 20, min_d := 0, columns_only := true, max_y := 19, arena: Array = [], no_floor := false, keep_specials := false) -> Dictionary:
 	if not available():
 		return {}
 	var s = t.clone()
@@ -197,6 +197,15 @@ static func excavate(t, entry: Vector2i, exit: Vector2i, path_text := "", max_no
 	var header: Array = ["MODE excavate", "MAXNODES %d" % max_nodes, "TOPK %d" % top_k, "MIND %d" % min_d, "ENTRY %d %d" % [entry.x, entry.y], "EXIT %d %d" % [exit.x, exit.y], "HEUR none", "COLUMNS %d" % (1 if columns_only else 0), "MAXY %d" % max_y]
 	if path_text != "":
 		header.append("PATH " + path_text)
+	if no_floor:
+		header.append("NOFLOOR 1")
+	if keep_specials:
+		header.append("KEEPSPECIALS 1")
+	if not arena.is_empty():
+		var cells: Array = []
+		for c in arena:
+			cells.append("%d %d" % [c.x, c.y])
+		header.append("ARENA %d %s" % [arena.size(), " ".join(cells)])
 	var out: Dictionary = _run(_write_input(s, t.goal_y, t.goal_ids, header, []), "x")
 	if out.is_empty():
 		return {}

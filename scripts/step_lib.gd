@@ -287,6 +287,9 @@ static func evaluate(inst: Dictionary, cap := 600000, max_ms := 20000, check_nee
 	out.ok = true
 	out.why = ""
 	out.moves = int(res.moves)
+	out["diff"] = float(out.grabs) / maxf(float(res.moves), 1.0)
+	out["tech"] = int(out.grabs) + int(out.hangs) + int(out.slides) + int(out.launches)   # acciones de técnica: empujar, tirar, colgarse, patinar, saltar con catapulta
+	out["diff_tec"] = float(out.tech) / maxf(float(res.moves), 1.0)
 	out.states = int(res.states)
 	out.path = res.path
 	out.needed = {}
@@ -357,7 +360,7 @@ static func describe(ev: Dictionary) -> String:
 		parts.append("%d patinazos" % int(ev.slides))
 	if int(ev.launches) > 0:
 		parts.append("%d saltos de catapulta" % int(ev.launches))
-	var s := "✓ " + ", ".join(parts)
+	var s := "✓ " + ", ".join(parts) + (" · dificultad %d %%" % roundi(100.0 * float(ev.get("diff", 0.0))) if float(ev.get("diff", 0.0)) > 0.0 else "")
 	var req: Array = []
 	var dec: Array = []
 	for kd in ev.get("needed", {}):
