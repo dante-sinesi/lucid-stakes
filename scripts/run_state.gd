@@ -90,8 +90,8 @@ static var income_ceil := 1.5       # lo máximo que junta una torre sin boosts,
 const WALL_STAGE := 8          # desde acá hay que tener boosts que disparen la ganancia
 static var wall_growth := 1.20      # lo que crece el precio cada etapa después de la pared
 static var wall_margin := 50        # lo que se pasa del presupuesto máximo el precio de la pared
-static var pre_wall_from := 0.45    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
-static var pre_wall_to := 0.75      # ...y esta en la etapa anterior a la pared
+static var pre_wall_from := 0.60    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
+static var pre_wall_to := 1.00      # ...y esta en la etapa anterior a la pared
 
 
 ## Lo que rinde una torre de esa etapa en promedio (la recta de las torres medidas).

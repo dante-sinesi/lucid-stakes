@@ -15,3 +15,6 @@ Porcentaje de runs que ganan, vidas perdidas, qué porcentaje pasa cada etapa, y
 - El bot sólo sube por el camino mínimo (no junta lo que se junta de más dando vueltas) y no juega tragamonedas ni blackjack.
 - 30 runs dan ±8 puntos de ruido; para comparar dos configuraciones conviene más de 100 runs por habilidad.
 - Un run tarda 12 a 17 s: se corre en varios procesos en paralelo (ver `herramientas\bot.bat` si existe, o lanzar a mano).
+
+## Configuración de balance elegida
+`Roulette.base_price` 75 y `price_step` 6; `RunState.pre_wall_from` 0,60 y `pre_wall_to` 1,00; `wall_growth` 1,20; ingreso de referencia `income_base` 340 + `income_slope` 25 por etapa. Con eso el bot gana el 3 al 7 % de los runs (ver `docs/diseno.md` §48).
