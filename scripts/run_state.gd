@@ -56,9 +56,55 @@ func trial_at(st: int) -> Dictionary:
 	return Trials.for_stage(trial_schedule, st)
 
 
-## Lo que cobra el duende para encender el portal de salida de la etapa `stage` (más caro cuanto más arriba; ronda el cuarto de la claridad que rinde una torre).
+## La curva del duende (docs/diseno.md §46). Se construye sobre lo que rinde una torre (medido con tests/sim_ingresos.gd: la recta `INCOME_BASE + INCOME_SLOPE × etapa`;
+## lo más que se vio fue 1,5 veces la recta) y tiene una pared: **a partir de la etapa WALL_STAGE no se puede pagar sin boosts ni consumibles que suban la ganancia**,
+## ni siquiera juntando lo máximo en cada torre y sin gastar nada en el casino.
+const INCOME_BASE := 179.0
+const INCOME_SLOPE := 8.75
+const INCOME_CEIL := 1.5       # lo máximo que junta una torre sin boosts, sobre la recta
+const WALL_STAGE := 8          # desde acá hay que tener boosts que disparen la ganancia
+const WALL_GROWTH := 1.15      # lo que crece el precio cada etapa después de la pared
+const WALL_MARGIN := 50        # lo que se pasa del presupuesto máximo el precio de la pared
+
+
+## Lo que rinde una torre de esa etapa en promedio (la recta de las torres medidas).
+static func income_fit(stage: int) -> float:
+	return INCOME_BASE + INCOME_SLOPE * float(maxi(stage, 1))
+
+
+## Lo máximo que puede juntar una torre de esa etapa sin boosts (juego perfecto, con un margen sobre lo medido).
+static func income_ceiling(stage: int) -> float:
+	return INCOME_CEIL * income_fit(stage)
+
+
+## Cuánto puede tener como mucho un jugador sin boosts al llegar al duende de la etapa `stage`: todo lo que juntó (al máximo) en las torres hasta ahí, sin gastar nada en el casino,
+## menos lo que ya le cobró el duende en las etapas anteriores (si pudo pagarlas).
+static func max_budget_without_boosts(stage: int) -> float:
+	var total := 0.0
+	for k in range(1, stage + 1):
+		total += income_ceiling(k)
+		if k < stage:
+			total -= float(toll_for(k))
+	return total
+
+
+## Lo que cobra el duende de la puerta de salida del casino después de la torre `stage` (la que se acaba de superar).
+## Antes de la pared: del 45 % de lo que rinde una torre en la etapa 1 al 75 % en la 7. En la pared: más que todo lo que se pudo juntar sin boosts (el presupuesto máximo), y después crece un 15 % por etapa.
 static func toll_for(stage: int) -> int:
-	return 40 + 4 * stage
+	var s := maxi(stage, 1)
+	if s < WALL_STAGE:
+		return int(round(income_fit(s) * (0.45 + 0.30 * float(s - 1) / float(WALL_STAGE - 2))))
+	return int(round(wall_toll() * pow(WALL_GROWTH, float(s - WALL_STAGE))))
+
+
+## El precio en la etapa de la pared: el presupuesto máximo sin boosts (lo que juntaría un jugador perfecto sin gastar nada) más un margen.
+static func wall_toll() -> float:
+	var total := 0.0
+	for k in range(1, WALL_STAGE + 1):
+		total += income_ceiling(k)
+		if k < WALL_STAGE:
+			total -= float(toll_for(k))
+	return total + float(WALL_MARGIN)
 
 
 ## Filas (pisos) de la torre de la etapa `stage`: 25 hasta la 5 y dos más por etapa después, hasta 41 (la torre crece con la dificultad; cuesta más generarla).

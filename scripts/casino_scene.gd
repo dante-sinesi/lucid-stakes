@@ -37,6 +37,7 @@ signal left
 signal roulette_opened
 signal changed   ## el run cambió (se jugó una tirada): hay que guardar
 signal story_message(text: String)   ## en el modo historia (tutorial): algo que el tabernero tiene para decir
+signal failed_to_pay   ## no alcanzaba para el duende de la puerta y se insistió: se vuelve a subir la misma torre (y se pierde una vida)
 signal keeper_talk(lines: Array)   ## se habló con el tabernero: lo que dice (el juego lo muestra en el cuadro de diálogo)
 
 const STEP_TIME := 0.14
@@ -75,11 +76,16 @@ var lives_hud
 var item_tip: Control
 var overlay: CanvasLayer
 var screen
+var _toast_tween: Tween
 var _walk_tween: Tween
 var _cam_tween: Tween
 var story := false            # modo historia (tutorial): la ruleta no se abre y no se ve la interfaz de juego
 var input_locked := false     # mientras habla el tabernero no se camina
 var portals: Array[MeshInstance3D] = []   # los portales de las paredes
+const Goblin := preload("res://scripts/goblin.gd")
+var toll := 0                 # lo que cobra el duende de la puerta de salida (0: no cobra; tutorial, entrenamiento y pruebas)
+var _exit_warned := false     # ya se avisó que no alcanza: si se insiste, se vuelve a subir la torre
+var _goblin: Node3D
 var _arrow: Node3D            # flecha que marca la puerta de salida
 var _t := 0.0
 var quick := false            # pruebas: sin animaciones
@@ -179,6 +185,31 @@ func _build_portals() -> void:
 			mi.rotation_degrees.y = 90.0
 		walls[side].append(mi)
 		portals.append(mi)
+	_build_goblin()
+	_update_toll_ui()
+
+
+## El duende de la puerta de salida: junto a la puerta, cobra el precio de la torre que sigue. El portal se apaga hasta que alcanza para pagarle.
+func _build_goblin() -> void:
+	if toll <= 0:
+		return
+	_goblin = Goblin.build()
+	_goblin.scale = Vector3.ONE * 1.9
+	_goblin.position = Room.world_of_cell(lay.exit, lay) + Vector3(0.8, 0.0, 0.2)
+	_goblin.rotation_degrees.y = -20.0
+	add_child(_goblin)
+
+
+## El portal de salida brilla sólo si alcanza para pagar; el precio se ve arriba a la izquierda (en rojo si falta).
+func _update_toll_ui() -> void:
+	if hud_panel != null:
+		hud_panel.set_toll(toll, run.claridad < toll)
+	if not portals.is_empty():
+		var mat := portals[0].material_override as ShaderMaterial
+		if mat != null:
+			mat.set_shader_parameter("lit", 1.0 if run.claridad >= toll else 0.0)
+	if run.claridad >= toll:
+		_exit_warned = false
 
 
 func _build_player() -> void:
@@ -232,7 +263,7 @@ func _build_hud() -> void:
 	layer.add_child(hud_panel)
 	lives_hud = hud_panel.lives
 	clarity_counter = hud_panel.clarity
-	hud_panel.set_toll(RunState.toll_for(run.stage + 1))   # lo que va a cobrar el duende del portal de la próxima torre
+	_update_toll_ui()   # lo que cobra el duende de la puerta de salida
 	item_tip = _label(layer, 2, Color(0.95, 0.93, 0.88))
 	item_tip.wrap_px = 460
 	item_tip.plate_alpha = 0.85
@@ -293,12 +324,16 @@ func _refresh_hud() -> void:
 		right_bar.refresh()
 	hud.text = "Casino"
 	clarity_counter.value = run.claridad
+	_update_toll_ui()
 
 
 func _flash(msg: String) -> void:
 	toast.text = msg
 	toast.modulate.a = 1.0
-	create_tween().tween_property(toast, "modulate:a", 0.0, 3.0).set_delay(1.5)
+	if _toast_tween != null:   # (un solo desvanecer a la vez: si no, los viejos pisan la transparencia del aviso nuevo)
+		_toast_tween.kill()
+	_toast_tween = create_tween()
+	_toast_tween.tween_property(toast, "modulate:a", 0.0, 3.0).set_delay(1.5)
 
 
 ## Intenta dar un paso hacia `dir` (en celdas). Devuelve qué pasó: "moved", "blocked", "roulette", "soon" o "exit".
@@ -309,7 +344,18 @@ func step(dir: Vector2i) -> String:
 	player_node.rotation.y = atan2(dir.x, dir.y)
 	var n := cell + dir
 	if not Room.in_room(n, lay):
-		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida
+		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida: el duende cobra
+			if toll > 0 and run.claridad < toll:
+				if _exit_warned:   # insistió sin poder pagar: se vuelve a subir la torre
+					leaving = true
+					failed_to_pay.emit()
+					return "exit"
+				_exit_warned = true
+				_flash(Loc.f("El duende pide %d de claridad: te faltan %d. Si insistís, volvés a subir la torre y perdés una vida.", [toll, toll - run.claridad]))
+				return "blocked"
+			if toll > 0:
+				run.spend(toll)
+				_refresh_hud()
 			leaving = true
 			left.emit()
 			return "exit"

@@ -154,4 +154,5 @@ const TABLE := {
 	"Contratar (−%d)": "Buy (−%d)",
 	"Caja fuerte: cobrás %d de claridad (con interés).": "Vault: you collect %d clarity (with interest).",
 	"Reintento gratis: el seguro lo cubre": "Free retry: insurance covers it",
+	"Reintento sin costo de claridad: ya perdiste una vida": "Retry with no clarity cost: you already lost a life",
 }

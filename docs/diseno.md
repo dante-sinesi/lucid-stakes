@@ -467,6 +467,8 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
 
 ## 42. Portal de salida y peaje del duende
 
+> **Reemplazado por el §46**: el duende ya no cobra en el portal de la torre sino en la puerta de salida del casino, con otra curva de precios. Lo que sigue describe lo anterior.
+
 - La salida de cada torre es un portal de ondas (`shaders/portal.gdshader`, dos paños cruzados) con un duende voxel (`scripts/goblin.gd`) al lado. Ya no hay rayo.
 - El duende cobra `RunState.toll_for(etapa)` (`40 + 4 × etapa`, ~¼ de lo que rinde el camino óptimo) para encender el portal. Se paga con la claridad que traés más la que juntaste en la torre (`TowerLogic.wallet + claridad`).
 - Si llegás al portal sin poder pagar, el portal sigue apagado (`toll_blocked`), un aviso dice cuánto falta y la torre sigue: hay que volver a juntar claridad o el suelo cae.
@@ -545,12 +547,18 @@ Decidido con Dante el 2026-10-16; todavía **no está implementado el ciclo nuev
 - La conclusión es que **el precio y el ingreso hay que pensarlos juntos**: o el precio sigue al ingreso (curva *por ingreso*, de ~47 a ~250: sobra siempre algo para jugar de más y el final aprieta sin ser imposible), o se hacen **boosts que multipliquen de verdad el ingreso** (×1,5 a ×3) y entonces se puede usar una curva más empinada.
 - Lo que sobra después de pagar (claridad para jugadas extra) es de ~75 por visita al principio a ~500 al final con la curva por ingreso; con la actual, ~700. Es lo que hay que balancear con el tamaño de las recompensas de las mesas.
 
-### Propuesta de arranque (a confirmar)
-Curva **por ingreso**: `precio(etapa) = (179 + 8,75 × etapa) × (0,25 + 0,55 × (etapa−1)/14)`, redondeado, y revisarla después de medir más torres (el ingreso real es irregular). Jugadas mínimas por visita: 3 con monedas.
+### La curva aplicada: una pared en la etapa 8 (`RunState.toll_for`)
+Pedido de Dante: **desde la etapa 8 no se puede pasar sin habilidades o consumibles que disparen la ganancia** (por ejemplo, un multiplicador ×2 fijo como habilidad, o +1 por cada bloque purificado); no importa que todavía no existan, pero que *matemáticamente* no se pueda.
+- **El duende cobra después de la torre que se acaba de superar** (`toll_for(run.stage)`), en la puerta de salida del casino.
+- **Antes de la pared** (etapas 1 a 7): del 45 % de lo que rinde una torre al 75 % (84, 98, 113, 128, 145, 162, 180). Se paga con lo que se junta y sobra algo para jugar de más.
+- **La pared**: el precio de la etapa 8 es el *presupuesto máximo sin boosts* más 50: todo lo que pudo juntar un jugador perfecto en las 8 torres (1,5 veces la recta del ingreso en cada una, el máximo que se vio) sin gastar nada en el casino, menos lo que ya pagó. Da **1761**. **Después crece un 15 % por etapa** (2025, 2328, 2678, … 4683 en la 15).
+- **La garantía**, probada en `tests/test_toll.gd` (`test_curve`): desde la etapa 8, el precio supera `max_budget_without_boosts`, o sea, ni juntando el máximo en cada torre y guardando todo alcanza. El **precio acumulado** también supera al **presupuesto máximo acumulado** en todas las etapas de 8 en adelante. Los números del código están en `run_state.gd` (`INCOME_BASE`, `INCOME_SLOPE`, `INCOME_CEIL`, `WALL_STAGE`, `WALL_GROWTH`, `WALL_MARGIN`).
+- **Lo que hace falta del lado de los boosts**: de la etapa 8 en adelante el precio es 7 a 15 veces lo que rinde una torre (de 1761 a 4683 contra 249 a 310 de ingreso medio). Hoy **ningún boost multiplica la ganancia** (Pies de luz suma +1 por bloque, unos +60 a +120 por torre; Mano de oro sube el paso de la racha; Ahorro suma 20): **hasta que existan boosts y consumibles que disparen el ingreso, el juego se corta en la etapa 8**. Hay que diseñarlos (multiplicadores fijos ×2, +N por purificación, claridad de las bolsas, etc.) y volver a medir.
+- **Por qué el salto es tan grande**: se pidió que no se pueda con *ningún* ahorro, y la claridad que sobra en las etapas 1 a 7 se arrastra. Si se quiere un salto menor, la palanca es **limitar cuánta claridad se lleva de una etapa a otra** (un tope, o que el duende se quede con parte de lo que sobra): con un tope de 400 el precio de la pared bajaría a ~770 (3 veces el ingreso medio).
 
 ### Pendiente
 - Monedas en la torre (ítems recogibles por tipo de juego), contador en el HUD y el precio del duende visible desde el casino anterior.
-- Mover el duende y el peaje a la puerta trasera del casino (hoy está en el portal de la torre).
+- ~~Mover el duende y el peaje a la puerta trasera del casino~~ (hecho: `casino_scene.gd`; si no se alcanza y se insiste, se pierde una vida y se sube la misma torre).
 - Usar la Vida extra dentro del casino; quitar o replantear la regla de la taberna ("Fiado") y el Seguro.
 - Boosts multiplicativos y su efecto en la curva; más mediciones de ingreso (con las torres de la biblioteca, que cambian el ingreso).
 - Lore: los bloques y mesas son recuerdos que se reescriben al apostar certeza (claridad); el tabernero subió, apostó y se quedó.

@@ -104,7 +104,6 @@ var goal_nodes: Array[Node3D] = []
 var toll_in_tests := false   # las pruebas no cobran el peaje del duende salvo que se pida
 var goal_mat: ShaderMaterial   # el material del portal de salida (apagado hasta que alcance para el peaje)
 const PORTAL_SHADER := preload("res://shaders/portal.gdshader")
-const Goblin := preload("res://scripts/goblin.gd")
 var pivot: Node3D
 var cam: Camera3D
 var yaw_target := 45.0
@@ -634,7 +633,7 @@ func restart() -> void:
 	if trial.get("no_streak", false):
 		perks.append("sin_racha")
 	logic.apply_perks(perks)
-	logic.toll = 0 if training or lab_active or (test_mode and not toll_in_tests) else RunState.toll_for(stage_number)   # el duende del portal cobra para encenderlo
+	logic.toll = 0   # (el duende ya no cobra en la torre: está en la puerta de salida del casino, ver casino_scene.gd)
 	logic.wallet = run.claridad
 	logic.shield = run.consumables.has("escudo")   # Escudo: protege de la próxima bomba que explote
 	logic.meteors = false
@@ -952,11 +951,6 @@ func _build_goal() -> void:
 	portal.position = _w(logic.goal_cell) + Vector3(0, 1.5, 0)
 	add_child(portal)
 	goal_nodes.append(portal)
-	var gob := Goblin.build()
-	gob.position = _w(logic.goal_cell) + Vector3(0.32, 0.5, 0.32)
-	gob.rotation_degrees.y = 45.0
-	add_child(gob)
-	goal_nodes.append(gob)
 	_update_goal_light()
 
 
@@ -1625,7 +1619,7 @@ func _refresh() -> void:
 		logic.streak, logic.streak_mult(logic.streak), logic.best_streak, logic.purified_count, seed_value]
 	var total: int = run.claridad + logic.claridad
 	_update_goal_light()
-	hud_panel.set_toll(logic.toll if not training and not lab_active and tutorial_index < 0 else 0, not logic.can_pay_toll())
+	hud_panel.set_toll(0)
 	if total > clarity_counter.value:
 		juice.pop(clarity_counter, 1.25)
 	clarity_counter.value = total
@@ -1731,9 +1725,11 @@ func enter_casino(restoring := false) -> void:
 	add_child(casino)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
+	casino.toll = 0 if training or lab_active or tutorial_index >= 0 or (test_mode and not toll_in_tests) else RunState.toll_for(run.stage)   # el duende de la puerta de salida cobra la torre que se acaba de superar
 	casino.setup(run, rng)
 	_apply_casino_light()
 	casino.left.connect(leave_casino)
+	casino.failed_to_pay.connect(_on_pay_failed)
 	casino.changed.connect(save_game)
 	casino.keeper_talk.connect(_on_keeper_talk)
 	hud_layer.visible = false
@@ -1749,6 +1745,25 @@ func _on_keeper_talk(lines: Array) -> void:
 	_keeper_talk = true
 	casino.input_locked = true
 	dialogue.show_lines(lines, Story.SPEAKER, true)
+
+
+## No alcanzó para el duende y se insistió: se pierde una vida y se vuelve a subir la misma torre (la claridad juntada se conserva).
+func _on_pay_failed() -> void:
+	if casino == null:
+		return
+	if not run.can_revive():
+		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
+		return
+	run.note_retry(true)
+	Music.play("torre")
+	casino.queue_free()
+	casino = null
+	if cam != null:
+		cam.make_current()
+	hud_layer.visible = true
+	restart()
+	_flash(Loc.t("No alcanzó para el duende: perdiste una vida y volvés a subir la torre"))
+	save_game()
 
 
 ## El portal del casino lleva a la torre de la etapa siguiente. Antes se ve el balance del casino (mientras la torre se genera).
