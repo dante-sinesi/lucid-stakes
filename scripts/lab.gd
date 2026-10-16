@@ -1,7 +1,7 @@
 extends RefCounted
 ## El laboratorio (SOLO modo dev): una "estación" armada a mano por cada bloque o mecánica, para probar cada comportamiento sin recorrer
 ## torres. Se entra con el comando `lab` de la consola (`lab 4`, `lab catapulta`); `labs` las lista. Se carga UNA estación a la vez (las
-## bombas cuentan en todo el mundo cuando estás a su altura: con varias estaciones juntas se pisarían). La tecla R reinicia la estación
+## bombas cuentan en todo el mundo cuando estás en su zona: con varias estaciones juntas se pisarían). La tecla R reinicia la estación
 ## (gratis). No hay meta: se juega y se mira qué pasa.
 ## Una estación mide 10 de ancho (X0..X0+9) y 5 de fondo (z 2..6) sobre un piso en y = 0; se arranca en (X0+1, 1, 4).
 
@@ -15,7 +15,7 @@ const ZC := 4
 const STATIONS: Array[Dictionary] = [
 	{"id": "comun", "name": "Común", "desc": "Shift+dir empuja el bloque del frente; Shift+dir contraria tira. Las filas de 2 y 3 se empujan juntas; la de 4 no entra. Escalera al fondo."},
 	{"id": "hielo", "name": "Hielo", "desc": "El carril de hielo te hace resbalar hasta el vacío. Empujá el hielo suelto (resbala hasta chocar). Hielo pegado a un normal: se empuja en fila, sin resbalar."},
-	{"id": "bomba", "name": "Bomba", "desc": "Cuenta cada movimiento a su altura. La cercana tiene 3 (justo: dos pasos y subirte; perder uno la hace explotar). La del fondo tiene 8. Con `spawn bomba 2` ponés una que no llegás a desactivar."},
+	{"id": "bomba", "name": "Bomba", "desc": "Cuenta cada movimiento que das dentro de su zona roja (2 bloques a la redonda). La cercana tiene 3; la del fondo tiene 8. Con `spawn bomba 2` ponés una que no llegás a desactivar."},
 	{"id": "catapulta", "name": "Catapulta", "desc": "Pisá la catapulta de cada carril. Paredes de 5, 7 y 10 de alto: el borde está al alcance, una celda más arriba, o fuera de alcance (caés)."},
 	{"id": "agrietado", "name": "Agrietado", "desc": "El puente de agrietados se rompe apenas te bajás de cada uno: no hay vuelta atrás. Otro agrietado suelto en el piso."},
 	{"id": "pesado", "name": "Pesado", "desc": "No se empuja ni se tira (se trepa). Probalo con `perk fuerza_bruta`. Un pilar de dos de alto no se trepa; la fila pesada tampoco se empuja."},

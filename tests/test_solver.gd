@@ -103,13 +103,13 @@ func test_kinds() -> void:
 	t = fresh()
 	t.add_block(Vector3i(3, 1, 2))
 	t.add_block(Vector3i(3, 2, 2))
-	t.add_block(Vector3i(0, 1, 0), false, BOMB, 1)  # explota despues del 1.er movimiento
+	t.add_block(Vector3i(1, 1, 1), false, BOMB, 1)  # explota despues del 1.er movimiento
 	r = Solver.solve(t, 2)
 	check(r.status == "unsolvable", "bomba con cuenta 1: explota antes de terminar el plan de 2 movimientos -> imposible")
 	t = fresh()
 	t.add_block(Vector3i(3, 1, 2))
 	t.add_block(Vector3i(3, 2, 2))
-	t.add_block(Vector3i(0, 1, 0), false, BOMB, 2)
+	t.add_block(Vector3i(1, 1, 1), false, BOMB, 2)
 	r = Solver.solve(t, 2)
 	check(r.status == "solved" and r.moves == 2, "bomba con cuenta 2: se llega a la meta en el movimiento 2, antes de que explote (ganar tiene prioridad)")
 
@@ -120,11 +120,11 @@ func test_kinds() -> void:
 	t.add_block(Vector3i(4, 2, 2))
 	r = Solver.solve(t, 3)
 	check(r.status == "solved" and r.moves == 2 and r.path[0].dir == Vector3i(1, 0, 0), "bomba con cuenta 1: se desactiva pisandola y se llega en 2 movimientos")
-	# Si la bomba esta fuera de camino y con cuenta 1, cualquier primer movimiento la hace explotar.
+	# Si la bomba esta fuera de camino pero con el jugador en su zona y con cuenta 1, cualquier primer movimiento la hace explotar.
 	t = fresh()
 	t.add_block(Vector3i(3, 1, 2))
 	t.add_block(Vector3i(3, 2, 2))
-	t.add_block(Vector3i(0, 1, 0), false, BOMB, 1)
+	t.add_block(Vector3i(1, 1, 1), false, BOMB, 1)
 	r = Solver.solve(t, 2)
 	check(r.status == "unsolvable", "bomba lejana con cuenta 1: sigue siendo imposible")
 

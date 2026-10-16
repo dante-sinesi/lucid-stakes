@@ -8,8 +8,8 @@ extends RefCounted
 ## - Tipos de bloque (Kind):
 ##   ICE      al empujarlo se desliza hasta chocar con algo (o hasta salir de la huella). Si el jugador llega a una celda apoyada
 ##            en hielo sigue deslizándose en la dirección del movimiento; no se puede colgar de su borde.
-##   BOMB     cuenta movimientos sólo mientras el jugador está en su misma fila (player.y == y del
-##            bloque); al llegar a 0 explota y la torre entera cae. Si cae al vacío se desactiva.
+##   BOMB     cuenta movimientos sólo mientras el jugador está dentro de su zona: una esfera de celdas con dx²+dy²+dz² <= BOMB_RADIUS2
+##            (5: en la capa de la bomba es un 5x5 sin las esquinas); al llegar a 0 explota y la torre entera cae. Si cae al vacío se desactiva.
 ##   TRAP     (trampa) parece un bloque común, pero tiene una marca roja arriba: al quedar parado sobre ella se desarma y cae, y el
 ##            jugador con ella (si abajo hay otro bloque, se aterriza ahí; si no, se pierde).
 ##   SPIKES   (pinchos) quedar parado sobre un bloque con pinchos pierde el run. Se puede empujar y tirar como un bloque común.
@@ -32,7 +32,7 @@ extends RefCounted
 const Loc := preload("res://scripts/loc.gd")
 
 enum Mode { MOVE, GRAB, HANG }
-## ICE: resbala. BOMB: explota si te quedás en su fila. CATAPULT: lanza hacia arriba. CRACKED (agrietado): se rompe y cae apenas
+## ICE: resbala. BOMB: explota si te quedás en su zona. CATAPULT: lanza hacia arriba. CRACKED (agrietado): se rompe y cae apenas
 ## te bajás de él. HEAVY (pesado): no se empuja ni se tira (es una pared que se puede trepar); cae como cualquier bloque si se queda sin apoyo.
 ## TRAP: trampa (se desarma al pisarla). SPIKES: pinchos (pisarlos pierde).
 enum Kind { NORMAL, ICE, BOMB, CATAPULT, CRACKED, HEAVY, TRAP, SPIKES }
@@ -590,6 +590,11 @@ func _act_hanging(d: Vector3i) -> Dictionary:
 		_set_player(g2)
 		hang_dir = -d
 		return _ok()
+	if blocks.has(g2 + DOWN):   # el borde del bloque termina y del otro lado hay piso (el bloque de arriba impide rodearlo colgado): se sube a ese piso y se queda parado
+		hang_dir = Vector3i.ZERO
+		_set_player(g2)
+		_arrive(d)
+		return _ok()
 	return _fail("No se puede avanzar por el borde")
 
 
@@ -803,10 +808,19 @@ func _purify_trail() -> void:
 	purified_count += last_purified.size()
 
 
-## Una bomba cuenta sólo cuando el jugador está en su fila; al llegar a 0 explota.
+const BOMB_RADIUS2 := 5   # la zona de una bomba: celdas a distancia (al cuadrado) de 5 o menos de ella
+
+
+## ¿Está la celda `c` dentro de la zona de la bomba que está en `bomb_cell`?
+static func in_bomb_zone(bomb_cell: Vector3i, c: Vector3i) -> bool:
+	var d := c - bomb_cell
+	return d.x * d.x + d.y * d.y + d.z * d.z <= BOMB_RADIUS2
+
+
+## Una bomba cuenta sólo cuando el jugador está dentro de su zona; al llegar a 0 explota.
 func _tick_bombs() -> void:
 	for id in bomb_timer.keys():
-		if positions[id].y == player.y:
+		if in_bomb_zone(positions[id], player):
 			_own_maps()
 			bomb_timer[id] -= 1
 			if bomb_timer[id] <= 0:
