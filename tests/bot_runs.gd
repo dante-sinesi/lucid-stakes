@@ -27,7 +27,7 @@ func _init() -> void:
 	cfg.max_rotations = int(_env("ROT", "3"))
 	# parámetros de balance que se pueden cambiar por variable de entorno (para probar curvas)
 	var tuned := []
-	for pair in [["WALL_GROWTH", "wall_growth"], ["WALL_MARGIN", "wall_margin"], ["PRE_FROM", "pre_wall_from"], ["PRE_TO", "pre_wall_to"], ["INCOME_BASE", "income_base"], ["INCOME_SLOPE", "income_slope"], ["INCOME_CEIL", "income_ceil"]]:
+	for pair in [["WALL_GROWTH", "wall_growth"], ["WALL_MARGIN", "wall_margin"], ["PRE_FROM", "pre_wall_from"], ["PRE_TO", "pre_wall_to"], ["INCOME_BASE", "income_base"], ["INCOME_SLOPE", "income_slope"], ["INCOME_CEIL", "income_ceil"], ["HILL_POWER", "hill_power"]]:
 		if OS.get_environment(pair[0]) != "":
 			var v := float(OS.get_environment(pair[0]))
 			match pair[1]:
@@ -38,6 +38,7 @@ func _init() -> void:
 				"income_base": RunState.income_base = v
 				"income_slope": RunState.income_slope = v
 				"income_ceil": RunState.income_ceil = v
+				"hill_power": RunState.hill_power = v
 			tuned.append("%s=%s" % [pair[0], OS.get_environment(pair[0])])
 	if OS.get_environment("FICHA_BASE") != "":
 		Roulette.base_price = int(OS.get_environment("FICHA_BASE"))
@@ -85,7 +86,7 @@ func _init() -> void:
 		for b in res.build:
 			builds[b] = int(builds.get(b, 0)) + 1
 		if out != null:
-			out.store_line(JSON.stringify({"stage": res.stage, "won": res.won, "lives_lost": res.lives_lost, "build": res.build}))
+			out.store_line(JSON.stringify({"stage": res.stage, "won": res.won, "lives_lost": res.lives_lost, "build": res.build, "per_stage": res.per_stage, "skill": cfg.skill}))
 	if out != null:
 		out.close()
 	print("RUNS %d (habilidad %.2f, torres en el banco: %d) en %.0f s: gana %.1f %% · vidas perdidas %.2f" % [runs, cfg.skill, have, (Time.get_ticks_msec() - t0) / 1000.0, 100.0 * wins / runs, lives / runs])

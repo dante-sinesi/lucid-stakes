@@ -100,9 +100,11 @@ func test_curve() -> void:
 		prev = t
 		cum_toll += float(t)
 		cum_max += RunState.income_ceiling(s)
-		if s < RunState.WALL_STAGE:
-			check(float(t) < RunState.income_fit(s), "antes de la pared el precio es menos que lo que rinde una torre (etapa %d)" % s)
-			check(RunState.max_budget_without_boosts(s) > float(t), "antes de la pared se puede pagar sin boosts (etapa %d)" % s)
+		if s <= RunState.HILL_START:
+			check(float(t) < RunState.income_fit(s), "antes de la colina el precio es menos que lo que rinde una torre (etapa %d)" % s)
+			check(RunState.max_budget_without_boosts(s) > float(t), "antes de la colina se puede pagar sin boosts (etapa %d)" % s)
+		elif s < RunState.WALL_STAGE:
+			check(float(t) > float(RunState.toll_for(s - 1)) * 1.1, "la colina sube de a poco (etapa %d)" % s)
 		else:
 			check(float(t) > RunState.max_budget_without_boosts(s), "desde la pared no se puede pagar sin boosts, ni juntando el máximo y sin gastar nada (etapa %d: %d contra %.0f)" % [s, t, RunState.max_budget_without_boosts(s)])
 			check(cum_toll > cum_max, "el precio acumulado supera al presupuesto máximo acumulado (etapa %d)" % s)
