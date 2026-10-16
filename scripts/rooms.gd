@@ -210,7 +210,7 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 	var snaps: Array = []   # el estado antes de cada sala: si una no entra, se vuelve atrás y se rehace la anterior de otra manera
 	var eys: Array[int] = []   # el piso donde empieza cada sala (las ideas de pared son de 2 pisos; las de hielo, bomba y catapulta, de 4)
 	var rooms_done: Array = []
-	var use_lib: bool = bool(opts.get("library", true)) and OS.get_environment("SIN_BIBLIOTECA") == "" and not SCENARIO_IDEAS.has(str(opts.get("scenario", ""))) and not RoomPool.all().is_empty()
+	var use_lib: bool = bool(opts.get("library", true)) and OS.get_environment("SIN_BIBLIOTECA") == "" and OS.get_environment("IDEA_ONLY") == "" and not SCENARIO_IDEAS.has(str(opts.get("scenario", ""))) and not RoomPool.all().is_empty()
 	var backtracks := 0
 	var i := 0
 	var ey := 1
