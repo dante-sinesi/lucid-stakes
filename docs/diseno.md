@@ -652,3 +652,23 @@ Pedido de Dante: que el precio del duende no sea una pared sino una **colina** (
 
 ### La colina suavizada (2026-10-16)
 Pedido de Dante: suavizar la subida de la etapa 4 a la 8. El precio de la etapa de la pared ya no es fijo: `RunState.wall_toll()` lo resuelve por iteración como "lo que no se puede pagar sin boosts aunque se junte el máximo en cada torre y no se gaste nada", **descontando lo que ya se pagó en la colina** (los precios de la colina dependen del de la pared y éste de aquéllos). Así la pared baja de 2970 a unos 1800 y la subida queda pareja. Con `hill_power` = 1,25 los precios son: 219, 260, 304, **385, 536, 781, 1174, 1806** (etapas 1 a 8), y después +20 % por etapa: 2167, 2594, 3102, 3718, 4462, 5354, **6408** (la 15). Probado con el bot (90 runs, habilidades 0,8, 1,0 y 1,3): **gana el 7,8 %**; llegan a la etapa 6 el 100 %, a la 7 el 96 %, a la 8 el 62 %, a la 9 el 30 %, a la 10 el 21 %, a la 12 el 13 % y a la 15 el 11 %; superan la 15 el 8 %. Con `hill_power` = 1 (parejo) los precios son 426, 597, 837, 1165, 1632 y gana el 16 %.
+
+## 49. Boosts y consumibles del casino (implementados)
+
+Sirven en las mesas, no en la torre. Efectos en `roulette.gd`, `slots.gd`, `blackjack.gd`, `casino_rules.gd` (`settle`), `showcase.gd` y `casino_scene.gd` (`use_consumable_slot`); prueba: `tests/test_casino_items.gd`. Los valores de balance de la ruleta se mantuvieron dentro de la media de su nivel (épicos ~640, raros ~210, comunes ~100).
+
+| Premio | Nivel | Tipo | Qué hace |
+|---|---|---|---|
+| **Mano de 23** | épico | boost | En el blackjack el tope es 23 en vez de 21 (plantarse o pasarse recién después; el blackjack natural sigue siendo 21 con dos cartas). |
+| **Mesa caliente** | épico | boost | Todo lo que ganás en el casino paga un 25 % más. |
+| **Blackjack de oro** | raro | boost | El blackjack natural paga 3 a 1 (3 a 2). |
+| **Ficha barata** | raro | boost (hasta 2) | La ficha de todas las mesas cuesta un 20 % menos cada una (`Roulette.run_price`). Cuidado con el balance: la ficha barata acelera la bola de nieve del principio. |
+| **Casilla de regalo** | raro | boost | En la ruleta cada apuesta cubre una casilla más sin costo (al azar entre las que no cubrís; `res.extra_pocket`). |
+| **Doble o nada** | raro | consumible (se usa en el casino) | Lo que se gana en las mesas el resto de la visita vale el doble (una visita). |
+| **Red de seguridad** | común | boost | Cada apuesta perdida devuelve el 10 % de lo perdido. |
+| **Giro de cortesía** | común | boost | En las tragamonedas volver a girar es gratis. |
+| **Llave de la vitrina** | común | boost | La primera rotación de la vitrina de cada visita es gratis. |
+| **Ficha gratis** | común | consumible (se usa en el casino) | La próxima apuesta (de cualquier mesa) no cuesta la ficha (`Roulette.chip_charge`); lo ganado sí se paga completo. |
+| **Rayos X** | común | consumible (se usa en el casino) | En la próxima mano de blackjack se ve la carta tapada del crupier. |
+
+Los consumibles de casino se usan con las teclas 1 a 4 o con un clic en la barra, dentro del casino (`Items.CASINO_USABLE`); la Vida extra y el Soborno también. Pendiente: afinar con el bot (hoy el bot sólo juega la ruleta) y decidir cuáles son demasiado fuertes.

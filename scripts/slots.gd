@@ -74,8 +74,9 @@ func start() -> Dictionary:
 	price = Roulette.run_price(run) * stake
 	if not run.can_afford(price):
 		return {"ok": false, "error": Loc.f("No alcanza la claridad (la ficha cuesta %d)", [price])}
-	run.spend(price)
-	run.casino_spent += price
+	var charge := Roulette.chip_charge(run, price)
+	run.spend(charge)
+	run.casino_spent += charge
 	for i in REELS:
 		reels[i] = random_symbol(rng)
 	respins_left = 1
@@ -85,7 +86,7 @@ func start() -> Dictionary:
 
 
 func can_respin() -> bool:
-	return phase == Phase.HOLD and respins_left > 0 and run.can_afford(respin_price(price))
+	return phase == Phase.HOLD and respins_left > 0 and (run.boosts.has("giro_de_cortesia") or run.can_afford(respin_price(price)))
 
 
 ## Vuelve a girar los rodillos que NO están retenidos (`held`: tres bools). Cobra media ficha y termina la tirada (paga).
@@ -97,7 +98,7 @@ func respin(held: Array) -> Dictionary:
 		all_held = all_held and h
 	if all_held:
 		return {"ok": false, "error": Loc.t("Soltá algún rodillo para volver a girar")}
-	var cost := respin_price(price)
+	var cost := 0 if run.boosts.has("giro_de_cortesia") else respin_price(price)   # (Giro de cortesía: volver a girar es gratis)
 	run.spend(cost)
 	run.casino_spent += cost
 	price += cost   # (lo gastado en la tirada, para el resumen)

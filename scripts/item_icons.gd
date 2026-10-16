@@ -116,6 +116,29 @@ const ICONS := {
 		".ooooooo.", "oaaaaaaao", "oaaaaaaao", "ooooooooo", "oaabbbaao", "oaabbbaao", "oaaaaaaao", "oaaaaaaao", "ooooooooo"]},
 	"tesoro": {"a": Color(0.60, 0.35, 0.90), "b": Color(1.00, 0.95, 0.50), "rows": [
 		".ooooooo.", "oaaaaaaao", "oaaaaaaao", "ooooooooo", "oaabbbaao", "oaabbbaao", "oaaaaaaao", "oaaaaaaao", "ooooooooo"]},
+	# ---- del casino (docs/diseno.md §49) ----
+	"mano_23": {"a": Color(1.00, 0.85, 0.30), "b": Color(0.90, 0.30, 0.30), "rows": [
+		"..ooooo..", ".oaaaaao.", ".oabbbao.", ".oabaaao.", ".oabbbao.", ".oaaaabo.", ".oabbbao.", ".oaaaaao.", "..ooooo.."]},
+	"mesa_caliente": {"a": Color(1.00, 0.45, 0.15), "b": Color(1.00, 0.90, 0.35), "rows": [
+		"....o....", "...oao...", "..oaao...", ".oaabao..", ".oabbbao.", "oaabbbaao", "oaabbbaao", ".oaabaao.", "..ooooo.."]},
+	"blackjack_de_oro": {"a": Color(0.15, 0.15, 0.20), "b": Color(1.00, 0.82, 0.25), "rows": [
+		"..ooooo..", ".oaaaaao.", ".oabbbao.", ".oabaaao.", ".oabbbao.", ".oaaaabo.", ".oabbbao.", ".oaaaaao.", "..ooooo.."]},
+	"ficha_barata": {"a": Color(0.45, 0.85, 0.50), "b": Color(0.20, 0.50, 0.25), "rows": [
+		"..ooooo..", ".oaaaaao.", "oaabbbaao", "oaabaaaao", "oaabbaaao", "oaaaabaao", "oaabbbaao", ".oaaaaao.", "..ooooo.."]},
+	"casilla_de_regalo": {"a": Color(0.70, 0.95, 0.75), "rows": [
+		"....o....", "...oao...", "...oao...", "ooooaoooo", "oaaaaaaao", ".oaaaaao.", ".oaaoaao.", "oaao.oaao", "oo.....oo"]},
+	"red_de_seguridad": {"a": Color(0.50, 0.70, 1.00), "b": Color(0.20, 0.40, 0.80), "rows": [
+		"....o....", "...ooo...", "..oaaao..", ".oaaaaao.", "oaabbbaao", "oaabbbaao", "oaaaaaaao", ".oaaaaao.", "..ooooo.."]},
+	"giro_de_cortesia": {"a": Color(0.75, 0.55, 1.00), "b": Color(0.45, 0.30, 0.80), "rows": [
+		"ooooooooo", "oaaaaaaao", ".oaabaao.", "..oaabo..", "...oao...", "..oabao..", ".oabbbao.", "oaaaaaaao", "ooooooooo"]},
+	"llave_de_la_vitrina": {"a": Color(0.60, 0.60, 0.70), "b": Color(1.00, 0.85, 0.30), "rows": [
+		".ooooooo.", "oaaaaaaao", "oaaaaaaao", "ooooooooo", "oaabbbaao", "oaabbbaao", "oaaaaaaao", "oaaaaaaao", "ooooooooo"]},
+	"doble_o_nada": {"a": Color(1.00, 0.85, 0.30), "b": Color(0.90, 0.20, 0.20), "rows": [
+		"..ooooo..", ".oaaaaao.", "oaabbbaao", "oaabaaaao", "oaabbaaao", "oaaaabaao", "oaabbbaao", ".oaaaaao.", "..ooooo.."]},
+	"ficha_gratis": {"a": Color(0.95, 0.95, 1.00), "b": Color(0.60, 0.60, 0.90), "rows": [
+		"..ooooo..", ".oaaaaao.", "oaabbbaao", "oaabaaaao", "oaabbaaao", "oaaaabaao", "oaabbbaao", ".oaaaaao.", "..ooooo.."]},
+	"rayos_x": {"a": Color(0.40, 0.95, 0.95), "rows": [
+		".........", "..ooooo..", ".owwwwwo.", "owwaaawwo", "owwaoawwo", "owwaaawwo", ".owwwwwo.", "..ooooo..", "........."]},
 }
 
 

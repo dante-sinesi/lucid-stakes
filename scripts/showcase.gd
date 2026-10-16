@@ -82,6 +82,8 @@ static func rotations(run) -> int:
 
 ## Lo que cuesta rotar la vitrina: una ficha, y una más por cada rotación que ya se hizo en esta visita.
 static func rotate_cost(run) -> int:
+	if rotations(run) == 0 and run.boosts.has("llave_de_la_vitrina"):   # (Llave de la vitrina: la primera rotación de la visita es gratis)
+		return 0
 	return Roulette.run_price(run) * (1 + rotations(run))
 
 

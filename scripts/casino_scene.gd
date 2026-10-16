@@ -334,6 +334,28 @@ func use_consumable_slot(slot: int) -> void:
 			return
 		run.use_consumable(id)
 		_flash(Loc.t("¡Una vida más!"))
+	elif id == "ficha_gratis":
+		if run.free_chip:
+			_flash(Loc.t("Ya tenés una ficha gratis lista"))
+			return
+		run.free_chip = true
+		run.use_consumable(id)
+		_flash(Loc.t("Tu próxima apuesta no cuesta la ficha"))
+	elif id == "rayos_x":
+		if run.xray:
+			_flash(Loc.t("Ya tenés los rayos X listos"))
+			return
+		run.xray = true
+		run.use_consumable(id)
+		_flash(Loc.t("En tu próxima mano de blackjack ves la carta tapada"))
+	elif id == "doble_o_nada":
+		var visit = run.casino_visit
+		if not (visit is Dictionary) or visit.is_empty() or bool(visit.get("double", false)):
+			_flash(Loc.t("No se puede usar ahora"))
+			return
+		run.casino_visit["double"] = true
+		run.use_consumable(id)
+		_flash(Loc.t("Lo que ganes en esta visita vale el doble"))
 	elif id == "soborno":
 		if toll_base <= 0 or run.toll_bribe:
 			_flash(Loc.t("El duende no cobra, o ya lo sobornaste"))

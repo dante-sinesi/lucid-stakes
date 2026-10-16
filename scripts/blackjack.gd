@@ -53,6 +53,11 @@ static func value(hand: Array) -> Dictionary:
 	return {"total": total, "soft": soft}
 
 
+## Hasta cuánto se puede llegar sin pasarse: 21, o 23 con el boost Mano de 23.
+func limit() -> int:
+	return 23 if run != null and run.boosts.has("mano_23") else 21
+
+
 static func is_blackjack(hand: Array) -> bool:
 	return hand.size() == 2 and value(hand).total == 21
 
@@ -83,8 +88,9 @@ func deal(forced_deck: Array = []) -> Dictionary:
 	bet = Roulette.run_price(run) * stake
 	if not run.can_afford(bet):
 		return {"ok": false, "error": Loc.f("No alcanza la claridad (la ficha cuesta %d)", [bet])}
-	run.spend(bet)
-	run.casino_spent += bet
+	var charge := Roulette.chip_charge(run, bet)
+	run.spend(charge)
+	run.casino_spent += charge
 	if forced_deck.is_empty():
 		_shuffle()
 	else:   # (pruebas) el mazo se saca desde el final
@@ -97,6 +103,9 @@ func deal(forced_deck: Array = []) -> Dictionary:
 	dealer = [d0, d1]
 	doubled = false
 	hole_hidden = true
+	if run.xray:   # Rayos X: se ve la carta tapada del crupier en esta mano
+		run.xray = false
+		hole_hidden = false
 	outcome = Outcome.NONE
 	result = {}
 	phase = Phase.PLAYER
@@ -113,7 +122,7 @@ func hit() -> bool:
 	if phase != Phase.PLAYER:
 		return false
 	player.append(_draw())
-	if value(player).total >= 21:
+	if value(player).total >= limit():
 		stand()
 	return true
 
@@ -134,7 +143,7 @@ func double_down() -> bool:
 func stand() -> void:
 	if phase != Phase.PLAYER:
 		return
-	if value(player).total <= 21:
+	if value(player).total <= limit():
 		while value(dealer).total < 17:
 			dealer.append(_draw())
 	_settle()
@@ -148,11 +157,11 @@ func _settle() -> void:
 	var pbj := is_blackjack(player)
 	var dbj := is_blackjack(dealer)
 	var back := 0.0   # cuántas apuestas se devuelven (incluida la propia)
-	if pv > 21:
+	if pv > limit():
 		outcome = Outcome.BUST
 	elif pbj and not dbj:
 		outcome = Outcome.BLACKJACK
-		back = 2.5
+		back = 4.0 if run.boosts.has("blackjack_de_oro") else 2.5   # (Blackjack de oro: 3 a 1)
 	elif dbj and not pbj:
 		outcome = Outcome.LOSE
 	elif dv > 21 or pv > dv:
@@ -180,7 +189,7 @@ static func outcome_text(o: int) -> String:
 		Outcome.PUSH:
 			return "Empate: te devuelven la apuesta"
 		Outcome.BUST:
-			return "Te pasaste de 21"
+			return "Te pasaste"
 		Outcome.LOSE:
 			return "Ganó la casa"
 	return ""
@@ -212,6 +221,9 @@ static func simulate_rtp(hands: int, seed_value: int) -> float:
 
 ## Una "partida" sin límite de claridad, para la simulación.
 class _FakeRun:
+	var boosts: Array = []
+	var free_chip := false
+	var xray := false
 	var casino_spent := 0
 	var casino_won := 0
 	func can_afford(_n: int) -> bool:

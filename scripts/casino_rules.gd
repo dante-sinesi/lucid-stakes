@@ -118,6 +118,21 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 				out.jackpot = int(v.pool)
 				v.pool = 0
 				out.notes.append(Loc.f("¡Jackpot! Te llevás el pozo: +%d de claridad.", [out.jackpot]))
+	# boosts y consumibles del casino (docs/diseno.md §49)
+	if win and reward > 0:
+		var extra := 0
+		if run.boosts.has("mesa_caliente"):
+			extra += int(round(float(reward) * 0.25))
+		if bool(v.get("double", false)):   # Doble o nada: lo que se gana el resto de la visita vale el doble
+			extra += reward
+		if extra > 0:
+			out.bonus = int(out.bonus) + extra
+			out.notes.append(Loc.f("Casino: +%d de claridad.", [extra]))
+	if lost and run.boosts.has("red_de_seguridad"):
+		var back := int(round(float(wager - reward) * 0.10))
+		if back > 0:
+			out.refund = int(out.refund) + back
+			out.notes.append(Loc.f("Red de seguridad: te devuelven %d de claridad.", [back]))
 	out.total = int(out.refund) + int(out.bonus) + int(out.jackpot)
 	if out.total > 0:
 		run.gain(out.total)

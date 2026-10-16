@@ -180,4 +180,13 @@ const TABLE := {
 	"Racha ×4": "Streak ×4",
 	"Reloj de arena: la fila de abajo se detiene 10 movimientos": "Hourglass: the bottom row stops for 10 moves",
 	"Se usa en el casino, frente al duende": "Used in the casino, in front of the goblin",
+	"Casino: +%d de claridad.": "Casino: +%d clarity.",
+	"Red de seguridad: te devuelven %d de claridad.": "Safety net: you get %d clarity back.",
+	"Ya tenés una ficha gratis lista": "You already have a free chip ready",
+	"Tu próxima apuesta no cuesta la ficha": "Your next bet doesn't cost the chip",
+	"Ya tenés los rayos X listos": "You already have the X-ray ready",
+	"En tu próxima mano de blackjack ves la carta tapada": "In your next blackjack hand you see the hidden card",
+	"No se puede usar ahora": "It can't be used now",
+	"Lo que ganes en esta visita vale el doble": "What you win in this visit is worth double",
+	"Te pasaste": "You went bust",
 }

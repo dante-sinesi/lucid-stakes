@@ -114,6 +114,29 @@ const ALL: Array[Dictionary] = [
 		"desc": "La racha pasa a ×4 ya."},
 	{"id": "reloj_de_arena", "name": "Reloj de arena", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 95,
 		"desc": "Pausa la caída de la fila base durante 10 movimientos."},
+	# del casino (docs/diseno.md §49): sirven en las mesas, no en la torre
+	{"id": "mano_23", "name": "Mano de 23", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 640,
+		"desc": "En el blackjack el tope es 23 en vez de 21: te plantás o te pasás recién después."},
+	{"id": "mesa_caliente", "name": "Mesa caliente", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 640,
+		"desc": "Todo lo que ganás en el casino paga un 25 % más."},
+	{"id": "blackjack_de_oro", "name": "Blackjack de oro", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 210,
+		"desc": "El blackjack natural paga 3 a 1 en vez de 3 a 2."},
+	{"id": "ficha_barata", "name": "Ficha barata", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220, "stack": true, "max_stack": 2,
+		"desc": "La ficha de todas las mesas cuesta un 20 % menos. Se acumula (hasta 2)."},
+	{"id": "casilla_de_regalo", "name": "Casilla de regalo", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 210,
+		"desc": "En la ruleta, cada apuesta cubre una casilla más sin costo."},
+	{"id": "red_de_seguridad", "name": "Red de seguridad", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 100,
+		"desc": "Cada apuesta perdida te devuelve el 10 % de lo que perdiste."},
+	{"id": "giro_de_cortesia", "name": "Giro de cortesía", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 90,
+		"desc": "En las tragamonedas, volver a girar no cuesta nada."},
+	{"id": "llave_de_la_vitrina", "name": "Llave de la vitrina", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 95,
+		"desc": "La primera rotación de la vitrina de cada visita es gratis."},
+	{"id": "doble_o_nada", "name": "Doble o nada", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200, "casino": true,
+		"desc": "Se usa en el casino: lo que ganás en las mesas el resto de la visita vale el doble."},
+	{"id": "ficha_gratis", "name": "Ficha gratis", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 95, "casino": true,
+		"desc": "Se usa en el casino: tu próxima apuesta no te cuesta la ficha."},
+	{"id": "rayos_x", "name": "Rayos X", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90, "casino": true,
+		"desc": "Se usa en el casino: en tu próxima mano de blackjack ves la carta tapada del crupier."},
 	# bolsas de claridad grandes (la ficha de la etapa por el multiplicador)
 	{"id": "bolsa_pesada", "name": "Bolsa pesada", "type": Type.CLARITY, "tier": Tier.COMUN, "weight": 1.5, "mult": 3.0,
 		"desc": "Devuelve 3 veces lo que pagaste por la ficha, en claridad."},
@@ -126,7 +149,7 @@ const ALL: Array[Dictionary] = [
 ]
 
 ## Consumibles que se pueden usar dentro del casino (los demás sólo en la torre).
-const CASINO_USABLE: Array[String] = ["vida_extra", "soborno"]
+const CASINO_USABLE: Array[String] = ["vida_extra", "soborno", "doble_o_nada", "ficha_gratis", "rayos_x"]
 
 
 ## ¿El consumible se usa eligiendo un bloque con el mouse?

@@ -36,7 +36,16 @@ static func price(stage: int, mult := 1.0) -> int:
 
 ## Lo que cuesta la ficha en un run (los escenarios pueden abaratarla).
 static func run_price(run) -> int:
-	return price(run.stage, run.price_mult)
+	var cheaper: float = minf(0.2 * float(run.boosts.count("ficha_barata")), 0.6)   # (Ficha barata: −20 % cada una)
+	return price(run.stage, run.price_mult * (1.0 - cheaper))
+
+
+## Lo que se cobra de verdad por una apuesta: la ficha, o nada si se usó una Ficha gratis (que se gasta acá).
+static func chip_charge(run, ficha: int) -> int:
+	if run.free_chip:
+		run.free_chip = false
+		return 0
+	return ficha
 
 
 ## Probabilidad de ganar una apuesta.
@@ -77,11 +86,22 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 	if err != "":
 		return {"ok": false, "error": err}
 	var cost := run_price(run)
-	run.spend(cost)
-	run.casino_spent += cost
+	var charge := chip_charge(run, cost)
+	run.spend(charge)
+	run.casino_spent += charge
+	var covered: Array = pockets.duplicate()
+	var extra_pocket := -1
+	if run.boosts.has("casilla_de_regalo"):   # Casilla de regalo: una casilla más, sin costo (al azar entre las que no cubrís)
+		var free: Array = []
+		for c in range(1, POCKETS):
+			if not covered.has(c):
+				free.append(c)
+		if not free.is_empty():
+			extra_pocket = int(free[rng.randi_range(0, free.size() - 1)])
+			covered.append(extra_pocket)
 	var pocket := forced_pocket if forced_pocket >= 0 else rng.randi_range(0, POCKETS - 1)
-	var res := {"ok": true, "error": "", "pocket": pocket, "won": pockets.has(pocket), "price": cost,
-			"prize": {}, "converted": false, "claridad_delta": -cost}
+	var res := {"ok": true, "error": "", "pocket": pocket, "won": covered.has(pocket), "price": cost, "charge": charge, "extra_pocket": extra_pocket,
+			"prize": {}, "converted": false, "claridad_delta": -charge}
 	if not res.won:
 		return _with_rules(run, res, cost, 0, bet)
 	var prize := Showcase.pick(run, BETS[bet].tier, rng)   # (de la vitrina de la visita; no sale lo que ya tenés ni lo que el escenario inhabilita)
@@ -95,7 +115,7 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 		reward = int(round(Items.value_of(prize, cost) * 0.5))
 	run.gain(reward)
 	run.casino_won += reward
-	res.claridad_delta = reward - cost
+	res.claridad_delta = reward - charge
 	return _with_rules(run, res, cost, reward, bet)
 
 
@@ -103,5 +123,5 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 static func _with_rules(run, res: Dictionary, cost: int, reward: int, bet: int) -> Dictionary:
 	var rules: Dictionary = Rules.settle(run, cost, reward, res.won, res.won and bet == Bet.PLENO, "ruleta")
 	res["rules"] = rules
-	res.claridad_delta = reward + int(rules.total) - cost
+	res.claridad_delta = reward + int(rules.total) - int(res.get("charge", cost))
 	return res

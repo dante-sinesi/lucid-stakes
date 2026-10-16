@@ -95,9 +95,10 @@ func test_spin() -> void:
 	var res: Dictionary = await s.spin()
 	check(res.ok and res.won and res.pocket == 7, "el giro devuelve el resultado")
 	check(s.state == Screen.State.RESULT and s.wheel.result == 7, "terminado el giro, la rueda marca la casilla ganadora")
-	check(run.claridad == 250 and run.boosts.size() == 1, "se cobro la ficha y se guardo el boost epico")
+	var ficha: int = Roulette.run_price(run)   # (la ficha de la etapa 1)
+	check(run.claridad == 300 - ficha and run.boosts.size() == 1, "se cobro la ficha y se guardo el boost epico")
 	check(s.result_label.text.contains("Cayó el 7") and s.result_label.text.contains("Ganaste"), "el mensaje cuenta que gano y que")
-	check(s.claridad_counter.value == 250 and s.price_counter.value == 50, "se actualizan la claridad y el precio de la ficha en pantalla")
+	check(s.claridad_counter.value == 300 - ficha and s.price_counter.value == ficha, "se actualizan la claridad y el precio de la ficha en pantalla")
 	s.queue_free()
 
 	# perder
@@ -107,7 +108,7 @@ func test_spin() -> void:
 	s.forced_pocket = 3
 	s.toggle_pocket(9)
 	res = await s.spin()
-	check(not res.won and run.claridad == 250 and s.result_label.text.contains("Perdiste"), "perder: se pierde la ficha y el mensaje lo dice")
+	check(not res.won and run.claridad == 300 - Roulette.run_price(run) and s.result_label.text.contains("Perdiste"), "perder: se pierde la ficha y el mensaje lo dice")
 
 	# cae la casa
 	s.forced_pocket = 0
