@@ -110,16 +110,24 @@ func test_move_lesson() -> void:
 	check(not straight.won, "ir siempre derecho no llega")
 
 
-## Tirar: un bloque suelto; con tirar de él una vez alcanza, y empujarlo no cuenta (el tutorial distingue una cosa de la otra).
+## Tirar: la escalera queda a la espalda y el bloque que la hace demasiado alta se saca tirando de él; sin agarrar no se llega y el camino más corto incluye un tirón.
 func test_pull_lesson() -> void:
 	var t = Tutorial.build(_index_of("tirar"))
-	check(t.goal_y > 100 and t.blocks.size() == 8 + 1, "la lección de tirar no tiene meta: un piso y un solo bloque")
-	var pushed = t.clone()
-	check(pushed.try_action(Vector3i(1, 0, 0), TowerLogic.Mode.GRAB).ok and pushed.last_grab == "push", "Shift hacia el bloque lo empuja (se nota que fue un empujón)")
-	var pulled = t.clone()
-	check(pulled.try_action(Vector3i(-1, 0, 0), TowerLogic.Mode.GRAB).ok and pulled.last_grab == "pull", "Shift hacia el otro lado tira de él (se nota que fue un tirón)")
+	check(t.goal_y < 100, "la lección de tirar tiene meta (el portal)")
+	check(Solver.solve(t, t.goal_y, {"max_states": 400000, "no_grab": true}).status != "solved", "sin agarrar no se llega al portal")
+	var res := Solver.solve(t, t.goal_y, {"max_states": 400000})
+	var sim = t.clone()
+	var pulls := 0
+	var pushes := 0
+	for a in res.path:
+		sim.try_action(a.dir, a.mode)
+		if sim.last_grab == "pull":
+			pulls += 1
+		elif sim.last_grab == "push":
+			pushes += 1
+	check(res.status == "solved" and pulls >= 1 and sim.won, "la solución tira de un bloque (%d tirones, %d empujes)" % [pulls, pushes])
 	var walked = t.clone()
-	walked.try_action(Vector3i(-1, 0, 0))
+	walked.try_action(Vector3i(0, 0, -1))
 	check(walked.last_grab == "", "caminar no es ni empujar ni tirar")
 
 

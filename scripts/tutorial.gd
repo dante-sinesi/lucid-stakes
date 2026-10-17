@@ -21,7 +21,7 @@ static func lessons() -> Array:
 		{"id": "moverse", "title": "Moverse", "help": "Pulsá " + wasd, "mode": "move", "zoom": 9.0, "build": _moverse},
 		{"id": "camara", "title": "La cámara", "help": "Pulsá {camara_arriba} {camara_izquierda} {camara_abajo} {camara_derecha}", "mode": "camera", "zoom": 9.0, "build": _camara, "complete": "keys"},
 		{"id": "empujar", "title": "Empujar", "help": "Mantené {empujar} y pulsá " + wasd_opt, "mode": "push", "zoom": 10.0, "build": _empujar, "needs": [TowerLogic.Mode.GRAB]},
-		{"id": "tirar", "title": "Tirar", "help": "Mantené {empujar} y pulsá " + wasd_opt, "mode": "pull", "zoom": 10.0, "build": _tirar, "complete": "keys"},
+		{"id": "tirar", "title": "Tirar", "help": "Mantené {empujar} y pulsá " + wasd_opt, "mode": "pull", "zoom": 10.0, "build": _tirar, "needs": [TowerLogic.Mode.GRAB]},
 		{"id": "colgarse", "title": "Cornisa", "help": "Mantené {colgarse} y pulsá " + wasd_opt, "mode": "hang", "zoom": 11.0, "build": _colgarse_s, "needs": [TowerLogic.Mode.HANG]},
 		{"id": "soltarse", "title": "Soltarse", "help": "Colgate con {colgarse} y una dirección, y soltate con {colgarse}", "mode": "hang", "zoom": 12.0, "build": _colgarse, "needs": [TowerLogic.Mode.HANG]},
 		{"id": "torre", "title": "Una torre de verdad", "help": "Subí hasta el portal dorado", "zoom": 14.0, "generated": 4, "dice": true},   # (mientras se genera, el tabernero explica los dados)
@@ -135,30 +135,16 @@ static func _from_layers(text: String, size_hint := Vector2i(0, 0)) -> RefCounte
 	return t
 
 
-## Una escalera que se arma empujando: la plataforma alta (x = 5..8) no se trepa de un salto, así que hay que empujar el bloque suelto hasta su pie; arriba,
-## otro bloque suelto se empuja hasta quedar de escalón junto a la torrecita dorada.
+## Una escalera de 3 escalones (1, 2 y 3 de alto, con el portal arriba) a la que le falta el primero: el bloque común pegado al personaje, al pie del segundo escalón, hay que
+## empujarlo un lugar para que sea el primer escalón. Más allá hay una pared de hierro: no se puede seguir empujando.
 static func _empujar() -> RefCounted:
-	var t := _new(9, 3)
-	_fill(t, 0, 8, 0, 2, 0)
-	_fill(t, 5, 8, 0, 2, 1)
-	_fill(t, 5, 8, 0, 2, 2)
-	t.add_block(Vector3i(3, 1, 1))   # el primer escalón (hay que dejarlo en x = 4)
-	t.add_block(Vector3i(6, 3, 1))   # el segundo (hay que dejarlo en x = 7)
-	t.add_block(Vector3i(8, 3, 1))   # la torrecita dorada
-	t.player = Vector3i(0, 1, 1)
-	_goal(t, Vector3i(8, 3, 1))
-	return t
+	return _from_layers("[0,1,0;0,1,0;0,1,0;0,1,0;0,1,0;0,1,0;0,1,0;],[0,0,0;0,p,0;0,1,0;0,0,0;0,1,0;0,1,0;0,H,0;],[0,0,0;0,0,0;0,0,0;0,0,0;0,1,0;0,1,0;0,0,0;],[0,0,0;0,0,0;0,0,0;0,0,0;0,0,0;0,portal,0;0,0,0;]")
 
 
-## Un bloque suelto al lado del personaje, sobre un piso largo: tirar de él una vez completa la lección (empujarlo no cuenta; el piso de atrás alcanza para tirar).
+## La escalera queda a espaldas del personaje: el bloque de abajo del primer escalón (que lo hace demasiado alto para trepar) se saca tirando de él mientras se camina hacia atrás
+## (el de arriba cae y queda un escalón de 1); después se da la vuelta y se sube. La pared de hierro del fondo impide empujar la escalera entera.
 static func _tirar() -> RefCounted:
-	var t := _new(8, 3)
-	_fill(t, 0, 7, 1, 1, 0)
-	t.add_block(Vector3i(4, 1, 1))
-	t.player = Vector3i(3, 1, 1)
-	t.goal_y = 1000   # esta lección no se gana llegando a ningún lado
-	t.goal_cell = Vector3i(-5, 0, -5)
-	return t
+	return _from_layers("[0,1,0;0,1,0;0,1,0;0,1,0;0,1,0;0,1,0;0,1,0;0,1,0;],[0,0,0;0,0,0;0,0,0;0,p,0;0,1,0;0,1,0;0,1,0;0,H,0;],[0,0,0;0,0,0;0,0,0;0,0,0;0,1,0;0,1,0;0,1,0;0,H,0;],[0,0,0;0,0,0;0,0,0;0,0,0;0,0,0;0,0,0;0,portal,0;0,H,0;]")
 
 
 ## Una S de columnas de hierro de 2 de alto que se tocan sólo en diagonal: caminando no se pasa de una a otra; hay que colgarse del borde y rodear la esquina.
