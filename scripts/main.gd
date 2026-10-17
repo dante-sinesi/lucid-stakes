@@ -24,6 +24,7 @@ const Farolin := preload("res://scripts/farolin.gd")
 const TrialBanner := preload("res://scripts/trial_banner.gd")
 const Telemetry := preload("res://scripts/telemetry.gd")
 const Demo := preload("res://scripts/demo.gd")
+const TowerBank := preload("res://scripts/tower_bank.gd")
 const DemoEndScreen := preload("res://scripts/demo_end_screen.gd")
 const KeyHint := preload("res://scripts/key_hint.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
@@ -492,6 +493,12 @@ func _gen_thread_count() -> int:
 
 func _start_job(stage: int, s: int) -> Dictionary:
 	_join_zombies()
+	if custom_tower.is_empty() and not idea_mode and not training and TowerBank.active() and run != null:   # la demo: la torre sale del banco (ya generada y verificada), al instante
+		var banked := TowerBank.pick(str(run.scenario_id), stage, s)
+		if not banked.is_empty():
+			var bjob := {"stage": stage, "bank": banked, "token": [false], "box": {"res": banked}, "t0": Time.get_ticks_msec(), "done": false, "no_dice": false}
+			_jobs.append(bjob)
+			return bjob
 	var tr: Dictionary = run.trial_at(stage) if not training else {}
 	var prof := Gen.profile_for_stage(stage, tr, run.scenario())
 	var token := [false]
@@ -509,6 +516,8 @@ func _start_job(stage: int, s: int) -> Dictionary:
 
 ## ¿Algún hilo del trabajo sigue generando? (Los trabajos de prueba traen un solo hilo en `thread`.)
 func _job_alive(job: Dictionary) -> bool:
+	if job.has("bank"):
+		return false
 	if job.has("threads"):
 		for th in job.threads:
 			if th.is_alive():
@@ -519,6 +528,8 @@ func _job_alive(job: Dictionary) -> bool:
 
 ## Espera a que terminen todos los hilos y devuelve la torre (o {"ok": false} si ninguna semilla salió).
 func _job_join(job: Dictionary) -> Dictionary:
+	if job.has("bank"):
+		return job.bank
 	if job.has("threads"):
 		for th in job.threads:
 			if th.is_started():
@@ -604,7 +615,7 @@ func _prefetch_next_stage() -> void:
 			return
 	for k in range(1, PREFETCH_AHEAD + 1):
 		var st := stage_number + k
-		if st > FINAL_STAGE:
+		if st > FINAL_STAGE or (Demo.on() and st > Demo.LAST_STAGE):   # (la demo termina en el casino de la última etapa: no se genera nada más)
 			return
 		if _find_job(st).is_empty():
 			_start_job(st, randi() % 100000)
@@ -625,7 +636,7 @@ func _cancel_jobs() -> void:
 			for th in job.threads:
 				if th.is_started():
 					_zombies.append(th)
-		elif job.thread.is_started():
+		elif job.has("thread") and job.thread.is_started():
 			_zombies.append(job.thread)
 	_jobs.clear()
 	_reap_zombies()
