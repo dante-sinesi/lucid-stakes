@@ -4,7 +4,8 @@ extends SceneTree
 const Controls := preload("res://scripts/controls.gd")
 func _init() -> void:
 	var out: String = OS.get_cmdline_user_args()[0]
-	Controls.using_pad = true
+	var pad := OS.get_cmdline_user_args().size() < 2   # con un segundo argumento se captura con teclado
+	Controls.using_pad = pad
 	var run := preload("res://scripts/run_state.gd").new()
 	run.claridad = 600
 	var rng := RandomNumberGenerator.new()

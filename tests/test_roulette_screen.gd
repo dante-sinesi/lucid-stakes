@@ -43,7 +43,7 @@ func test_selection() -> void:
 	var m := make()
 	var s = m[0]
 	check(s.bet == Roulette.Bet.PLENO and s.selected.is_empty() and not s.can_spin(), "al abrir: pleno elegido, sin fichas, no se puede girar")
-	check(s.spin_button.disabled and s.result_label.text.contains("Tocá 1 casilla"), "la pantalla pide elegir la casilla que falta")
+	check(s.spin_button.disabled and s.result_label.text.contains("Toca 1 casilla"), "la pantalla pide elegir la casilla que falta")
 	s.toggle_pocket(5)
 	check(s.selected == [5] and s.can_spin() and not s.spin_button.disabled and s.result_label.text.contains("GIRAR"), "con una ficha el pleno ya se puede girar")
 	check(s.wheel.covered == [5], "la rueda dibuja la ficha en la casilla elegida")

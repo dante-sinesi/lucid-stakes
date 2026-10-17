@@ -57,6 +57,7 @@ var _spin_tween: Tween
 var _spin_time := 0.0
 var _tick_t := 0.0
 var pad_hints
+var _retired: Array = []
 var pad_cursor := 1        # la casilla que marca el mando (se mueve con la cruceta; X pone o saca la ficha)
 var shown_claridad := 0     # claridad que se muestra mientras gira (la tirada ya está cobrada, pero no se spoilea el resultado)
 
@@ -169,15 +170,20 @@ func _build() -> void:
 	pad_hints.offset_bottom = -8.0
 	add_child(pad_hints)
 	PadHints.focus_none(self)   # con el mando se juega apretando botones, no moviéndose por la pantalla
-	pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "text": Loc.t("Girar")}, {"slot": PadGlyph.Slot.WEST, "text": Loc.t("Poner ficha")}, {"name": "DPAD", "text": Loc.t("Casilla")},
-			{"name": "LB|RB", "text": Loc.t("Tipo de apuesta")}, {"slot": PadGlyph.Slot.NORTH, "text": Loc.t("Premios")}, {"name": "LT", "text": Loc.t("Rotar vitrina")},
-			{"slot": PadGlyph.Slot.EAST, "text": Loc.t("Salir")}])
+	pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Girar"), "call": func(): spin()},
+			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Poner ficha"), "call": func(): toggle_pocket(pad_cursor)},
+			{"name": "DPAD", "key": "← | →", "text": Loc.t("Casilla")},
+			{"name": "LB|RB", "key": "Q | E", "text": Loc.t("Tipo de apuesta")},
+			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Premios"), "call": open_prizes},
+			{"name": "LT", "key": "Shift", "text": Loc.t("Rotar vitrina"), "call": rotate_showcase},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": func(): closed.emit()}])
+	_retired = PadHints.retire([spin_button, prizes_button, rotate_button, exit_button])   # la botonera de abajo los reemplaza
 	shown_claridad = run.claridad
 
 
 func _process(delta: float) -> void:
 	if wheel != null:
-		wheel.cursor_pocket = pad_cursor if Controls.using_pad and state != State.SPINNING and not prizes_window.visible else -1
+		wheel.cursor_pocket = pad_cursor if state != State.SPINNING and not prizes_window.visible else -1
 	if wheel != null and not fast and state != State.SPINNING and not prizes_window.visible:
 		wheel.rotation_angle += delta * IDLE_SPIN
 	if state == State.SPINNING and not fast:   # tic tic tic: la bolilla pasa por las casillas, cada vez más despacio
@@ -349,13 +355,16 @@ func _pad_key(code: int) -> bool:
 		KEY_SHIFT:
 			rotate_showcase()
 			return true
+		KEY_ESCAPE:
+			closed.emit()
+			return true
 	return false
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or prizes_window.visible or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
-	if Controls.using_pad and _pad_key(event.keycode):
+	if _pad_key(event.keycode):
 		get_viewport().set_input_as_handled()
 		return
 	if not event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
@@ -458,8 +467,12 @@ func _refresh() -> void:
 	if state == State.SPINNING:
 		result_label.text = ""
 	elif need > 0:
-		result_label.text = Loc.f("Tocá %d casilla%s en la rueda", [need, "" if need == 1 else "s"])
+		result_label.text = Loc.f("Toca %d casilla%s en la rueda", [need, "" if need == 1 else "s"])
 	elif not run.can_afford(price):
 		result_label.text = "No alcanza la claridad para la ficha"
 	else:
 		result_label.text = "Listo: apretá GIRAR"
+
+
+func _exit_tree() -> void:
+	PadHints.free_retired(_retired)

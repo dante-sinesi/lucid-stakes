@@ -116,3 +116,16 @@ static func draw_named(ci: CanvasItem, center: Vector2, r: float, which: String,
 				ci.draw_rect(Rect2(center - Vector2(arm * 0.5, r * 0.9), Vector2(arm, r * 1.8)), col)
 			else:
 				ci.draw_rect(Rect2(center - Vector2(arm * 0.5, arm * 0.5), Vector2(arm, arm)), col.darkened(0.3))
+
+
+## Una tecla del teclado con su nombre ("Enter", "Espacio", "Esc"...): una tapa de ancho `w` centrada en `center`.
+static func draw_cap(ci: CanvasItem, center: Vector2, w: float, r: float, text: String, dim := false) -> void:
+	var col := Color(0.82, 0.78, 0.70) if not dim else Color(0.35, 0.32, 0.34)
+	var rect := Rect2(center - Vector2(w * 0.5, r), Vector2(w, r * 2.0))
+	ci.draw_rect(rect.grow(2.0), Color(0.05, 0.03, 0.09))
+	ci.draw_rect(rect, col)
+	ci.draw_rect(Rect2(rect.position + Vector2(0, rect.size.y - 3.0), Vector2(w, 3.0)), col.darkened(0.3))
+	var font := ThemeDB.fallback_font
+	var size := 16
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	ci.draw_string(font, center + Vector2(-tw * 0.5, size * 0.33), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.1, 0.07, 0.14))

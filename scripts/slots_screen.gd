@@ -33,6 +33,7 @@ var game
 var fast := false
 var ui_state := UiState.IDLE
 var pad_hints
+var _retired: Array = []
 var _hint_key := ""
 var holds: Array[bool] = [false, false, false]
 
@@ -171,7 +172,9 @@ func _build() -> void:
 	overlay = ResultOverlay.new()
 	add_child(overlay)
 	pad_hints = PadHints.new()   # la ayuda de los botones del mando (sólo se ve cuando se juega con mando)
-	col.add_child(pad_hints)   # (debajo de los botones, en la misma columna)
+	col.add_child(pad_hints)   # (debajo de las tarjetas, en la misma columna)
+	_retired = PadHints.retire([spin_button, respin_button, collect_button, prizes_button, exit_button])   # la botonera de abajo los reemplaza
+	pad_hints.set_items([])
 	PadHints.focus_none(self)   # con el mando se juega apretando botones, no moviéndose por la pantalla
 
 
@@ -215,7 +218,7 @@ static func _fmt(x: float) -> String:
 	return str(int(x)) if is_equal_approx(x, round(x)) else ("%.1f" % x).replace(".", ",")
 
 
-## Los botones del mando que valen ahora (se rearma la barra sólo cuando cambia el estado).
+## La botonera que vale ahora (se rearma sólo cuando cambia el estado). Es lo único que hay para jugar: con mando muestra sus botones y con teclado las teclas.
 func _update_hints() -> void:
 	if pad_hints == null:
 		return
@@ -224,16 +227,20 @@ func _update_hints() -> void:
 		return
 	_hint_key = key
 	if prizes_panel.visible:
-		pad_hints.set_items([{"slot": PadGlyph.Slot.EAST, "text": Loc.t("Volver")}])
+		pad_hints.set_items([{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "call": func(): prizes_panel.visible = false}])
 		return
 	match ui_state:
 		UiState.SPINNING:
-			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "text": Loc.t("Saltear")}])
+			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Saltear"), "call": skip_spin}])
 		UiState.HOLD:
-			pad_hints.set_items([{"name": "DPAD", "text": Loc.t("Retener")}, {"slot": PadGlyph.Slot.SOUTH, "text": Loc.t("Volver a girar"), "dim": not game.can_respin()},
-					{"slot": PadGlyph.Slot.WEST, "text": Loc.t("Cobrar")}])
+			pad_hints.set_items([{"name": "DPAD", "key": "← | ↑ | →", "text": Loc.t("Retener")},
+					{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Volver a girar"), "dim": not game.can_respin(), "call": respin},
+					{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Cobrar"), "call": collect},
+					{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": request_close}])
 		_:
-			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "text": Loc.t("Girar")}, {"slot": PadGlyph.Slot.NORTH, "text": Loc.t("Premios")}, {"slot": PadGlyph.Slot.EAST, "text": Loc.t("Salir")}])
+			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Girar"), "call": spin},
+					{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Premios"), "call": func(): prizes_panel.visible = true},
+					{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": request_close}])
 
 
 func _process(delta: float) -> void:
@@ -513,7 +520,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if overlay.showing and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		return   # (el cartel de resultado lo maneja él: Espacio lo saltea)
-	if Controls.using_pad and _pad_key(event.keycode):
+	if _pad_key(event.keycode):
 		get_viewport().set_input_as_handled()
 		return
 	if ui_state == UiState.SPINNING and event.keycode == KEY_SPACE:   # sólo se puede saltear la animación (retener es parte del juego)
@@ -629,3 +636,7 @@ class _Icon extends Control:
 
 	func _draw() -> void:
 		Icons.draw(self, ["cubo", "hielo", "bomba", "sol", "corona"][symbol], size * 0.5, 54.0)
+
+
+func _exit_tree() -> void:
+	PadHints.free_retired(_retired)

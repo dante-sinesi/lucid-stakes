@@ -101,7 +101,7 @@ const TABLE := {
 	"¡Cayó el %d! %s: +%d de claridad.": "It landed on %d! %s: +%d clarity.",
 	"¡Cayó el %d! Ganaste %s, pero no hay lugar: se convirtió en %d de claridad.": "It landed on %d! You won %s, but there's no room: it turned into %d clarity.",
 	"¡Cayó el %d! Ganaste %s: %s": "It landed on %d! You won %s: %s",
-	"Tocá %d casilla%s en la rueda": "Tap %d pocket%s on the wheel",
+	"Toca %d casilla%s en la rueda": "Tap %d pocket%s on the wheel",
 	"No alcanza la claridad para la ficha": "Not enough clarity for the chip",
 	"Listo: apretá GIRAR": "Ready: press SPIN",
 	"Cerrar": "Close",
@@ -218,7 +218,7 @@ const TABLE := {
 	# --- blackjack ---
 	"Blackjack": "Blackjack",
 	"Crupier": "Dealer",
-	"Vos": "You",
+	"Tú": "You",
 	"Repartir": "Deal",
 	"Otra mano": "Another hand",
 	"Pedir": "Hit",

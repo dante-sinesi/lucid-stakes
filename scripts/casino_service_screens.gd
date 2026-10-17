@@ -206,7 +206,7 @@ class TallerScreen extends Base:
 		var id := _selected_id()
 		if id == "":
 			sel_index = -1
-			info.text = Loc.t("Tocá un ítem para venderlo o cambiarlo.")
+			info.text = Loc.t("Toca un ítem para venderlo o cambiarlo.")
 			sell_button.disabled = true
 			swap_button.disabled = true
 			sell_button.set_label(Loc.t("Vender"))
@@ -286,7 +286,7 @@ class TiendaScreen extends Base:
 			UI.label(offers_row, Loc.t("Ya no queda nada en la vitrina de la tienda."), 2.5, Color(0.6, 0.55, 0.7))
 		if sel == "" or Items.get_item(sel).is_empty() or not Showcase.shop_offers(run).any(func(o): return o.id == sel):
 			sel = ""
-			info.text = Loc.t("Tocá un premio para ver qué hace.")
+			info.text = Loc.t("Toca un premio para ver qué hace.")
 			buy_button.disabled = true
 			buy_button.set_label(Loc.t("Comprar"))
 			return
