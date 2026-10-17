@@ -381,9 +381,23 @@ static func tune_fuse(room: Dictionary, cap := 600000, max_ms := 15000) -> Dicti
 	var res: Dictionary = Solver.solve(t, int(room.h) + 1, {"max_states": cap, "goal_ids": t.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": max_ms})
 	if res.status != "solved":
 		return {}
-	var need := bomb_ticks(probe, res.path, BOMB_PROBE_FUSE) + 1   # (con `need` justo no explota; se le deja un movimiento de más)
+	# la cuenta mínima con la que la sala todavía se resuelve (por cualquier camino; más cuenta, más caminos: se busca por bisección) más BOMB_SPARE: así la bomba aprieta de verdad
+	var hi := bomb_ticks(probe, res.path, BOMB_PROBE_FUSE) + 1
+	var lo := 1
+	while lo < hi:
+		var mid := (lo + hi) / 2
+		var p2 := copy_room(room)
+		p2["fuse"] = mid
+		var t2 = build_state(p2)
+		var r2: Dictionary = Solver.solve(t2, int(room.h) + 1, {"max_states": cap, "goal_ids": t2.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": max_ms})
+		if r2.status == "solved":
+			hi = mid
+		elif r2.status == "unsolvable":
+			lo = mid + 1
+		else:
+			return {}
 	var out := copy_room(room)
-	out["fuse"] = need + BOMB_SPARE
+	out["fuse"] = hi + BOMB_SPARE
 	return out
 
 

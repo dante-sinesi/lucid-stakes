@@ -293,6 +293,8 @@ static const long long EXACT_CAP = 600000;
 // Resuelve con el solucionador exacto (camino más corto y, entre los más cortos, el de menos agarres), comprueba que no se resuelva caminando y que pida mover bloques; con bombas afina la cuenta primero.
 static bool exactRoom(Room r, Final &out, string &why, long long cap = EXACT_CAP) {
 	if (hasBombRoom(r)) {
+		// La cuenta de las bombas: la mínima con la que la sala todavía se puede resolver (por cualquier camino) más un movimiento de más. Así la bomba aprieta de verdad: si el camino más corto
+		// sin límite gasta más cuenta que esa, la sala pide otro camino (más largo) o más prisa. Es monótona (más cuenta, más caminos), así que se busca por bisección.
 		Room probe = r;
 		probe.fuse = 60;
 		SolveRes p = solveRoom(probe, true, false, cap);
@@ -301,7 +303,19 @@ static bool exactRoom(Room r, Final &out, string &why, long long cap = EXACT_CAP
 			return false;
 		}
 		PathInfo pi = replayPath(probe, p.path, 60);
-		r.fuse = pi.ticks + 2;   // lo mínimo que hace falta (ticks + 1) y un movimiento de más
+		int hi = pi.ticks + 1, lo = 1;
+		while (lo < hi) {
+			int mid = (lo + hi) / 2;
+			probe.fuse = mid;
+			SolveRes q = solveRoom(probe, true, false, cap);
+			if (q.status == "solved") hi = mid;
+			else if (q.status == "unsolvable") lo = mid + 1;
+			else {
+				why = "bomba_" + q.status;
+				return false;
+			}
+		}
+		r.fuse = hi + 1;   // (BOMB_SPARE)
 	}
 	SolveRes plain = solveRoom(r, false, true, 60000);   // (primero lo barato: si se resuelve caminando no hace falta la búsqueda exacta)
 	if (plain.status != "unsolvable") {
@@ -555,15 +569,18 @@ static bool insertElite(const Cfg &cfg, Cell &cell, const Final &f) {
 }
 
 // Evalúa una sala candidata de punta a punta (estructura, resolverla exacta, auditar los especiales). true si pasa y sale la sala final.
+static string lastWhy;
 static bool evaluate(Room room, Final &out) {
 	string why = fullValidate(room);
 	if (why != "") {
 		FAIL["estructura_" + why]++;
+		lastWhy = "estructura_" + why;
 		return false;
 	}
 	string key = roomKey(room);
 	if (SEEN.count(key)) {
 		FAIL["repetida"]++;
+		lastWhy = "repetida";
 		return false;
 	}
 	SEEN.insert(key);
@@ -571,6 +588,7 @@ static bool evaluate(Room room, Final &out) {
 	Final f;
 	if (!auditSpecials(room, f, why)) {
 		FAIL["resolver_" + why]++;
+		lastWhy = "resolver_" + why;
 		return false;
 	}
 	string key2 = roomKey(f.room);
@@ -668,9 +686,13 @@ static void typeStep(const Cfg &cfg, Cell &cell, const Elite &par, map<char, lon
 	}
 	if (want == 'b' && r.fuse == 0) r.fuse = 6;
 	Final f;
-	if (!evaluate(r, f)) return;
+	if (!evaluate(r, f)) {
+		FAIL[string("t_") + want + "_" + lastWhy]++;
+		return;
+	}
 	if (f.specials.find(want) == string::npos) {   // el especial no hace falta: no sirve para lo que se busca
 		FAIL["tipo_no_hace_falta"]++;
+		FAIL[string("t_") + want + "_no_hace_falta"]++;
 		return;
 	}
 	if (diffOf(f) < 0.6 * diffOf(par.f)) {
@@ -678,6 +700,7 @@ static void typeStep(const Cfg &cfg, Cell &cell, const Elite &par, map<char, lon
 		return;
 	}
 	kindCount[want]++;
+	FAIL[string("t_") + want + "_BIEN"]++;
 	emit(cfg, cell, f, "tipos");
 	insertElite(cfg, cell, f);
 }
