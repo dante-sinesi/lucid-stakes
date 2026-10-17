@@ -11,6 +11,7 @@ const Scenarios := preload("res://scripts/scenarios.gd")
 const Trials := preload("res://scripts/trials.gd")
 const Cosmetics := preload("res://scripts/cosmetics.gd")
 const Characters := preload("res://scripts/characters.gd")
+const Demo := preload("res://scripts/demo.gd")
 const VERSION := 2
 
 ## Ruta del archivo (las pruebas la cambian para no tocar el perfil real).
@@ -42,7 +43,28 @@ static func load_profile() -> Dictionary:
 	for c in Characters.ALL:   # los personajes "de inicio" (el gatito, el perrito, Dante y Gaby) se tienen siempre
 		if c.unlock == "inicio":
 			data.characters[c.id] = true
+	_apply_demo()
 	return data
+
+
+## La demo: los 4 personajes, 2 gorros y 2 prendas; el resto no se tiene (ni se puede ganar).
+static func _apply_demo() -> void:
+	if not Demo.on():
+		return
+	for id in data.characters.keys():
+		if not Demo.character_allowed(str(id)):
+			data.characters.erase(id)
+	for id in data.cosmetics.keys():
+		if not Demo.cosmetic_allowed(str(id)):
+			data.cosmetics.erase(id)
+	for id in Demo.HATS + Demo.OUTFITS:
+		data.cosmetics[id] = true
+	if not Demo.character_allowed(str(data.character)):
+		data.character = Characters.DEFAULT
+	if not Demo.cosmetic_allowed(str(data.hat)):
+		data.hat = ""
+	if not Demo.cosmetic_allowed(str(data.outfit)):
+		data.outfit = ""
 
 
 ## Cuando los cosméticos eran colores del cubo: se pasan a la ropa equivalente (lo ya ganado no se pierde) y el aspecto elegido se pone
@@ -75,6 +97,7 @@ static func save() -> void:
 static func reset() -> void:
 	data = default_data()
 	_loaded_from = path
+	_apply_demo()
 	save()
 
 
@@ -200,7 +223,7 @@ static func owned_cosmetics() -> Array[String]:
 
 
 static func has_cosmetic(id: String) -> bool:
-	return id == "" or load_profile().cosmetics.has(id)
+	return id == "" or (Demo.cosmetic_allowed(id) and load_profile().cosmetics.has(id))
 
 
 ## Da un cosmético. Devuelve true si es nuevo.
@@ -249,12 +272,12 @@ static func owned_characters() -> Array[String]:
 
 
 static func has_character(id: String) -> bool:
-	return load_profile().characters.has(id)
+	return Demo.character_allowed(id) and load_profile().characters.has(id)
 
 
 ## Desbloquea un personaje. Devuelve true si es nuevo.
 static func unlock_character(id: String) -> bool:
-	if Characters.get_character(id).id != id or has_character(id):
+	if Characters.get_character(id).id != id or has_character(id) or not Demo.character_allowed(id):
 		return false
 	load_profile().characters[id] = true
 	save()

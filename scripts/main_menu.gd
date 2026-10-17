@@ -11,6 +11,8 @@ const ScenarioScreen := preload("res://scripts/scenario_screen.gd")
 const CosmeticsScreen := preload("res://scripts/cosmetics_screen.gd")
 const OptionsScreen := preload("res://scripts/options_screen.gd")
 const Loc := preload("res://scripts/loc.gd")
+const Demo := preload("res://scripts/demo.gd")
+const VoxelLabel := preload("res://scripts/voxel_label.gd")
 
 signal new_game(scenario_id: String)
 signal continue_game
@@ -22,6 +24,8 @@ var buttons := {}
 var credits: Control
 var licenses: Control
 var scenarios: Control   # selector de escenario (al tocar Nueva partida)
+var soon_label: Control   # el aviso de "Disponible en la versión completa"
+var _soon_tween: Tween
 var cosmetics: Control   # pantalla de cosméticos
 var meta: Control   # pantalla del Despertar (meta-progresión)
 var options: Control   # pantalla de opciones
@@ -52,7 +56,7 @@ func _init() -> void:
 	_button("continuar", Loc.t("Continuar"), true, func(): continue_game.emit())
 	buttons["continuar"].visible = false
 	_button("nueva", Loc.t("Nueva partida"), false, func(): show_panel("escenarios"))
-	_button("despertar", Loc.t("Habilidades"), false, func(): show_panel("despertar"))
+	_button("despertar", Loc.t("Habilidades"), false, _open_abilities)
 	_button("cosmeticos", Loc.t("Personaje"), false, func(): show_panel("cosmeticos"))
 	_button("opciones", Loc.t("Opciones"), false, func(): show_panel("opciones"))
 	_button("salir", Loc.t("Salir"), false, func(): quit_game.emit())
@@ -88,6 +92,35 @@ func _init() -> void:
 	credits_button.pressed.connect(func(): show_panel("creditos"))
 	add_child(credits_button)
 	buttons["creditos"] = credits_button
+
+
+## Habilidades persistentes: en la demo el botón sólo avisa que es del juego completo.
+func _open_abilities() -> void:
+	if Demo.on():
+		soon_message(Demo.full_text())
+		return
+	show_panel("despertar")
+
+
+## Un aviso corto abajo en el medio del menú (se desvanece solo).
+func soon_message(text: String) -> void:
+	if soon_label == null:
+		soon_label = VoxelLabel.new()
+		soon_label.cube = 3.0
+		soon_label.color = Color(1.0, 0.85, 0.4)
+		soon_label.align = VoxelLabel.Align.CENTER
+		soon_label.plate_alpha = 0.6
+		soon_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		soon_label.name = "aviso"
+		add_child(soon_label)
+	soon_label.text = text
+	soon_label.y_offset = 640.0
+	soon_label.modulate.a = 1.0
+	if _soon_tween != null:
+		_soon_tween.kill()
+	_soon_tween = create_tween()
+	_soon_tween.tween_interval(1.6)
+	_soon_tween.tween_property(soon_label, "modulate:a", 0.0, 0.8)
 
 
 func _button(id: String, text: String, primary: bool, action: Callable) -> void:
