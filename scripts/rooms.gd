@@ -287,6 +287,8 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 	var tclose := Time.get_ticks_usec()
 	var res: Dictionary = Gen._close_tower(st.tower, st.sim, st.path, st.row_moves, st.shapes, st.infos, st.states, [], close_opts, difficulty, pace, band, rows)
 	_p("cierre_torre", tclose)
+	if Gen.cancel:
+		return {"ok": false, "error": "cancelado"}
 	if res.ok:
 		res["rooms"] = rooms_done
 		if difficulty >= 0.1:   # la caída se aprieta hasta que sólo se aguanten unos pocos titubeos (cuanto más difícil, menos: 12 a 4 titubeos, o sea 24 a 8 movimientos de más)
@@ -297,6 +299,8 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 			var n_orig: int = int(res.collapse_every)
 			var tt := Time.get_ticks_usec()
 			var n := Metrics.tightest_n(res.logic, res.path, n_orig, k, 0.9, trng, grace)
+			if Metrics.Abort.flag:
+				return {"ok": false, "error": "cancelado"}
 			_p("ritmo_de_caida", tt)
 			if Metrics.survival(res.logic, res.path, n, 0, 1, trng, grace) < 1.0:   # (si ninguno sirve con esta gracia, queda el ritmo de antes, que se comprobó con el doble)
 				n = n_orig
@@ -665,6 +669,8 @@ static func place_library_room(st: Dictionary, ey: int, rng: RandomNumberGenerat
 	if OS.get_environment("IDEA_LOG") != "":
 		print("   biblioteca: llegada %s, ey %d, %d salas a mirar, %d lugares" % [str(arrival), ey, picks.size(), spots.size()])
 	for e in picks:
+		if Gen.cancel:   # (abandonar el run o volver al menú: se corta enseguida, sin esperar a que termine la torre)
+			return {"ok": false}
 		var room: Dictionary = e.room
 		var order: Array = range(SYMS.size())
 		for i in range(order.size() - 1, 0, -1):
@@ -674,6 +680,8 @@ static func place_library_room(st: Dictionary, ey: int, rng: RandomNumberGenerat
 			order[j] = tmp
 		var tried_room := 0
 		for spot in spots:
+			if Gen.cancel:
+				return {"ok": false}
 			for si in order:
 				if tried_room >= LIB_TRIES_PER_ROOM:
 					break
@@ -3343,6 +3351,8 @@ static func _build(ctx: Dictionary, cand: Dictionary, floor_blocks: Array, final
 
 ## Prueba el candidato sobre el estado: arma la plataforma, resuelve la sala en una ventana, aplica el filtro de calidad y, si cumple, la agrega al estado.
 static func _commit(ctx: Dictionary, cand: Dictionary, name: String, lo: int, hi: int, final: bool) -> Dictionary:
+	if Gen.cancel:
+		return _no(0, name)
 	var st: Dictionary = ctx.st
 	var ey: int = ctx.ey
 	var h: int = ctx.h

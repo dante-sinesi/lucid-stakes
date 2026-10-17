@@ -325,6 +325,8 @@ static func _close_tower(tower, sim, path: Array, row_moves: Array, shapes: Arra
 	if not _replay_wins(tower, path, BIG):
 		return {"ok": false, "error": "el camino completo no gana sobre la torre final",
 				"debug": {"tower": tower, "path": path, "rows": row_moves, "infos": infos}}
+	if cancel:
+		return {"ok": false, "error": "cancelado"}
 	var n_min := min_collapse_every(tower, path)
 	var avg_row := float(path.size()) / rows
 	var ratio: float = opts.get("ratio", maxf(1.8, lerpf(4.5, 2.0, difficulty) * pace.ratio))

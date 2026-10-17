@@ -15,6 +15,7 @@ extends RefCounted
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const MODES := [TowerLogic.Mode.MOVE, TowerLogic.Mode.GRAB, TowerLogic.Mode.HANG]
 const NativeSolver := preload("res://scripts/native_solver.gd")
+const Abort := preload("res://scripts/gen_abort.gd")
 ## Desde cuántos estados de tope vale la pena llamar al solucionador nativo (lanzar el programa cuesta unas decenas de milisegundos). opts.native = false lo apaga.
 const NATIVE_MIN_STATES := 1000
 
@@ -68,6 +69,8 @@ static func _solve(start, target_y: int, opts: Dictionary) -> Dictionary:
 	var generated := 1
 
 	while open > 0:
+		if Abort.flag:   # (el trabajo se canceló: se corta enseguida)
+			return {"status": "limit", "moves": -1, "path": [], "states": generated, "state": null, "f_reached": f}
 		if max_ms > 0:
 			tick += 1
 			if (tick & 63) == 0 and Time.get_ticks_msec() > deadline:

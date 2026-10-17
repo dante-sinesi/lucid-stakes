@@ -3,6 +3,7 @@ extends RefCounted
 ## Resuelve lo mismo que Solver.solve (mismas reglas y mismo A*), mucho más rápido, con todos los tipos de bloque (común, hielo, bomba, catapulta, agrietado, pesado, trampa y pinchos).
 ## Si el programa no está, o el estado usa boosts, escudos u otras cosas que no entiende (la caída de la fila base), `solve` devuelve {} y el llamador usa el solucionador de GDScript.
 
+const Abort := preload("res://scripts/gen_abort.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const DIR_CHARS := "EWSN"
 const MODE_CHARS := "mgh"
@@ -101,6 +102,8 @@ static func _run(text: String, tag: String) -> Dictionary:
 
 ## Igual que Solver.solve (mismas opciones: max_states, max_ms, heuristic, no_grab, goal_ids, admissible, h_weight). {} si no se puede usar el nativo.
 static func solve(start, target_y: int, opts: Dictionary, prepared) -> Dictionary:
+	if Abort.flag:
+		return {}
 	if not available() or opts.get("use_collapse", false):
 		return {}
 	if not supported(prepared) or prepared.goal_block >= 0:
