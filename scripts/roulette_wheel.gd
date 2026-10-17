@@ -44,6 +44,8 @@ var hover_pocket := -1:
 ## la casilla ganadora parpadea y la rueda tiembla cuando gana la casa.
 var th := CasinoTheme.for_tier(0)     # estética según el nivel del casino (casino_theme.gd): la rueda se purifica con las salas
 var _anim := 0.0
+var _blink := 0.0               # tiempo de titileo de la casilla marcada
+var _blink_was := true
 var _anim_frame := -1
 var spinning := false
 var kick := 0.0                 # golpe del marcador (1 = recién pasó una casilla)
@@ -62,6 +64,13 @@ func _init() -> void:
 
 func _process(delta: float) -> void:
 	var dirty := false
+	if cursor_pocket >= 0:   # el titileo de la casilla marcada necesita redibujar varias veces por segundo aunque el casino no tenga destellos
+		_blink += delta
+		if _blink_on() != _blink_was:
+			_blink_was = _blink_on()
+			dirty = true
+	else:
+		_blink = 0.0
 	if int(th.shine) > 0:   # destellos: se redibuja unas 8 veces por segundo
 		_anim += delta
 		var fr := int(_anim * 8.0)
@@ -94,6 +103,11 @@ func _process(delta: float) -> void:
 			win_t = -1.0
 	if dirty:
 		queue_redraw()
+
+
+## ¿Está en la mitad "encendida" del titileo? (la casilla marcada se alterna entre muy clara y oscura)
+func _blink_on() -> bool:
+	return int(_blink * 4.0) % 2 == 0
 
 
 ## La bola rebota unas veces cada vez más bajo al caer en su casilla.
@@ -214,8 +228,8 @@ func _draw() -> void:
 				col = col.darkened(0.55)
 			elif p == hover_pocket:
 				col = col.lightened(0.15)
-			if p == cursor_pocket:   # la marca del mando: la casilla se aclara y titila
-				col = col.lightened(0.35 + 0.15 * sin(_anim * 8.0))
+			if p == cursor_pocket:   # la marca del teclado o del mando: la casilla titila fuerte (casi blanca y oscura, cuatro veces por segundo)
+				col = col.lerp(Color(1.0, 1.0, 0.85), 0.8) if _blink_on() else col.darkened(0.45)
 			if n < k * 0.12 * (0.4 + d / radius):  # mugre que va creciendo hacia afuera
 				col = Draw.corrupt_color(n)
 			Draw.cube(self, pos, g, col, true)
