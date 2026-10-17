@@ -7,6 +7,7 @@ extends RefCounted
 ## Con `ghost` las partes se arman con el material de la silueta (se ve a través de lo que tapa al personaje).
 
 const Cosmetics := preload("res://scripts/cosmetics.gd")
+const ModelLib := preload("res://scripts/model_lib.gd")
 const Loc := preload("res://scripts/loc.gd")
 const SILHOUETTE_SHADER := preload("res://shaders/silhouette.gdshader")
 const SILHOUETTE_ALPHA := 0.55
@@ -48,6 +49,26 @@ static func get_character(id: String) -> Dictionary:
 
 ## Arma el personaje `id` con el gorro y la prenda dados ("" = ninguno). Devuelve el Node3D raíz (origen en los pies).
 static func build(id: String, hat := "", outfit := "", ghost := false) -> Node3D:
+	var rec := ModelLib.character(id)   # (si el editor de modelos guardó un diseño para este personaje, se usa ese)
+	if not rec.is_empty():
+		var root := ModelLib.build_node(rec, "personaje", func(c: Color): return ghost_material(c) if ghost else null)
+		_dress(root, hat, outfit, ghost)
+		return root
+	return build_from_code(id, hat, outfit, ghost)
+
+
+## El gorro y la prenda sobre un personaje ya armado.
+static func _dress(root: Node3D, hat: String, outfit: String, ghost: bool) -> void:
+	var hat_node := Cosmetics.build_hat(hat, ghost)
+	if hat_node != null:
+		root.add_child(hat_node)
+	var outfit_node := Cosmetics.build_outfit(outfit, ghost)
+	if outfit_node != null:
+		root.add_child(outfit_node)
+
+
+## El diseño de siempre, armado con cajas en código (el que se pasa al editor con model_import.gd).
+static func build_from_code(id: String, hat := "", outfit := "", ghost := false) -> Node3D:
 	var ch := get_character(id)
 	if str(ch.get("kind", "")) == "humano":
 		return _build_human(ch, hat, outfit, ghost)

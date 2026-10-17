@@ -97,7 +97,7 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 			tint = Color.from_hsv(lerpf(0.62, 0.05, clampf(float(c.y) / maxf(top, 1.0), 0.0, 1.0)), 0.55, 1.0)
 			tint = Color(tint.r * 1.15, tint.g * 1.15, tint.b * 1.15)
 		var m := MeshInstance3D.new()
-		m.mesh = BlockModels.mesh_for(model_kind, state)
+		m.mesh = BlockModels.mesh_for(model_kind, state, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model_kind))   # (las salas se ven con variedad, como en el juego)
 		m.material_override = material(tint, kind == TowerLogic.Kind.ICE)
 		m.position = world_pos(c)
 		m.name = "b%d_%d_%d" % [c.x, c.y, c.z]

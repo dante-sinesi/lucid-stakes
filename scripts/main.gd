@@ -830,6 +830,7 @@ func _make_block(c: Vector3i) -> MeshInstance3D:
 	m.position = _w(c)
 	m.set_meta("kind", kind)
 	m.set_meta("model_kind", model_kind)
+	m.set_meta("variant", BlockModels.variant_for(id, seed_value, model_kind))   # (qué diseño del tipo de bloque le toca: estable en esta torre)
 	m.set_meta("base", base)
 	m.set_meta("purity", 1.0 if logic.purified.has(id) else 0.0)  # 0 = corrupto, 1 = purificado
 	m.set_meta("warn", false)
@@ -860,7 +861,7 @@ func _model_for(node: MeshInstance3D, id: int) -> ArrayMesh:
 	var state := BlockModels.State.PURE if float(node.get_meta("purity")) >= 0.5 else BlockModels.State.CORRUPT
 	if kind == TowerLogic.Kind.BOMB:  # una bomba purificada es una bomba desactivada
 		state = BlockModels.State.CORRUPT if logic.bomb_timer.has(id) else BlockModels.State.DEFUSED
-	return BlockModels.mesh_for(model_kind, state)
+	return BlockModels.mesh_for(model_kind, state, int(node.get_meta("variant", 0)))
 
 
 const BOMB_ZONE_TINT := Color(1.0, 0.55, 0.5)   # tinte de los bloques que están dentro de la zona de una bomba
@@ -1806,6 +1807,7 @@ func _refresh() -> void:
 		if node.get_meta("kind") != cur_kind:  # un consumible cambió el tipo (hielo a roca, catapulta de bolsillo)
 			node.set_meta("kind", cur_kind)
 			node.set_meta("model_kind", BlockModels.CORE if logic.fixed.has(pos) else cur_kind)
+			node.set_meta("variant", BlockModels.variant_for(id, seed_value, int(node.get_meta("model_kind"))))
 		# Mirando desde arriba se ocultan las capas que están por encima del nivel del personaje (son las que tapan).
 		node.visible = _node_visible(pos)
 		node.set_meta("warn", warn and pos.y == logic.floor_y)
