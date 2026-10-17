@@ -9,6 +9,7 @@ const Loc := preload("res://scripts/loc.gd")
 const Settings := preload("res://scripts/settings.gd")
 const Graphics := preload("res://scripts/graphics.gd")
 const Controls := preload("res://scripts/controls.gd")
+const Telemetry := preload("res://scripts/telemetry.gd")
 
 signal back
 signal language_changed
@@ -147,6 +148,12 @@ func _build_general(page: Control) -> void:
 	contrast_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "contraste_si", _on_contrast.bind(true))
 	contrast_buttons["off"] = _toggle(row, Loc.t("No"), group, "contraste_no", _on_contrast.bind(false))
 	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE)
+	row = _row(Loc.t("Datos de juego"))
+	var data_button := UI.button(Loc.t("Abrir la carpeta"), false, 2.4, 0, false)
+	data_button.name = "abrir_carpeta"
+	data_button.pressed.connect(Telemetry.open_folder)
+	row.add_child(data_button)
+	UI.label(_page, Loc.t("Los datos de tus partidas quedan sólo en tu compu. Si querés ayudar con el balance, mandanos telemetria.jsonl."), 2, Draw.MARBLE)
 
 
 func _build_interface() -> void:
