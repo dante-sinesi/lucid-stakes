@@ -414,6 +414,11 @@ func _label(parent: Node, cube: float, color: Color) -> Control:
 	return l
 
 
+## La música de la torre de una etapa: el Invierno de Vivaldi en las pruebas y el Verano en las torres comunes.
+func _tower_music(stage: int) -> String:
+	return "pruebas" if not training and run != null and not run.trial_at(stage).is_empty() else "torre"
+
+
 func new_tower(s: int) -> void:
 	if generating:
 		return
@@ -673,7 +678,7 @@ func restart() -> void:
 	cancel_targeting()
 	if lost_screen != null:
 		lost_screen.hide_screen()
-	Music.play("torre")
+	Music.play(_tower_music(stage_number))
 	if anim_tween:
 		anim_tween.kill()
 	busy = false
@@ -1986,7 +1991,7 @@ func _on_pay_failed() -> void:
 		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
 		return
 	run.note_retry(true)
-	Music.play("torre")
+	Music.play(_tower_music(stage_number))
 	casino.queue_free()
 	casino = null
 	if cam != null:
@@ -2027,7 +2032,7 @@ func _leave_casino_now() -> void:
 	if Demo.is_last_casino(stage_number) and not training:   # el casino que cierra la demo: se le pagó a Farolín, se terminó
 		end_run(true, "")
 		return
-	Music.play("torre")
+	Music.play(_tower_music(mini(stage_number + 1, FINAL_STAGE)))
 	casino.queue_free()
 	casino = null
 	if cam != null:
