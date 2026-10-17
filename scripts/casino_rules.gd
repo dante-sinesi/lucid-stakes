@@ -10,10 +10,10 @@ extends RefCounted
 const Loc := preload("res://scripts/loc.gd")
 
 const RULES := [
-	{"id": "fiado", "name": "Fiado", "desc": "La primera apuesta que perdés en cada visita te devuelve la mitad de lo perdido."},
+	{"id": "fiado", "name": "Fiado", "desc": "La primera apuesta que pierdes en cada visita te devuelve la mitad de lo perdido."},
 	{"id": "racha", "name": "Racha", "desc": "Cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta."},
-	{"id": "libre", "name": "Apuesta libre", "desc": "En las tragamonedas y el blackjack podés apostar 1, 2, 3 o 5 fichas juntas."},
-	{"id": "jackpot", "name": "Jackpot", "desc": "Lo que perdés en la sala va a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva."},
+	{"id": "libre", "name": "Apuesta libre", "desc": "En las tragamonedas y el blackjack puedes apostar 1, 2, 3 o 5 fichas juntas."},
+	{"id": "jackpot", "name": "Jackpot", "desc": "Lo que pierdes en la sala va a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva."},
 ]
 const GAMES: Array[String] = ["ruleta", "tragamonedas", "blackjack"]
 const GAME_NAMES := {"ruleta": "Ruleta", "tragamonedas": "Tragamonedas", "blackjack": "Blackjack"}

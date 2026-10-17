@@ -1,9 +1,9 @@
 # Revisión de diálogos (propuesta para aprobar)
 
-Estado: **propuesta**. Nada de esto está aplicado todavía, salvo el arreglo de Opciones. El cuadro del tabernero entra con **4 renglones**: hoy sólo se pasan 5 líneas del cierre del tutorial (la del azar y, en inglés, las de Farolín, la vitrina y la Luz). `tests/audit_dialogos.gd` mide todos los diálogos (historia, tabernero de los casinos con cada regla y prueba, Farolín, avisos de bloques) en español e inglés. `tests/audit_texto.gd` busca textos que se salen de la ventana en las pantallas del menú.
+Estado: **aplicado** en `feature/tutorial-renovado` con español neutro (tuteo, sin voseo) por pedido de Dante; las columnas "Propuesta" muestran la idea original con voseo y el texto final está en `story.gd`, `farolin.gd`, `block_guide.gd`, `casino_rules.gd` y `trials.gd`. Farolín dice su frase al pagar, rehacer y abandonar (`Farolin.REACTIONS`). Pendiente: Farolín en escena en el salón de piedra y el peaje de práctica. El cuadro del tabernero entra con **4 renglones**: hoy sólo se pasan 5 líneas del cierre del tutorial (la del azar y, en inglés, las de Farolín, la vitrina y la Luz). `tests/audit_dialogos.gd` mide todos los diálogos (historia, tabernero de los casinos con cada regla y prueba, Farolín, avisos de bloques) en español e inglés. `tests/audit_texto.gd` busca textos que se salen de la ventana en las pantallas del menú.
 
 ## Criterios
-1. **Voseo en todo.** Hoy el tutorial usa tuteo ("Pase", "Ve hasta allí", "debes", "puedes") y los casinos voseo ("Sentate", "Pagás"). El tabernero es el mismo personaje.
+1. **Español neutro (tuteo) en todos los diálogos, sin voseo.** Hoy el tutorial usa tuteo ("Pase", "Ve hasta allí", "debes", "puedes") y los casinos voseo ("Sentate", "Pagás"). El tabernero es el mismo personaje.
 2. **Cada lección dice qué hacer.** Hoy el tabernero sólo dice lore y la acción queda en la ayuda de teclas de arriba.
 3. **Cortos.** Un máximo de 3 renglones por línea.
 4. **Farolín se ve y habla.** Aparece en el salón de piedra y tiene su propia voz.

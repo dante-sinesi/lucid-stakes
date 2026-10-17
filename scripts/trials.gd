@@ -21,8 +21,8 @@ const FOG_ABOVE := 3        # pisos que se ven por encima del jugador con niebla
 const DARK_RADIUS := 4.5    # distancia (en celdas) hasta la que se ven los bloques en la oscuridad
 
 const CATALOG := {
-	"niebla": {"name": "Niebla", "desc": "Sólo ves unos pocos pisos por encima de vos.", "fog": true},
-	"oscuridad": {"name": "Oscuridad", "desc": "Sólo ves los bloques que tenés cerca.", "dark": true},
+	"niebla": {"name": "Niebla", "desc": "Solo ves unos pocos pisos por encima de ti.", "fog": true},
+	"oscuridad": {"name": "Oscuridad", "desc": "Solo ves los bloques que tienes cerca.", "dark": true},
 	"prisa": {"name": "Prisa", "desc": "La fila de abajo cae mucho más rápido.", "pace": "fast"},
 	"sin_ayudas": {"name": "Sin ayudas", "desc": "No se pueden usar consumibles.", "no_items": true},
 	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caés, se termina el run.", "no_retry": true},

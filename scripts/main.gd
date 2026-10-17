@@ -171,6 +171,7 @@ var casino_balance := true   # al salir del casino se ve el balance (las pruebas
 var balance_layer: CanvasLayer   # donde vive el balance mientras se ve
 var _tick_t := 0.0           # tic-tac de las bombas a la vista
 var _tick_tock := false
+var farolin_reacts := true   # Farolín dice una frase después de cada decisión del peaje (las pruebas la apagan)
 var tutorial_forced := false   # primera vez: el tutorial no se puede dejar (la pausa no vuelve al menú principal)
 var tutorial_index := -1    # lección del tutorial en curso (-1 = no se está en el tutorial)
 var lab_active := false     # modo dev: el laboratorio de estaciones (lab.gd)
@@ -1961,6 +1962,13 @@ func _on_dialogue_chosen(index: int) -> void:
 	var id := str(_toll_options[index].id)
 	_toll_options = []
 	Telemetry.log_event("peaje", {"stage": stage_number, "price": casino.toll_now(), "claridad": run.claridad, "choice": id})
+	if farolin_reacts and not test_mode:   # Farolín contesta antes de que pase lo que se eligió
+		casino.input_locked = true
+		dialogue.show_lines([Farolin.reaction(id)], Farolin.SPEAKER, true, true)
+		await dialogue.finished
+		if casino == null:
+			return
+		casino.input_locked = false
 	match id:
 		Farolin.PAY:
 			casino.pay_toll()

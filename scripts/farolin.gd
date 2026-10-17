@@ -17,6 +17,17 @@ const PAY := "pagar"
 const REDO := "rehacer"
 const GIVE_UP := "abandonar"
 
+## Lo que dice Farolín después de cada decisión (antes de que pase lo que se eligió).
+const REACTIONS := {
+	PAY: "Gracias, soñador. Te prendo el camino.",
+	REDO: "Otra vez a subir. La luz no se va a ningún lado.",
+	GIVE_UP: "Entonces se apaga todo... Nos vemos en el próximo sueño.",
+}
+
+
+static func reaction(id: String) -> String:
+	return Loc.t(str(REACTIONS.get(id, "")))
+
 
 ## Dibuja la cara de Farolín en un control: `origin` es la esquina de arriba a la izquierda y `s` el lado de un cubito.
 static func draw_face(ci: CanvasItem, origin: Vector2, s: float) -> void:
@@ -41,14 +52,14 @@ static func toll_dialog(price: int, have: int, can_redo: bool, redo_costs_life :
 	var text := ""
 	if can_redo:
 		if can_pay:
-			text = Loc.f("Son %d de claridad para seguir. ¿Pagás, o volvés a subir esta torre?", [price])
+			text = Loc.f("Son %d de claridad para seguir. ¿Pagas, o vuelves a subir esta torre?", [price])
 		else:
-			text = Loc.f("Son %d de claridad y te faltan %d. Sin luz no hay camino: ¿volvés a subir la torre?", [price, short])
+			text = Loc.f("Son %d de claridad y te faltan %d. Sin luz no hay camino: ¿vuelves a subir la torre?", [price, short])
 	else:
 		if can_pay:
-			text = Loc.f("Son %d de claridad, y ya no te queda ninguna vida. ¿Pagás, o dejás que todo se apague?", [price])
+			text = Loc.f("Son %d de claridad, y ya no te queda ninguna vida. ¿Pagas, o dejas que todo se apague?", [price])
 		else:
-			text = Loc.f("Son %d de claridad, te faltan %d y ya no te queda ninguna vida. ¿Dejás que todo se apague?", [price, short])
+			text = Loc.f("Son %d de claridad, te faltan %d y ya no te queda ninguna vida. ¿Dejas que todo se apague?", [price, short])
 	var second := {"id": REDO, "text": Loc.t("Rehacer la torre (−1 vida)") if redo_costs_life else Loc.t("Rehacer la torre"), "enabled": true} if can_redo \
 			else {"id": GIVE_UP, "text": Loc.t("Abandonar"), "enabled": true}
 	return {"text": text, "options": [{"id": PAY, "text": Loc.f("Pagar %d", [price]), "enabled": can_pay}, second]}

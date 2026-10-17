@@ -58,9 +58,7 @@ const TABLE := {
 	"Mecha larga": "Long fuse",
 	# --- pruebas (trials.gd) ---
 	"Niebla": "Fog",
-	"Sólo ves unos pocos pisos por encima de vos.": "You only see a few floors above you.",
 	"Oscuridad": "Darkness",
-	"Sólo ves los bloques que tenés cerca.": "You only see the blocks near you.",
 	"Prisa": "Haste",
 	"La fila de abajo cae mucho más rápido.": "The bottom row falls much faster.",
 	"Sin ayudas": "No aids",
