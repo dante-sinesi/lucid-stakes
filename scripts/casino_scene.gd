@@ -685,7 +685,7 @@ func show_exit_arrow(on: bool) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if screen == null and pivot != null:   # las flechas giran (izquierda y derecha) e inclinan (arriba y abajo) la cámara, como en la torre
+	if screen == null and pivot != null and not input_locked:   # (mientras hay una decisión o habla alguien las flechas eligen, no giran la cámara) las flechas giran (izquierda y derecha) e inclinan (arriba y abajo) la cámara, como en la torre
 		var ax := int(Controls.held("camara_derecha")) - int(Controls.held("camara_izquierda"))
 		var ay := int(Controls.held("camara_abajo")) - int(Controls.held("camara_arriba"))
 		if ax != 0 or ay != 0:

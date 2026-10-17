@@ -85,7 +85,7 @@ const ICONS := {
 	"buen_ojo": {"a": Color(0.75, 0.40, 0.95), "rows": [
 		".........", "..ooooo..", ".owwwwwo.", "owwaaawwo", "owwaoawwo", "owwaaawwo", ".owwwwwo.", "..ooooo..", "........."]},
 	"escalador": {"a": Color(0.95, 0.90, 0.70), "rows": [
-		"........o", ".......oao", "......oaao", ".....oaaao", "....oaaaao", "...oaaaaao", "..oaaaaaao", ".oaaaaaaao", "ooooooooo"]},
+		"........o", ".......oo", "......oao", ".....oaao", "....oaaao", "...oaaaao", "..oaaaaao", ".oaaaaaao", "ooooooooo"]},
 	"empuje_rentable": {"a": Color(0.40, 0.80, 0.45), "rows": [
 		"....o....", "...oao...", "..oaaao..", ".oaaaaao.", "ooo.a.ooo", "..oaaao..", "..oaaao..", "..oaaao..", "...ooo..."]},
 	"interes": {"a": Color(0.50, 0.75, 1.00), "b": Color(0.20, 0.40, 0.80), "rows": [

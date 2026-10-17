@@ -49,7 +49,7 @@ func _init() -> void:
 		var n: MeshInstance3D = main.block_nodes[id]
 		all_corrupt = all_corrupt and float(n.get_meta("purity")) == 0.0
 		var mk: int = n.get_meta("model_kind")
-		var expected := BlockModels.mesh_for(mk, BlockModels.State.CORRUPT)
+		var expected := BlockModels.mesh_for(mk, BlockModels.State.CORRUPT, int(n.get_meta("variant", 0)))
 		all_corrupt = all_corrupt and n.mesh == expected
 		if n.get_meta("kind") != TowerLogic.Kind.BOMB:
 			jagged = jagged and BlockModels.voxel_count(mk, BlockModels.State.CORRUPT) < BlockModels.voxel_count(mk, BlockModels.State.PURE)
@@ -135,7 +135,7 @@ func _init() -> void:
 			state = BlockModels.State.CORRUPT if lg.bomb_timer.has(id) else BlockModels.State.DEFUSED
 		else:
 			state = BlockModels.State.PURE if lg.purified.has(id) else BlockModels.State.CORRUPT
-		consistent = consistent and n.mesh == BlockModels.mesh_for(mk, state)
+		consistent = consistent and n.mesh == BlockModels.mesh_for(mk, state, int(n.get_meta("variant", 0)))
 		if lg.purified.has(id) and kind == TowerLogic.Kind.NORMAL and mk != BlockModels.CORE:
 			tinted = tinted and (mat.get_shader_parameter("tint") as Color).is_equal_approx(n.get_meta("base"))
 		if lg.purified.has(id) and kind != TowerLogic.Kind.BOMB:

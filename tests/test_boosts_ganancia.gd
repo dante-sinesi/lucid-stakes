@@ -101,10 +101,9 @@ func test_streak() -> void:
 	var u := stairs(["racha_imparable"])
 	walk(u, 3)
 	var s_before: int = u.streak
-	u.add_block(Vector3i(3, 3, 1))
-	u.player = Vector3i(3, 4, 0) if u.blocks.has(Vector3i(3, 3, 0)) else u.player
+	u.add_block(u.player + Vector3i(0, 0, 1))   # un bloque delante para empujar de verdad (con nada delante, Shift + dirección es un paso común)
 	u.try_action(Vector3i(0, 0, 1), TowerLogic.Mode.GRAB)
-	check(u.streak == s_before, "con Racha imparable empujar no corta la racha (%d)" % u.streak)
+	check(u.last_grab == "push" and u.streak == s_before, "con Racha imparable empujar no corta la racha (%d)" % u.streak)
 	check(u.streak_mult(100) == 8.0, "el tope de la racha sube a ×8")
 
 

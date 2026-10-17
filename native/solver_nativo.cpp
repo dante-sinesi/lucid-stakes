@@ -476,7 +476,7 @@ static bool actGrab(Sim &s, V d) {
 		arrive(s, d);
 		return true;
 	}
-	return false;
+	return actWalk(s, d);   // Shift + dirección sin nada que empujar ni tirar es un paso común (igual que TowerLogic._act_grab)
 }
 
 static bool actHangOver(Sim &s, V d) {
