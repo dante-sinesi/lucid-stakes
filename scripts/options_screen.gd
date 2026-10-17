@@ -18,6 +18,8 @@ signal language_changed
 const TABS := ["general", "graficos", "sonido", "controles"]
 const TAB_NAMES := {"general": "General", "graficos": "Gráficos", "sonido": "Sonido", "controles": "Controles"}
 
+var device_buttons := {}   # Ayudas de: automático, teclado o mando
+var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox, PlayStation o Nintendo
 var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
 var contrast_buttons := {}  # "on" / "off"
@@ -238,6 +240,14 @@ func _choice(key: String, title: String, options: Array) -> void:
 
 func _build_controls(page: Control) -> void:
 	_page = page
+	var row0 := _row(Loc.t("Ayudas de"))
+	var dev_group := ButtonGroup.new()
+	for d in [["auto", "Automático"], ["keyboard", "Teclado"], ["pad", "Mando"]]:
+		device_buttons[d[0]] = _toggle(row0, Loc.t(d[1]), dev_group, "entrada_" + d[0], _on_device.bind(d[0]))
+	var row1 := _row(Loc.t("Botones del mando"))
+	var style_group := ButtonGroup.new()
+	for st in [["auto", "Automático"], ["xbox", "Xbox"], ["playstation", "PlayStation"], ["nintendo", "Nintendo"]]:
+		style_buttons[st[0]] = _toggle(row1, Loc.t(st[1]), style_group, "estilo_" + st[0], _on_pad_style.bind(st[0]))
 	var scroll := ScrollContainer.new()
 	scroll.name = "desplazamiento_controles"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -331,6 +341,9 @@ func reset_tab() -> void:
 			for key in ["volume", "music", "sfx"]:
 				Settings.set_value(key, Settings.VOLUME_STEPS)
 		"controles":
+			Settings.set_value("input_device", "auto")
+			Settings.set_value("pad_style", "auto")
+			Controls.apply_device()
 			Controls.reset_all()
 			bind_message.text = ""
 	refresh()
@@ -351,6 +364,10 @@ func refresh() -> void:
 	ui_label.text = "%d%%" % us
 	ui_prev.disabled = us <= Settings.UI_SCALES[0]
 	ui_next.disabled = us >= Settings.UI_SCALES[Settings.UI_SCALES.size() - 1]
+	for k in device_buttons:
+		device_buttons[k].selected = k == str(Settings.get_value("input_device"))
+	for k in style_buttons:
+		style_buttons[k].selected = k == str(Settings.get_value("pad_style"))
 	var rm: bool = Settings.get_value("reading_mode")
 	reading_buttons.on.selected = rm
 	reading_buttons.off.selected = not rm
@@ -497,6 +514,17 @@ func _on_contrast(on: bool) -> void:
 
 func _on_compass(on: bool) -> void:
 	Settings.set_value("compass", on)
+	refresh()
+
+
+func _on_device(which: String) -> void:
+	Settings.set_value("input_device", which)
+	Controls.apply_device()
+	refresh()
+
+
+func _on_pad_style(which: String) -> void:
+	Settings.set_value("pad_style", which)
 	refresh()
 
 

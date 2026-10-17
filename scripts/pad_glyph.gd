@@ -4,6 +4,8 @@ extends RefCounted
 ##   SOUTH (abajo: A en Xbox, cruz en PlayStation) · WEST (izquierda: X, cuadrado) · NORTH (arriba: Y, triángulo) · EAST (derecha: B, círculo).
 ## El puente del mando (pad_bridge.gd) traduce SOUTH a Enter, WEST a Espacio, NORTH a C y EAST a Esc cuando hay un menú o un juego del casino.
 
+const Settings := preload("res://scripts/settings.gd")
+
 enum Style { XBOX, PLAYSTATION, NINTENDO }
 enum Slot { SOUTH, WEST, NORTH, EAST }
 
@@ -25,6 +27,13 @@ const LETTERS := {
 static func style() -> int:
 	if forced >= 0:
 		return forced
+	match str(Settings.get_value("pad_style")):   # lo que eligió el jugador en Opciones
+		"xbox":
+			return Style.XBOX
+		"playstation":
+			return Style.PLAYSTATION
+		"nintendo":
+			return Style.NINTENDO
 	var pads := Input.get_connected_joypads()
 	if pads.is_empty():
 		return Style.XBOX
