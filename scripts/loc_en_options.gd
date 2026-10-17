@@ -3,13 +3,6 @@ extends RefCounted
 
 const TABLE := {
 	"Licencias": "Licenses",
-	"Diseño y desarrollo: (agregar nombre)
-Arte, música y sonido: (agregar)
-
-Gracias por jugar.": "Design and development: (add name)
-Art, music and sound: (add)
-
-Thanks for playing.",
 	"General": "General",
 	"Gráficos": "Graphics",
 	"Sonido": "Sound",
