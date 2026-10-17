@@ -21,6 +21,7 @@ const Rooms := preload("res://scripts/rooms.gd")
 const Stages := preload("res://scripts/stages.gd")
 const BlockGuide := preload("res://scripts/block_guide.gd")
 const Farolin := preload("res://scripts/farolin.gd")
+const TrialBanner := preload("res://scripts/trial_banner.gd")
 const KeyHint := preload("res://scripts/key_hint.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino_rules.gd")
@@ -151,7 +152,7 @@ var env: Environment
 var training := false       # tutorial: lecciones sueltas, sin casino ni claridad en juego, y reintento gratis
 var trial := {}              # prueba (etapa especial) de la torre actual: {} si es una etapa común (ver trials.gd)
 var run_new_abilities: Array[String] = []   # habilidades persistentes ganadas en este run (se muestran al terminar)
-var trial_label: Control    # "* Prueba: Niebla" arriba al centro
+var trial_banner: Control   # el cartel de la prueba (abajo, letras grandes sin fondo): ver trial_banner.gd
 var _trial_msg := ""         # resultado de la prueba superada (se muestra al llegar al portal)
 var _gen_failures := 0
 var lost_screen              # pantalla de derrota: Reintentar o Salir al menú
@@ -166,7 +167,6 @@ var casino_balance := true   # al salir del casino se ve el balance (las pruebas
 var balance_layer: CanvasLayer   # donde vive el balance mientras se ve
 var _tick_t := 0.0           # tic-tac de las bombas a la vista
 var _tick_tock := false
-var _trial_banner := ""      # texto del anuncio de la prueba (para borrarlo solo si sigue siendo ese)
 var tutorial_forced := false   # primera vez: el tutorial no se puede dejar (la pausa no vuelve al menú principal)
 var tutorial_index := -1    # lección del tutorial en curso (-1 = no se está en el tutorial)
 var lab_active := false     # modo dev: el laboratorio de estaciones (lab.gd)
@@ -317,12 +317,11 @@ func _build_hud() -> void:
 	lives_hud = hud_panel.lives
 	stage_label = hud_panel.stage_label
 	clarity_counter = hud_panel.clarity
-	trial_label = _label(layer, 3, Color(1.0, 0.85, 0.35))
-	trial_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	trial_label.align = VoxelLabel.Align.CENTER
-	trial_label.y_offset = 12.0
-	trial_label.plate_alpha = 0.6
-	trial_label.visible = false
+	var banner_layer := CanvasLayer.new()   # el cartel de la prueba va por encima de los menús: al pausar se ve entero
+	banner_layer.layer = 105
+	add_child(banner_layer)
+	trial_banner = TrialBanner.new()
+	banner_layer.add_child(trial_banner)
 	# Texto de depuración: oculto salvo que se prenda con F2 (sólo existe en compilaciones de desarrollo).
 	hud = _label(layer, 2, Color(0.95, 0.93, 0.88))
 	hud.localize = false   # (texto de depuración: siempre en español)
@@ -703,10 +702,11 @@ func restart() -> void:
 	_build_lab_signs()
 	banner.text = ""
 	_refresh()
+	_play_trial_banner()
 	call_deferred("_check_discoveries")   # (las filas de abajo de la torre ya están a la altura del jugador)
 
 
-## Descubrimiento de bloques: al llegar a la fila de un tipo de bloque que todavía no conocés, el juego frena y el tabernero lo explica (queda en la guía).
+## Descubrimiento de bloques: al llegar a la fila de un tipo de bloque que todavía no conocés, el juego frena y el tabernero lo explica (queda anotado en el perfil).
 func _check_discoveries() -> void:
 	if not block_discovery or training or lab_active or casino != null or in_menu or logic == null or generating or logic.won or logic.lost or dialogue.is_active():
 		return
@@ -1658,16 +1658,17 @@ func _tween_to(node: Node3D, target: Vector3) -> void:
 
 ## Al empezar una prueba se anuncia su regla unos segundos.
 func _announce_trial() -> void:
-	if trial.is_empty() or training or logic == null:
+	_play_trial_banner()
+
+
+## El cartel de la prueba al empezar (o rehacer) la torre: grande abajo, se queda unos segundos y se desvanece lento. Sin prueba, no hay cartel.
+func _play_trial_banner() -> void:
+	if trial_banner == null:
 		return
-	_trial_banner = Loc.f("PRUEBA: %s\n%s", [Loc.t(trial.name), Loc.t(trial.desc)])
-	banner.text = _trial_banner
-	if quick_portal or test_mode:
+	if trial.is_empty() or training or lab_active or tutorial_index >= 0 or logic == null or in_menu or casino != null:
+		trial_banner.clear()
 		return
-	var idx := epoch
-	await get_tree().create_timer(3.0).timeout
-	if idx == epoch and logic != null and not logic.won and not logic.lost and banner.text == _trial_banner:
-		banner.text = ""
+	trial_banner.play(Loc.t(trial.name), Loc.t(trial.desc))
 
 
 func _on_anim_done() -> void:
@@ -1746,19 +1747,13 @@ func _refresh() -> void:
 	var state := "colgado" if logic.hang_dir != Vector3i.ZERO else "de pie"
 	var prof_text := ("ENTRENAMIENTO   " if training else "") + "Etapa %d/%d (ritmo %s)" % [stage_number, FINAL_STAGE, PACE_NAMES.get(profile.get("pace", "normal"), "normal")]
 	if lab_active:
-		trial_label.visible = false
 		stage_label.text = "LABORATORIO\n%d. %s" % [lab_station + 1, Lab.STATIONS[lab_station].name]
 		hud.text = "LABORATORIO   estación %d/%d: %s" % [lab_station + 1, Lab.count(), Lab.STATIONS[lab_station].id]
 	elif tutorial_index >= 0:
-		trial_label.visible = false
 		stage_label.text = Loc.f("Tutorial\nLección %d/%d", [tutorial_index + 1, Tutorial.count()])
 		hud.text = "TUTORIAL   Lección %d/%d: %s" % [tutorial_index + 1, Tutorial.count(), Tutorial.lessons()[tutorial_index].title]
 	else:
 		stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, FINAL_STAGE, " *" if not trial.is_empty() else ""])
-		trial_label.visible = not trial.is_empty()   # (la próxima prueba ya no se muestra: la cuenta el tabernero)
-		if not trial.is_empty():
-			trial_label.text = Loc.f("* Prueba: %s\n%s", [Loc.t(trial.name), Loc.t(trial.desc)])
-			trial_label.color = Color(1.0, 0.85, 0.35)
 		hud.text = prof_text + "\nCaída de la fila base en %d (cada %d)    Altura %d/%d    Movimientos %d    %s\nRacha %d (×%.1f)    Mejor racha %d    Purificados %d    Semilla %d" % [
 		logic.moves_to_collapse, logic.collapse_every, logic.player.y, logic.goal_y, logic.moves_made, state,
 		logic.streak, logic.streak_mult(logic.streak), logic.best_streak, logic.purified_count, seed_value]
@@ -1865,6 +1860,8 @@ func _character_msg(ids: Array) -> String:
 func enter_casino(restoring := false) -> void:
 	if casino != null:
 		return
+	if trial_banner != null:
+		trial_banner.clear()
 	Music.play("casino")
 	if not restoring:
 		_bank_claridad()
@@ -2042,6 +2039,8 @@ func _rebuild_menus() -> void:
 func open_main_menu() -> void:
 	_close_balance()
 	lab_active = false
+	if trial_banner != null:
+		trial_banner.clear()
 	_clear_lab_signs()
 	if lost_screen != null:
 		lost_screen.hide_screen()
@@ -2101,6 +2100,9 @@ func pause_game() -> void:
 		return
 	get_tree().paused = true
 	pause_menu.set_tutorial_lock(tutorial_forced)
+	pause_menu.make_room_for_banner(trial_banner != null and trial_banner.active)   # (al pausar el cartel de la prueba se ve entero: el menú sube para no taparlo)
+	if trial_banner != null:
+		trial_banner.pin()
 	pause_menu.set_restart_cost(run.restart_cost(), training)
 	pause_menu.open()
 	if trial.get("no_retry", false):
@@ -2110,6 +2112,9 @@ func pause_game() -> void:
 
 func resume_game() -> void:
 	pause_menu.close()
+	pause_menu.make_room_for_banner(false)
+	if trial_banner != null:
+		trial_banner.release()
 	get_tree().paused = false
 
 
@@ -2190,6 +2195,8 @@ func end_run(victory: bool, reason := "") -> void:
 	Music.play("menu")
 	Sfx.play("win" if victory else "lose")
 	run_over = true
+	if trial_banner != null:
+		trial_banner.clear()
 	epoch += 1
 	_close_balance()
 	_cancel_jobs()

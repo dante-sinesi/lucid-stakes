@@ -113,7 +113,7 @@ func test_dialogue_choice() -> void:
 	await process_frame
 
 
-## En los 4 casinos Farolín tiene su celda junto a la puerta de salida, libre de muebles, y se llega a la puerta; el personaje aparece de frente.
+## En los 4 casinos Farolín tiene su celda junto a la puerta de salida, libre de muebles, y se llega a la puerta; el personaje aparece saliendo del portal.
 func test_casinos() -> void:
 	var stages := {}
 	for s in range(1, 16):
@@ -136,7 +136,7 @@ func test_casinos() -> void:
 		check(not Room.walkable(f, c.lay), "nivel %d: Farolín ocupa su celda (no se camina por ahí)" % tier)
 		check(Room.reachable(c.lay.entry, c.lay).has(e), "nivel %d: se llega a la puerta de salida" % tier)
 		check(c._farolin != null and absf(c._farolin.position.x - Room.world_of_cell(f, c.lay).x) < 0.001, "nivel %d: Farolín está en su celda" % tier)
-		check(absf(c.player_node.rotation.y - deg_to_rad(c.yaw_target)) < 0.001, "nivel %d: el personaje aparece de frente a la cámara" % tier)
+		check(c.facing == Vector2i(1, 0) and absf(c.player_node.rotation.y - PI * 0.5) < 0.001 and c.cell.x == 0, "nivel %d: el personaje aparece saliendo del portal, mirando hacia adentro de la sala" % tier)
 		var talk := [0]
 		c.toll_talk.connect(func(): talk[0] += 1)
 		c.cell = f + Vector2i(0, 1) if Room.walkable(f + Vector2i(0, 1), c.lay) else f + Vector2i(-1, 0)

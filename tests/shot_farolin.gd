@@ -1,5 +1,5 @@
 extends SceneTree
-## Captura del casino con Farolín en la puerta de salida: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1100x800 -s tests/shot_duende.gd -- SALIDA.png [etapa] [claridad]
+## Captura del casino con Farolín en la puerta de salida: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1100x800 -s tests/shot_farolin.gd -- SALIDA.png [etapa] [claridad]
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var main = load("res://scenes/main.tscn").instantiate()

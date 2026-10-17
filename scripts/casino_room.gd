@@ -75,7 +75,7 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 					heights[Vector2i(x, z)] = 4 if maxi(dx, dz) <= 1 else 2
 			return {"tier": 3, "cells": Vector2i(13, 11), "entry": Vector2i(0, 9), "exit": Vector2i(9, 0), "table": table,
 					"dealer": Vector2i(6, 3), "machines": machines, "card_tables": [Rect2i(10, 3, 2, 2), Rect2i(10, 6, 2, 2)] as Array[Rect2i],
-					"obstacles": obstacles, "station": {"id": "seguro", "cell": Vector2i(11, 9)}, "farolin": Vector2i(10, 0), "heights": heights, "table_h": 4, "cam_size": 19.0}
+					"obstacles": obstacles, "station": {"id": "seguro", "cell": Vector2i(11, 9)}, "farolin": Vector2i(8, 0), "heights": heights, "table_h": 4, "cam_size": 19.0}
 
 
 ## La distribución por omisión (la del nivel 2) para quien no pasa una.

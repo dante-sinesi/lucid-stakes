@@ -117,8 +117,8 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	_build_hud()
 	if story:
 		hud_layer.visible = false
+	facing = Vector2i(1, 0)   # (al llegar mira hacia adentro de la sala, como si saliera del portal de la pared oeste)
 	_place_player()
-	player_node.rotation.y = deg_to_rad(yaw_target)   # (al llegar aparece de frente a la cámara, no de costado)
 	_vault_paid = vault_paid
 	if vault_paid > 0:
 		_flash(Loc.f("Caja fuerte: cobrás %d de claridad (con interés).", [vault_paid]))
