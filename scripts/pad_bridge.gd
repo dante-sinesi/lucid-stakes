@@ -15,6 +15,14 @@ var _down := {}
 
 
 func _ready() -> void:
+	# Godot ya mueve el foco de los menús con la cruceta y el stick (acciones ui_*); como acá se traducen a flechas, se quita eso para que cada movimiento cuente una sola vez
+	# (si no, el foco avanza de a dos botones).
+	for action in InputMap.get_actions():
+		if not str(action).begins_with("ui_"):
+			continue
+		for ev in InputMap.action_get_events(action):
+			if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+				InputMap.action_erase_event(action, ev)
 	Controls.using_pad = not Input.get_connected_joypads().is_empty()   # (con un mando conectado, las ayudas muestran sus botones desde el principio)
 	Input.joy_connection_changed.connect(func(_id: int, connected: bool): Controls.using_pad = connected or not Input.get_connected_joypads().is_empty())
 

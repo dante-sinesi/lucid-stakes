@@ -122,6 +122,7 @@ func _init() -> void:
 	var first = main.pause_menu.get_viewport().gui_get_focus_owner()
 	check(first == main.pause_menu.buttons["continuar"], "al pausar, el foco está en Continuar")
 	await _tap(JOY_BUTTON_DPAD_DOWN)
+	check(main.pause_menu.get_viewport().gui_get_focus_owner() == main.pause_menu.buttons["reiniciar"], "un toque de cruceta baja un solo botón (no de dos en dos)")
 	var second = main.pause_menu.get_viewport().gui_get_focus_owner()
 	check(second != null and second != first, "la cruceta baja al botón siguiente con el juego en pausa")
 	await _tap(JOY_BUTTON_START)
