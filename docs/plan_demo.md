@@ -190,6 +190,7 @@ Es lo más grande del plan. Orden interno: formato y `ModelLib` → variantes au
 
 ## L. Exportación
 
+- **macOS (consulta de Dante):** dificultad baja a media. Godot exporta el `.app` desde Windows (hacen falta las plantillas de exportación de macOS, universales Intel/Apple Silicon); el renderizador Compatibility (OpenGL) funciona en Mac. El solucionador nativo (`solver_nativo.exe`) es sólo de Windows, pero la demo no lo necesita (banco de torres precalculado y el resto cae a GDScript). Lo difícil: firmar y notarizar (hace falta una Mac y una cuenta de Apple Developer, ~99 USD al año; sin eso Gatekeeper avisa, aunque lo que se baja por Steam normalmente no se bloquea) y probarlo en una Mac real (shaders, fuentes, mando, rutas de guardado). Se deja como un preset más y una prueba manual; no bloquea la demo de Windows.
 - Presets de Windows (y, si se quiere, Linux): iconos, versión, `data/*.rooms`, `data/*.torres` y `data/modelos/*` incluidos; sin el solucionador nativo (cae a GDScript sólo para los tramos de respiro).
 - Script de construcción (`construir_demo.ps1`): exporta, copia, comprime y calcula el tamaño.
 - Prueba en una máquina limpia: instalar, abrir, jugar la demo entera, cerrar, volver a abrir y continuar.

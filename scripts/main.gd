@@ -3,6 +3,7 @@ extends Node3D
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Gen := preload("res://scripts/tower_gen.gd")
+const Abort := preload("res://scripts/gen_abort.gd")
 const STEP_TIME := 0.14
 const FALL_TIME := 0.08
 const PATH_STEP_TIME := 0.07  # segundos por celda cuando el recorrido tiene varias (salto, hielo, caída)
@@ -203,6 +204,7 @@ var right_bar             # barra de boosts (derecha)
 var item_tip: Control     # descripción del ítem bajo el mouse
 var epoch := 0              # sube al volver al menú: las generaciones en curso se descartan
 var _jobs: Array = []       # hilos de generación: la torre de la etapa actual y la de la siguiente (se genera mientras se juega)
+var _zombies: Array[Thread] = []   # hilos de generación cancelados que todavía no terminaron (ver _cancel_jobs)
 
 
 func _ready() -> void:
@@ -474,6 +476,7 @@ func _gen_thread_count() -> int:
 
 
 func _start_job(stage: int, s: int) -> Dictionary:
+	_join_zombies()
 	var tr: Dictionary = run.trial_at(stage) if not training else {}
 	var prof := Gen.profile_for_stage(stage, tr, run.scenario())
 	var token := [false]
@@ -593,14 +596,48 @@ func _prefetch_next_stage() -> void:
 			return
 
 
+## Cancela todos los trabajos de generación SIN esperarlos: se les avisa (bandera global y testigo propio) y sus hilos quedan en `_zombies` hasta que terminen
+## solos (en milisegundos: todo lo que tarda mira la bandera). Antes se esperaba a que terminaran en el mismo cuadro, y con una torre alta eso colgaba el juego
+## decenas de segundos al abandonar el run. La bandera se baja cuando ya no queda ningún hilo vivo.
 func _cancel_jobs() -> void:
 	Gen.cancel = true
+	Abort.flag = true
 	for job in _jobs:
-		if not job.done:
-			job.done = true
-			_job_join(job)
+		job.done = true
+		if job.has("token"):
+			job.token[0] = true
+		if job.has("threads"):
+			for th in job.threads:
+				if th.is_started():
+					_zombies.append(th)
+		elif job.thread.is_started():
+			_zombies.append(job.thread)
 	_jobs.clear()
+	_reap_zombies()
+
+
+## Junta los hilos cancelados que ya terminaron; con el último baja la bandera de cancelación.
+func _reap_zombies() -> void:
+	var left: Array[Thread] = []
+	for th in _zombies:
+		if th.is_started() and th.is_alive():
+			left.append(th)
+		elif th.is_started():
+			th.wait_to_finish()
+	_zombies = left
+	if _zombies.is_empty():
+		Gen.cancel = false
+		Abort.flag = false
+
+
+## Espera a los hilos cancelados (lo hace antes de empezar otra generación: ya tuvieron tiempo de terminar mientras se veía otra pantalla).
+func _join_zombies() -> void:
+	for th in _zombies:
+		if th.is_started():
+			th.wait_to_finish()
+	_zombies.clear()
 	Gen.cancel = false
+	Abort.flag = false
 
 
 ## Vuelve a la torre generada tal como empezó.
@@ -1282,6 +1319,8 @@ func _set_depth_mode(mode: int) -> void:
 
 ## Cada cuadro: dónde está el personaje respecto de la cámara (referencia de las ayudas de profundidad).
 func _process(delta: float) -> void:
+	if not _zombies.is_empty():
+		_reap_zombies()
 	_prefetch_t += delta
 	if _prefetch_t >= 1.0:   # una vez por segundo se ve si hay que adelantar otra torre
 		_prefetch_t = 0.0
@@ -2040,10 +2079,17 @@ func resume_game() -> void:
 	get_tree().paused = false
 
 
+## Al sacar la escena (cerrar el juego, pruebas) no se dejan hilos de generación sueltos.
+func _exit_tree() -> void:
+	_cancel_jobs()
+	_join_zombies()
+
+
 func quit_game() -> void:
 	save_game()
 	epoch += 1
 	_cancel_jobs()
+	_join_zombies()   # (al cerrar sí se espera: los hilos cortan en milisegundos)
 	if not quit_game_override:
 		get_tree().quit()
 
