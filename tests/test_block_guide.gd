@@ -1,10 +1,9 @@
 extends SceneTree
-## La guía de bloques: el catálogo, el descubrimiento (sólo al llegar a la fila del bloque), el cartel del tabernero que frena el juego y la pantalla
-## (los bloques sin descubrir sólo dicen "Por descubrir"), accesible desde el menú principal y el de pausa.
+## Los avisos de bloque nuevo: el catálogo, el descubrimiento (sólo al llegar a la fila del bloque) y el cartel del tabernero que frena el juego.
+## (La pantalla "Guía de bloques" se eliminó: ya no hay botón en el menú principal ni en la pausa.)
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_block_guide.gd
 
 const BlockGuide := preload("res://scripts/block_guide.gd")
-const BlockGuideScreen := preload("res://scripts/block_guide_screen.gd")
 const Profile := preload("res://scripts/profile.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 
@@ -23,7 +22,6 @@ func _init() -> void:
 	test_catalog()
 	test_reached()
 	test_profile()
-	test_screen()
 	await test_game()
 	await test_menus()
 	Profile.reset()
@@ -78,26 +76,6 @@ func test_profile() -> void:
 	Profile.reset()
 
 
-func test_screen() -> void:
-	Profile.reset()
-	var s: Control = BlockGuideScreen.new()
-	root.add_child(s)
-	s.refresh()
-	var all_hidden := true
-	for b in BlockGuide.ALL:
-		var r: Dictionary = s.rows[b.id]
-		all_hidden = all_hidden and str(r.name.text) == "Por descubrir" and str(r.desc.text) == "" and not r.icon.discovered
-		check(not str(r.name.text).contains(str(b.name)) and not str(r.desc.text).contains(str(b.name)), "el bloque %s sin descubrir no dice su nombre" % b.id)
-	check(all_hidden, "sin descubrir: todos dicen sólo «Por descubrir», sin descripción y en gris")
-	Profile.discover_block("hielo")
-	s.refresh()
-	check(s.rows.hielo.name.text == "Hielo" and str(s.rows.hielo.desc.text).contains("resbalar") and s.rows.hielo.icon.discovered, "el descubierto muestra su nombre y descripción, a color")
-	check(s.rows.bomba.name.text == "Por descubrir" and s.rows.bomba.desc.text == "", "los demás siguen sin decir nada")
-	check(str(s.count_label.text).contains("1") and str(s.count_label.text).contains(str(BlockGuide.ALL.size())), "dice cuántos van descubiertos")
-	s.queue_free()
-	Profile.reset()
-
-
 func make_main() -> Node:
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.test_mode = true
@@ -149,18 +127,8 @@ func test_menus() -> void:
 	await process_frame
 	while main.generating or main.logic == null:
 		await process_frame
-	check(main.main_menu.buttons.has("guia") and main.main_menu.guide != null, "el menú principal tiene la guía de bloques")
-	main.main_menu.open()
-	main.main_menu.buttons["guia"].pressed.emit()
-	check(main.main_menu.guide.visible and not main.main_menu.main_center.visible, "el botón abre la guía")
-	main.main_menu.guide.back.emit()
-	check(main.main_menu.main_center.visible and not main.main_menu.guide.visible, "Volver regresa al menú")
-	check(main.pause_menu.buttons.has("guia"), "el menú de pausa tiene la guía de bloques")
+	check(not main.main_menu.buttons.has("guia") and not main.pause_menu.buttons.has("guia"), "la guía de bloques ya no está en el menú principal ni en la pausa")
 	main.pause_menu.open()
-	main.pause_menu.buttons["guia"].pressed.emit()
-	check(main.pause_menu.guide.visible and not main.pause_menu.center.visible, "en la pausa el botón abre la guía")
-	main.pause_menu.guide.back.emit()
-	check(not main.pause_menu.guide.visible and main.pause_menu.center.visible, "y Volver regresa a la pausa")
 	main.pause_menu.close()
 	main._cancel_jobs()
 	main.queue_free()

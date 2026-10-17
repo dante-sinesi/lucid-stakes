@@ -440,11 +440,10 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
 - **Dados**: jugar es obligatorio; «Empezar» aparece al terminar las tiradas. Se eliminó el texto «Elegí qué cara…» (lo explica el tabernero en el tutorial).
 - **Guardado**: al morir se guarda al instante y al continuar cuenta como reintento después de morir (gasta una vida); Alt + F4 también guarda.
 
-## 39. Guía de bloques y descubrimiento
+## 39. Avisos de bloque nuevo (la guía de bloques se eliminó)
 
-- Como el tutorial ya no enseña tipos de bloque, hay una **guía de bloques** (menú principal y menú de pausa; `block_guide.gd`, `block_guide_screen.gd`) con el bloque en 3D girando (el mismo modelo de minibloques y el mismo shader que en la partida), nombre y descripción por tipo: bloque corrupto, hielo, pesado, agrietado, bomba, trampa, pinchos y catapulta.
-- **Descubrimiento**: un bloque se descubre la primera vez que el jugador llega a la altura de una fila que lo contiene (que exista en la torre no alcanza: `BlockGuide.newly_reached`). En ese momento el juego frena (cuadro de diálogo bloqueante) y el tabernero explica sus características; después se sigue. Se guarda en el perfil (`blocks_seen`) y vale para siempre; no se descubre nada en el tutorial ni en el laboratorio.
-- En la guía los bloques sin descubrir salen en gris y sin nombre ni descripción: sólo dicen «Por descubrir».
+- La pantalla **Guía de bloques** (menú principal y pausa; `block_guide_screen.gd`) se eliminó del juego completo y de la demo (decisión de Dante: no servía). Queda el catálogo `block_guide.gd` (bloque corrupto, hielo, pesado, agrietado, bomba, trampa, pinchos y catapulta) sólo para los avisos de abajo.
+- **Descubrimiento**: un bloque se descubre la primera vez que el jugador llega a la altura de una fila que lo contiene (que exista en la torre no alcanza: `BlockGuide.newly_reached`). En ese momento el juego frena (cuadro de diálogo bloqueante) y el tabernero explica sus características; después se sigue. Se guarda en el perfil (`blocks_seen`) y vale para siempre; no se descubre nada en el tutorial.
 
 ## 40. Balanceo: 15 etapas, escalera de bloques y situaciones
 

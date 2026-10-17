@@ -82,8 +82,6 @@ func test_catalog() -> void:
 		need(b.name, "bloque de la guía")
 		need(b.desc, "descripción del bloque " + b.id)
 		need(b.say, "lo que dice el tabernero del bloque " + b.id)
-	need("Por descubrir", "guía de bloques")
-	need("Guía de bloques", "guía de bloques")
 	for l in Story.dice_intro():
 		need(l if typeof(l) == TYPE_STRING else l.text, "dados del tabernero")
 	for l in Tutorial.lessons():

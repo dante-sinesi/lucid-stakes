@@ -2,9 +2,6 @@ extends RefCounted
 ## Inglés: la historia del tabernero y el tutorial. Ver loc.gd.
 
 const TABLE := {
-	"Guía de bloques": "Block guide",
-	"Por descubrir": "To be discovered",
-	"Descubiertos: %d de %d": "Discovered: %d of %d",
 	"Bloque corrupto": "Corrupted block",
 	"Se pisa, se empuja y se tira. Al pisarlo se purifica y da claridad; si encadenás pisadas nuevas, la racha la multiplica.": "It can be stepped on, pushed and pulled. Stepping on it purifies it and gives clarity; if you chain new steps, the streak multiplies it.",
 	"Mirá, soñador: ese bloque violeta está corrupto. Al pisarlo se purifica y te devuelve claridad, y si encadenás pisadas nuevas la racha la multiplica.": "Look, dreamer: that purple block is corrupted. Stepping on it purifies it and gives you clarity back, and if you chain new steps the streak multiplies it.",

@@ -1,7 +1,7 @@
 extends RefCounted
-## La guía de bloques: qué es cada tipo de bloque. Un bloque se descubre la primera vez que el jugador llega a la altura de una fila que lo contiene
+## Los avisos de bloque nuevo: qué es cada tipo de bloque. Un bloque se descubre la primera vez que el jugador llega a la altura de una fila que lo contiene
 ## (no alcanza con que exista en la torre): en ese momento el juego frena y el tabernero explica sus características (`say`). Lo descubierto se guarda
-## en el perfil (ver profile.gd). La guía (menú principal y menú de pausa) muestra cada bloque; los que faltan salen grises y sólo dicen «Por descubrir».
+## en el perfil (ver profile.gd). (La pantalla "Guía de bloques" del menú se eliminó: sólo quedan estos avisos.)
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Profile := preload("res://scripts/profile.gd")
