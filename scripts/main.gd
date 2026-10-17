@@ -1063,14 +1063,29 @@ func _play_purify(node: MeshInstance3D, id: int) -> void:
 	get_tree().create_timer(1.2).timeout.connect(b.queue_free)
 
 
-func _flash_gain(text: String) -> void:
+func _flash_gain(text: String, gain := 0) -> void:
+	var w := gain_weight(gain)
+	gain_label.cube = 3.0 + 3.0 * w   # (una ganancia grande se ve más grande, dura más y suena más fuerte)
+	gain_label.color = Color(1.0, 0.93, 0.5).lerp(Color(1.0, 0.62, 0.2), w)
 	gain_label.text = text
 	gain_label.modulate.a = 1.0
-	juice.pop(gain_label)
+	juice.pop(gain_label, 1.35 + 0.6 * w)
+	if w > 0.4:
+		juice.add_shake(0.1 + 0.35 * w)
+	if gain >= 1000:
+		Sfx.play("item", 0.9 + 0.5 * w, -4.0)
 	if _gain_tween != null:   # (un solo desvanecer a la vez: si quedaban los de las ganancias anteriores pisaban la transparencia y el cartel no volvía a verse)
 		_gain_tween.kill()
 	_gain_tween = create_tween()
-	_gain_tween.tween_property(gain_label, "modulate:a", 0.0, 1.8)
+	_gain_tween.tween_interval(0.3 + 1.2 * w)
+	_gain_tween.tween_property(gain_label, "modulate:a", 0.0, 1.8 + 1.0 * w)
+
+
+## Qué tan "pesada" es una ganancia de claridad, de 0 (10 o menos) a 1 (10 millones o más), en escala logarítmica.
+static func gain_weight(gain: int) -> float:
+	if gain <= 10:
+		return 0.0
+	return clampf((log(float(gain)) / log(10.0) - 1.0) / 6.0, 0.0, 1.0)
 
 
 ## Texto que se muestra sobre un tipo de bloque: sólo la bomba lleva su cuenta (se actualiza en _refresh).
@@ -1513,7 +1528,7 @@ func _animate() -> void:
 			_play_purify(pn, id)
 	if logic.last_gain > 0:
 		var mult: float = logic.streak_mult(logic.streak)
-		_flash_gain(Loc.f("+%d claridad", [logic.last_gain]) + (Loc.f("   racha ×%.1f", [mult]) if logic.streak >= 2 else ""))
+		_flash_gain(Loc.f("+%d claridad", [logic.last_gain]) + (Loc.f("   racha ×%.1f", [mult]) if logic.streak >= 2 else "") + (Loc.f("   cosecha ×%.1f", [logic.harvest_mult()]) if logic.harvest_mult() > 1.0 else ""), logic.last_gain)
 	_refresh()
 	anim_tween = create_tween().set_parallel(true)
 	_moved_blocks.clear()

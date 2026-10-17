@@ -2,6 +2,7 @@ extends Control
 ## Pantalla de fin de run: si escapaste (pasaste las 27 etapas) o si el run terminó antes, con el resumen (etapa alcanzada, torres,
 ## claridad, reintentos, movimientos y los boosts que tenías) y dos botones: Nueva partida y Menú principal.
 
+const NumberFormat := preload("res://scripts/number_format.gd")
 const Stages := preload("res://scripts/stages.gd")
 const UI := preload("res://scripts/menu_ui.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
@@ -84,7 +85,7 @@ static func summary_rows(run, victory: bool) -> Array:
 	return [
 		["Etapa alcanzada", "%d / %d" % [FINAL_STAGE if victory else run.max_stage, FINAL_STAGE], false],
 		["Torres superadas", str(run.towers_cleared), false],
-		["Claridad juntada", str(run.claridad_earned), true],
+		["Claridad juntada", NumberFormat.fmt(run.claridad_earned), true],
 		["Gastada en la ruleta", str(run.casino_spent), true],
 		["Ganada en la ruleta", str(run.casino_won), true],
 		["Reintentos", str(run.retries), false],

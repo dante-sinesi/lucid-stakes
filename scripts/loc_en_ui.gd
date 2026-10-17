@@ -13,6 +13,7 @@ const TABLE := {
 	"Ayuda de profundidad: más claro lo cercano + transparencia cercana": "Depth aid: nearer is brighter + near transparency",
 	"+%d claridad": "+%d clarity",
 	"   racha ×%.1f": "   streak ×%.1f",
+	"   cosecha ×%.1f": "   harvest ×%.1f",
 	"PRUEBA: %s\n%s": "TRIAL: %s\n%s",
 	"¡Terminaste el tutorial!": "You finished the tutorial!",
 	"¡Bien!": "Nice!",

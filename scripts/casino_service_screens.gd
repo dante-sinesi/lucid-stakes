@@ -3,6 +3,7 @@ extends RefCounted
 ## Todas se abren como los juegos (casino_scene._open_screen): `setup(run, rng, quick)`, señal `closed` al salir y `resolved` cuando algo cambió
 ## en el run (hay que guardar).
 
+const NumberFormat := preload("res://scripts/number_format.gd")
 const Services := preload("res://scripts/casino_services.gd")
 const Showcase := preload("res://scripts/showcase.gd")
 const Items := preload("res://scripts/items.gd")
@@ -278,7 +279,7 @@ class TiendaScreen extends Base:
 			slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			box.add_child(slot)
 			slots[str(it.id)] = slot
-			var price := UI.label(box, str(Showcase.shop_price(run, it)), 3, UI.GOLD if run.can_afford(Showcase.shop_price(run, it)) else BAD, false)
+			var price := UI.label(box, NumberFormat.fmt(Showcase.shop_price(run, it)), 3, UI.GOLD if run.can_afford(Showcase.shop_price(run, it)) else BAD, false)
 			price.name = "precio_" + str(it.id)
 			offers_row.add_child(box)
 		if offers.is_empty():
