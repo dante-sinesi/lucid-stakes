@@ -10,11 +10,8 @@ const Loc := preload("res://scripts/loc.gd")
 const TITLE := "Balatro × Catherine"
 const SUBTITLE := "Escapá de la pesadilla, una torre a la vez"
 
-## Créditos del juego: completar con los nombres reales antes de publicar.
-const CREDITS_GAME := """Diseño y desarrollo: (agregar nombre)
-Arte, música y sonido: (agregar)
-
-Gracias por jugar."""
+## Créditos del juego.
+const CREDITS_GAME := "Diseño y desarrollo: Dante\nProgramación asistida por Claude (Anthropic)\nArte, música y sonido: Dante y Claude\n\nGracias por jugar."
 
 const BG := Color(0.05, 0.03, 0.09)
 const GOLD := Draw.GOLD
