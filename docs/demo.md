@@ -5,14 +5,14 @@ Plan completo y decisiones de Dante: `docs/plan_demo.md`. Acá, lo que quedó he
 ## Qué es
 El mismo código del juego completo con un interruptor (`scripts/demo.gd`). `Demo.on()` es verdadero en la compilación "Windows Demo" (característica personalizada `demo` del preset) o con `GAME_DEMO=1` en el editor. Sin el interruptor el juego completo no cambia (`tests/test_demo.gd` lo comprueba).
 
-- **Contenido:** el tutorial y La Pesadilla hasta el casino de la etapa 2 (`Demo.LAST_STAGE`). Al pagarle a Farolín en ese casino, o al abandonar (sin vidas y sin claridad), sale la pantalla de fin de la demo (`demo_end_screen.gd`) con el resumen, el agradecimiento y la lista de deseos (`Demo.WISHLIST_URL`: completar con la dirección de la página en Steam).
+- **Contenido:** el tutorial y La Pesadilla hasta el casino de la etapa 6 (`Demo.LAST_STAGE`): las dos pruebas (etapas 3 y 6) y el segundo casino (el salón, desde la etapa 4). Al pagarle a Farolín en ese casino, o al abandonar (sin vidas y sin claridad), sale la pantalla de fin de la demo (`demo_end_screen.gd`) con el resumen, el agradecimiento y la lista de deseos (`Demo.WISHLIST_URL`: completar con la dirección de la página en Steam).
 - **Recortes** (todos por `Demo`): los demás escenarios dicen "Próximamente" (tarjeta bloqueada); el botón Habilidades avisa "Disponible en la versión completa"; el blackjack y las tragamonedas avisan "Disponible en el juego completo"; cosméticos: Corona y Gorro de lana, Remera y Capa (vienen desbloqueados, los demás salen con "?" y, al pasar el mouse, "Disponible en la versión completa"); personajes: Dante, Gaby, gatito (predeterminado) y perrito.
-- **Torres:** salen del banco `data/torres_demo.torres` (24 torres verificadas, 12 por etapa para las etapas 1 y 2): carga instantánea, siempre se pueden ganar y no hace falta el solucionador nativo. La demo no genera nada más allá de su última etapa. Si el banco no tiene la etapa, se genera en vivo como siempre.
+- **Torres:** salen del banco `data/torres_demo.torres` (84 torres verificadas, 12 o más por etapa para las etapas 1 a 6): carga instantánea, siempre se pueden ganar y no hace falta el solucionador nativo. La demo no genera nada más allá de su última etapa. Si el banco no tiene la etapa, se genera en vivo como siempre.
 - **Guardado aparte:** `user://demo/` (perfil y partida): la demo no pisa los guardados del juego completo.
 - Título de la ventana: "Balatro x Catherine — Demo".
 
 ## Construirla
-1. Banco de torres (sólo si cambió el generador o la biblioteca): `herramientas\banco_torres.bat` (por defecto etapas 1 y 2, 12 torres, semilla 5000; las que no pasan la verificación se descartan; tarda unos minutos).
+1. Banco de torres (sólo si cambió el generador o la biblioteca): `herramientas\banco_torres.bat` (por defecto etapas 1 a 6, 12 torres, semilla 5000; las que no pasan la verificación se descartan; tarda unos minutos).
 2. Exportar con el preset **Windows Demo**: `tools\Godot_v4.7.2-stable_win64_console.exe --headless --path . --export-release "Windows Demo" build/demo/BalatroXCatherineDemo.exe` (el preset incluye `data/*.rooms`, `data/modelos/*` y el banco; las escenas de herramientas no se exportan). Para el juego completo: preset "Windows Desktop".
 3. Probarla en el editor: `GAME_DEMO=1 tools\Godot_v4.7.2-stable_win64.exe --path .`
 

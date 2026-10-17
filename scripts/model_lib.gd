@@ -235,8 +235,9 @@ static func _color_mean(map: Dictionary) -> Color:
 static func _part_mesh(map: Dictionary, vox: float, ghost_maker: Callable) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = VoxelMesh.build(map, vox)
-	if ghost_maker.is_valid():
-		mi.material_override = ghost_maker.call(_color_mean(map))
+	var ghost_mat = ghost_maker.call(_color_mean(map)) if ghost_maker.is_valid() else null   # (el creador devuelve null si no es silueta)
+	if ghost_mat != null:
+		mi.material_override = ghost_mat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	else:
 		var mat := StandardMaterial3D.new()

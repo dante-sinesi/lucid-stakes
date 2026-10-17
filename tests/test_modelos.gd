@@ -214,6 +214,11 @@ func test_override() -> void:
 		if ch is MeshInstance3D:
 			ok = ok and (ch as MeshInstance3D).material_override is ShaderMaterial
 	check(ok, "la silueta del personaje del editor usa el material de la silueta")
+	var colored := true
+	for ch in after.get_children():
+		if ch is MeshInstance3D:
+			colored = colored and (ch as MeshInstance3D).material_override is StandardMaterial3D and ((ch as MeshInstance3D).material_override as StandardMaterial3D).vertex_color_use_as_albedo
+	check(colored, "el personaje del editor lleva sus colores (material con color por vértice, no gris)")
 	ghost.free()
 	var crown: Node3D = Cosmetics.build_hat("corona")
 	check(crown != null and crown.name == "gorro" and crown.get_child_count() == 1, "la corona del editor es un gorro de una sola malla")

@@ -39,7 +39,7 @@ func test_switch() -> void:
 	Demo.forced = -1
 	check(not Demo.on(), "sin el interruptor no es la demo")
 	Demo.forced = 1
-	check(Demo.on() and Demo.LAST_STAGE == 2 and Demo.shown_final(15) == 2 and Demo.is_last_casino(2) and not Demo.is_last_casino(1), "con el interruptor es la demo: dos etapas y el casino 2 es el último")
+	check(Demo.on() and Demo.LAST_STAGE == 6 and Demo.shown_final(15) == 6 and Demo.is_last_casino(6) and not Demo.is_last_casino(5) and not Demo.is_last_casino(2), "con el interruptor es la demo: dos etapas y el casino de la etapa 6 es el último")
 	Demo.forced = 0
 	check(not Demo.on() and Demo.shown_final(15) == 15 and not Demo.is_last_casino(2) and Demo.scenario_allowed("glaciar") and Demo.cosmetic_allowed("copa") and Demo.character_allowed("conejo"), "apagada, todo está permitido")
 	Demo.forced = 1
@@ -171,7 +171,7 @@ func test_casino() -> void:
 	await process_frame
 
 
-## Pagarle a Farolín del casino 2 termina la demo (pantalla de fin); en el casino 1 sigue la torre 2.
+## Pagarle a Farolín del casino de la etapa 6 termina la demo (pantalla de fin); en el casino 1 sigue la torre 2.
 func test_end() -> void:
 	Demo.forced = 1
 	var main := _make_main()
@@ -192,17 +192,17 @@ func test_end() -> void:
 	check(not main.demo_end.visible and main.casino == null, "pagar en el casino 1 sigue con la torre 2 (no termina la demo)")
 	while main.generating:
 		await process_frame
-	main.stage_number = 2
-	main.run.stage = 2
+	main.stage_number = 6
+	main.run.stage = 6
 	main.run.claridad = 100000
 	main.enter_casino(true)
 	main.casino.cell = main.casino.lay.exit
 	main.casino.step(Vector2i(0, -1))
 	await process_frame
 	main._toll_options = main.casino.toll_dialog().options
-	main._on_dialogue_chosen(0)   # pagar en el casino 2: fin de la demo
+	main._on_dialogue_chosen(0)   # pagar en el casino de la etapa 6: fin de la demo
 	await process_frame
-	check(main.demo_end.visible and not main.run_end.visible and main.run_over, "pagar en el casino 2 muestra el fin de la demo")
+	check(main.demo_end.visible and not main.run_end.visible and main.run_over, "pagar en el casino de la etapa 6 muestra el fin de la demo")
 	check(str(main.demo_end.title.text).contains("Terminaste la demo") and main.demo_end.rows.size() == 5, "con el resumen del run")
 	main.demo_end.visible = false
 	# fallarle: sin vidas ni claridad sólo queda abandonar, y también termina con la pantalla de la demo
@@ -222,15 +222,15 @@ func test_end() -> void:
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
-	# con la demo apagada, pagar en el casino 2 sigue con la torre 3
+	# con la demo apagada, pagar en el casino de la etapa 6 sigue con la torre 7
 	Demo.forced = 0
 	var main2 := _make_main()
 	await process_frame
 	while main2.generating or main2.logic == null:
 		await process_frame
 	main2.in_menu = false
-	main2.stage_number = 2
-	main2.run.stage = 2
+	main2.stage_number = 6
+	main2.run.stage = 6
 	main2.run.claridad = 100000
 	main2.enter_casino(true)
 	main2.casino.cell = main2.casino.lay.exit
@@ -239,7 +239,7 @@ func test_end() -> void:
 	main2._toll_options = main2.casino.toll_dialog().options
 	main2._on_dialogue_chosen(0)
 	await process_frame
-	check(not main2.demo_end.visible and not main2.run_over and main2.stage_number == 3, "sin la demo, pagar en el casino 2 sigue con la torre 3")
+	check(not main2.demo_end.visible and not main2.run_over and main2.stage_number == 7, "sin la demo, pagar en el casino de la etapa 6 sigue con la torre 7")
 	main2._cancel_jobs()
 	main2.queue_free()
 	await process_frame

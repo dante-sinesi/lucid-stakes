@@ -26,7 +26,7 @@ func _init() -> void:
 
 
 func test_contents() -> void:
-	for stage in [1, 2]:
+	for stage in [1, 2, 3, 4, 5, 6]:
 		var n := TowerBank.count("pesadilla", stage)
 		check(n >= 12, "la etapa %d tiene al menos 12 torres en el banco (%d)" % [stage, n])
 		var seeds := {}
@@ -41,7 +41,7 @@ func test_contents() -> void:
 			hashes[str(res.logic.blocks.keys().size()) + ":" + str(res.path.size()) + ":" + str(res.logic.goal_cell)] = true
 		check(bad == 0, "etapa %d: todas las torres se ganan con su camino (%d fallan)" % [stage, bad])
 		check(seeds.size() == n and hashes.size() == n, "etapa %d: no hay torres repetidas (%d semillas, %d formas de %d)" % [stage, seeds.size(), hashes.size(), n])
-	check(not TowerBank.has("pesadilla", 5) and TowerBank.pick("pesadilla", 5, 0).is_empty(), "las etapas que no están en el banco se generan como siempre")
+	check(not TowerBank.has("pesadilla", 7) and TowerBank.pick("pesadilla", 7, 0).is_empty(), "las etapas que no están en el banco se generan como siempre")
 	check(TowerBank.pick("pesadilla", 1, 3).seed_used == TowerBank.pick("pesadilla", 1, 3 + TowerBank.count("pesadilla", 1)).seed_used, "la elección es determinista (módulo la cantidad)")
 
 
