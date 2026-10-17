@@ -135,10 +135,19 @@ static func _from_layers(text: String, size_hint := Vector2i(0, 0)) -> RefCounte
 	return t
 
 
-## Una fila angosta: atrás del jugador un hierro (no se puede tirar de él), adelante un bloque común con otro hierro encima (no se puede trepar), sin piso a los costados.
-## No queda más que empujar el bloque común hasta dejarlo de escalón junto al portal.
+## Una escalera que se arma empujando: la plataforma alta (x = 5..8) no se trepa de un salto, así que hay que empujar el bloque suelto hasta su pie; arriba,
+## otro bloque suelto se empuja hasta quedar de escalón junto a la torrecita dorada.
 static func _empujar() -> RefCounted:
-	return _from_layers("[0,0,0;0,1,0;0,1,0;0,1,0;0,1,0;0,1,0;0,0,0;],[0,H,0;0,p,0;0,1,0;0,0,0;0,0,0;0,portal,0;0,0,0;],[0,0,0;0,0,0;0,H,0;0,0,0;0,0,0;0,0,0;0,0,0;]")
+	var t := _new(9, 3)
+	_fill(t, 0, 8, 0, 2, 0)
+	_fill(t, 5, 8, 0, 2, 1)
+	_fill(t, 5, 8, 0, 2, 2)
+	t.add_block(Vector3i(3, 1, 1))   # el primer escalón (hay que dejarlo en x = 4)
+	t.add_block(Vector3i(6, 3, 1))   # el segundo (hay que dejarlo en x = 7)
+	t.add_block(Vector3i(8, 3, 1))   # la torrecita dorada
+	t.player = Vector3i(0, 1, 1)
+	_goal(t, Vector3i(8, 3, 1))
+	return t
 
 
 ## Un bloque suelto al lado del personaje, sobre un piso largo: tirar de él una vez completa la lección (empujarlo no cuenta; el piso de atrás alcanza para tirar).
