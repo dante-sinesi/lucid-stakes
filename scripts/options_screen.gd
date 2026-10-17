@@ -4,6 +4,7 @@ extends Control
 ## tiene su botón Restablecer. Al cambiar el idioma avisa con `language_changed` para que main reconstruya los menús.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const NOTE_WRAP := 940   # ancho máximo (px) de las notas bajo cada ajuste: más largas se parten en renglones
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Loc := preload("res://scripts/loc.gd")
 const Settings := preload("res://scripts/settings.gd")
@@ -68,7 +69,7 @@ func _init() -> void:
 	margin.add_theme_constant_override("margin_bottom", 14)
 	add_child(margin)
 	_col = VBoxContainer.new()
-	_col.add_theme_constant_override("separation", 9)
+	_col.add_theme_constant_override("separation", 4)
 	_col.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(_col)
 	var title := UI.label(_col, Loc.t("Opciones"), 5, UI.GOLD)
@@ -91,7 +92,7 @@ func _init() -> void:
 	var inner := {}
 	for t in TABS:
 		var page := VBoxContainer.new()
-		page.add_theme_constant_override("separation", 9)
+		page.add_theme_constant_override("separation", 3)
 		if t == "controles":   # (esta pestaña tiene su propio desplazamiento, con el aviso fijo abajo)
 			page.name = "pagina_" + t
 			page.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -137,23 +138,23 @@ func _build_general(page: Control) -> void:
 	group = ButtonGroup.new()
 	reading_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "lectura_si", _on_reading.bind(true))
 	reading_buttons["off"] = _toggle(row, Loc.t("No"), group, "lectura_no", _on_reading.bind(false))
-	UI.label(_page, Loc.t("Letras más claras y con contorno."), 2, Draw.MARBLE)
+	UI.label(_page, Loc.t("Letras más claras y con contorno."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Rosa de los vientos"))
 	group = ButtonGroup.new()
 	compass_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "rosa_si", _on_compass.bind(true))
 	compass_buttons["off"] = _toggle(row, Loc.t("No"), group, "rosa_no", _on_compass.bind(false))
-	UI.label(_page, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), 2, Draw.MARBLE)
+	UI.label(_page, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Alto contraste"))
 	group = ButtonGroup.new()
 	contrast_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "contraste_si", _on_contrast.bind(true))
 	contrast_buttons["off"] = _toggle(row, Loc.t("No"), group, "contraste_no", _on_contrast.bind(false))
-	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE)
+	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Datos de juego"))
 	var data_button := UI.button(Loc.t("Abrir la carpeta"), false, 2.4, 0, false)
 	data_button.name = "abrir_carpeta"
 	data_button.pressed.connect(Telemetry.open_folder)
 	row.add_child(data_button)
-	UI.label(_page, Loc.t("Los datos de tus partidas quedan sólo en tu compu. Si querés ayudar con el balance, mandanos telemetria.jsonl."), 2, Draw.MARBLE)
+	UI.label(_page, Loc.t("Tus datos quedan sólo en tu compu. Para ayudar, mandanos telemetria.jsonl."), 2, Draw.MARBLE, false, NOTE_WRAP)
 
 
 func _build_interface() -> void:
