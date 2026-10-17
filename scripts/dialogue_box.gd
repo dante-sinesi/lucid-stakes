@@ -16,6 +16,8 @@ const Sfx := preload("res://scripts/sfx.gd")
 const LuzIcon := preload("res://scripts/luz_icon.gd")
 const ClarityIcon := preload("res://scripts/clarity_icon.gd")
 const Farolin := preload("res://scripts/farolin.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
+const Controls := preload("res://scripts/controls.gd")
 
 signal line_shown(index: int)
 signal finished   ## se mostraron todas las líneas (o se saltaron)
@@ -153,9 +155,9 @@ func _build_options() -> void:
 		l.text = str(_options[i].text)
 		l.name = "opcion_%d" % i
 		add_child(l)
-		var w := maxf(l.get_combined_minimum_size().x + 56.0, 190.0)
+		var w := maxf(l.get_combined_minimum_size().x + 110.0, 230.0)   # (a la izquierda va el botón que elige la opción: del mando o número del teclado)
 		_opt_rects.append(Rect2(Vector2(x, OPT_Y), Vector2(w, OPT_H)))
-		l.position = Vector2(x + 28.0, OPT_Y + 14.0)
+		l.position = Vector2(x + 76.0, OPT_Y + 14.0)
 		l.visible = false
 		_opt_labels.append(l)
 		x += w + 24.0
@@ -295,6 +297,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _active or not blocking or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	if is_choosing():
+		var direct := direct_choice(event)
+		if direct >= 0:
+			if options_visible() and direct < _options.size() and bool(_options[direct].enabled):
+				selected = direct
+				confirm_choice()
+			get_viewport().set_input_as_handled()
+			return
 		match event.keycode:
 			KEY_LEFT, KEY_A:
 				select_step(-1)
@@ -316,6 +325,26 @@ func _unhandled_input(event: InputEvent) -> void:
 			if any_key:
 				advance()
 				get_viewport().set_input_as_handled()
+
+
+## La opción que elige un botón apretado sin moverse por la pantalla: con el mando, A, X e Y (las que traduce el puente a Enter, Espacio y C) y con el teclado los números 1, 2 y 3. -1 si ninguna.
+func direct_choice(event: InputEventKey) -> int:
+	match event.keycode:
+		KEY_1, KEY_KP_1:
+			return 0
+		KEY_2, KEY_KP_2:
+			return 1
+		KEY_3, KEY_KP_3:
+			return 2
+	if Controls.using_pad:
+		match event.keycode:
+			KEY_ENTER, KEY_KP_ENTER:
+				return 0
+			KEY_SPACE:
+				return 1
+			KEY_C:
+				return 2
+	return -1
 
 
 func _draw() -> void:
@@ -355,6 +384,11 @@ func _draw() -> void:
 			var en := bool(_options[i].enabled)
 			_opt_labels[i].color = (Color(0.45, 0.4, 0.42) if not en else (Color(1.0, 0.95, 0.7) if i == selected else WHITE_TEXT))
 			Draw.card(self, _opt_rects[i], 4.0, 3 if not en else (1 if i == selected else 0), 0.0, 5 + i, i == selected and en, -1.0)
+			var gc: Vector2 = _opt_rects[i].position + Vector2(40.0, _opt_rects[i].size.y * 0.5)
+			if Controls.using_pad:
+				PadGlyph.draw(self, gc, 17.0, PadGlyph.slot_for_option(i), not en)
+			else:
+				PadGlyph.draw_key(self, gc, 15.0, str(i + 1), not en)
 	# Indicador de "seguí": un cubito que sube y baja cuando la línea terminó de escribirse
 	if blocking and not is_typing() and _options.is_empty():
 		var bob := sin(_t * 5.0) * 3.0
