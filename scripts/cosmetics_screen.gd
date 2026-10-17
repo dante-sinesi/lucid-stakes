@@ -118,14 +118,18 @@ func refresh() -> void:
 				_add_tile(c.id, c, Profile.has_cosmetic(c.id), outfit == c.id, cur_char, "", c.id)
 	var owned := 0
 	var by_rarity := {}
+	var demo := preload("res://scripts/demo.gd")   # (en la demo los totales son los de lo que la demo incluye)
+	var total := 0
 	for r in Cosmetics.RARITY_ORDER:
 		var have := 0
-		for c in Cosmetics.by_rarity(r):
+		var pool: Array = Cosmetics.by_rarity(r).filter(func(c): return demo.cosmetic_allowed(c.id))
+		for c in pool:
 			if Profile.has_cosmetic(c.id):
 				have += 1
 		owned += have
-		by_rarity[r] = Loc.f("%s %d/%d", [Loc.t(str(Cosmetics.RARITIES[r].name)), have, Cosmetics.by_rarity(r).size()])
-	count_label.text = Loc.f("Conseguidos: %d de %d     %s     %s     %s", [owned, Cosmetics.ALL.size(), by_rarity.comun, by_rarity.raro, by_rarity.epico])
+		total += pool.size()
+		by_rarity[r] = Loc.f("%s %d/%d", [Loc.t(str(Cosmetics.RARITIES[r].name)), have, pool.size()])
+	count_label.text = Loc.f("Conseguidos: %d de %d     %s     %s     %s", [owned, total, by_rarity.comun, by_rarity.raro, by_rarity.epico])
 	var ch_info := Characters.get_character(cur_char)
 	name_label.text = Loc.t(str(ch_info.name))
 	var worn: Array[String] = []

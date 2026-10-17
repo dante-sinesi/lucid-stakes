@@ -128,6 +128,7 @@ func test_menu() -> void:
 	mm.buttons["cosmeticos"].pressed.emit()
 	var cs = mm.cosmetics
 	check(cs.tiles["gato"].owned and cs.tiles["perro"].owned and cs.tiles["dante"].owned and not cs.tiles["conejo"].owned and not cs.tiles["pinguino"].owned, "los personajes de la demo están y los otros salen con ?")
+	check(str(cs.count_label.text).contains("4 de 4"), "los contadores de cosméticos cuentan sólo lo de la demo (%s)" % str(cs.count_label.text))
 	cs.set_tab("gorros")
 	check(cs.tiles["corona"].owned and cs.tiles["gorro_lana"].owned and not cs.tiles["copa"].owned and not cs.tiles["halo"].owned, "gorros: corona y gorro de lana; el resto con ?")
 	cs.tiles["copa"].hovered.emit()

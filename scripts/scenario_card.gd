@@ -64,8 +64,11 @@ func lock_soon() -> void:
 	affordable = false
 	enter_button.disabled = true
 	enter_button.cost = 0
+	enter_button.cube = 2.2   # (el texto es más largo que "Jugar": se achica para que entre en la tarjeta)
+	enter_button.min_cells_w = 30
 	enter_button.set_label(preload("res://scripts/demo.gd").soon_text())
 	enter_button.primary = false
+	enter_button.position.x = (SIZE.x - maxf(enter_button.custom_minimum_size.x, enter_button.size.x)) * 0.5
 
 
 func _process(delta: float) -> void:
