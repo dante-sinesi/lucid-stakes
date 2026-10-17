@@ -2,6 +2,8 @@ extends Control
 ## Menú de pausa (Esc): Continuar, Reintentar la torre, Volver al menú principal, Abandonar partida y Salir. Hecho de cubitos.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
 const OptionsScreen := preload("res://scripts/options_screen.gd")
 const Loc := preload("res://scripts/loc.gd")
@@ -16,6 +18,7 @@ var buttons := {}
 var column: VBoxContainer
 var center: CenterContainer
 var options: Control
+var hints
 
 
 func _init() -> void:
@@ -41,6 +44,8 @@ func _init() -> void:
 	_button("abandonar", Loc.t("Abandonar partida"), false, func(): abandon_run.emit())
 	_button("opciones", Loc.t("Opciones"), false, func(): show_options(true))
 	_button("salir", Loc.t("Salir del juego"), false, func(): quit_game.emit())
+	hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Continuar"), "call": func(): resume.emit()}])
 	options = OptionsScreen.new()
 	options.back.connect(func(): show_options(false))
 	options.language_changed.connect(func(): language_changed.emit())
@@ -88,6 +93,8 @@ func set_tutorial_lock(on: bool) -> void:
 ## Muestra u oculta las opciones dentro de la pausa.
 func show_options(on: bool) -> void:
 	center.visible = not on
+	if hints != null:
+		hints.visible = not on
 	options.visible = on
 	if on:
 		options.refresh()

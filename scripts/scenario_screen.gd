@@ -4,6 +4,8 @@ extends Control
 ## es gratis. Sin la palabra "Luz": la moneda es el ícono del sol.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Profile := preload("res://scripts/profile.gd")
 const Scenarios := preload("res://scripts/scenarios.gd")
@@ -83,6 +85,29 @@ func _init() -> void:
 	back_button.pressed.connect(func(): back.emit())
 	col.add_child(back_button)
 	_build_info_panel()
+	PadHints.attach(self, [{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir escenario")},
+			{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Entrar"), "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": _enter_current, "when": func(): return not info_panel.visible},
+			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Información"), "keycode": KEY_C, "call": _info_current, "when": func(): return not info_panel.visible},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": func(): back.emit(), "when": func(): return not info_panel.visible}],
+			[back_button, left_button, right_button])
+
+
+## El escenario que está en el centro (el que se ve al desplazar las tarjetas con las flechas).
+func current_id() -> String:
+	var ids: Array = [Scenarios.TUTORIAL.id]
+	for sc in Scenarios.ALL:
+		ids.append(sc.id)
+	return str(ids[clampi(int(round(float(scroll.scroll_horizontal) / CARD_STEP)), 0, ids.size() - 1)])
+
+
+func _enter_current() -> void:
+	var id := current_id()
+	if play_buttons.has(id) and not play_buttons[id].disabled:
+		play_buttons[id].pressed.emit()
+
+
+func _info_current() -> void:
+	show_info(current_id())
 
 
 func _build_info_panel() -> void:
@@ -140,8 +165,7 @@ func refresh() -> void:
 
 
 func focus_default() -> void:
-	if play_buttons.has(Scenarios.FREE):
-		play_buttons[Scenarios.FREE].grab_focus()
+	pass   # (se elige con las flechas y Enter: ningún botón queda apuntado)
 
 
 ## Desplaza las tarjetas una a la izquierda (-1) o a la derecha (1).

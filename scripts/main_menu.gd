@@ -3,6 +3,8 @@ extends Control
 ## Avisa con señales; main.gd decide qué hacer.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const SwirlBG := preload("res://scripts/swirl_bg.gd")
@@ -29,6 +31,7 @@ var _soon_tween: Tween
 var cosmetics: Control   # pantalla de cosméticos
 var meta: Control   # pantalla del Despertar (meta-progresión)
 var options: Control   # pantalla de opciones
+var main_hints
 var credits_button: Button
 var main_center: CenterContainer
 var column: VBoxContainer
@@ -92,6 +95,8 @@ func _init() -> void:
 	credits_button.pressed.connect(func(): show_panel("creditos"))
 	add_child(credits_button)
 	buttons["creditos"] = credits_button
+	main_hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
+			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Créditos"), "keycode": KEY_C, "call": func(): show_panel("creditos"), "when": func(): return main_center.visible}], [credits_button])
 
 
 ## Habilidades persistentes: en la demo el botón sólo avisa que es del juego completo.
@@ -143,6 +148,8 @@ func set_continue(stage_saved: int) -> void:
 ## Muestra una sola pantalla: "principal", "escenarios", "despertar", "cosmeticos", "opciones", "creditos" o "licencias".
 func show_panel(which: String) -> void:
 	main_center.visible = which == "principal"
+	if main_hints != null:
+		main_hints.visible = which == "principal"
 	credits.visible = which == "creditos"
 	licenses.visible = which == "licencias"
 	scenarios.visible = which == "escenarios"
@@ -157,7 +164,6 @@ func show_panel(which: String) -> void:
 	meta.visible = which == "despertar"
 	if which == "despertar":
 		meta.refresh()
-	credits_button.visible = which == "principal"
 	var panel: Control = main_center
 	match which:
 		"principal":
@@ -167,19 +173,19 @@ func show_panel(which: String) -> void:
 			scenarios.focus_default()
 		"cosmeticos":
 			panel = cosmetics
-			cosmetics.back_button.grab_focus()
+			cosmetics.focus_default()
 		"opciones":
 			panel = options
 			options.focus_default()
 		"despertar":
 			panel = meta
-			meta.back_button.grab_focus()
+			meta.focus_default()
 		"creditos":
 			panel = credits
-			credits.find_child("volver_creditos", true, false).grab_focus()
+			pass
 		"licencias":
 			panel = licenses
-			licenses.find_child("volver_licencias", true, false).grab_focus()
+			pass
 	MenuAnim.stagger(MenuAnim.buttons_in(panel), 0.05, 0.28, 0.05)
 
 

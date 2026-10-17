@@ -124,7 +124,6 @@ It gives you exactly the moves you need: if you lose one or step back, it blows 
 	"Prueba": "Trial",
 	"¡Terminaste la demo!": "You finished the demo!",
 	"Fin de la demo": "End of the demo",
-	"Agregalo a tu lista de deseos": "Add it to your wishlist",
 	"Jugar de nuevo": "Play again",
 	"Vidas que te quedan": "Lives left",
 }

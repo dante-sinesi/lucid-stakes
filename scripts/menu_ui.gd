@@ -18,6 +18,10 @@ const GOLD := Draw.GOLD
 
 
 ## Texto de cubitos. `cube`: lado de un cubito en píxeles; `wrap_px` > 0 parte el texto en líneas de ese ancho.
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
+
+
 static func label(parent: Node, text: String, cube: float, color: Color, centered := true, wrap_px := 0) -> Control:
 	var l := VoxelLabel.new()
 	l.cube = cube
@@ -74,6 +78,8 @@ static func make_credits_panel(on_back: Callable, on_licenses: Callable) -> Cont
 	back.name = "volver_creditos"
 	back.pressed.connect(on_back)
 	col.add_child(back)
+	PadHints.attach(panel, [{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Licencias"), "keycode": KEY_C, "call": on_licenses},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": on_back}], [lic, back])
 	return panel
 
 
@@ -84,6 +90,7 @@ static func make_licenses_panel(on_back: Callable) -> Control:
 	back.name = "volver_licencias"
 	back.pressed.connect(on_back)
 	panel.find_child("columna", true, false).add_child(back)
+	PadHints.attach(panel, [{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": on_back}], [back])
 	return panel
 
 

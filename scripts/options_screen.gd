@@ -4,6 +4,8 @@ extends Control
 ## tiene su botón Restablecer. Al cambiar el idioma avisa con `language_changed` para que main reconstruya los menús.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const NOTE_WRAP := 940   # ancho máximo (px) de las notas bajo cada ajuste: más largas se parten en renglones
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Loc := preload("res://scripts/loc.gd")
@@ -125,6 +127,10 @@ func _init() -> void:
 	back_button.name = "volver_opciones"
 	back_button.pressed.connect(func(): back.emit())
 	bottom.add_child(back_button)
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")},
+			{"name": "LB|RB", "key": "Q | E", "text": Loc.t("Pestaña")},
+			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Restablecer"), "keycode": KEY_C, "call": reset_tab, "when": func(): return not Controls.capturing},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "call": func(): back.emit()}], [reset_button, back_button])
 	show_tab("general")
 	refresh()
 
@@ -574,7 +580,7 @@ func _on_volume(dir: int) -> void:
 
 
 func focus_default() -> void:
-	back_button.grab_focus()
+	PadHints.focus_first(self)
 
 
 ## Esc vuelve; las acciones de vista (Q y E, LB y RB en el mando) cambian de pestaña.

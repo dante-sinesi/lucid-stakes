@@ -4,6 +4,8 @@ extends Control
 ## tenés se ve en gris con un "?" y, al pasar el mouse, dice cómo conseguirlo. Los cosméticos se ganan con los dados de la pantalla de carga.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Profile := preload("res://scripts/profile.gd")
 const Cosmetics := preload("res://scripts/cosmetics.gd")
@@ -84,6 +86,8 @@ func _init() -> void:
 	back_button.name = "volver_cosmeticos"
 	back_button.pressed.connect(func(): back.emit())
 	_col.add_child(back_button)
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "← | → | ↑ | ↓", "text": Loc.t("Moverse")},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": func(): back.emit()}], [back_button])
 
 
 func set_tab(t: String) -> void:
@@ -309,3 +313,7 @@ class _Mark extends Control:
 	func _draw() -> void:
 		var l: Dictionary = VFont.layout(["?"])
 		D.text_cells(self, size * 0.5 - Vector2(l.size) * 4.0 * 0.5 - Vector2(0, 4), l.cells, l.size.y, 4.0, Color(0.9, 0.87, 1.0), 0.0, 1, true)
+
+
+func focus_default() -> void:
+	PadHints.focus_first(self)

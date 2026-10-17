@@ -5,6 +5,8 @@ extends Control
 ## abilities.gd) y la Luz se gasta en la entrada de los escenarios (ver scenario_screen.gd).
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Profile := preload("res://scripts/profile.gd")
 const Abilities := preload("res://scripts/abilities.gd")
@@ -63,7 +65,10 @@ func _init() -> void:
 	back_button.pressed.connect(func(): back.emit())
 	col.add_child(back_button)
 	_build_info_panel()
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "← | → | ↑ | ↓", "text": Loc.t("Moverse")},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": func(): back.emit(), "when": func(): return not info_panel.visible}], [back_button])
 	tip = UI.label(self, "", 2, Draw.MARBLE, false, 520)
+	tip.localize = false   # (el texto ya se arma con las partes traducidas)
 	tip.name = "cartel"
 	tip.plate_alpha = 1.0
 	tip.z_index = 20
@@ -79,7 +84,7 @@ func tip_text(id: String) -> String:
 	return "%s
 %s
 %s
-%s" % [Loc.t(str(a.name)), Loc.t("Ya la tenés") if Profile.has_ability(id) else Loc.t("Todavía no la tenés"), Loc.t(str(a.desc)),
+%s" % [Loc.t(str(a.name)), Loc.t("Ya la tienes") if Profile.has_ability(id) else Loc.t("Todavía no la tienes"), Loc.t(str(a.desc)),
 			Loc.f("Se gana escapando en: %s", [", ".join(names)])]
 
 
@@ -177,7 +182,7 @@ func show_info(id: String) -> void:
 		ch.queue_free()
 	(info_icon as _BigIcon).setup(id, owned)
 	UI.label(info_box, a.name, 5, UI.GOLD if owned else Color(0.7, 0.67, 0.78), false)
-	UI.label(info_box, "Ya la tenés" if owned else "Todavía no la tenés", 2, Color(0.65, 0.95, 0.8) if owned else Color(0.78, 0.74, 0.86), false)
+	UI.label(info_box, "Ya la tienes" if owned else "Todavía no la tienes", 2, Color(0.65, 0.95, 0.8) if owned else Color(0.78, 0.74, 0.86), false)
 	UI.label(info_box, a.desc, 3, Draw.MARBLE, false, 740)
 	UI.label(info_box, ("Cómo la conseguiste" if owned else "Cómo conseguirla"), 3, UI.GOLD, false)
 	UI.label(info_box, "Escapando de la pesadilla (las 27 etapas) en alguno de estos escenarios:", 2, Color(0.88, 0.84, 0.96), false, 740)
@@ -266,3 +271,7 @@ class _BigIcon extends Control:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.1, 0.06, 0.16))
 		draw_rect(Rect2(Vector2.ZERO, size), Color(1, 1, 1, 0.12), false, 2.0)
 		A.draw(self, ability_id, size * 0.5 + Vector2(0, 10), 13.0, owned, _t)
+
+
+func focus_default() -> void:
+	PadHints.focus_first(self)

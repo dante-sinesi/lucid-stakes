@@ -51,6 +51,7 @@ func _init() -> void:
 	check(not main.pause_menu.buttons["reiniciar"].visible, "en la pausa del casino no aparece reintentar")
 	main.pause_menu.set_restart(3, false, false, false)
 	check(main.pause_menu.buttons["reiniciar"].visible and main.pause_menu.buttons["reiniciar"].text.contains("vida"), "en la torre sí, y dice que cuesta una vida")
+	SaveGame.delete()   # (no se deja una partida guardada en el espacio de pruebas)
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame

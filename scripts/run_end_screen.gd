@@ -5,6 +5,8 @@ extends Control
 const NumberFormat := preload("res://scripts/number_format.gd")
 const Stages := preload("res://scripts/stages.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const SwirlBG := preload("res://scripts/swirl_bg.gd")
@@ -78,6 +80,8 @@ func _init() -> void:
 	menu_button.name = "menu"
 	menu_button.pressed.connect(func(): to_menu.emit())
 	btns.add_child(menu_button)
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Nueva partida"), "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): new_game.emit()},
+			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Menú principal"), "keycode": KEY_SPACE, "call": func(): to_menu.emit()}], [new_button, menu_button])
 
 
 ## Filas del resumen: [[etiqueta, número, con_icono_de_claridad]].

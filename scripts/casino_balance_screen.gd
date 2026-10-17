@@ -6,6 +6,8 @@ extends Control
 
 const Rules := preload("res://scripts/casino_rules.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Services := preload("res://scripts/casino_services.gd")
 const Loc := preload("res://scripts/loc.gd")

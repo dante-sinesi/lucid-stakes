@@ -13,6 +13,40 @@ var items: Array = []
 var _icons: Array = []
 var _labels: Array = []
 var _was_pad := false
+var replaced: Array = []   # los botones que esta botonera reemplaza (ocultos): se liberan al cerrar la pantalla
+
+
+## Pone una botonera abajo de una pantalla (centrada, sobre todo lo demás) y oculta los botones que reemplaza (siguen existiendo, sin foco, para las pruebas). Cada ítem puede traer
+## `keycode` (la tecla —o lista de teclas— que lo acciona mientras la pantalla se ve) y `when` (Callable que dice si vale ahora), además de `call`.
+static func attach(screen: Control, items: Array, replaced: Array = []) -> Control:
+	var bar: Control = load("res://scripts/pad_hints.gd").new()
+	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_top = -52.0
+	bar.offset_bottom = -8.0
+	screen.add_child(bar)
+	bar.set_items(items)
+	bar.replaced = hide_buttons(replaced)
+	return bar
+
+
+static func hide_buttons(buttons: Array) -> Array:
+	for b in buttons:
+		if b != null:
+			b.visible = false
+			b.focus_mode = Control.FOCUS_NONE
+			b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return buttons
+
+
+## Le da el foco al primer botón visible y activo que encuentre dentro de `node` (para las pantallas que se quedaron sin su botón Volver).
+static func focus_first(node: Node) -> bool:
+	if node is BaseButton and (node as Control).is_visible_in_tree() and (node as Control).focus_mode != Control.FOCUS_NONE and not (node as BaseButton).disabled:
+		(node as Control).grab_focus()
+		return true
+	for c in node.get_children():
+		if focus_first(c):
+			return true
+	return false
 
 
 ## Saca el foco de todos los botones de una pantalla: se juega apretando botones y no moviéndose por la interfaz (el mouse sigue andando).
@@ -108,6 +142,37 @@ func _init() -> void:
 	add_theme_constant_override("separation", 10)
 	alignment = BoxContainer.ALIGNMENT_CENTER
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _exit_tree() -> void:
+	for b in replaced:
+		if is_instance_valid(b) and b.get_parent() == null:
+			b.free()
+
+
+## Las teclas de los ítems que traen `keycode` (mientras la botonera se ve).
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo or not is_visible_in_tree():
+		return
+	for it in items:
+		if not it.has("keycode") or bool(it.get("dim", false)):
+			continue
+		var codes = it.keycode
+		var hit := false
+		if codes is Array:
+			hit = codes.has(event.keycode)
+		else:
+			hit = int(codes) == event.keycode
+		if not hit:
+			continue
+		var cond: Callable = it.get("when", Callable())
+		if cond.is_valid() and not cond.call():
+			continue
+		var act: Callable = it.get("call", Callable())
+		if act.is_valid():
+			act.call()
+			get_viewport().set_input_as_handled()
+			return
 
 
 func _process(_dt: float) -> void:

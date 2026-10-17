@@ -9,6 +9,8 @@ const Showcase := preload("res://scripts/showcase.gd")
 const Items := preload("res://scripts/items.gd")
 const ItemSlot := preload("res://scripts/item_slot.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Loc := preload("res://scripts/loc.gd")
@@ -80,6 +82,14 @@ class Base extends Control:
 		exit_button.name = "salir"
 		exit_button.pressed.connect(func(): request_close())
 		top.add_child(exit_button)
+		var hint_items: Array = []
+		var replaced: Array = [exit_button]
+		var shop_node := top.get_node_or_null("tienda")
+		if shop_node != null:
+			replaced.append(shop_node)
+			hint_items.append({"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Tienda"), "keycode": KEY_SPACE, "call": func(): open_shop.emit()})
+		hint_items.append({"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": func(): request_close()})
+		PadHints.attach(self, hint_items, replaced)
 		var center := CenterContainer.new()
 		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE

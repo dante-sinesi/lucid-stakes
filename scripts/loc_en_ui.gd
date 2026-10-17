@@ -36,7 +36,6 @@ const TABLE := {
 	"Reintentar": "Retry",
 	"Reintentar (−%d de claridad)": "Retry (−%d clarity)",
 	"Salir al menú principal": "Exit to main menu",
-	"Terminar el run": "End the run",
 	"R: reintentar (−%d de claridad)": "R: retry (−%d clarity)",
 	"No te alcanza para reintentar (cuesta %d): R termina el run": "Not enough to retry (it costs %d): R ends the run",
 	"Freno: %d movimientos": "Brake: %d moves",
@@ -158,8 +157,8 @@ const TABLE := {
 	"- %s: %s%s": "- %s: %s%s",
 	# --- habilidades (pantalla) ---
 	"Mejor etapa: %d     Runs: %d     Escapes: %d     Pruebas superadas: %d": "Best stage: %d     Runs: %d     Escapes: %d     Trials passed: %d",
-	"Ya la tenés": "You have it",
-	"Todavía no la tenés": "You don't have it yet",
+	"Ya la tienes": "You have it",
+	"Todavía no la tienes": "You don't have it yet",
 	"Cómo la conseguiste": "How you got it",
 	"Cómo conseguirla": "How to get it",
 	"Superando la prueba «%s»: %s": "By passing the trial «%s»: %s",
