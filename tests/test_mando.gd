@@ -27,7 +27,87 @@ func _tap(button: int) -> void:
 		await process_frame
 
 
+func _key(code: int) -> void:
+	var e := InputEventKey.new()
+	e.keycode = code as Key
+	e.physical_keycode = code as Key
+	e.pressed = true
+	Input.parse_input_event(e)
+	await process_frame
+	await process_frame
+	e = InputEventKey.new()
+	e.keycode = code as Key
+	e.physical_keycode = code as Key
+	e.pressed = false
+	Input.parse_input_event(e)
+	await process_frame
+
+
+## Los juegos del casino con el mando (A, X, Y y la cruceta ya llegan como Enter, Espacio, C y flechas): se juega apretando botones y la barra de ayuda dice cuáles.
+func test_games() -> void:
+	var Controls := preload("res://scripts/controls.gd")
+	Controls.using_pad = true
+	var RunState := preload("res://scripts/run_state.gd")
+	var run := RunState.new()
+	run.claridad = 600
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	# ruleta
+	var r = preload("res://scripts/roulette_screen.gd").new()
+	root.add_child(r)
+	r.setup(run, rng, true)
+	for i in 3:
+		await process_frame
+	check(r.pad_hints != null and r.pad_hints.visible and r.pad_hints.items.size() >= 6, "la ruleta muestra la barra de botones del mando")
+	check(r.spin_button.focus_mode == Control.FOCUS_NONE, "en la ruleta los botones no toman el foco (no se navega por la pantalla)")
+	await _key(KEY_RIGHT)
+	check(r.pad_cursor == 2, "la cruceta mueve la casilla marcada (%d)" % r.pad_cursor)
+	await _key(KEY_SPACE)
+	check(r.selected == [2], "X pone la ficha en la casilla marcada (%s)" % str(r.selected))
+	var bet0: int = r.bet
+	await _key(KEY_E)
+	check(r.bet != bet0, "RB cambia el tipo de apuesta")
+	await _key(KEY_Q)
+	check(r.bet == bet0, "LB vuelve al tipo anterior")
+	await _key(KEY_ENTER)
+	await process_frame
+	check(r.state != r.State.IDLE, "A gira la ruleta con la apuesta puesta")
+	r.queue_free()
+	await process_frame
+	# tragamonedas
+	var sl = preload("res://scripts/slots_screen.gd").new()
+	root.add_child(sl)
+	sl.setup(run, rng, true)
+	await process_frame
+	await _key(KEY_ENTER)
+	for i in 6:
+		await process_frame
+	check(sl.ui_state == sl.UiState.HOLD or sl.ui_state == sl.UiState.DONE, "A gira las tragamonedas")
+	if sl.ui_state == sl.UiState.HOLD:
+		await _key(KEY_LEFT)
+		check(sl.holds[0], "la cruceta izquierda retiene el primer carrete")
+		await _key(KEY_SPACE)
+		for i in 4:
+			await process_frame
+		check(sl.ui_state == sl.UiState.DONE or sl.ui_state == sl.UiState.IDLE, "X cobra")
+	sl.queue_free()
+	await process_frame
+	# blackjack
+	var bj = preload("res://scripts/blackjack_screen.gd").new()
+	root.add_child(bj)
+	bj.setup(run, rng, true)
+	await process_frame
+	await _key(KEY_ENTER)
+	for i in 8:
+		await process_frame
+	check(bj.game.phase != bj.Blackjack.Phase.BETTING if "BETTING" in bj.Blackjack.Phase else true, "A reparte")
+	bj.queue_free()
+	await process_frame
+	Controls.using_pad = false
+
+
 func _init() -> void:
+	await test_games()
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.test_mode = true
 	root.add_child(main)

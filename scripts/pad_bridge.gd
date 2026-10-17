@@ -14,6 +14,11 @@ var nav_mode: Callable = func() -> bool: return false
 var _down := {}
 
 
+func _ready() -> void:
+	Controls.using_pad = not Input.get_connected_joypads().is_empty()   # (con un mando conectado, las ayudas muestran sus botones desde el principio)
+	Input.joy_connection_changed.connect(func(_id: int, connected: bool): Controls.using_pad = connected or not Input.get_connected_joypads().is_empty())
+
+
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		if event.pressed and not event.echo:

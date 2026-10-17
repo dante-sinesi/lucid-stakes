@@ -18,6 +18,9 @@ const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const ResultOverlay := preload("res://scripts/result_overlay.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
+const Controls := preload("res://scripts/controls.gd")
 
 signal spun(result: Dictionary)
 signal resolved   ## la tirada ya se cobró y pagó (antes de la animación): hay que guardar
@@ -53,6 +56,8 @@ var overlay                 # el cartel de "¡Ganaste!" / "¡Perdiste!"
 var _spin_tween: Tween
 var _spin_time := 0.0
 var _tick_t := 0.0
+var pad_hints
+var pad_cursor := 1        # la casilla que marca el mando (se mueve con la cruceta; X pone o saca la ficha)
 var shown_claridad := 0     # claridad que se muestra mientras gira (la tirada ya está cobrada, pero no se spoilea el resultado)
 
 
@@ -158,10 +163,21 @@ func _build() -> void:
 	add_child(flash_rect)
 	overlay = ResultOverlay.new()
 	add_child(overlay)
+	pad_hints = PadHints.new()   # la ayuda de los botones del mando (sólo se ve cuando se juega con mando)
+	pad_hints.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	pad_hints.offset_top = -52.0
+	pad_hints.offset_bottom = -8.0
+	add_child(pad_hints)
+	PadHints.focus_none(self)   # con el mando se juega apretando botones, no moviéndose por la pantalla
+	pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "text": Loc.t("Girar")}, {"slot": PadGlyph.Slot.WEST, "text": Loc.t("Poner ficha")}, {"name": "DPAD", "text": Loc.t("Casilla")},
+			{"name": "LB|RB", "text": Loc.t("Tipo de apuesta")}, {"slot": PadGlyph.Slot.NORTH, "text": Loc.t("Premios")}, {"name": "LT", "text": Loc.t("Rotar vitrina")},
+			{"slot": PadGlyph.Slot.EAST, "text": Loc.t("Salir")}])
 	shown_claridad = run.claridad
 
 
 func _process(delta: float) -> void:
+	if wheel != null:
+		wheel.cursor_pocket = pad_cursor if Controls.using_pad and state != State.SPINNING and not prizes_window.visible else -1
 	if wheel != null and not fast and state != State.SPINNING and not prizes_window.visible:
 		wheel.rotation_angle += delta * IDLE_SPIN
 	if state == State.SPINNING and not fast:   # tic tic tic: la bolilla pasa por las casillas, cada vez más despacio
@@ -299,8 +315,48 @@ func _show_overlay(res: Dictionary) -> void:
 	overlay.show_result(res.won, delta, item_id, item_name, RuleUI.notes(res))
 
 
+## Con el mando: A gira, X pone o saca la ficha de la casilla marcada, la cruceta (o el stick) mueve la marca, LB y RB cambian el tipo de apuesta, Y abre los premios, LT rota la vitrina y B sale.
+func _pad_key(code: int) -> bool:
+	if overlay.showing:
+		return false
+	var n := Roulette.POCKETS - 1   # las casillas 1 a 12 (la 0 es de la casa)
+	match code:
+		KEY_ENTER, KEY_KP_ENTER:
+			if state == State.SPINNING:
+				skip_spin()
+			elif can_spin():
+				spin()
+			else:
+				spin()   # (muestra por qué no se puede: "elegí N casillas")
+			return true
+		KEY_SPACE:
+			toggle_pocket(pad_cursor)
+			return true
+		KEY_LEFT, KEY_UP:
+			pad_cursor = posmod(pad_cursor - 2, n) + 1
+			return true
+		KEY_RIGHT, KEY_DOWN:
+			pad_cursor = posmod(pad_cursor, n) + 1
+			return true
+		KEY_Q, KEY_E:
+			var ids: Array = Roulette.BETS.keys()
+			var i := ids.find(bet)
+			select_bet(ids[posmod(i + (1 if code == KEY_E else -1), ids.size())])
+			return true
+		KEY_C:
+			open_prizes()
+			return true
+		KEY_SHIFT:
+			rotate_showcase()
+			return true
+	return false
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or prizes_window.visible or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	if Controls.using_pad and _pad_key(event.keycode):
+		get_viewport().set_input_as_handled()
 		return
 	if not event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		return

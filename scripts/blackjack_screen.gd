@@ -16,6 +16,9 @@ const CasinoTheme := preload("res://scripts/casino_theme.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const ResultOverlay := preload("res://scripts/result_overlay.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
+const Controls := preload("res://scripts/controls.gd")
 
 signal resolved
 signal closed
@@ -160,6 +163,9 @@ func _build() -> void:
 	add_child(flash_rect)
 	overlay = ResultOverlay.new()
 	add_child(overlay)
+	pad_hints = PadHints.new()   # la ayuda de los botones del mando (sólo se ve cuando se juega con mando)
+	col.add_child(pad_hints)   # (debajo de los botones, en la misma columna)
+	PadHints.focus_none(self)   # con el mando se juega apretando botones, no moviéndose por la pantalla
 
 
 func _wait(seconds: float) -> void:
@@ -168,6 +174,54 @@ func _wait(seconds: float) -> void:
 
 
 # --- jugadas -------------------------------------------------------------------------------------------------------------
+
+var pad_hints
+var _hint_key := ""
+
+
+## Los botones del mando que valen ahora (se rearma la barra sólo cuando cambia la situación).
+func _update_hints() -> void:
+	if pad_hints == null:
+		return
+	var key := "%s%s%s%s" % [str(can_deal()), str(can_act()), str(game.can_double()), str(busy)]
+	if key == _hint_key:
+		return
+	_hint_key = key
+	if can_deal():
+		pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "text": Loc.t("Repartir"), "dim": busy}, {"slot": PadGlyph.Slot.EAST, "text": Loc.t("Salir")}])
+	else:
+		pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "text": Loc.t("Pedir"), "dim": busy}, {"slot": PadGlyph.Slot.WEST, "text": Loc.t("Plantarse"), "dim": busy},
+				{"slot": PadGlyph.Slot.NORTH, "text": Loc.t("Doblar"), "dim": busy or not game.can_double()}, {"slot": PadGlyph.Slot.EAST, "text": Loc.t("Salir")}])
+
+
+func _process(_delta: float) -> void:
+	_update_hints()
+
+
+## Con el mando: A reparte o pide carta, X se planta, Y dobla y B sale.
+func _pad_key(code: int) -> bool:
+	match code:
+		KEY_ENTER, KEY_KP_ENTER:
+			if overlay.showing:
+				return false
+			if can_deal():
+				deal()
+			else:
+				hit()
+			return true
+		KEY_SPACE:
+			if overlay.showing:
+				return false
+			if can_deal():
+				deal()
+			else:
+				stand()
+			return true
+		KEY_C:
+			double_down()
+			return true
+	return false
+
 
 func can_deal() -> bool:
 	return not busy and game.phase != Blackjack.Phase.PLAYER
@@ -374,6 +428,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if overlay.showing and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		return   # (el cartel de resultado lo maneja él: Espacio lo saltea; no se salta nada más)
+	if Controls.using_pad and _pad_key(event.keycode):
+		get_viewport().set_input_as_handled()
+		return
 	match event.keycode:
 		KEY_ESCAPE:
 			request_close()

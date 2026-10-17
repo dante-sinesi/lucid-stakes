@@ -24,6 +24,11 @@ var covered: Array = []:
 				chip_age[p] = 0.0   # ficha nueva: salta y cae sobre la casilla
 		covered = v
 		queue_redraw()
+var cursor_pocket := -1:   # la casilla que marca el mando (-1 = ninguna)
+	set(v):
+		if v != cursor_pocket:
+			cursor_pocket = v
+			queue_redraw()
 var result := -1:
 	set(v):
 		result = v
@@ -209,6 +214,8 @@ func _draw() -> void:
 				col = col.darkened(0.55)
 			elif p == hover_pocket:
 				col = col.lightened(0.15)
+			if p == cursor_pocket:   # la marca del mando: la casilla se aclara y titila
+				col = col.lightened(0.35 + 0.15 * sin(_anim * 8.0))
 			if n < k * 0.12 * (0.4 + d / radius):  # mugre que va creciendo hacia afuera
 				col = Draw.corrupt_color(n)
 			Draw.cube(self, pos, g, col, true)
