@@ -20,6 +20,7 @@ const Ideas := preload("res://scripts/ideas.gd")
 const Rooms := preload("res://scripts/rooms.gd")
 const Stages := preload("res://scripts/stages.gd")
 const BlockGuide := preload("res://scripts/block_guide.gd")
+const Farolin := preload("res://scripts/farolin.gd")
 const KeyHint := preload("res://scripts/key_hint.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino_rules.gd")
@@ -103,7 +104,7 @@ var max_height := 0        # altura máxima alcanzada en este intento (no baja s
 var block_nodes := {}
 var player_node: Node3D
 var goal_nodes: Array[Node3D] = []
-var toll_in_tests := false   # las pruebas no cobran el peaje del duende salvo que se pida
+var toll_in_tests := false   # las pruebas no cobran el peaje de Farolín salvo que se pida
 var goal_mat: ShaderMaterial   # el material del portal de salida (apagado hasta que alcance para el peaje)
 const PORTAL_SHADER := preload("res://shaders/portal.gdshader")
 var pivot: Node3D
@@ -185,6 +186,7 @@ var _pending_action := ""     # la acción de movimiento que se está resolviend
 var block_discovery := true   # al llegar a la fila de un bloque nuevo, el tabernero lo explica (las pruebas lo apagan)
 var _dice_intro_pending := false   # tutorial: al abrirse los dados, el tabernero explica el juego
 var _dice_talk := false
+var _toll_options: Array = []   # las salidas que ofrece Farolín en la puerta (ver Farolin.toll_dialog)
 var _keeper_talk := false   # el tabernero del casino está hablando (cuadro de diálogo)
 var key_hint                # las teclas de la lección arriba al centro: grises hasta que se aprietan (ver key_hint.gd)
 var perk_label: Control
@@ -224,7 +226,7 @@ func _ready() -> void:
 	_register_globals()
 	var pad_bridge := PadBridge.new()   # el mando se traduce a las teclas de cada acción
 	pad_bridge.nav_mode = func() -> bool:
-		return in_menu or get_tree().paused or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible)
+		return in_menu or get_tree().paused or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible) or (dialogue != null and dialogue.is_active())
 	add_child(pad_bridge)
 	add_to_group("graphics")
 	_set_depth_mode(depth_mode)
@@ -289,6 +291,7 @@ func _build_hud() -> void:
 	add_child(story_layer)
 	dialogue = DialogueBox.new()
 	dialogue.finished.connect(_on_dialogue_finished)
+	dialogue.chosen.connect(_on_dialogue_chosen)
 	story_layer.add_child(dialogue)
 	var dice_layer := CanvasLayer.new()   # la pantalla de carga con los dados va por encima del juego
 	dice_layer.layer = 25
@@ -671,7 +674,7 @@ func restart() -> void:
 	if trial.get("no_streak", false):
 		perks.append("sin_racha")
 	logic.apply_perks(perks)
-	logic.toll = 0   # (el duende ya no cobra en la torre: está en la puerta de salida del casino, ver casino_scene.gd)
+	logic.toll = 0   # (Farolín ya no cobra en la torre: está en la puerta de salida del casino, ver casino_scene.gd)
 	logic.wallet = run.claridad
 	logic.shield = run.consumables.has("escudo")   # Escudo: protege de la próxima bomba que explote
 	logic.meteors = false
@@ -1080,7 +1083,7 @@ func _build_goal() -> void:
 		return   # el laboratorio no tiene meta
 	if logic.goal_y >= 1000:
 		return   # las lecciones sin meta (cámara, tirar) no tienen portal: no se camina a ningún lado, así que tampoco hay rayo
-	# La baldosa va sobre el bloque meta (ver _refresh) y lo sigue si se lo mueve. Encima, el portal (ondas, dos paños cruzados) y el duende que lo enciende por un peaje.
+	# La baldosa va sobre el bloque meta (ver _refresh) y lo sigue si se lo mueve. Encima, el portal (ondas, dos paños cruzados) y Farolín que lo enciende por un peaje.
 	goal_mat = ShaderMaterial.new()   # las ondas de los portales del casino, claras y doradas: van en la cara de arriba del cubo de salida (ver _make_goal_cube)
 	goal_mat.shader = PORTAL_SHADER
 	goal_mat.set_shader_parameter("col_a", Color(0.95, 0.78, 0.3))
@@ -1090,7 +1093,7 @@ func _build_goal() -> void:
 	_update_goal_light()
 
 
-## El portal se enciende cuando alcanza para pagarle al duende.
+## El portal se enciende cuando alcanza para pagarle a Farolín.
 func _update_goal_light() -> void:
 	if goal_mat != null and logic != null:
 		goal_mat.set_shader_parameter("lit", 1.0 if logic.can_pay_toll() else 0.0)
@@ -1109,6 +1112,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if in_menu:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ESCAPE or Controls.hit(event, "pausa")):
+		if dialogue != null and dialogue.is_choosing():
+			dialogue.cancel_choice()   # Esc cierra la decisión de Farolín sin elegir (se sigue en el casino)
+			return
 		if not targeting.is_empty():
 			cancel_targeting()   # Esc primero cancela la elección de un bloque
 			return
@@ -1680,8 +1686,8 @@ func _on_anim_done() -> void:
 		juice.flash(Color(1.0, 0.9, 0.5), 0.35, 0.7)
 		juice.zoom_punch(0.05)
 	_check_discoveries()
-	if logic.toll_blocked and not logic.won and not training:   # el duende no enciende el portal hasta que le pagues
-		_flash(Loc.f("El duende pide %d de claridad para encender el portal: te faltan %d.", [logic.toll, logic.toll - logic.wallet - logic.claridad]))
+	if logic.toll_blocked and not logic.won and not training:   # Farolín no enciende el portal hasta que le pagues
+		_flash(Loc.f("Farolín pide %d de claridad para encender el portal: te faltan %d.", [logic.toll, logic.toll - logic.wallet - logic.claridad]))
 	if logic.won:
 		if training:
 			if tutorial_index >= 0 and tutorial_locked():   # llegaste, pero te faltan las teclas de la lección: no se pasa
@@ -1758,7 +1764,7 @@ func _refresh() -> void:
 		logic.streak, logic.streak_mult(logic.streak), logic.best_streak, logic.purified_count, seed_value]
 	var total: int = run.claridad + logic.claridad
 	_update_goal_light()
-	var show_toll: bool = not training and not lab_active and tutorial_index < 0 and not (test_mode and not toll_in_tests)   # (lo que cobrará el duende de la puerta del casino: se ve durante toda la torre, en rojo si con lo que traés y lo que juntaste todavía no alcanza)
+	var show_toll: bool = not training and not lab_active and tutorial_index < 0 and not (test_mode and not toll_in_tests)   # (lo que cobrará Farolín de la puerta del casino: se ve durante toda la torre, en rojo si con lo que traés y lo que juntaste todavía no alcanza)
 	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
 	hud_panel.set_toll(next_toll, run.claridad + logic.claridad < next_toll)
 	if total > clarity_counter.value:
@@ -1828,7 +1834,7 @@ func _bank_claridad() -> void:
 	var gained := int(round(logic.claridad * float(trial.get("mult", 1.0))))
 	run.claridad_earned += gained
 	run.gain(gained)
-	if logic.toll > 0:   # el duende cobra por encender el portal
+	if logic.toll > 0:   # Farolín cobra por encender el portal
 		run.claridad = maxi(run.claridad - logic.toll, 0)
 	_trial_msg = ""
 	if not trial.is_empty() and not training:
@@ -1867,11 +1873,11 @@ func enter_casino(restoring := false) -> void:
 	add_child(casino)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	casino.toll_base = 0 if training or lab_active or tutorial_index >= 0 or (test_mode and not toll_in_tests) else RunState.toll_for(run.stage)   # el duende de la puerta de salida cobra la torre que se acaba de superar
+	casino.toll_base = 0 if training or lab_active or tutorial_index >= 0 or (test_mode and not toll_in_tests) else RunState.toll_for(run.stage)   # Farolín de la puerta de salida cobra la torre que se acaba de superar
 	casino.setup(run, rng)
 	_apply_casino_light()
 	casino.left.connect(leave_casino)
-	casino.failed_to_pay.connect(_on_pay_failed)
+	casino.toll_talk.connect(_on_toll_talk)
 	casino.changed.connect(save_game)
 	casino.keeper_talk.connect(_on_keeper_talk)
 	hud_layer.visible = false
@@ -1889,7 +1895,35 @@ func _on_keeper_talk(lines: Array) -> void:
 	dialogue.show_lines(lines, Story.SPEAKER, true)
 
 
-## No alcanzó para el duende y se insistió: se pierde una vida y se vuelve a subir la misma torre (la claridad juntada se conserva).
+## Farolín en la puerta de salida: el cuadro de diálogo con sus salidas (pagar, rehacer la torre o, sin vidas, abandonar). Mientras tanto no se camina.
+func _on_toll_talk() -> void:
+	if casino == null or dialogue.is_active():
+		return
+	var d: Dictionary = casino.toll_dialog()
+	_toll_options = d.options
+	casino.input_locked = true
+	dialogue.show_choice(d.text, d.options, Farolin.SPEAKER)
+
+
+## Se eligió una salida del diálogo (-1: se cerró con Esc y se sigue en el casino).
+func _on_dialogue_chosen(index: int) -> void:
+	if casino == null:
+		return
+	casino.input_locked = false
+	if index < 0 or index >= _toll_options.size():
+		return
+	var id := str(_toll_options[index].id)
+	_toll_options = []
+	match id:
+		Farolin.PAY:
+			casino.pay_toll()
+		Farolin.REDO:
+			_on_pay_failed()
+		Farolin.GIVE_UP:
+			end_run(false, Loc.t("Dejaste que la luz se apagara."))
+
+
+## Se eligió rehacer la torre: se pierde una vida y se vuelve a subir la misma (la claridad juntada se conserva).
 func _on_pay_failed() -> void:
 	if casino == null:
 		return
@@ -1904,7 +1938,7 @@ func _on_pay_failed() -> void:
 		cam.make_current()
 	hud_layer.visible = true
 	restart()
-	_flash(Loc.t("No alcanzó para el duende: perdiste una vida y volvés a subir la torre"))
+	_flash(Loc.t("Perdiste una vida: volvés a subir la torre"))
 	save_game()
 
 

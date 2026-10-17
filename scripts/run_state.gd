@@ -20,7 +20,7 @@ var consumables: Array[String] = []
 var showcase := {}        # la vitrina de esta visita al casino (ver showcase.gd)
 var free_chip := false    # Ficha gratis: la próxima apuesta no cuesta la ficha (no se guarda: se usa en la misma visita)
 var xray := false         # Rayos X: la próxima mano de blackjack muestra la carta tapada del crupier
-var toll_bribe := false   # Soborno: el duende de este casino cobra menos (se gasta al pagar)
+var toll_bribe := false   # Soborno: Farolín de este casino cobra menos (se gasta al pagar)
 var casino_spent := 0   # estadísticas del run
 var casino_won := 0
 var retries := 0          # reintentos de torre en todo el run
@@ -60,13 +60,13 @@ func trial_at(st: int) -> Dictionary:
 	return Trials.for_stage(trial_schedule, st)
 
 
-const TOLL_DISCOUNT := 0.15   # Descuento del duende (por cada uno, hasta 2)
+const TOLL_DISCOUNT := 0.15   # Descuento de Farolín (por cada uno, hasta 2)
 const BRIBE_DISCOUNT := 0.30   # Soborno
 const INTEREST := 0.25   # Interés: lo que crece la claridad que queda al salir del casino
 const INTEREST_CAP := 150   # (con un tope)
 
 
-## Lo que cobra de verdad el duende: el precio de la etapa (`toll_for`) con los descuentos (boosts Descuento del duende y el Soborno).
+## Lo que cobra de verdad Farolín: el precio de la etapa (`toll_for`) con los descuentos (boosts Descuento de Farolín y el Soborno).
 func toll_after_discounts(base: int) -> int:
 	if base <= 0:
 		return 0
@@ -83,7 +83,7 @@ func apply_interest() -> int:
 	return g
 
 
-## La curva del duende (docs/diseno.md §46). Se construye sobre lo que rinde una torre (medido con tests/sim_ingresos.gd: la recta `INCOME_BASE + INCOME_SLOPE × etapa`;
+## La curva de Farolín (docs/diseno.md §46). Se construye sobre lo que rinde una torre (medido con tests/sim_ingresos.gd: la recta `INCOME_BASE + INCOME_SLOPE × etapa`;
 ## lo más que se vio fue 1,5 veces la recta) y tiene una pared: **a partir de la etapa WALL_STAGE no se puede pagar sin boosts ni consumibles que suban la ganancia**,
 ## ni siquiera juntando lo máximo en cada torre y sin gastar nada en el casino.
 static var income_base := 340.0     # (variables, no constantes: el bot las cambia por variable de entorno para probar curvas, tests/bot_runs.gd)
@@ -108,8 +108,8 @@ static func income_ceiling(stage: int) -> float:
 	return income_ceil * income_fit(stage)
 
 
-## Cuánto puede tener como mucho un jugador sin boosts al llegar al duende de la etapa `stage`: todo lo que juntó (al máximo) en las torres hasta ahí, sin gastar nada en el casino,
-## menos lo que ya le cobró el duende en las etapas anteriores (si pudo pagarlas).
+## Cuánto puede tener como mucho un jugador sin boosts al llegar a Farolín de la etapa `stage`: todo lo que juntó (al máximo) en las torres hasta ahí, sin gastar nada en el casino,
+## menos lo que ya le cobró Farolín en las etapas anteriores (si pudo pagarlas).
 static func max_budget_without_boosts(stage: int) -> float:
 	var total := 0.0
 	for k in range(1, stage + 1):
@@ -119,7 +119,7 @@ static func max_budget_without_boosts(stage: int) -> float:
 	return total
 
 
-## Lo que cobra el duende de la puerta de salida del casino después de la torre `stage` (la que se acaba de superar).
+## Lo que cobra Farolín de la puerta de salida del casino después de la torre `stage` (la que se acaba de superar).
 ## Antes de la pared: del 45 % de lo que rinde una torre en la etapa 1 al 75 % en la 7. En la pared: más que todo lo que se pudo juntar sin boosts (el presupuesto máximo), y después crece un 15 % por etapa.
 static func toll_for(stage: int) -> int:
 	var s := maxi(stage, 1)

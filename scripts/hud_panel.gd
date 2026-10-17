@@ -10,7 +10,7 @@ const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 var lives
 var stage_label: Control
 var clarity
-var toll_label: Control      # lo que cobra el duende del portal de salida
+var toll_label: Control      # lo que cobra Farolín del portal de salida
 
 
 ## `with_stage`: false en la taberna y el casino (sólo vida y claridad).
@@ -39,7 +39,7 @@ func _init(with_stage := true) -> void:
 	minimum_size_changed.connect(queue_redraw)
 
 
-## El peaje del duende (0 lo oculta); `short`: te falta claridad para pagarlo.
+## El peaje de Farolín (0 lo oculta); `short`: te falta claridad para pagarlo.
 func set_toll(amount: int, short := false) -> void:
 	toll_label.visible = amount > 0
 	toll_label.text = Loc.f("Peaje %d", [amount])
