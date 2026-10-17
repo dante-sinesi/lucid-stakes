@@ -22,6 +22,7 @@ const Stages := preload("res://scripts/stages.gd")
 const BlockGuide := preload("res://scripts/block_guide.gd")
 const Farolin := preload("res://scripts/farolin.gd")
 const TrialBanner := preload("res://scripts/trial_banner.gd")
+const Telemetry := preload("res://scripts/telemetry.gd")
 const KeyHint := preload("res://scripts/key_hint.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino_rules.gd")
@@ -206,6 +207,7 @@ var right_bar             # barra de boosts (derecha)
 var item_tip: Control     # descripción del ítem bajo el mouse
 var epoch := 0              # sube al volver al menú: las generaciones en curso se descartan
 var _jobs: Array = []       # hilos de generación: la torre de la etapa actual y la de la siguiente (se genera mientras se juega)
+var _attempt_t0 := 0   # cuándo empezó el intento actual de la torre (para la telemetría)
 var _zombies: Array[Thread] = []   # hilos de generación cancelados que todavía no terminaron (ver _cancel_jobs)
 
 
@@ -215,6 +217,7 @@ func _ready() -> void:
 		SaveGame.path = "user://test_save.json"
 		Profile.path = "user://test_profile.json"
 		Settings.path = "user://test_settings.json"
+		Telemetry.path = "user://test_telemetria.jsonl"
 		Profile._loaded_from = ""
 		Settings._loaded = false
 	if test_mode:
@@ -702,6 +705,7 @@ func restart() -> void:
 	_build_lab_signs()
 	banner.text = ""
 	_refresh()
+	_attempt_t0 = Time.get_ticks_msec()
 	_play_trial_banner()
 	call_deferred("_check_discoveries")   # (las filas de abajo de la torre ya están a la altura del jugador)
 
@@ -1694,10 +1698,12 @@ func _on_anim_done() -> void:
 		juice.settle(bn)
 	_moved_blocks.clear()
 	if logic.lost:
+		_log_tower("muerta")
 		juice.add_shake(0.5)
 		juice.flash(Color(0.8, 0.1, 0.15), 0.4, 0.6)
 		juice.tumble()
 	elif logic.won:
+		_log_tower("ganada")
 		juice.gold_burst(player_node.position)
 		juice.flash(Color(1.0, 0.9, 0.5), 0.35, 0.7)
 		juice.zoom_punch(0.05)
@@ -1880,6 +1886,8 @@ func enter_casino(restoring := false) -> void:
 	Music.play("casino")
 	if not restoring:
 		_bank_claridad()
+	if not training and not lab_active and tutorial_index < 0:
+		Telemetry.log_event("casino", {"stage": stage_number, "claridad_in": run.claridad, "lives": run.lives, "boosts": run.boosts.size()})
 	casino = CasinoScene.new()
 	casino.position = Vector3(500, 0, 0)  # lejos de la torre: la cámara ortogonal del casino no ve nada de ella
 	add_child(casino)
@@ -1923,9 +1931,12 @@ func _on_dialogue_chosen(index: int) -> void:
 		return
 	casino.input_locked = false
 	if index < 0 or index >= _toll_options.size():
+		if index < 0 and not _toll_options.is_empty():
+			Telemetry.log_event("peaje", {"stage": stage_number, "price": casino.toll_now(), "claridad": run.claridad, "choice": "cancelar"})
 		return
 	var id := str(_toll_options[index].id)
 	_toll_options = []
+	Telemetry.log_event("peaje", {"stage": stage_number, "price": casino.toll_now(), "claridad": run.claridad, "choice": id})
 	match id:
 		Farolin.PAY:
 			casino.pay_toll()
@@ -2201,10 +2212,20 @@ func request_restart() -> void:
 	_flash(Loc.f("Reintento: −%d de claridad", [cost]) if cost > 0 else (Loc.t("Reintento gratis: el Tótem te dio otra vida") if free_by == "totem" else (Loc.t("Reintento sin costo de claridad: ya perdiste una vida") if free_by == "vida" else Loc.t("Reintento gratis: el seguro lo cubre"))))
 
 
+## Anota cómo terminó el intento de la torre (telemetría local: ver telemetry.gd). No se anota en el tutorial, el entrenamiento ni el laboratorio.
+func _log_tower(outcome: String) -> void:
+	if training or lab_active or tutorial_index >= 0 or logic == null or run == null:
+		return
+	Telemetry.log_event("torre", {"stage": stage_number, "outcome": outcome, "seconds": int((Time.get_ticks_msec() - _attempt_t0) / 1000), "moves": logic.moves_made,
+			"claridad": logic.claridad, "retries": run.tower_retries, "lives": run.lives, "cause": logic.lost_reason if outcome == "muerta" else ""})
+
+
 ## Termina el run y muestra el resumen.
 func end_run(victory: bool, reason := "") -> void:
 	if run_over:
 		return
+	if not training:
+		Telemetry.log_event("run_fin", {"victory": victory, "stage": run.max_stage, "towers": run.towers_cleared, "trials": run.trials_cleared, "earned": run.claridad_earned, "lives": run.lives})
 	if lost_screen != null:
 		lost_screen.hide_screen()
 	Music.play("menu")

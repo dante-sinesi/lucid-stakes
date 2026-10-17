@@ -92,4 +92,7 @@ Thanks for playing.",
 	"derecha": "right",
 	"arriba": "up",
 	"abajo": "down",
+	"Datos de juego": "Game data",
+	"Abrir la carpeta": "Open the folder",
+	"Los datos de tus partidas quedan sólo en tu compu. Si querés ayudar con el balance, mandanos telemetria.jsonl.": "Your game data stays on your computer only. If you want to help with the balance, send us telemetria.jsonl.",
 }
