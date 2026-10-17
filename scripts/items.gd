@@ -76,7 +76,7 @@ const ALL: Array[Dictionary] = [
 		"desc": "Devuelve 1,4 veces lo que pagaste por la ficha, en claridad."},
 	{"id": "ancla_chica", "name": "Ancla chica", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 2, "value": 70,
 		"desc": "Un bloque de tu elección no cae aunque pierda sus vecinos (una etapa)."},
-	# ---- los que disparan la ganancia (docs/diseno.md §47): sin ellos no se pasa de la etapa 8 (la pared del duende, §46) ----
+	# ---- los que disparan la ganancia (docs/diseno.md §47): sin ellos no se pasa de la etapa 8 (la pared de Farolín, §46) ----
 	# épicos
 	{"id": "cosecha_doble", "name": "Cosecha doble", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 650,
 		"desc": "Toda la claridad que juntás en la torre vale el doble."},
@@ -97,12 +97,12 @@ const ALL: Array[Dictionary] = [
 		"desc": "Cada bloque que empujás o tirás da +1 de claridad."},
 	{"id": "interes", "name": "Interés", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 215,
 		"desc": "Al salir del casino, la claridad que te queda crece un 25 % (con un tope)."},
-	{"id": "descuento_duende", "name": "Descuento del duende", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220, "stack": true, "max_stack": 2,
-		"desc": "El duende cobra un 15 % menos. Se acumula (hasta 2)."},
+	{"id": "descuento_duende", "name": "Descuento de Farolín", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220, "stack": true, "max_stack": 2,
+		"desc": "Farolín cobra un 15 % menos. Se acumula (hasta 2)."},
 	{"id": "lluvia_de_luz", "name": "Lluvia de luz", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200,
 		"desc": "Purifica todos los bloques de tu capa."},
 	{"id": "soborno", "name": "Soborno", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 190, "casino": true,
-		"desc": "Se usa en el casino: el duende cobra un 30 % menos esta vez."},
+		"desc": "Se usa en el casino: Farolín cobra un 30 % menos esta vez."},
 	# comunes
 	{"id": "bolsillo_de_luz", "name": "Bolsillo de luz", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 100,
 		"desc": "Empezás cada torre con claridad de regalo."},

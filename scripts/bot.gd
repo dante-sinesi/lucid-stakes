@@ -1,6 +1,6 @@
 extends RefCounted
 ## El bot que juega el juego para sacar estadísticas de balance (docs/bot.md): sube las torres siguiendo el camino mínimo que trae el generador (con titubeos y muertes según su habilidad),
-## juega el casino con una política (qué premio busca, cuándo rota la vitrina, cuándo compra en la tienda) y le paga al duende. Usa las reglas reales (TowerLogic, RunState, Roulette, Showcase),
+## juega el casino con una política (qué premio busca, cuándo rota la vitrina, cuándo compra en la tienda) y le paga a Farolín. Usa las reglas reales (TowerLogic, RunState, Roulette, Showcase),
 ## sin ventanas ni animaciones. Las torres salen de un banco (tests/bot_banco.gd) porque generarlas lleva de 10 a 45 segundos cada una.
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
@@ -25,7 +25,7 @@ static func default_config() -> Dictionary:
 		"hesitate": 0.04,        # probabilidad de titubear (ir y volver) en cada paso, para un jugador de habilidad 1,0
 		"die_first": 0.03,       # probabilidad de morir en una torre de la etapa 1 (sube hasta die_last en la 15), para habilidad 1,0
 		"die_last": 0.20,
-		"spend": 0.8,            # fracción de lo que sobra (después de apartar el precio del duende) que se juega en el casino
+		"spend": 0.8,            # fracción de lo que sobra (después de apartar el precio de Farolín) que se juega en el casino
 		"max_rotations": 3,      # cuántas veces rota la vitrina buscando un premio de la lista
 		"play_blind": true,      # si no hay nada de la lista en la vitrina y no se puede rotar: juega igual una apuesta común
 		"free_plays": 0,         # jugadas gratis por visita (el diseño de las monedas; el juego todavía no las tiene)
@@ -109,7 +109,7 @@ static func _wanted(run) -> Dictionary:
 	return {}
 
 
-## Una visita al casino: usa lo que sirve, compra, juega la ruleta buscando premios de la lista y deja apartado lo del duende. Devuelve estadísticas de la visita.
+## Una visita al casino: usa lo que sirve, compra, juega la ruleta buscando premios de la lista y deja apartado lo de Farolín. Devuelve estadísticas de la visita.
 static func casino(run, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictionary:
 	var stats := {"plays": 0, "spent": 0, "bought": 0, "rotations": 0, "won_items": []}
 	Showcase.enter(run, rng)
@@ -166,7 +166,7 @@ static func casino(run, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictiona
 	return stats
 
 
-## Le paga al duende. true si alcanzó (y entonces se cobra, se gasta el Soborno y se suma el Interés).
+## Le paga a Farolín. true si alcanzó (y entonces se cobra, se gasta el Soborno y se suma el Interés).
 static func pay_toll(run) -> bool:
 	var price: int = run.toll_after_discounts(RunState.toll_for(run.stage))
 	if run.claridad < price:

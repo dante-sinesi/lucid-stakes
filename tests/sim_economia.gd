@@ -1,5 +1,5 @@
 extends SceneTree
-## Simulación de la economía casino + torre + duende (docs/diseno.md §46). Un run de 15 etapas por jugador simulado; se comparan curvas del precio del duende.
+## Simulación de la economía casino + torre + Farolín (docs/diseno.md §46). Un run de 15 etapas por jugador simulado; se comparan curvas del precio de Farolín.
 ## Ejecutar: godot --headless --path . -s tests/sim_economia.gd   (variables: RUNS=4000, SEED=1, SKILL=1.0 habilidad del jugador, CURVES="actual,exp,ingreso,poly")
 ##
 ## Qué es medido y qué es supuesto:
@@ -23,7 +23,7 @@ const COIN_MEAN := 1.2         # monedas extra que se juntan por torre (promedio
 const BOOST_P := 0.12          # probabilidad de que una jugada dé un boost de claridad
 const BOOST_GAIN := 0.14       # cuánto sube el ingreso cada boost de claridad (pies de luz, mano de oro, racha larga, ahorro...)
 const BOOST_MAX := 6
-const SPEND := 0.7             # fracción de lo que sobra después de apartar el precio del duende que se gasta en jugadas extra (con claridad)
+const SPEND := 0.7             # fracción de lo que sobra después de apartar el precio de Farolín que se gasta en jugadas extra (con claridad)
 const CLARITY_BACK := 0.3      # fracción de lo gastado en jugadas extra que vuelve como claridad (bolsas de luz)
 const LIFE_P := 0.025          # probabilidad de que una jugada de ruleta dé una vida extra
 const DIE_BASE := 0.04         # probabilidad de morir en una torre en la etapa 1 (sube con la etapa)
@@ -42,7 +42,7 @@ func income_opt(stage: int) -> float:
 	return INCOME_BASE + INCOME_SLOPE * float(stage)
 
 
-## El precio del duende en la etapa `s` según la curva.
+## El precio de Farolín en la etapa `s` según la curva.
 func toll(curve: String, s: int) -> float:
 	match curve:
 		"actual":   # lo que está hoy: 40 + 4 por etapa
@@ -90,7 +90,7 @@ func run_one(curve: String) -> Dictionary:
 					return {"stage": reached, "won": false, "lives_lost": lives_lost, "fails": short_fails, "claridad": claridad}
 				continue
 			claridad += income
-			# el casino: jugadas con monedas (gratis) y el resto de la claridad que sobre después del duende se puede jugar
+			# el casino: jugadas con monedas (gratis) y el resto de la claridad que sobre después de Farolín se puede jugar
 			var plays := FREE_PLAYS + int(COIN_MEAN + rng.randf())
 			for i in plays:
 				if rng.randf() < BOOST_P and boosts < BOOST_MAX:
@@ -98,7 +98,7 @@ func run_one(curve: String) -> Dictionary:
 				if lives < 3 and rng.randf() < LIFE_P:
 					lives += 1
 			var need := toll(curve, s)
-			if claridad < need:   # no alcanza para el duende: pierde una vida y sube la misma torre otra vez
+			if claridad < need:   # no alcanza para Farolín: pierde una vida y sube la misma torre otra vez
 				short_fails += 1
 				lives -= 1
 				lives_lost += 1
@@ -107,7 +107,7 @@ func run_one(curve: String) -> Dictionary:
 					return {"stage": reached, "won": false, "lives_lost": lives_lost, "fails": short_fails, "claridad": claridad}
 				continue
 			var surplus := claridad - need
-			if surplus > 0.0:   # se juega con lo que sobra, apartando antes lo del duende (que se ve desde la torre)
+			if surplus > 0.0:   # se juega con lo que sobra, apartando antes lo de Farolín (que se ve desde la torre)
 				var n := int(surplus * SPEND / price)
 				claridad -= float(n) * price * (1.0 - CLARITY_BACK)
 				for i in n:
@@ -127,7 +127,7 @@ func _init() -> void:
 	skill = float(_env("SKILL", "1.0"))
 	var runs := int(_env("RUNS", "4000"))
 	var curves: PackedStringArray = _env("CURVES", "actual,lineal,ingreso,suave,exp").split(",")
-	print("ingreso del camino mínimo y precio del duende por etapa:")
+	print("ingreso del camino mínimo y precio de Farolín por etapa:")
 	var head := "etapa  ingreso  ficha"
 	for c in curves:
 		head += "  %8s" % c

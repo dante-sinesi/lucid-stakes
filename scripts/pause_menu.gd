@@ -62,6 +62,12 @@ func set_restart_cost(cost: int, free := false) -> void:
 	buttons["abandonar"].visible = not free
 
 
+## Con una prueba activa el cartel de la prueba se ve entero al pausar (abajo): el menú sube un poco para no taparlo.
+func make_room_for_banner(on: bool) -> void:
+	center.offset_top = -100.0 if on else 0.0
+	center.offset_bottom = -100.0 if on else 0.0
+
+
 ## La primera vez, en el tutorial, no se puede volver al menú principal ni abandonar.
 func set_tutorial_lock(on: bool) -> void:
 	buttons["menu"].visible = not on

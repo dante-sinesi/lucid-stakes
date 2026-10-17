@@ -47,7 +47,7 @@ func _init() -> void:
 
 
 func test_models() -> void:
-	check(Characters.ALL.size() == 6 and Characters.get_character("nope").id == "dante" and Characters.DEFAULT == "dante", "hay seis personajes (Dante y Gaby y cuatro animalitos) y un id raro cae en Dante")
+	check(Characters.ALL.size() == 6 and Characters.get_character("nope").id == "gato" and Characters.DEFAULT == "gato", "hay seis personajes (Dante y Gaby y cuatro animalitos) y un id raro cae en el gatito")
 	var seen := {}
 	for c in Characters.ALL:
 		var m := Characters.build(c.id)
@@ -91,13 +91,13 @@ func test_models() -> void:
 func test_unlocks() -> void:
 	Profile.path = "user://test_profile.json"
 	Profile.reset()
-	check(Profile.owned_characters() == ["dante", "gaby"] and Profile.character() == "dante", "al empezar se tienen Dante y Gaby, y se juega con Dante")
-	check(Profile.select_character("gaby") and Profile.character() == "gaby" and Profile.select_character("dante"), "se puede elegir entre los dos")
-	check(not Profile.select_character("perro") and Profile.character() == "dante", "no se puede elegir uno bloqueado")
-	check(Profile.on_stage_reached(1).is_empty() and Profile.on_stage_reached(2) == ["gato"] and Profile.on_stage_reached(3).is_empty(), "llegar a la etapa 2 desbloquea al gatito (una sola vez)")
+	check(Profile.owned_characters() == ["dante", "gaby", "gato", "perro"] and Profile.character() == "gato", "al empezar se tienen Dante, Gaby, el gatito y el perrito, y se juega con el gatito")
+	check(Profile.select_character("gaby") and Profile.character() == "gaby" and Profile.select_character("gato"), "se puede elegir entre ellos")
+	check(not Profile.select_character("conejo") and Profile.character() == "gato", "no se puede elegir uno bloqueado")
+	check(Profile.on_stage_reached(1).is_empty() and Profile.on_stage_reached(2).is_empty() and Profile.on_stage_reached(3).is_empty(), "el gatito ya no se gana por etapa (se tiene desde el principio)")
 	check(Profile.on_stage_reached(5).is_empty() and Profile.on_stage_reached(6) == ["conejo"] and Profile.on_stage_reached(8).is_empty(), "llegar a la etapa 6 desbloquea al conejito (una sola vez)")
 	check(Profile.on_ability("niebla").is_empty() and Profile.on_ability("garras_de_hielo") == ["pinguino"], "la habilidad del Hielo total desbloquea al pinguino")
-	check(Profile.on_trial_cleared() == ["perro"] and Profile.on_trial_cleared().is_empty(), "superar una prueba desbloquea al perrito")
+	check(Profile.on_trial_cleared().is_empty(), "superar una prueba ya no desbloquea nada (el perrito se tiene desde el principio)")
 	check(Profile.owned_characters().size() == 6, "ya estan los seis")
 	check(Profile.select_character("pinguino") and Profile.character() == "pinguino", "se elige uno desbloqueado")
 	Profile.data = {}
@@ -120,7 +120,7 @@ func test_migration() -> void:
 	check(Profile.has_cosmetic("bufanda") and not Profile.has_cosmetic("capa_azul") and Profile.has_cosmetic("copa") and Profile.has_cosmetic("chaleco"), "los cosmeticos viejos pasan a su ropa equivalente")
 	check(not d.cosmetics.has("viejo_inexistente"), "lo que ya no existe se descarta")
 	check(Profile.equipped_outfit() == "bufanda" and Profile.equipped_hat() == "", "el aspecto elegido pasa al hueco que corresponde")
-	check(Profile.character() == "dante", "y se juega con Dante")
+	check(Profile.character() == "gato", "y se juega con el gatito")
 	Profile.reset()
 
 

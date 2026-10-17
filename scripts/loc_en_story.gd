@@ -139,9 +139,7 @@ It gives you exactly the moves you need: if you lose one or step back, it blows 
 	"¡Recompensas!": "Rewards!",
 	"Sin recompensa esta vez": "No reward this time",
 	"Peaje %d": "Toll %d",
-	"El duende pide %d de claridad para encender el portal: te faltan %d.": "The goblin wants %d clarity to light the portal: you are %d short.",
-	"El duende pide %d de claridad: te faltan %d. Si insistís, volvés a subir la torre y perdés una vida.": "The goblin wants %d clarity: you are %d short. If you insist, you climb the tower again and lose a life.",
-	"No alcanzó para el duende: perdiste una vida y volvés a subir la torre": "Not enough for the goblin: you lost a life and climb the tower again",
+	"Farolín pide %d de claridad para encender el portal: te faltan %d.": "Farolín wants %d clarity to light the portal: you are %d short.",
 	"Etapa %d/%d%s": "Stage %d/%d%s",
 	"¡Empate!": "Tie!",
 	"¡Perdiste!": "You lost!",
@@ -153,5 +151,4 @@ It gives you exactly the moves you need: if you lose one or step back, it blows 
 	"Sentate, soñador. Acá la claridad se juega, no se regala.": "Sit down, dreamer. Here clarity is gambled, not given away.",
 	"Cada ficha es un pedazo de despertar. ¿Cuánto vas a arriesgar?": "Every chip is a piece of waking up. How much will you risk?",
 	"La casa siempre gana... salvo cuando te acordás de despertar.": "The house always wins... except when you remember to wake up.",
-	"Duende": "Goblin",
 }

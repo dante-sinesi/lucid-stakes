@@ -37,10 +37,13 @@ signal left
 signal roulette_opened
 signal changed   ## el run cambió (se jugó una tirada): hay que guardar
 signal story_message(text: String)   ## en el modo historia (tutorial): algo que el tabernero tiene para decir
-signal failed_to_pay   ## no alcanzaba para el duende de la puerta y se insistió: se vuelve a subir la misma torre (y se pierde una vida)
+signal toll_talk   ## se llegó a la puerta de salida (o se habló con Farolín): el juego muestra su diálogo con las salidas (toll_dialog)
+signal redo_tower   ## se eligió rehacer la torre: se pierde una vida y se vuelve a subir la misma
+signal gave_up   ## se eligió abandonar (sin vidas y sin pagar): se termina el run
 signal keeper_talk(lines: Array)   ## se habló con el tabernero: lo que dice (el juego lo muestra en el cuadro de diálogo)
 
 const STEP_TIME := 0.14
+const FAROLIN_SCALE := 2.6   # (Farolín mide 0,55: así queda un poco más alto que el personaje)
 const PITCH := -35.264
 const PITCH_MIN := -86.0
 const PITCH_MAX := 80.0   # (positivo = mirando desde abajo del horizonte, como en el editor)
@@ -82,12 +85,11 @@ var _cam_tween: Tween
 var story := false            # modo historia (tutorial): la ruleta no se abre y no se ve la interfaz de juego
 var input_locked := false     # mientras habla el tabernero no se camina
 var portals: Array[MeshInstance3D] = []   # los portales de las paredes
-const Goblin := preload("res://scripts/goblin.gd")
+const Farolin := preload("res://scripts/farolin.gd")
 const Items := preload("res://scripts/items.gd")
 const Showcase := preload("res://scripts/showcase.gd")
-var toll_base := 0            # el precio del duende de la puerta de salida (0: no cobra; tutorial, entrenamiento y pruebas); lo que se paga sale de acá con los descuentos (toll_now)
-var _exit_warned := false     # ya se avisó que no alcanza: si se insiste, se vuelve a subir la torre
-var _goblin: Node3D
+var toll_base := 0            # el precio de Farolín en la puerta de salida (0: no cobra; tutorial, entrenamiento y pruebas); lo que se paga sale de acá con los descuentos (toll_now)
+var _farolin: Node3D
 var _arrow: Node3D            # flecha que marca la puerta de salida
 var _t := 0.0
 var quick := false            # pruebas: sin animaciones
@@ -99,6 +101,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	run = run_state
 	rng = random
 	lay = Room.layout(run.stage, int(run.scenario().get("casino_tier", -1)))
+	lay["farolin_on"] = toll_base > 0   # (Farolín ocupa su celda sólo si el casino cobra)
 	cell = lay.entry
 	if not story:
 		CasinoTheme.apply_ui(int(lay.tier))   # los botones y textos se limpian según el nivel de la sala (se restablece al salir)
@@ -114,6 +117,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	_build_hud()
 	if story:
 		hud_layer.visible = false
+	facing = Vector2i(1, 0)   # (al llegar mira hacia adentro de la sala, como si saliera del portal de la pared oeste)
 	_place_player()
 	_vault_paid = vault_paid
 	if vault_paid > 0:
@@ -188,23 +192,64 @@ func _build_portals() -> void:
 			mi.rotation_degrees.y = 90.0
 		walls[side].append(mi)
 		portals.append(mi)
-	_build_goblin()
+	_build_farolin()
 	_update_toll_ui()
 
 
-## El duende de la puerta de salida: junto a la puerta, cobra el precio de la torre que sigue. El portal se apaga hasta que alcanza para pagarle.
+## Farolín, junto a la puerta de salida (en su celda, libre de muebles y mirando a la cámara): cobra el precio de la torre que sigue. El portal se apaga hasta que alcanza para pagarle.
 func toll_now() -> int:
 	return run.toll_after_discounts(toll_base)
 
 
-func _build_goblin() -> void:
+func _build_farolin() -> void:
 	if toll_base <= 0:
 		return
-	_goblin = Goblin.build()
-	_goblin.scale = Vector3.ONE * 1.9
-	_goblin.position = Room.world_of_cell(lay.exit, lay) + Vector3(0.8, 0.0, 0.2)
-	_goblin.rotation_degrees.y = -20.0
-	add_child(_goblin)
+	_farolin = Farolin.build()
+	_farolin.scale = Vector3.ONE * FAROLIN_SCALE
+	_farolin.position = Room.world_of_cell(lay.farolin, lay)
+	_farolin.rotation_degrees.y = yaw_target
+	add_child(_farolin)
+
+
+## Lo que dice Farolín al llegar a la puerta y las salidas que ofrece (ver Farolin.toll_dialog).
+func toll_dialog() -> Dictionary:
+	return Farolin.toll_dialog(toll_now(), run.claridad, run.can_revive(), run.lives > 0)
+
+
+## ¿La celda de Farolín está dentro de la sala, libre de muebles y máquinas, y se llega a la puerta de salida caminando?
+func farolin_cell_free() -> bool:
+	if not lay.has("farolin") or not Room.in_room(lay.farolin, lay):
+		return false
+	var f: Vector2i = lay.farolin
+	if f == lay.exit or f == lay.entry or f == lay.dealer or lay.table.has_point(f) or lay.machines.has(f) or lay.obstacles.has(f) or (lay.has("station") and f == lay.station.cell):
+		return false
+	for ct in lay.card_tables:
+		if ct.has_point(f):
+			return false
+	var reach := Room.reachable(lay.entry, lay)
+	return reach.has(lay.exit)
+
+
+## Se llegó a la puerta (o se habló con Farolín): el juego abre el diálogo.
+func ask_toll() -> void:
+	toll_talk.emit()
+
+
+## Se eligió pagar: se cobra, vale una sola vez el soborno, se suma el interés y se pasa a la torre que sigue. false si no alcanza.
+func pay_toll() -> bool:
+	var price := toll_now()
+	if run.claridad < price:
+		return false
+	if price > 0:
+		run.spend(price)
+		run.toll_bribe = false   # (el soborno vale para una sola vez)
+		var interest: int = run.apply_interest()
+		if interest > 0:
+			_flash(Loc.f("Interés: +%d de claridad", [interest]))
+		_refresh_hud()
+	leaving = true
+	left.emit()
+	return true
 
 
 ## El portal de salida brilla sólo si alcanza para pagar; el precio se ve arriba a la izquierda (en rojo si falta).
@@ -216,8 +261,8 @@ func _update_toll_ui() -> void:
 		var mat := portals[0].material_override as ShaderMaterial
 		if mat != null:
 			mat.set_shader_parameter("lit", 1.0 if run.claridad >= price else 0.0)
-	if run.claridad >= price:
-		_exit_warned = false
+	if _farolin != null:
+		_farolin.set_mood("contento" if run.claridad >= price else "triste")
 
 
 func _build_player() -> void:
@@ -271,7 +316,7 @@ func _build_hud() -> void:
 	layer.add_child(hud_panel)
 	lives_hud = hud_panel.lives
 	clarity_counter = hud_panel.clarity
-	_update_toll_ui()   # lo que cobra el duende de la puerta de salida
+	_update_toll_ui()   # lo que cobra Farolín de la puerta de salida
 	item_tip = _label(layer, 2, Color(0.95, 0.93, 0.88))
 	item_tip.wrap_px = 460
 	item_tip.plate_alpha = 0.85
@@ -358,11 +403,11 @@ func use_consumable_slot(slot: int) -> void:
 		_flash(Loc.t("Lo que ganes en esta visita vale el doble"))
 	elif id == "soborno":
 		if toll_base <= 0 or run.toll_bribe:
-			_flash(Loc.t("El duende no cobra, o ya lo sobornaste"))
+			_flash(Loc.t("Farolín no cobra, o ya lo sobornaste"))
 			return
 		run.toll_bribe = true
 		run.use_consumable(id)
-		_flash(Loc.f("El duende te cobra un 30 %% menos: %d", [toll_now()]))
+		_flash(Loc.f("Farolín te cobra un 30 %% menos: %d", [toll_now()]))
 	Sfx.play("item")
 	_refresh_hud()
 	changed.emit()
@@ -404,23 +449,10 @@ func step(dir: Vector2i) -> String:
 	player_node.rotation.y = atan2(dir.x, dir.y)
 	var n := cell + dir
 	if not Room.in_room(n, lay):
-		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida: el duende cobra
-			var price := toll_now()
-			if price > 0 and run.claridad < price:
-				if _exit_warned:   # insistió sin poder pagar: se vuelve a subir la torre
-					leaving = true
-					failed_to_pay.emit()
-					return "exit"
-				_exit_warned = true
-				_flash(Loc.f("El duende pide %d de claridad: te faltan %d. Si insistís, volvés a subir la torre y perdés una vida.", [price, price - run.claridad]))
+		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida: Farolín cobra (si no cobra, se pasa directo)
+			if toll_now() > 0:
+				ask_toll()
 				return "blocked"
-			if price > 0:
-				run.spend(price)
-				run.toll_bribe = false   # (el soborno vale para una sola vez)
-				var interest: int = run.apply_interest()
-				if interest > 0:
-					_flash(Loc.f("Interés: +%d de claridad", [interest]))
-				_refresh_hud()
 			leaving = true
 			left.emit()
 			return "exit"
@@ -459,6 +491,9 @@ func _on_arrived() -> void:
 
 ## Chocar contra lo que no se camina: la mesa de la ruleta se abre; el resto avisa.
 func _bump(n: Vector2i) -> String:
+	if toll_base > 0 and lay.get("farolin_on", false) and n == lay.farolin:   # Farolín: se habla con él (el peaje)
+		ask_toll()
+		return "farolin"
 	if n == lay.dealer:   # el tabernero: se habla con él (en el tutorial todavía no hay nada de qué hablar)
 		if story:
 			story_message.emit(Story.BLOCKED_TABLE)
@@ -498,7 +533,7 @@ func interact() -> String:
 	if busy or leaving or input_locked:
 		return "blocked"
 	var n := cell + facing
-	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell):
+	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell) or (toll_base > 0 and n == lay.farolin):
 		return _bump(n)
 	for ct in lay.card_tables:
 		if ct.has_point(n):

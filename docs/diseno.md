@@ -464,12 +464,12 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
 - Medido (un hilo): torres de 25 pisos de 1 a 30 s; en el juego corren varias semillas y gana la primera.
 - **Pendiente**: reequilibrar la claridad, el contador de pisos (hay una plataforma por sala), el sesgo de bloques de otros escenarios y de las pruebas, ideas para los demás escenarios, y salas grandes (6 a 7 pisos).
 
-## 42. Portal de salida y peaje del duende
+## 42. Portal de salida y peaje de Farolín
 
-> **Reemplazado por el §46**: el duende ya no cobra en el portal de la torre sino en la puerta de salida del casino, con otra curva de precios. Lo que sigue describe lo anterior.
+> **Reemplazado por el §46**: Farolín ya no cobra en el portal de la torre sino en la puerta de salida del casino, con otra curva de precios. Lo que sigue describe lo anterior.
 
-- La salida de cada torre es un portal de ondas (`shaders/portal.gdshader`, dos paños cruzados) con un duende voxel (`scripts/goblin.gd`) al lado. Ya no hay rayo.
-- El duende cobra `RunState.toll_for(etapa)` (`40 + 4 × etapa`, ~¼ de lo que rinde el camino óptimo) para encender el portal. Se paga con la claridad que traés más la que juntaste en la torre (`TowerLogic.wallet + claridad`).
+- La salida de cada torre es un portal de ondas (`shaders/portal.gdshader`, dos paños cruzados) con Farolín voxel (`scripts/goblin.gd`) al lado. Ya no hay rayo.
+- Farolín cobra `RunState.toll_for(etapa)` (`40 + 4 × etapa`, ~¼ de lo que rinde el camino óptimo) para encender el portal. Se paga con la claridad que traés más la que juntaste en la torre (`TowerLogic.wallet + claridad`).
 - Si llegás al portal sin poder pagar, el portal sigue apagado (`toll_blocked`), un aviso dice cuánto falta y la torre sigue: hay que volver a juntar claridad o el suelo cae.
 - Al salir se descuenta el peaje de la claridad del run (`_bank_claridad`). El costo se ve en la ventana de la partida (torre) y, en el casino, el de la próxima torre.
 - En el tutorial, el laboratorio y las pruebas automáticas (`test_mode`) no se cobra (salvo `toll_in_tests`).
@@ -506,14 +506,14 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
 - Entra en el plan junto con las salas de cajas (cuentan juntas: hasta 2 seguidas y 5 por torre). Un acertijo sin colgarse no es lo mismo que uno con colgarse: el camino guardado puede usar Espacio para
   soltarse (en el juego se suelta con Espacio).
 
-## 46. Casino y torre como un solo sistema: el duende al final del casino (diseño acordado, a implementar)
+## 46. Casino y torre como un solo sistema: Farolín al final del casino (diseño acordado, a implementar)
 
 Decidido con Dante el 2026-10-16; todavía **no está implementado el ciclo nuevo** (sí lo de morir sin costo de claridad, ver más abajo). La simulación es `tests/sim_economia.gd` y las mediciones, `tests/sim_ingresos.gd` y `tests/probe_rtp.gd`.
 
 ### El ciclo
-1. **Torre** (puzzle): da claridad por purificar y, en el piso, **monedas** sueltas por tipo de juego (ruleta, tragamonedas, blackjack). El HUD de la torre muestra el precio que cobrará el duende al final del casino.
+1. **Torre** (puzzle): da claridad por purificar y, en el piso, **monedas** sueltas por tipo de juego (ruleta, tragamonedas, blackjack). El HUD de la torre muestra el precio que cobrará Farolín al final del casino.
 2. **Casino**: el jugador tiene un **mínimo fijo de jugadas por visita** (3 de partida) que se pagan con monedas, no con claridad, más las monedas extra que juntó. Las jugadas de más se pagan con claridad. Mesas de distinta varianza con las probabilidades visibles, tienda de boosts y consumibles.
-3. **Puerta trasera, el duende**: cobra de verdad el precio de la etapa (se descuenta la claridad). El peaje que hoy cobra el duende en el portal de la torre (§42) se muda acá.
+3. **Puerta trasera, Farolín**: cobra de verdad el precio de la etapa (se descuenta la claridad). El peaje que hoy cobra Farolín en el portal de la torre (§42) se muda acá.
 4. **Torre siguiente.**
 
 ### Cuando no se llega a pagar
@@ -532,7 +532,7 @@ Decidido con Dante el 2026-10-16; todavía **no está implementado el ciclo nuev
 - **Ficha**: 50 en la etapa 1 y 106 en la 15. **Rendimiento de las mesas** (premio medio sobre el precio): ruleta 0,91 a 0,96, tragamonedas 0,915 (reteniendo bien), blackjack 0,979. Las mesas devuelven valor sobre todo en ítems, no en claridad (sólo la bolsa de luz devuelve claridad).
 - **Peaje de hoy**: `40 + 4 × etapa` (44 a 100): del 23 % al 32 % del ingreso. No aprieta.
 
-### Curvas del precio del duende que se compararon
+### Curvas del precio de Farolín que se compararon
 | Etapa | Ingreso (recta) | actual | lineal | por ingreso | suave | exp (la de la charla) |
 |---|---|---|---|---|---|---|
 | 1 | 188 | 44 | 45 | 47 | 50 | 50 |
@@ -542,29 +542,29 @@ Decidido con Dante el 2026-10-16; todavía **no está implementado el ciclo nuev
 
 (lineal: `45 + 9,5 × (etapa−1)` · por ingreso: 25 % del ingreso en la etapa 1, subiendo a 80 % en la 15 · suave: `50 × 1,12^(etapa−1)` · exp: `50 × 1,25^(etapa−1)`.)
 
-**Resultado de la simulación** (4000 runs por curva y por habilidad; modelo en el encabezado de `sim_economia.gd`, con supuestos señalados): todas las curvas menos la exponencial dan casi lo mismo, porque el precio nunca supera el ingreso y lo que decide el run es morir en la torre. En cambio **la exponencial es una pared**: en la etapa 15 el duende cobraría 1137, unas 3,7 veces el ingreso; con todos los boosts de claridad que el modelo supone (+14 % cada uno) sólo se llega a ×1,8, y gana el 7 al 12 % de los jugadores.
+**Resultado de la simulación** (4000 runs por curva y por habilidad; modelo en el encabezado de `sim_economia.gd`, con supuestos señalados): todas las curvas menos la exponencial dan casi lo mismo, porque el precio nunca supera el ingreso y lo que decide el run es morir en la torre. En cambio **la exponencial es una pared**: en la etapa 15 Farolín cobraría 1137, unas 3,7 veces el ingreso; con todos los boosts de claridad que el modelo supone (+14 % cada uno) sólo se llega a ×1,8, y gana el 7 al 12 % de los jugadores.
 - La conclusión es que **el precio y el ingreso hay que pensarlos juntos**: o el precio sigue al ingreso (curva *por ingreso*, de ~47 a ~250: sobra siempre algo para jugar de más y el final aprieta sin ser imposible), o se hacen **boosts que multipliquen de verdad el ingreso** (×1,5 a ×3) y entonces se puede usar una curva más empinada.
 - Lo que sobra después de pagar (claridad para jugadas extra) es de ~75 por visita al principio a ~500 al final con la curva por ingreso; con la actual, ~700. Es lo que hay que balancear con el tamaño de las recompensas de las mesas.
 
 ### La curva aplicada: una pared en la etapa 8 (`RunState.toll_for`)
 Pedido de Dante: **desde la etapa 8 no se puede pasar sin habilidades o consumibles que disparen la ganancia** (por ejemplo, un multiplicador ×2 fijo como habilidad, o +1 por cada bloque purificado); no importa que todavía no existan, pero que *matemáticamente* no se pueda.
-- **El duende cobra después de la torre que se acaba de superar** (`toll_for(run.stage)`), en la puerta de salida del casino.
+- **Farolín cobra después de la torre que se acaba de superar** (`toll_for(run.stage)`), en la puerta de salida del casino.
 - **Antes de la pared** (etapas 1 a 7): del 45 % de lo que rinde una torre al 75 % (84, 98, 113, 128, 145, 162, 180). Se paga con lo que se junta y sobra algo para jugar de más.
 - **La pared**: el precio de la etapa 8 es el *presupuesto máximo sin boosts* más 50: todo lo que pudo juntar un jugador perfecto en las 8 torres (1,5 veces la recta del ingreso en cada una, el máximo que se vio) sin gastar nada en el casino, menos lo que ya pagó. Da **1761**. **Después crece un 15 % por etapa** (2025, 2328, 2678, … 4683 en la 15).
 - **La garantía**, probada en `tests/test_toll.gd` (`test_curve`): desde la etapa 8, el precio supera `max_budget_without_boosts`, o sea, ni juntando el máximo en cada torre y guardando todo alcanza. El **precio acumulado** también supera al **presupuesto máximo acumulado** en todas las etapas de 8 en adelante. Los números del código están en `run_state.gd` (`INCOME_BASE`, `INCOME_SLOPE`, `INCOME_CEIL`, `WALL_STAGE`, `WALL_GROWTH`, `WALL_MARGIN`).
 - **Lo que hace falta del lado de los boosts**: de la etapa 8 en adelante el precio es 7 a 15 veces lo que rinde una torre (de 1761 a 4683 contra 249 a 310 de ingreso medio). Hoy **ningún boost multiplica la ganancia** (Pies de luz suma +1 por bloque, unos +60 a +120 por torre; Mano de oro sube el paso de la racha; Ahorro suma 20): **hasta que existan boosts y consumibles que disparen el ingreso, el juego se corta en la etapa 8**. Hay que diseñarlos (multiplicadores fijos ×2, +N por purificación, claridad de las bolsas, etc.) y volver a medir.
-- **Por qué el salto es tan grande**: se pidió que no se pueda con *ningún* ahorro, y la claridad que sobra en las etapas 1 a 7 se arrastra. Si se quiere un salto menor, la palanca es **limitar cuánta claridad se lleva de una etapa a otra** (un tope, o que el duende se quede con parte de lo que sobra): con un tope de 400 el precio de la pared bajaría a ~770 (3 veces el ingreso medio).
+- **Por qué el salto es tan grande**: se pidió que no se pueda con *ningún* ahorro, y la claridad que sobra en las etapas 1 a 7 se arrastra. Si se quiere un salto menor, la palanca es **limitar cuánta claridad se lleva de una etapa a otra** (un tope, o que Farolín se quede con parte de lo que sobra): con un tope de 400 el precio de la pared bajaría a ~770 (3 veces el ingreso medio).
 
 ### Pendiente
-- Monedas en la torre (ítems recogibles por tipo de juego), contador en el HUD y el precio del duende visible desde el casino anterior.
-- ~~Mover el duende y el peaje a la puerta trasera del casino~~ (hecho: `casino_scene.gd`; si no se alcanza y se insiste, se pierde una vida y se sube la misma torre).
+- Monedas en la torre (ítems recogibles por tipo de juego), contador en el HUD y el precio de Farolín visible desde el casino anterior.
+- ~~Mover Farolín y el peaje a la puerta trasera del casino~~ (hecho: `casino_scene.gd`; si no se alcanza y se insiste, se pierde una vida y se sube la misma torre).
 - Usar la Vida extra dentro del casino; quitar o replantear la regla de la taberna ("Fiado") y el Seguro.
 - Boosts multiplicativos y su efecto en la curva; más mediciones de ingreso (con las torres de la biblioteca, que cambian el ingreso).
 - Lore: los bloques y mesas son recuerdos que se reescriben al apostar certeza (claridad); el tabernero subió, apostó y se quedó.
 
 ## 47. Boosts y consumibles que disparan la ganancia, bolsas de claridad grandes y una ruleta menos saturada (diseño, a implementar)
 
-Motivo: la pared de precios del §46 (de la etapa 8 en adelante el duende cobra de 7 a 15 veces lo que rinde una torre) sólo se puede pasar con boosts que multipliquen el ingreso. Hay que diseñar ese catálogo, y la ruleta, que ya reparte demasiado, tiene que seguir siendo manejable.
+Motivo: la pared de precios del §46 (de la etapa 8 en adelante Farolín cobra de 7 a 15 veces lo que rinde una torre) sólo se puede pasar con boosts que multipliquen el ingreso. Hay que diseñar ese catálogo, y la ruleta, que ya reparte demasiado, tiene que seguir siendo manejable.
 
 ### Cuánto hay que subir el ingreso
 Torre de referencia (medida): ~90 bloques purificados, ~1,3 de claridad por bloque (los comunes dan 1; hielo, agrietado, pesado y trampa 2; catapulta y pinchos 3; bomba 5), racha media ×2,2 (la racha sube 0,5 por acción seguida y tiene tope ×4). Ingreso = bloques × (claridad por bloque + extras) × racha. Hacen falta ~×6 en la etapa 8 (precio 1761) y ~×15 en la 15 (4683); si en las primeras etapas se ahorra algo, un poco menos. Las palancas y lo que dan sobre la torre de referencia:
@@ -575,7 +575,7 @@ Torre de referencia (medida): ~90 bloques purificados, ~1,3 de claridad por bloq
 | **Multiplicador fijo** | todo lo que se junta en la torre | ×1,5, ×2 (se multiplican entre sí: ×3) |
 | **Racha** | la racha media (2,2) | que empujar y tirar no la corten y tope ×8: ~×1,7 |
 | **Premios por acciones** | claridad suelta por piso nuevo, por empujar, por colgarse | +60 a +160 por torre |
-| **Descuento del duende** | el precio | −15 % (hasta 2) o −30 % una vez |
+| **Descuento de Farolín** | el precio | −15 % (hasta 2) o −30 % una vez |
 
 Con 5 lugares de boosts (7 con *Mente abierta*): *Pies de luz* (+1) + *Pies de oro* (+2) + *Cosecha doble* (×2) da ~×6,6: alcanza para la etapa 8. Con *Midas* (+3), *Cosecha* (×1,5) y *Racha imparable*, además: ~×28: alcanza para la 15 con margen. O sea: **hay que armar una build** (6 de 7 lugares), como en Balatro.
 
@@ -591,7 +591,7 @@ Con 5 lugares de boosts (7 con *Mente abierta*): *Pies de luz* (+1) + *Pies de o
 | **Escalador** | raro | Cada piso nuevo que alcanzás por primera vez da +5. |
 | **Empuje rentable** | raro | Cada bloque que empujás o tirás da +1. |
 | **Interés** | raro | Al salir del casino, la claridad que te queda crece un 25 % (hasta +150). |
-| **Descuento del duende** | raro (se acumula, hasta 2) | El duende cobra un 15 % menos. |
+| **Descuento de Farolín** | raro (se acumula, hasta 2) | Farolín cobra un 15 % menos. |
 | **Bolsillo de luz** | común | Empezás cada torre con +40 de claridad (como *Ahorro*, que da +20). |
 
 ### Consumibles nuevos (se gastan)
@@ -602,7 +602,7 @@ Con 5 lugares de boosts (7 con *Mente abierta*): *Pies de luz* (+1) + *Pies de o
 | **Baraja de racha** | común | La racha pasa a ×4 ya. |
 | **Reloj de arena** | común | Pausa la caída de la fila base 10 movimientos (el *Freno* son 5). |
 | **Lluvia de luz** | raro | Purifica todos los bloques de tu capa. |
-| **Soborno** | raro | El duende de este casino cobra un 30 % menos. |
+| **Soborno** | raro | Farolín de este casino cobra un 30 % menos. |
 
 ### Bolsas de claridad más grandes (la ficha de la etapa por el multiplicador)
 | Premio | Nivel | Devuelve | En la etapa 8 (ficha 78) |
@@ -636,18 +636,18 @@ Hoy salen 30 premios distintos (4 épicos, 9 raros, 10 comunes y 7 consumibles) 
 
 **Cámara.** En la torre y en el casino se puede rotar por debajo del horizonte (`PITCH_MAX` = 80), como en el editor.
 
-**Boosts, consumibles, vitrina y tienda** (§47): implementados. Boosts nuevos (Cosecha doble, Racha imparable, Midas, Cosecha, Pies de oro, Buen ojo, Escalador, Empuje rentable, Interés, Descuento del duende, Bolsillo de luz), consumibles (Poción de cosecha, Imán de luz, Baraja de racha, Reloj de arena, Lluvia de luz, Soborno) y bolsas grandes (Bolsa pesada ×3, Saquito de oro ×6, Cofre de luz ×15, Tesoro del soñador ×40). Efectos en `TowerLogic` (`harvest_mult`, `block_clarity`, `_action_bonuses`, `_purify_cells`) y `RunState` (`toll_after_discounts`, `apply_interest`); vitrina y tienda en `scripts/showcase.gd` (botón *Rotar vitrina* en la ruleta, botón *Tienda* en las estaciones). La Vida extra y el Soborno se usan en el casino. Constantes de los bonos fijos: `TowerLogic.CLIMB_BONUS` (2 por piso nuevo), `PUSH_BONUS` (1), `POCKET_START` (60), `RunState.INTEREST_CAP` (150).
+**Boosts, consumibles, vitrina y tienda** (§47): implementados. Boosts nuevos (Cosecha doble, Racha imparable, Midas, Cosecha, Pies de oro, Buen ojo, Escalador, Empuje rentable, Interés, Descuento de Farolín, Bolsillo de luz), consumibles (Poción de cosecha, Imán de luz, Baraja de racha, Reloj de arena, Lluvia de luz, Soborno) y bolsas grandes (Bolsa pesada ×3, Saquito de oro ×6, Cofre de luz ×15, Tesoro del soñador ×40). Efectos en `TowerLogic` (`harvest_mult`, `block_clarity`, `_action_bonuses`, `_purify_cells`) y `RunState` (`toll_after_discounts`, `apply_interest`); vitrina y tienda en `scripts/showcase.gd` (botón *Rotar vitrina* en la ruleta, botón *Tienda* en las estaciones). La Vida extra y el Soborno se usan en el casino. Constantes de los bonos fijos: `TowerLogic.CLIMB_BONUS` (2 por piso nuevo), `PUSH_BONUS` (1), `POCKET_START` (60), `RunState.INTEREST_CAP` (150).
 
 **El bot** (`docs/bot.md`): juega runs completos con las reglas reales sobre un banco de torres. Con él se recalculó la economía.
 - **Ingreso de una torre sin boosts** (camino mínimo, torres altas): ~385 en la etapa 1, ~460 en la 3, ~490 en la 8, ~610 en la 12, ~690 en la 14. Recta: `340 + 25 × etapa` (365 en la 1, 715 en la 15); el máximo que puede juntar sin boosts se toma como 1,5 veces la recta.
-- **Curva del duende** (`RunState.toll_for`, misma construcción del §46 con los números nuevos): antes de la pared, del 60 % de lo que rinde una torre en la etapa 1 al 100 % en la 7: **219, 260, 304, 352, 403, 457, 515**; pared en la etapa 8 con **2970** (el presupuesto máximo acumulado sin boosts más 50: más de lo que puede juntar un jugador perfecto sin boosts); después +20 % por etapa (3564, 4277, 5132, 6159, 7390, 8868, **10642** en la 15). `RunState.wall_growth`, `pre_wall_from/to` y compañía son variables, no constantes, para poder probar curvas con el bot.
+- **Curva de Farolín** (`RunState.toll_for`, misma construcción del §46 con los números nuevos): antes de la pared, del 60 % de lo que rinde una torre en la etapa 1 al 100 % en la 7: **219, 260, 304, 352, 403, 457, 515**; pared en la etapa 8 con **2970** (el presupuesto máximo acumulado sin boosts más 50: más de lo que puede juntar un jugador perfecto sin boosts); después +20 % por etapa (3564, 4277, 5132, 6159, 7390, 8868, **10642** en la 15). `RunState.wall_growth`, `pre_wall_from/to` y compañía son variables, no constantes, para poder probar curvas con el bot.
 - **Ficha de la ruleta**: 75 en la etapa 1 y +6 por etapa (159 en la 15; antes 50 + 4). Subirla retrasa la bola de nieve del principio: con ficha 50 el ingreso con build ya era ×3 en la etapa 5; con 75 es ×2 (y con 100 + 8 el bot casi no gana: el casino se come las builds).
 - **Decisión de Dante** (2026-10-16): el espíritu es el de Balatro: después de la pared el juego puede romperse de forma absurda con los puntos, pero no al principio, y **superar el run completo no tiene que ser fácil**. Se eligió la configuración más dura (ficha 75 + 6 y precio previo del 60 al 100 %): el bot gana el **3 al 7 %** de los runs (habilidades 0,8 a 1,3) y pasa la pared de la etapa 8 el 23 al 33 %.
 - **Resultados del bot** de las configuraciones probadas (30 runs por habilidad, banco de 120 torres, ±8 puntos de ruido): crecimiento 1,15 y ficha 50: gana 15 a 45 %; crecimiento 1,20 y ficha 50: 20 a 30 %; crecimiento 1,22: 23 a 30 %; ficha 60 + 5: 13 a 27 %; ficha 75 + 6: 7 a 17 %; **ficha 75 + 6 con precio previo 60 a 100 % (la elegida): 3 a 7 %**; ficha 100 + 8: 3 a 10 %. Los que no tienen build en la etapa 8 fallan el pago (pierden una vida por intento).
 - **Lo que sigue pendiente**: monedas en la torre y jugadas mínimas por visita (el diseño del §46; el bot las modela con `free_plays`, hoy 0), calibrar la tasa de muerte con partidas reales (el bot supone 3 % a 20 % por torre), y repensar el Seguro y la regla de la taberna ("Fiado").
 
 ### La colina (2026-10-16)
-Pedido de Dante: que el precio del duende no sea una pared sino una **colina** (de la etapa 4 a la 8 se va armando), para que no todos mueran en la 8 y para que los runs que arrancaron mal terminen antes. `RunState.toll_for`: las etapas 1 a 3 (`HILL_START`) siguen igual (219, 260, 304); de la 4 a la 8 el precio sube de forma geométrica hasta el valor de la etapa 8 (2970, que sigue siendo más de lo que puede juntar un jugador perfecto sin boosts), con `hill_power` = 1,5 (sube más tarde: 373, 542, 877, 1553, 2969); después de la 8, +20 % por etapa (3564, ..., 10642 en la 15). Probada con el bot (240 runs, habilidades 1,0 y 1,3, banco de 120 torres): gana el 4 al 7 %; pasan la etapa 6 el 98 %, la 7 el 40 %, la 8 el 16 %, la 10 el 10 % y la 15 el 5 %; el 58 % de los runs termina muriendo en la etapa 7 (las vidas se van gastando en los reintentos de la 5, la 6 y la 7). Con `hill_power` = 1 (parejo) mueren el 80 % antes de la 8; sin colina (la pared), casi todos pasaban hasta la 7 y se concentraban en la 8.
+Pedido de Dante: que el precio de Farolín no sea una pared sino una **colina** (de la etapa 4 a la 8 se va armando), para que no todos mueran en la 8 y para que los runs que arrancaron mal terminen antes. `RunState.toll_for`: las etapas 1 a 3 (`HILL_START`) siguen igual (219, 260, 304); de la 4 a la 8 el precio sube de forma geométrica hasta el valor de la etapa 8 (2970, que sigue siendo más de lo que puede juntar un jugador perfecto sin boosts), con `hill_power` = 1,5 (sube más tarde: 373, 542, 877, 1553, 2969); después de la 8, +20 % por etapa (3564, ..., 10642 en la 15). Probada con el bot (240 runs, habilidades 1,0 y 1,3, banco de 120 torres): gana el 4 al 7 %; pasan la etapa 6 el 98 %, la 7 el 40 %, la 8 el 16 %, la 10 el 10 % y la 15 el 5 %; el 58 % de los runs termina muriendo en la etapa 7 (las vidas se van gastando en los reintentos de la 5, la 6 y la 7). Con `hill_power` = 1 (parejo) mueren el 80 % antes de la 8; sin colina (la pared), casi todos pasaban hasta la 7 y se concentraban en la 8.
 
 ### La colina suavizada (2026-10-16)
 Pedido de Dante: suavizar la subida de la etapa 4 a la 8. El precio de la etapa de la pared ya no es fijo: `RunState.wall_toll()` lo resuelve por iteración como "lo que no se puede pagar sin boosts aunque se junte el máximo en cada torre y no se gaste nada", **descontando lo que ya se pagó en la colina** (los precios de la colina dependen del de la pared y éste de aquéllos). Así la pared baja de 2970 a unos 1800 y la subida queda pareja. Con `hill_power` = 1,25 los precios son: 219, 260, 304, **385, 536, 781, 1174, 1806** (etapas 1 a 8), y después +20 % por etapa: 2167, 2594, 3102, 3718, 4462, 5354, **6408** (la 15). Probado con el bot (90 runs, habilidades 0,8, 1,0 y 1,3): **gana el 7,8 %**; llegan a la etapa 6 el 100 %, a la 7 el 96 %, a la 8 el 62 %, a la 9 el 30 %, a la 10 el 21 %, a la 12 el 13 % y a la 15 el 11 %; superan la 15 el 8 %. Con `hill_power` = 1 (parejo) los precios son 426, 597, 837, 1165, 1632 y gana el 16 %.

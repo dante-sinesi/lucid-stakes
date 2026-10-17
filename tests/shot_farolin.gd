@@ -1,5 +1,5 @@
 extends SceneTree
-## Captura del casino con el duende en la puerta de salida: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1100x800 -s tests/shot_duende.gd -- SALIDA.png [etapa] [claridad]
+## Captura del casino con Farolín en la puerta de salida: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1100x800 -s tests/shot_farolin.gd -- SALIDA.png [etapa] [claridad]
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var main = load("res://scenes/main.tscn").instantiate()
@@ -22,6 +22,6 @@ func _init() -> void:
 	main.enter_casino(true)
 	for i in 40:
 		await process_frame
-	root.get_texture().get_image().save_png(args[0] if args.size() > 0 else "capturas/duende.png")
+	root.get_texture().get_image().save_png(args[0] if args.size() > 0 else "capturas/Farolín.png")
 	print("guardada ", main.casino.toll_base)
 	quit(0)

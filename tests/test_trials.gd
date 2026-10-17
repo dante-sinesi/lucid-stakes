@@ -155,7 +155,11 @@ func test_in_game() -> void:
 	main.run.stage = 6
 	main.trial = main.run.trial_at(6)
 	main._refresh()
-	check(main.trial_label.visible and main.trial_label.text.contains("Niebla") and main.stage_label.text.contains("*"), "se ve la prueba en el HUD, con sus efectos")
+	main._play_trial_banner()
+	check(main.trial_banner.is_shown() and str(main.trial_banner.name_label.text).contains("Niebla") and main.stage_label.text.contains("*"), "se ve el cartel de la prueba abajo, con sus efectos")
+	main.pause_game()
+	check(main.trial_banner.is_shown() and main.trial_banner.modulate.a > 0.99, "al pausar el cartel de la prueba se muestra entero")
+	main.resume_game()
 	var hidden := 0
 	var lim: int = main.logic.player.y + Trials.FOG_ABOVE
 	for id in main.block_nodes:
@@ -168,8 +172,9 @@ func test_in_game() -> void:
 	main.stage_number = 7
 	main.trial = {}
 	main._refresh()
+	main._play_trial_banner()
 	var nxt: Dictionary = main.run.next_trial_info(8)
-	check(not main.trial_label.visible and not nxt.is_empty() and str(nxt.trial.name) == "Sin ayudas" and int(nxt.left) == 1, "en una etapa comun no se muestra la prueba: la cuenta el tabernero (quedan %s)" % str(nxt.get("left")))
+	check(not main.trial_banner.is_shown() and not nxt.is_empty() and str(nxt.trial.name) == "Sin ayudas" and int(nxt.left) == 1, "en una etapa comun no se muestra la prueba: la cuenta el tabernero (quedan %s)" % str(nxt.get("left")))
 	# Superar la prueba: claridad multiplicada, boost de regalo y habilidad persistente (sólo la primera vez)
 	main.stage_number = 6
 	main.trial = main.run.trial_at(6)

@@ -102,7 +102,7 @@ var collapse_every := 6
 var moves_to_collapse := 6
 var moves_made := 0
 var won := false
-var toll := 0                     # lo que cobra el duende para encender el portal de salida (0 = el portal siempre está encendido)
+var toll := 0                     # lo que cobra Farolín para encender el portal de salida (0 = el portal siempre está encendido)
 var wallet := 0                   # la claridad que traés al empezar la torre (se suma a la que juntás para pagar el peaje)
 var toll_blocked := false         # estás en el portal pero no alcanza para pagar: hay que juntar más (o el suelo cae)
 var lost := false
@@ -673,12 +673,12 @@ func _on_goal() -> bool:
 	return true
 
 
-## ¿Se puede pagar el peaje del duende con lo que traés y lo que juntaste?
+## ¿Se puede pagar el peaje de Farolín con lo que traés y lo que juntaste?
 func can_pay_toll() -> bool:
 	return toll <= 0 or wallet + claridad >= toll
 
 
-## Si estás en la meta y el portal está encendido (pagaste el peaje), ganás; si no, el duende no lo enciende y la torre sigue (la fila de abajo no espera).
+## Si estás en la meta y el portal está encendido (pagaste el peaje), ganás; si no, Farolín no lo enciende y la torre sigue (la fila de abajo no espera).
 func _try_win() -> bool:
 	toll_blocked = false
 	if not _on_goal():
@@ -1172,7 +1172,7 @@ func use_item(id: String) -> Dictionary:
 			collapse_pause += 10
 			return {"ok": true, "msg": "Reloj de arena: la fila de abajo se detiene 10 movimientos"}
 		"soborno":
-			return {"ok": false, "msg": "Se usa en el casino, frente al duende"}
+			return {"ok": false, "msg": "Se usa en el casino, frente a Farolín"}
 		"freno":
 			collapse_pause += 5
 			return {"ok": true, "msg": "Freno: la fila de abajo se detiene 5 movimientos"}

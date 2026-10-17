@@ -11,10 +11,10 @@ const Loc := preload("res://scripts/loc.gd")
 const SILHOUETTE_SHADER := preload("res://shaders/silhouette.gdshader")
 const SILHOUETTE_ALPHA := 0.55
 
-const DEFAULT := "dante"
+const DEFAULT := "gato"
 
 ## unlock: cómo se consigue. "inicio" = desde el principio; "prueba" = superar cualquier prueba; "etapa4" / "etapa10" = llegar a esa etapa;
-## "hielo" = superar la prueba del Hielo total. Dante y Gaby son los personajes del juego y se tienen desde el principio; los animalitos se desbloquean.
+## "hielo" = superar la prueba del Hielo total. Dante, Gaby, el gatito (el predeterminado) y el perrito se tienen desde el principio; el conejito y el pingüino se desbloquean.
 ## `kind` "humano" = personaje con pelo, ropa y manos (ver _build_human); sin `kind`, un animalito.
 const ALL: Array[Dictionary] = [
 	{"id": "dante", "name": "Dante", "unlock": "inicio", "how": "Desde el principio.", "kind": "humano", "style": "corto",
@@ -25,9 +25,9 @@ const ALL: Array[Dictionary] = [
 		"skin": Color(0.96, 0.79, 0.66), "hair": Color(0.50, 0.22, 0.12), "shirt": Color(0.58, 0.32, 0.74), "shirt_dark": Color(0.40, 0.20, 0.55),
 		"pants": Color(0.24, 0.26, 0.34), "shoes": Color(0.95, 0.95, 0.97), "accent": Color(1.0, 0.55, 0.65),
 		"fur": Color(0.96, 0.79, 0.66), "light": Color(0.98, 0.88, 0.80), "dark": Color(0.50, 0.22, 0.12)},
-	{"id": "gato", "name": "Gatito", "unlock": "etapa4", "how": "Llegá a la etapa 4.",
+	{"id": "gato", "name": "Gatito", "unlock": "inicio", "how": "Desde el principio.",
 		"fur": Color(0.96, 0.62, 0.28), "light": Color(0.99, 0.95, 0.88), "dark": Color(0.55, 0.3, 0.12)},
-	{"id": "perro", "name": "Perrito", "unlock": "prueba", "how": "Superá tu primera prueba.",
+	{"id": "perro", "name": "Perrito", "unlock": "inicio", "how": "Desde el principio.",
 		"fur": Color(0.84, 0.62, 0.4), "light": Color(0.97, 0.9, 0.78), "dark": Color(0.4, 0.24, 0.12)},
 	{"id": "conejo", "name": "Conejito", "unlock": "etapa10", "how": "Llegá a la etapa 10.",
 		"fur": Color(0.94, 0.93, 0.96), "light": Color(1.0, 1.0, 1.0), "dark": Color(0.62, 0.6, 0.68)},
@@ -39,6 +39,9 @@ const ALL: Array[Dictionary] = [
 static func get_character(id: String) -> Dictionary:
 	for c in ALL:
 		if c.id == id:
+			return c
+	for c in ALL:   # (un id raro cae en el personaje predeterminado)
+		if c.id == DEFAULT:
 			return c
 	return ALL[0]
 

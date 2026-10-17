@@ -21,7 +21,7 @@ static var _loaded_from := ""
 
 static func default_data() -> Dictionary:
 	return {"version": VERSION, "luz": 0, "luz_total": 0, "best_stage": 0, "runs": 0, "victories": 0, "trials_cleared": 0, "abilities": {}, "cosmetics": {},
-			"hat": "", "outfit": "", "characters": {"dante": true, "gaby": true}, "character": "dante", "blocks_seen": {}, "tutorial_done": false}
+			"hat": "", "outfit": "", "characters": {"gato": true, "perro": true, "dante": true, "gaby": true}, "character": "gato", "blocks_seen": {}, "tutorial_done": false}
 
 
 ## Carga el perfil (una vez por ruta). Si no hay archivo o está dañado, uno vacío.
@@ -39,7 +39,7 @@ static func load_profile() -> Dictionary:
 					if json.data.has(k):
 						data[k] = json.data[k]
 				_migrate_cosmetics(json.data)
-	for c in Characters.ALL:   # los personajes "de inicio" (Dante y Gaby) se tienen siempre
+	for c in Characters.ALL:   # los personajes "de inicio" (el gatito, el perrito, Dante y Gaby) se tienen siempre
 		if c.unlock == "inicio":
 			data.characters[c.id] = true
 	return data
@@ -275,9 +275,9 @@ static func character() -> String:
 	return id if has_character(id) else Characters.DEFAULT
 
 
-## Se superó una prueba: desbloquea al perrito. Devuelve los personajes nuevos.
+## Se superó una prueba (el perrito ya no se gana así: se tiene desde el principio). Devuelve los personajes nuevos.
 static func on_trial_cleared() -> Array[String]:
-	return _unlocked(["perro"])
+	return _unlocked([])
 
 
 ## Se ganó una habilidad: la de la prueba del Hielo total desbloquea al pingüino.
@@ -285,11 +285,9 @@ static func on_ability(ability_id: String) -> Array[String]:
 	return _unlocked(["pinguino"] if ability_id == "garras_de_hielo" else [])
 
 
-## Se llegó a una etapa: la 2 desbloquea al gatito y la 6 al conejito.
+## Se llegó a una etapa: la 6 desbloquea al conejito (el gatito ya se tiene desde el principio).
 static func on_stage_reached(stage: int) -> Array[String]:
 	var ids: Array = []
-	if stage >= 2:
-		ids.append("gato")
 	if stage >= 6:
 		ids.append("conejo")
 	return _unlocked(ids)
