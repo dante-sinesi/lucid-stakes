@@ -671,3 +671,20 @@ Sirven en las mesas, no en la torre. Efectos en `roulette.gd`, `slots.gd`, `blac
 | **Rayos X** | común | consumible (se usa en el casino) | En la próxima mano de blackjack se ve la carta tapada del crupier. |
 
 Los consumibles de casino se usan con las teclas 1 a 4 o con un clic en la barra, dentro del casino (`Items.CASINO_USABLE`); la Vida extra y el Soborno también. Pendiente: afinar con el bot (hoy el bot sólo juega la ruleta) y decidir cuáles son demasiado fuertes.
+
+## 50. Farolín, diálogos, cartel de la prueba, HUD y la demo (implementado)
+
+Decisiones de Dante tomadas al planificar la demo (`docs/plan_demo.md`, `docs/demo.md`):
+
+- **Farolín reemplaza al duende** (`scripts/farolin.gd`): un farol de hierro con patas y brazos, con la llama (ojos y sonrisa) dentro del vidrio; la llama titila y alumbra la sala, y la cara es de cubitos como la del tabernero. Está en una celda junto a la puerta de salida de cada uno de los 4 casinos, libre de muebles (`lay.farolin`), y no se confunde con ningún otro objeto (`tests/test_farolin.gd`).
+- **El peaje es una conversación** y no un aviso: al llegar a la puerta (o caminar hacia Farolín) se abre su diálogo con dos salidas lado a lado: *Pagar N* o *Rehacer la torre (−1 vida)*; sin vidas, *Pagar N* o *Abandonar* (se pierde el run). Si no alcanza la claridad *Pagar* va apagado. Se elige con las flechas izquierda y derecha (mando: izquierda/derecha) y se confirma con Enter, Espacio o E (mando: A); no se dibujan teclas ni flechas, sólo las opciones con la elegida resaltada. Esc cierra sin elegir. Insistir ya no manda a la torre.
+- **Todo lo que es voz de un personaje usa el cuadro del tabernero** (`dialogue_box.gd`, con la cara de quien habla); los avisos chicos (`_flash`: "no alcanza", consumibles, etc.) quedan para lo que no tiene voz.
+- **El personaje sale del portal**: al llegar al casino aparece en la puerta de la pared oeste mirando hacia adentro de la sala.
+- **Cartel de la prueba** (`trial_banner.gd`): el nombre grande y bailando, sin fondo, abajo; aparece al empezar la torre, se queda unos segundos y se desvanece lento; al pausar se muestra entero de nuevo (el menú sube para no taparlo).
+- **HUD de la partida** (`hud_panel.gd`): un marco de cubitos como el del cuadro de diálogo. (Abierto: repensarlo más adelante.)
+- **Números grandes**: `NumberFormat` abrevia (mil, M, B, T) todo lo que muestra claridad vía `Loc.f`; el cartel de ganancia crece, dura más, suena más fuerte y sacude más cuanto mayor es la ganancia.
+- **Shift + dirección sin nada que empujar ni tirar es un paso común** en todo el juego (`TowerLogic._act_grab`); si hay un bloque pero está trabado no se camina.
+- **Personajes**: el gatito es el predeterminado; el perrito, Dante y Gaby están desde el principio (el perrito ya no se gana con la primera prueba).
+- **Bloques con variantes** (`BlockModels.VARIANTS`, 4 por tipo; `variant_for`): sólo visual, estable por bloque dentro de cada torre; editor de modelos para hacer más (`docs/editor_modelos.md`).
+- **La guía de bloques se eliminó**; quedan los avisos del tabernero al descubrir un bloque.
+- **La demo** es el mismo código con un interruptor (`Demo.on()`), con banco de torres para las etapas 1 y 2 y su propia carpeta de guardado.

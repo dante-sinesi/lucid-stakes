@@ -2,6 +2,30 @@
 
 Fecha: 2026-10-16. Rama base: `feature/juego-completo` (une la biblioteca de salas, el colgado, las bombas por zona, el casino con el duende, los boosts, las torres altas y el bot). Este documento ordena todo lo que falta para tener una demo que se pueda dar a jugar a gente de afuera, y lo organiza para desarrollarlo de corrido. Lo marcado **(a confirmar)** es una decisión de Dante.
 
+## ESTADO DE IMPLEMENTACIÓN (2026-10-17)
+
+Todo se hizo en ramas propias (`fix/abandonar-run`, `feature/quitar-guia-bloques`, `feature/shift-camina`, `feature/farolin-dialogos`, `feature/numeros-grandes`, `feature/telemetria`, `feature/editor-modelos`, `feature/demo-bloqueos`, `feature/tutorial-farolin`) mezcladas en `feature/demo`; nada está en `main` todavía. Detalle de lo que hay y cómo se construye: `docs/demo.md`.
+
+| Punto | Estado |
+|---|---|
+| 0. "Abandonar el run" colgaba el juego | Hecho. Causa real: los hilos de generación de torres altas no miraban la cancelación (42 a 70 s); ahora `end_run` vuelve en milisegundos (`gen_abort.gd`, hilos zombis). `tests/test_abandonar.gd`. |
+| Guía de bloques eliminada | Hecho (quedan los avisos del tabernero al descubrir un bloque). |
+| Shift sin bloque = caminar | Hecho (`tests/test_logic.gd`). |
+| Farolín, diálogo con decisiones, 4 casinos sin colisiones, personaje saliendo del portal | Hecho (`tests/test_farolin.gd`, `test_toll.gd`). |
+| Cartel de la prueba, HUD con marco, avisos | Hecho. Los `_flash` quedan sólo para avisos sin voz. |
+| Gatito por defecto, perrito libre | Hecho. |
+| A. Cierre de lo hecho | Documentación al día (CLAUDE.md, diseno.md §50, docs/demo.md, docs/editor_modelos.md); batería completa corrida. Pendiente de Dante: mezclar a `main`. |
+| B. Tutorial | El cierre del tutorial explica Farolín, las vidas, la vitrina, la tienda y los boosts (no se agregó una lección de bombas: el aviso del tabernero al descubrir una bomba ya explica la zona roja). |
+| C. Banco de torres | Hecho: 24 torres para las etapas 1 y 2, instantáneas (`tests/test_banco.gd`). |
+| D. Fin de la demo | Hecho (`demo_end_screen.gd`, `tests/test_demo.gd`). Falta poner la dirección real de Steam en `Demo.WISHLIST_URL`. |
+| E. Números grandes y juice | Hecho (`NumberFormat`, cartel de ganancia con peso). |
+| F. Robustez y opciones | Hecho: registro de archivos del motor activado, botón "Abrir la carpeta" en Opciones, "reducir efectos" ya existía en Gráficos, tamaño de la interfaz y mando ya existían. Pendiente: probar en una máquina vieja (rendimiento) y una máquina limpia (exportación). |
+| G. Prueba con gente / H. Arreglos | Telemetría local lista; falta la gente (Dante). |
+| I. Editor de modelos y variantes de cubos | Hecho: variantes automáticas en el juego (4 por tipo), editor, formato `data/modelos/*.jsonl`, importar del código, reemplazo de personajes y cosméticos. Los personajes nuevos y cosméticos nuevos se registran en `Characters.ALL` / `Cosmetics.ALL` cuando Dante los pida. |
+| J. Contenido de salas | No se corrió el minero: la demo no usa bombas (empiezan en la etapa 6) y las etapas 1 y 2 salen del banco. Pendiente para el juego completo. |
+| K. Localización y créditos | Hecho (test_loc en verde, créditos "Dante y Claude"; revisar el texto si Dante quiere otro). |
+| L. Exportación | Preset "Windows Demo" listo y probado (arranca sin errores); falta probarlo en una máquina limpia. |
+
 ## PRIMER PUNTO A RESOLVER (antes que cualquier otro): "Abandonar el run" cuelga el juego
 
 - **Síntoma (Dante):** al pulsar "Abandonar el run" en el menú de pausa el juego se congela.
