@@ -1419,8 +1419,8 @@ func _action_sound(mode: int, was_y: int) -> void:
 		Sfx.play("crumble")
 	elif logic.moves_to_collapse == logic.collapse_every and logic.moves_made > 0 and logic.floor_y > 0:
 		Sfx.play("rumble")   # la fila de abajo acaba de caer
-	elif mode == TowerLogic.Mode.GRAB:
-		Sfx.play("pull" if logic.trail.size() > 1 else "push")
+	elif mode == TowerLogic.Mode.GRAB and logic.last_grab != "":   # (Shift sin nada que mover es un paso común: suena a paso)
+		Sfx.play("pull" if logic.last_grab == "pull" else "push")
 	elif mode == TowerLogic.Mode.HANG or logic.hang_dir != Vector3i.ZERO:
 		Sfx.play("hang")
 	elif logic.trail.size() > 3 and logic.player.y > was_y + 1:

@@ -508,7 +508,9 @@ func _act_grab(d: Vector3i) -> Dictionary:
 		_set_player(t)
 		_arrive(d)
 		return _ok()
-	return _fail("Nada que empujar ni tirar")
+	# Shift + dirección sin nada que empujar ni tirar (ni un bloque delante ni uno detrás) es un paso común: la mecánica vale en todo el juego.
+	# (Si hay un bloque pero está trabado —fijo, pesado, sin lugar— no se camina: devuelve el aviso de arriba.)
+	return _act_walk(d)
 
 
 ## Empuja la fila de bloques que empieza en `t` (el de enfrente y los pegados detrás): se mueven todos una celda si la de más allá
