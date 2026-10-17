@@ -23,6 +23,8 @@ const BlockGuide := preload("res://scripts/block_guide.gd")
 const Farolin := preload("res://scripts/farolin.gd")
 const TrialBanner := preload("res://scripts/trial_banner.gd")
 const Telemetry := preload("res://scripts/telemetry.gd")
+const Demo := preload("res://scripts/demo.gd")
+const DemoEndScreen := preload("res://scripts/demo_end_screen.gd")
 const KeyHint := preload("res://scripts/key_hint.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino_rules.gd")
@@ -199,6 +201,7 @@ var clarity_counter       # [ícono] claridad (la del run más la juntada en est
 var dev_console           # consola del modo dev (sólo en compilaciones de desarrollo; null en las release)
 var console_open := false
 var run_end             # pantalla de fin de run
+var demo_end            # pantalla de fin de la demo (demo_end_screen.gd)
 var run_over := false
 var action_log: Array[String] = []   # acciones del intento actual ("dx,dz,modo"): se imprime al perder, para poder reproducir un caso
 var attempt_dirty := false  # el intento actual de la torre ya empezó (hubo un movimiento o se usó un consumible)
@@ -212,6 +215,13 @@ var _zombies: Array[Thread] = []   # hilos de generación cancelados que todaví
 
 
 func _ready() -> void:
+	if Demo.on():   # la demo tiene su propia carpeta de guardado (no pisa la del juego completo) y su título
+		DirAccess.make_dir_recursive_absolute(Demo.save_dir())
+		SaveGame.path = Demo.save_dir() + "/save.json"
+		Profile.path = Demo.save_dir() + "/profile.json"
+		Profile._loaded_from = ""
+		if DisplayServer.get_name() != "headless":
+			DisplayServer.window_set_title(Demo.TITLE)
 	# Las pruebas (y las capturas hechas con GAME_SANDBOX=1) no tocan la partida, el perfil ni los ajustes reales del jugador.
 	if test_mode or DisplayServer.get_name() == "headless" or OS.get_environment("GAME_SANDBOX") == "1":
 		SaveGame.path = "user://test_save.json"
@@ -1775,7 +1785,7 @@ func _refresh() -> void:
 		stage_label.text = Loc.f("Tutorial\nLección %d/%d", [tutorial_index + 1, Tutorial.count()])
 		hud.text = "TUTORIAL   Lección %d/%d: %s" % [tutorial_index + 1, Tutorial.count(), Tutorial.lessons()[tutorial_index].title]
 	else:
-		stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, FINAL_STAGE, " *" if not trial.is_empty() else ""])
+		stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, Demo.shown_final(FINAL_STAGE), " *" if not trial.is_empty() else ""])
 		hud.text = prof_text + "\nCaída de la fila base en %d (cada %d)    Altura %d/%d    Movimientos %d    %s\nRacha %d (×%.1f)    Mejor racha %d    Purificados %d    Semilla %d" % [
 		logic.moves_to_collapse, logic.collapse_every, logic.player.y, logic.goal_y, logic.moves_made, state,
 		logic.streak, logic.streak_mult(logic.streak), logic.best_streak, logic.purified_count, seed_value]
@@ -1994,6 +2004,9 @@ func _close_balance() -> void:
 func _leave_casino_now() -> void:
 	if casino == null:
 		return
+	if Demo.is_last_casino(stage_number) and not training:   # el casino que cierra la demo: se le pagó a Farolín, se terminó
+		end_run(true, "")
+		return
 	Music.play("torre")
 	casino.queue_free()
 	casino = null
@@ -2037,6 +2050,12 @@ func _build_menus() -> void:
 		main_menu.show_panel("escenarios"))
 	run_end.to_menu.connect(open_main_menu)
 	menu_layer.add_child(run_end)
+	demo_end = DemoEndScreen.new()
+	demo_end.new_game.connect(func():
+		open_main_menu()
+		main_menu.show_panel("escenarios"))
+	demo_end.to_menu.connect(open_main_menu)
+	menu_layer.add_child(demo_end)
 	main_menu.visible = false
 
 
@@ -2090,6 +2109,7 @@ func open_main_menu() -> void:
 	_set_training(false)
 	run_over = false
 	run_end.visible = false
+	demo_end.visible = false
 	in_menu = true
 	hud_layer.visible = false
 	main_menu.set_continue(SaveGame.peek_stage())
@@ -2117,6 +2137,7 @@ func start_game(scenario_id := Scenarios.FREE) -> void:
 	_set_training(false)
 	run_over = false
 	run_end.visible = false
+	demo_end.visible = false
 	stage_number = 1
 	run.stage = 1
 	hud_layer.visible = true
@@ -2251,7 +2272,7 @@ func end_run(victory: bool, reason := "") -> void:
 	in_menu = true
 	SaveGame.delete()   # el run terminó: no hay nada que continuar
 	var luz := Profile.record_run(run, victory)   # la Luz y las estadísticas pasan al perfil
-	if victory and not training:   # escapar da una habilidad persistente del escenario (o Luz si ya las tenés todas)
+	if victory and not training and not Demo.on():   # escapar da una habilidad persistente del escenario (o Luz si ya las tenés todas; en la demo no hay habilidades)
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
 		var award := Profile.award_scenario_ability(run.scenario_id, rng)
@@ -2262,6 +2283,9 @@ func end_run(victory: bool, reason := "") -> void:
 			if not chars.is_empty():
 				reason = Loc.join([reason, _character_msg(chars)]) if reason != "" else _character_msg(chars)
 		luz += int(award.luz)
+	if Demo.on() and not training:
+		demo_end.show_summary(run, victory)
+		return
 	run_end.show_summary(run, victory, reason, luz, Profile.luz(), run_new_abilities.duplicate())
 
 
@@ -2911,6 +2935,7 @@ func dev_tower(stage: int, scenario_id := "", seed := -1) -> String:
 	_set_training(false)
 	run_over = false
 	run_end.visible = false
+	demo_end.visible = false
 	stage_number = stage
 	run.stage = stage
 	run.max_stage = stage
@@ -3041,6 +3066,7 @@ func continue_game() -> void:
 	_set_training(false)
 	run_over = false
 	run_end.visible = false
+	demo_end.visible = false
 	stage_number = int(data.stage)
 	seed_value = int(data.get("seed", 1))
 	hud_layer.visible = true

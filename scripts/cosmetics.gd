@@ -6,6 +6,7 @@ extends RefCounted
 ## (de 0,30 de ancho) va de y = 0,15 a 0,41.
 
 const ModelLib := preload("res://scripts/model_lib.gd")
+const Demo := preload("res://scripts/demo.gd")
 
 const RARITIES := {
 	"comun": {"name": "Común", "color": Color(0.78, 0.78, 0.84)},
@@ -60,7 +61,7 @@ static func by_slot(slot: String) -> Array[Dictionary]:
 static func draw_unowned(owned: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool: Array[Dictionary] = []
 	for c in ALL:
-		if not owned.has(c.id):
+		if not owned.has(c.id) and Demo.cosmetic_allowed(c.id):
 			pool.append(c)
 	if pool.is_empty():
 		return {}
@@ -101,7 +102,7 @@ static func roll(weights: Dictionary, owned: Array, rng: RandomNumberGenerator) 
 	for k in order:
 		var pool: Array[Dictionary] = []
 		for c in by_rarity(k):
-			if not owned.has(c.id):
+			if not owned.has(c.id) and Demo.cosmetic_allowed(c.id):
 				pool.append(c)
 		if not pool.is_empty():
 			return pool[rng.randi() % pool.size()]

@@ -13,6 +13,7 @@ const ScenarioCard := preload("res://scripts/scenario_card.gd")
 const LuzCounter := preload("res://scripts/luz_counter.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Loc := preload("res://scripts/loc.gd")
+const Demo := preload("res://scripts/demo.gd")
 
 signal chosen(scenario_id: String)
 signal back
@@ -128,6 +129,8 @@ func refresh() -> void:
 		card.name = "tarjeta_" + s.id
 		cards_box.add_child(card)
 		card.setup(s, Profile.can_enter(s.id))
+		if not Demo.scenario_allowed(str(s.id)):   # la demo: los demás escenarios dicen "Próximamente" y no se puede entrar
+			card.lock_soon()
 		card.info_pressed.connect(show_info)
 		card.enter_pressed.connect(func(id): chosen.emit(id))
 		cards[s.id] = card

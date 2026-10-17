@@ -86,6 +86,7 @@ var story := false            # modo historia (tutorial): la ruleta no se abre y
 var input_locked := false     # mientras habla el tabernero no se camina
 var portals: Array[MeshInstance3D] = []   # los portales de las paredes
 const Farolin := preload("res://scripts/farolin.gd")
+const Demo := preload("res://scripts/demo.gd")
 const Items := preload("res://scripts/items.gd")
 const Showcase := preload("res://scripts/showcase.gd")
 var toll_base := 0            # el precio de Farolín en la puerta de salida (0: no cobra; tutorial, entrenamiento y pruebas); lo que se paga sale de acá con los descuentos (toll_now)
@@ -561,6 +562,9 @@ func open_roulette() -> void:
 
 
 func open_slots() -> void:
+	if Demo.on():   # la demo: las tragamonedas son del juego completo
+		_flash(Demo.casino_text())
+		return
 	_open_screen(SlotsScreen.new())
 
 
@@ -570,6 +574,9 @@ func open_service() -> void:
 
 
 func open_blackjack() -> void:
+	if Demo.on():   # la demo: el blackjack es del juego completo
+		_flash(Demo.casino_text())
+		return
 	_open_screen(BlackjackScreen.new())
 
 

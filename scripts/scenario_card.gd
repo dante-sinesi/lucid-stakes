@@ -23,6 +23,7 @@ var affordable := true:
 		if enter_button != null:
 			enter_button.disabled = not v
 		queue_redraw()
+var locked_soon := false
 var _t := 0.0
 
 
@@ -55,6 +56,16 @@ func setup(s: Dictionary, can_afford: bool) -> void:
 	add_child(enter_button)
 	enter_button.position = Vector2((SIZE.x - enter_button.custom_minimum_size.x) * 0.5, SIZE.y - enter_button.custom_minimum_size.y - 26)
 	affordable = can_afford
+
+
+## "Próximamente" (la demo): el botón de entrada no se puede usar y lo dice.
+func lock_soon() -> void:
+	locked_soon = true
+	affordable = false
+	enter_button.disabled = true
+	enter_button.cost = 0
+	enter_button.set_label(preload("res://scripts/demo.gd").soon_text())
+	enter_button.primary = false
 
 
 func _process(delta: float) -> void:
