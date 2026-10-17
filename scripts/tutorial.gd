@@ -18,13 +18,13 @@ static func lessons() -> Array:
 	var wasd := "{mover_adelante} {mover_izquierda} {mover_atras} {mover_derecha}"
 	var wasd_opt := "{?mover_adelante} {?mover_izquierda} {?mover_atras} {?mover_derecha}"
 	return [
-		{"id": "moverse", "title": "Moverse", "help": "Pulsá " + wasd, "mode": "move", "zoom": 9.0, "build": _moverse},
-		{"id": "camara", "title": "La cámara", "help": "Pulsá {camara_arriba} {camara_izquierda} {camara_abajo} {camara_derecha}", "mode": "camera", "zoom": 9.0, "build": _camara, "complete": "keys"},
-		{"id": "empujar", "title": "Empujar", "help": "Mantené {empujar} y pulsá " + wasd_opt, "mode": "push", "zoom": 10.0, "build": _empujar, "needs": [TowerLogic.Mode.GRAB]},
-		{"id": "tirar", "title": "Tirar", "help": "Mantené {empujar} y pulsá " + wasd_opt, "mode": "pull", "zoom": 10.0, "build": _tirar, "needs": [TowerLogic.Mode.GRAB]},
-		{"id": "colgarse", "title": "Cornisa", "help": "Mantené {colgarse} y pulsá " + wasd_opt, "mode": "hang", "zoom": 11.0, "build": _colgarse_s, "needs": [TowerLogic.Mode.HANG]},
-		{"id": "soltarse", "title": "Soltarse", "help": "Colgate con {colgarse} y una dirección, y soltate con {colgarse}", "mode": "hang", "zoom": 12.0, "build": _colgarse, "needs": [TowerLogic.Mode.HANG]},
-		{"id": "torre", "title": "Una torre de verdad", "help": "Subí hasta el portal dorado", "zoom": 14.0, "generated": 4, "dice": true},   # (mientras se genera, el tabernero explica los dados)
+		{"id": "moverse", "title": "Moverse", "help": "Pulsa " + wasd, "mode": "move", "zoom": 9.0, "build": _moverse},
+		{"id": "camara", "title": "La cámara", "help": "Pulsa {camara_arriba} {camara_izquierda} {camara_abajo} {camara_derecha}", "mode": "camera", "zoom": 9.0, "build": _camara, "complete": "keys"},
+		{"id": "empujar", "title": "Empujar", "help": "Mantén {empujar} y pulsa " + wasd_opt, "mode": "push", "zoom": 10.0, "build": _empujar, "needs": [TowerLogic.Mode.GRAB]},
+		{"id": "tirar", "title": "Tirar", "help": "Mantén {empujar} y pulsa " + wasd_opt, "mode": "pull", "zoom": 10.0, "build": _tirar, "needs": [TowerLogic.Mode.GRAB]},
+		{"id": "colgarse", "title": "Cornisa", "help": "Mantén {colgarse} y pulsa " + wasd_opt, "mode": "hang", "zoom": 11.0, "build": _colgarse_s, "needs": [TowerLogic.Mode.HANG]},
+		{"id": "soltarse", "title": "Soltarse", "help": "Cuélgate con {colgarse} y una dirección, y suéltate con {colgarse}", "mode": "hang", "zoom": 12.0, "build": _colgarse, "needs": [TowerLogic.Mode.HANG]},
+		{"id": "torre", "title": "Una torre de verdad", "help": "Sube hasta el portal dorado", "zoom": 14.0, "generated": 4, "dice": true},   # (mientras se genera, el tabernero explica los dados)
 	]
 
 
