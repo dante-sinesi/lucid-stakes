@@ -40,7 +40,7 @@ static func defaults() -> Dictionary:
 		"music": VOLUME_STEPS,    # música (se multiplica por el volumen general)
 		"sfx": VOLUME_STEPS,      # efectos de sonido
 		"input_device": "auto",   # qué ayudas se muestran: "auto" (el último dispositivo que se tocó), "keyboard" o "pad"
-		"pad_style": "auto",      # los botones del mando que se dibujan: "auto" (según el mando conectado), "xbox", "playstation" o "nintendo"
+		"pad_style": "auto",      # los botones del mando que se dibujan: "auto" (según el mando conectado), "xbox" o "playstation"
 		"bindings": {},           # controles que el jugador cambió (ver controls.gd)
 		"graphics": {},           # gráficos que el jugador cambió (ver graphics.gd)
 	}
@@ -76,7 +76,7 @@ static func _sanitize() -> void:
 	data.sfx = clampi(int(data.sfx), 0, VOLUME_STEPS)
 	if not ["auto", "keyboard", "pad"].has(str(data.input_device)):
 		data.input_device = "auto"
-	if not ["auto", "xbox", "playstation", "nintendo"].has(str(data.pad_style)):
+	if not ["auto", "xbox", "playstation"].has(str(data.pad_style)):
 		data.pad_style = "auto"
 	if not data.bindings is Dictionary:
 		data.bindings = {}

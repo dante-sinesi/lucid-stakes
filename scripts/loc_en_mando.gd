@@ -12,5 +12,4 @@ const TABLE := {
 	"Botones del mando": "Gamepad buttons",
 	"Xbox": "Xbox",
 	"PlayStation": "PlayStation",
-	"Nintendo": "Nintendo",
 }

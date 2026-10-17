@@ -19,7 +19,7 @@ const TABS := ["general", "graficos", "sonido", "controles"]
 const TAB_NAMES := {"general": "General", "graficos": "Gráficos", "sonido": "Sonido", "controles": "Controles"}
 
 var device_buttons := {}   # Ayudas de: automático, teclado o mando
-var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox, PlayStation o Nintendo
+var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox o PlayStation
 var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
 var contrast_buttons := {}  # "on" / "off"
@@ -246,7 +246,7 @@ func _build_controls(page: Control) -> void:
 		device_buttons[d[0]] = _toggle(row0, Loc.t(d[1]), dev_group, "entrada_" + d[0], _on_device.bind(d[0]))
 	var row1 := _row(Loc.t("Botones del mando"))
 	var style_group := ButtonGroup.new()
-	for st in [["auto", "Automático"], ["xbox", "Xbox"], ["playstation", "PlayStation"], ["nintendo", "Nintendo"]]:
+	for st in [["auto", "Automático"], ["xbox", "Xbox"], ["playstation", "PlayStation"]]:
 		style_buttons[st[0]] = _toggle(row1, Loc.t(st[1]), style_group, "estilo_" + st[0], _on_pad_style.bind(st[0]))
 	var scroll := ScrollContainer.new()
 	scroll.name = "desplazamiento_controles"

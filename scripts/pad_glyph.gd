@@ -1,12 +1,12 @@
 extends RefCounted
-## Íconos de los botones del mando para los textos de ayuda y las opciones: un círculo del color del botón con su letra (Xbox y Nintendo) o su símbolo (PlayStation),
+## Íconos de los botones del mando para los textos de ayuda y las opciones: un círculo del color del botón con su letra (Xbox) o su símbolo (PlayStation),
 ## según el mando que se detecte. Se piden por posición física ("slot"), no por nombre, así valen igual en cualquier mando:
 ##   SOUTH (abajo: A en Xbox, cruz en PlayStation) · WEST (izquierda: X, cuadrado) · NORTH (arriba: Y, triángulo) · EAST (derecha: B, círculo).
 ## El puente del mando (pad_bridge.gd) traduce SOUTH a Enter, WEST a Espacio, NORTH a C y EAST a Esc cuando hay un menú o un juego del casino.
 
 const Settings := preload("res://scripts/settings.gd")
 
-enum Style { XBOX, PLAYSTATION, NINTENDO }
+enum Style { XBOX, PLAYSTATION }
 enum Slot { SOUTH, WEST, NORTH, EAST }
 
 ## Para forzar un estilo (pruebas o capturas); -1 = el del mando conectado.
@@ -15,11 +15,9 @@ static var forced := -1
 const COLORS := {
 	Style.XBOX: [Color(0.30, 0.78, 0.38), Color(0.28, 0.48, 0.95), Color(0.97, 0.80, 0.22), Color(0.90, 0.28, 0.28)],
 	Style.PLAYSTATION: [Color(0.35, 0.55, 0.95), Color(0.93, 0.50, 0.75), Color(0.30, 0.78, 0.55), Color(0.92, 0.35, 0.35)],
-	Style.NINTENDO: [Color(0.62, 0.62, 0.68), Color(0.62, 0.62, 0.68), Color(0.62, 0.62, 0.68), Color(0.62, 0.62, 0.68)],
 }
 const LETTERS := {
 	Style.XBOX: ["A", "X", "Y", "B"],
-	Style.NINTENDO: ["B", "Y", "X", "A"],
 }
 
 
@@ -32,8 +30,6 @@ static func style() -> int:
 			return Style.XBOX
 		"playstation":
 			return Style.PLAYSTATION
-		"nintendo":
-			return Style.NINTENDO
 	var pads := Input.get_connected_joypads()
 	if pads.is_empty():
 		return Style.XBOX
@@ -41,9 +37,6 @@ static func style() -> int:
 	for key in ["playstation", "ps3", "ps4", "ps5", "dualshock", "dualsense", "sony"]:
 		if n.contains(key):
 			return Style.PLAYSTATION
-	for key in ["nintendo", "switch", "joy-con", "pro controller"]:
-		if n.contains(key):
-			return Style.NINTENDO
 	return Style.XBOX
 
 
