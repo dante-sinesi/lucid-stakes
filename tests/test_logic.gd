@@ -54,6 +54,7 @@ func ledge() -> RefCounted:
 
 func _init() -> void:
 	test_walk_climb_push_pull()
+	test_shift_walks()
 	test_support()
 	test_edge_support()
 	test_standing()
@@ -112,6 +113,32 @@ func test_walk_climb_push_pull() -> void:
 	t.add_block(Vector3i(2, 1, 2))
 	t.player = Vector3i(2, 2, 2)  # sobre (2,1,2); hacia z=3 la superficie está un escalón más abajo
 	check(t.try_action(S).ok and t.player == Vector3i(2, 1, 3), "bajar un escalon")
+
+
+## Shift + dirección sin nada que empujar ni tirar es un paso común (mecánica de todo el juego); con un bloque trabado no camina.
+func test_shift_walks() -> void:
+	var t := fresh()
+	check(t.try_action(E, GRAB).ok and t.player == Vector3i(3, 1, 2), "Shift + dirección sin bloques camina")
+	t = fresh()
+	var c := fresh()
+	c.try_action(E)
+	t.try_action(E, GRAB)
+	check(t.player == c.player and t.blocks.size() == c.blocks.size() and t.claridad == c.claridad, "el paso con Shift es igual al paso común")
+	t = fresh()
+	t.add_block(Vector3i(3, 1, 2), true)   # un bloque fijo adelante: está trabado, no se camina ni se trepa
+	check(not t.try_action(E, GRAB).ok and t.player == Vector3i(2, 1, 2), "con un bloque fijo adelante no camina")
+	t = fresh()
+	t.add_block(Vector3i(3, 1, 2), false, HEAVY)
+	check(not t.try_action(E, GRAB).ok and t.player == Vector3i(2, 1, 2), "con un bloque pesado adelante no camina")
+	t = fresh()
+	t.add_block(Vector3i(1, 1, 2), true)   # un bloque fijo atrás: no se puede tirar de él, y tampoco se camina
+	check(not t.try_action(E, GRAB).ok and t.player == Vector3i(2, 1, 2), "con un bloque fijo atrás no camina")
+	t = fresh()
+	t.player = Vector3i(4, 1, 2)
+	check(not t.try_action(E, GRAB).ok, "Shift hacia el borde no sale de la grilla")
+	t = fresh()
+	t.add_block(Vector3i(3, 1, 2))
+	check(t.try_action(E, GRAB).ok and t.player == Vector3i(2, 1, 2) and t.blocks.has(Vector3i(4, 1, 2)), "con un bloque adelante sigue empujando")
 
 
 func test_support() -> void:
