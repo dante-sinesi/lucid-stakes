@@ -130,6 +130,9 @@ func _draw() -> void:
 	var gold := primary or selected or (toggle_mode and button_pressed)
 	var shine := fmod(_t * 0.35, 1.6) if (animated or hover) else -1.0
 	Draw.card(self, Rect2(-center, body_size), fc, st, k, seed_value, gold, shine if shine <= 1.0 else -1.0)
+	if has_focus() and not disabled:   # el botón apuntado con el teclado o el mando: un marco blanco que titila alrededor (se ve aunque ya esté dorado por estar elegido)
+		var pulse := 0.55 + 0.45 * sin(Time.get_ticks_msec() / 1000.0 * 9.0)
+		draw_rect(Rect2(-center - Vector2(7, 7), body_size + Vector2(14, 14)), Color(1.0, 1.0, 0.92, pulse), false, 4.0)
 	var l: Dictionary = VFont.layout(text.replace("\r", "").split("\n"), 1)
 	var text_size := Vector2(l.size) * cube
 	var origin := -text_size * 0.5

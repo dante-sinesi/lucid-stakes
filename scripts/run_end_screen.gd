@@ -100,7 +100,7 @@ func show_summary(run, victory: bool, reason := "", luz := -1, luz_total := 0, n
 	luz_row.visible = luz >= 0
 	luz_gain.value = maxi(luz, 0)
 	luz_total_counter.value = luz_total
-	title.text = "¡Escapaste de la pesadilla!" if victory else "Fin del run"
+	title.text = "¡Escapaste de la pesadilla!" if victory else "Fin de la partida"
 	title.color = UI.GOLD if victory else Color(0.85, 0.6, 1.0)
 	reason_label.text = reason if reason != "" else (Loc.f("Pasaste las %d etapas.", [FINAL_STAGE]) if victory else "")
 	for ch in stats_box.get_children():

@@ -1,5 +1,5 @@
 extends Control
-## Menú de pausa (Esc): Continuar, Reintentar la torre, Volver al menú principal, Abandonar el run y Salir. Hecho de cubitos.
+## Menú de pausa (Esc): Continuar, Reintentar la torre, Volver al menú principal, Abandonar partida y Salir. Hecho de cubitos.
 
 const UI := preload("res://scripts/menu_ui.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
@@ -38,7 +38,7 @@ func _init() -> void:
 	_button("continuar", "Continuar", true, func(): resume.emit())
 	_button("reiniciar", Loc.t("Reintentar la torre"), false, func(): restart_tower.emit())
 	_button("menu", Loc.t("Volver al menú principal"), false, func(): to_main_menu.emit())
-	_button("abandonar", Loc.t("Abandonar el run"), false, func(): abandon_run.emit())
+	_button("abandonar", Loc.t("Abandonar partida"), false, func(): abandon_run.emit())
 	_button("opciones", Loc.t("Opciones"), false, func(): show_options(true))
 	_button("salir", Loc.t("Salir del juego"), false, func(): quit_game.emit())
 	options = OptionsScreen.new()
@@ -55,10 +55,20 @@ func _button(id: String, text: String, primary: bool, action: Callable) -> void:
 	buttons[id] = b
 
 
-## Texto del botón de reintentar: con el costo en claridad (en el modo entrenamiento es gratis).
-func set_restart_cost(cost: int, free := false) -> void:
-	buttons["reiniciar"].disabled = false
-	buttons["reiniciar"].set_label(Loc.t("Reintentar la torre") if free else Loc.f("Reintentar la torre (−%d)", [cost]))
+## El botón de reintentar: cuesta una vida (gratis en el tutorial y el entrenamiento o con seguro) y en el casino no aparece. `lives`: las vidas que quedan.
+func set_restart(lives: int, free: bool, insured: bool, in_casino: bool) -> void:
+	var b = buttons["reiniciar"]
+	b.visible = not in_casino
+	b.disabled = false
+	if free:
+		b.set_label(Loc.t("Reintentar la torre"))
+	elif insured:
+		b.set_label(Loc.t("Reintentar la torre (gratis: seguro)"))
+	elif lives <= 0:
+		b.disabled = true
+		b.set_label(Loc.t("Reintentar (sin vidas)"))
+	else:
+		b.set_label(Loc.t("Reintentar la torre (−1 vida)"))
 	buttons["abandonar"].visible = not free
 
 

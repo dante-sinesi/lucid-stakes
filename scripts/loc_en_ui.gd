@@ -27,7 +27,7 @@ const TABLE := {
 	"Racha ×%.1f": "Streak ×%.1f",
 	"¡Prueba superada!   +%d de claridad extra\n%s": "Trial passed!   +%d extra clarity\n%s",
 	"\nHabilidad persistente: %s (%s)": "\nPersistent ability: %s (%s)",
-	"Abandonaste el run.": "You abandoned the run.",
+	"Abandonaste la partida.": "You abandoned the game.",
 	"¡Escapaste de la pesadilla!": "You escaped the nightmare!",
 	"Prueba «%s»: no hay reintentos": "Trial «%s»: no retries",
 	"No te alcanza la claridad para reintentar la torre (cuesta %d).": "You don't have enough clarity to retry the tower (it costs %d).",
@@ -174,7 +174,7 @@ const TABLE := {
 	"Reintentos": "Retries",
 	"Movimientos": "Moves",
 	"Habilidad persistente nueva: %s": "New persistent ability: %s",
-	"Fin del run": "End of the run",
+	"Fin de la partida": "Game over",
 	"Pasaste las %d etapas.": "You passed all %d stages.",
 	# --- cosméticos ---
 	"Conseguidos: %d de %d     %s     %s     %s": "Unlocked: %d of %d     %s     %s     %s",

@@ -193,6 +193,23 @@ func restart_cost(dead := false) -> int:
 	return maxi(int(round(base * (1.0 - restart_discount))), 1)
 
 
+## Reintentar la torre desde la pausa (por voluntad): cuesta una vida y no gasta claridad (el seguro lo hace gratis). false si no se puede (sin vidas o sin segundas oportunidades).
+func pay_voluntary_retry() -> bool:
+	if insurance:
+		insurance = false
+	elif permadeath() or lives <= 0:
+		return false
+	else:
+		lives -= 1
+	retries += 1
+	tower_retries += 1
+	return true
+
+
+func can_voluntary_retry() -> bool:
+	return insurance or (not permadeath() and lives > 0)
+
+
 ## Anota un reintento de la torre. Después de morir, el Tótem (si lo tenés) lo hace gratis y sin gastar una vida; si no, cuesta una vida.
 ## El seguro, si había, se gasta en el reintento gratis (si el Tótem ya lo cubrió, el seguro queda para otro).
 func note_retry(dead := false) -> void:

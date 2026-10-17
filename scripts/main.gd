@@ -34,6 +34,7 @@ const PadBridge := preload("res://scripts/pad_bridge.gd")
 const CasinoScene := preload("res://scripts/casino_scene.gd")
 const MainMenu := preload("res://scripts/main_menu.gd")
 const PauseMenu := preload("res://scripts/pause_menu.gd")
+const ConfirmBox := preload("res://scripts/confirm_box.gd")
 const Settings := preload("res://scripts/settings.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const Music := preload("res://scripts/music.gd")
@@ -151,6 +152,7 @@ var tower_rows := TOWER_ROWS
 var in_menu := false
 var main_menu
 var pause_menu
+var confirm_box   # cuadro de confirmación (abandonar la partida, empezar otra sobre una sin terminar)
 var menu_layer: CanvasLayer
 var env: Environment
 var training := false       # tutorial: lecciones sueltas, sin casino ni claridad en juego, y reintento gratis
@@ -241,7 +243,7 @@ func _ready() -> void:
 	_register_globals()
 	var pad_bridge := PadBridge.new()   # el mando se traduce a las teclas de cada acción
 	pad_bridge.nav_mode = func() -> bool:
-		return in_menu or get_tree().paused or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible) or (dialogue != null and dialogue.is_active())
+		return in_menu or get_tree().paused or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible) or (dialogue != null and dialogue.is_active()) or (confirm_box != null and confirm_box.is_open())
 	pad_bridge.process_mode = Node.PROCESS_MODE_ALWAYS   # (el mando tiene que seguir andando con el juego en pausa: si no, el menú de pausa no responde)
 	add_child(pad_bridge)
 	add_to_group("graphics")
@@ -2051,7 +2053,7 @@ func _build_menus() -> void:
 	menu_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(menu_layer)
 	main_menu = MainMenu.new()
-	main_menu.new_game.connect(start_game)
+	main_menu.new_game.connect(_on_new_game)
 	main_menu.continue_game.connect(continue_game)
 	main_menu.start_tutorial.connect(start_tutorial)
 	main_menu.quit_game.connect(quit_game)
@@ -2062,13 +2064,13 @@ func _build_menus() -> void:
 	pause_menu.restart_tower.connect(func():
 		resume_game()
 		request_restart())
-	pause_menu.abandon_run.connect(func():
-		resume_game()
-		end_run(false, "Abandonaste el run."))
+	pause_menu.abandon_run.connect(_ask_abandon)
 	pause_menu.to_main_menu.connect(open_main_menu)
 	pause_menu.quit_game.connect(quit_game)
 	pause_menu.language_changed.connect(_on_language_changed)
 	menu_layer.add_child(pause_menu)
+	confirm_box = ConfirmBox.new()
+	menu_layer.add_child(confirm_box)
 	run_end = RunEndScreen.new()
 	run_end.new_game.connect(func():   # "Nueva partida" del fin de run: se elige el escenario otra vez
 		open_main_menu()
@@ -2100,7 +2102,7 @@ func _rebuild_menus() -> void:
 		main_menu.visible = true
 		main_menu.show_panel("opciones")
 	elif was_paused:
-		pause_menu.set_restart_cost(run.restart_cost(), training)
+		pause_menu.set_restart(run.lives, training or lab_active, run.insurance, casino != null)
 		pause_menu.open()
 		pause_menu.show_options(true)
 		if trial.get("no_retry", false):
@@ -2146,6 +2148,37 @@ func open_main_menu() -> void:
 
 
 ## "Nueva partida": run nuevo desde la etapa 1 en el escenario elegido (se paga su entrada con Luz; si no alcanza, se juega La Pesadilla).
+## El resumen de una partida (de la guardada o de la que está en marcha) para los cuadros de confirmación.
+func _progress_text(r: Dictionary, stage: int) -> String:
+	var scn := Scenarios.get_scenario(str(r.get("scenario_id", Scenarios.FREE)))
+	return Loc.f("%s: etapa %d de %d, %d torres superadas, %d de claridad y %d vidas.", [Loc.t(str(scn.get("name", ""))), stage, Demo.shown_final(FINAL_STAGE), int(r.get("towers_cleared", 0)), int(r.get("claridad", 0)), int(r.get("lives", 0))])
+
+
+## "Abandonar partida" de la pausa: primero se pregunta; si se confirma, termina la partida (con el resumen).
+func _ask_abandon() -> void:
+	confirm_box.ask(Loc.t("¿Abandonar la partida?"), Loc.f("Vas a terminar la partida en curso y se perderá este progreso. %s", [_progress_text(run.to_dict(), stage_number)]),
+			Loc.t("Sí, abandonar"), Loc.t("Seguir jugando"))
+	var yes: bool = await confirm_box.chosen
+	if not yes or run_over:
+		return
+	resume_game()
+	end_run(false, Loc.t("Abandonaste la partida."))
+
+
+## Elegir un escenario nuevo: si hay una partida sin terminar, antes hay que confirmar que se pierde.
+func _on_new_game(scenario_id: String) -> void:
+	var saved := SaveGame.read()
+	if saved.is_empty():
+		start_game(scenario_id)
+		return
+	confirm_box.ask(Loc.t("¿Empezar una partida nueva?"), Loc.f("Tienes una partida sin terminar. %s Si empiezas otra, esa partida se perderá.", [_progress_text(saved.run, int(saved.stage))]),
+			Loc.t("Sí, empezar de nuevo"), Loc.t("Volver"))
+	var yes: bool = await confirm_box.chosen
+	if yes:
+		SaveGame.delete()
+		start_game(scenario_id)
+
+
 func start_game(scenario_id := Scenarios.FREE) -> void:
 	if not Profile.pay_entry(scenario_id):
 		scenario_id = Scenarios.FREE
@@ -2177,7 +2210,7 @@ func pause_game() -> void:
 	pause_menu.make_room_for_banner(trial_banner != null and trial_banner.active)   # (al pausar el cartel de la prueba se ve entero: el menú sube para no taparlo)
 	if trial_banner != null:
 		trial_banner.pin()
-	pause_menu.set_restart_cost(run.restart_cost(), training)
+	pause_menu.set_restart(run.lives, training or lab_active, run.insurance, casino != null)
 	pause_menu.open()
 	if trial.get("no_retry", false):
 		pause_menu.buttons["reiniciar"].disabled = true   # (la prueba "Todo o nada" no tiene reintentos)
@@ -2249,15 +2282,19 @@ func request_restart() -> void:
 	if dead and not run.can_revive():
 		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
 		return
-	var cost := run.restart_cost(dead)
-	if not run.can_afford(cost):
-		end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost]))
+	if not dead:   # por voluntad (desde la pausa o con R): cuesta una vida, no claridad
+		if not run.pay_voluntary_retry():
+			_flash(Loc.t("No te quedan vidas para reintentar la torre"))
+			return
+		restart()
+		_flash(Loc.t("Reintento: −1 vida"))
 		return
-	var free_by: String = "totem" if (dead and run.consumables.has("totem") and not run.item_blocked("totem")) else ("vida" if dead else "seguro")
+	var cost := run.restart_cost(dead)
+	var free_by: String = "totem" if (dead and run.consumables.has("totem") and not run.item_blocked("totem")) else "vida"
 	run.spend(cost)
 	run.note_retry(dead)
 	restart()
-	_flash(Loc.f("Reintento: −%d de claridad", [cost]) if cost > 0 else (Loc.t("Reintento gratis: el Tótem te dio otra vida") if free_by == "totem" else (Loc.t("Reintento sin costo de claridad: ya perdiste una vida") if free_by == "vida" else Loc.t("Reintento gratis: el seguro lo cubre"))))
+	_flash(Loc.t("Reintento gratis: el Tótem te dio otra vida") if free_by == "totem" else Loc.t("Reintento: perdiste una vida"))
 
 
 ## Anota cómo terminó el intento de la torre (telemetría local: ver telemetry.gd). No se anota en el tutorial, el entrenamiento ni el laboratorio.

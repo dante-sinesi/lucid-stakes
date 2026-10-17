@@ -23,7 +23,7 @@ const MENUS := {
 	"Reintentar la torre (−%d)": "Retry the tower (−%d)",
 	"Reintentar (no en esta prueba)": "Retry (not in this trial)",
 	"Volver al menú principal": "Back to main menu",
-	"Abandonar el run": "Abandon the run",
+	"Abandonar partida": "Abandon game",
 	"Salir del juego": "Quit game",
 	# --- opciones ---
 	"Idioma": "Language",
