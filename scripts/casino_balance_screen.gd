@@ -70,6 +70,7 @@ func _build() -> void:
 	continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	continue_button.pressed.connect(finish)
 	col.add_child(continue_button)
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Continuar"), "call": finish}], [continue_button])
 
 
 func _cell(color: Color, i: int, text: String) -> Control:

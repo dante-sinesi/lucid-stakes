@@ -26,6 +26,7 @@ func _init() -> void:
 	test_insurance()
 	test_run_state()
 	await test_screens()
+	await test_pad_screens()
 	await test_scene()
 	print("tests de los servicios del casino terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
@@ -135,6 +136,47 @@ func test_run_state() -> void:
 	check(RunState.from_dict({}).vault == 0 and not RunState.from_dict({}).insurance, "un guardado viejo no los trae")
 
 
+## Con el mando (o el teclado) los servicios se manejan con la botonera: flechas para elegir el casillero, Enter, Espacio o C para lo que dice cada ítem.
+func test_pad_screens() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var run := make_run(5, 500)
+	run.boosts.assign(["aire_extra", "cosecha"])
+	run.consumables.assign(["freno"])
+	var t = ServiceScreens.make("taller")
+	root.add_child(t)
+	t.setup(run, rng, true)
+	await process_frame
+	check(t.hints != null and t.hints.items.size() >= 3, "el taller tiene su botonera (elegir, vender, cambiar, tienda, salir)")
+	check(not t.find_child("vender", true, false).visible and not t.find_child("salir", true, false).visible, "los botones que repite la botonera no se ven")
+	t.step_selection(1)
+	check(t.sel_kind == "boost" and t.sel_index == 0, "la flecha derecha elige el primer casillero")
+	t.step_selection(1)
+	check(t.sel_kind == "boost" and t.sel_index == 1, "y la siguiente el que sigue")
+	t.step_selection(1)
+	check(t.sel_kind == "consumable" and t.sel_index == 0, "pasa de los boosts a los consumibles")
+	t.step_selection(-1)
+	t.step_selection(-1)
+	check(t.sel_kind == "boost" and t.sel_index == 0, "y vuelve")
+	var before := run.boosts.size()
+	for it in t.hints.items:
+		if it.get("keycode") != null and (it.keycode is Array) and it.keycode.has(KEY_ENTER):
+			it.call.call()   # A (Enter): vender
+	check(run.boosts.size() == before - 1, "Enter vende el casillero elegido")
+	t.queue_free()
+	var shop = ServiceScreens.make("tienda")
+	root.add_child(shop)
+	var shop_run := make_run(5, 5000)
+	shop_run.showcase = {"shop": ["aire_extra", "freno"], "sold": []}
+	shop.setup(shop_run, rng, true)
+	await process_frame
+	shop.step_selection(1)
+	check(shop.sel != "", "en la tienda las flechas también eligen")
+	check(shop.hints.items.size() >= 2, "la tienda tiene su botonera")
+	shop.queue_free()
+	await process_frame
+
+
 func test_screens() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
@@ -166,7 +208,7 @@ func test_screens() -> void:
 	await process_frame
 	check(c.find_child("retirar", true, false).disabled, "sin nada guardado no se puede retirar")
 	c.find_child("guardar_mitad", true, false).pressed.emit()
-	check(run.vault == 100 and run.claridad == 100 and not c.find_child("retirar", true, false).disabled, "Guardar ½")
+	check(run.vault == 100 and run.claridad == 100 and not c.find_child("retirar", true, false).disabled, "Guardar 1/2")
 	c.find_child("guardar_todo", true, false).pressed.emit()
 	check(run.vault == 200 and run.claridad == 0 and c.find_child("guardar_todo", true, false).disabled, "Guardar todo")
 	c.find_child("retirar", true, false).pressed.emit()

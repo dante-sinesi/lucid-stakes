@@ -18,6 +18,8 @@ const Cosmetics := preload("res://scripts/cosmetics.gd")
 const LuzIcon := preload("res://scripts/luz_icon.gd")
 const VFont := preload("res://scripts/voxel_font.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const LuzCounter := preload("res://scripts/luz_counter.gd")
@@ -165,6 +167,8 @@ func _init() -> void:
 	start_button.disabled = true
 	start_button.pressed.connect(request_close)
 	start_box.add_child(start_button)
+	hints = PadHints.attach(self, [], [throw_button])   # la botonera de abajo reemplaza a Tirar (Empezar se queda: es también el indicador de que la torre se está generando)
+	hints.offset_left = -SHIFT * 2.0
 	var spiral := _Spiral.new()
 	spiral.name = "espiral"
 	spiral.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
@@ -392,11 +396,36 @@ func _show_prize(info: Dictionary) -> void:
 		showcase.show_prize(info)
 
 
+var hints
+var _hint_key := ""
+
+
+## La botonera según la fase: elegir dado y número, tirar, tirar de nuevo y entrar a la torre (apagado hasta que está lista).
+func _update_hints() -> void:
+	if hints == null:
+		return
+	var key := "%d%s%s" % [phase, str(can_throw()), str(tower_ready)]
+	if key == _hint_key:
+		return
+	_hint_key = key
+	match phase:
+		Phase.PICK:
+			hints.set_items([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Dado")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Número")},
+					{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Tirar"), "dim": not can_throw(), "call": throw_dice}])
+		Phase.HOLD:
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Tirar de nuevo"), "dim": not can_throw(), "call": throw_dice}])
+		Phase.RESULT, Phase.DONE:
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Empezar"), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
+		_:
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Saltear")}])
+
+
 func _update_button() -> void:
 	throw_button.set_label(Loc.t("Tirar de nuevo") if phase == Phase.HOLD else Loc.t("Tirar"))
 	throw_button.disabled = not can_throw()
 	throw_button.visible = phase != Phase.DONE and phase != Phase.RESULT
 	start_button.visible = phase == Phase.RESULT or phase == Phase.DONE   # "Empezar" aparece cuando se terminaron las tiradas
+	_update_hints()
 
 
 func _process(delta: float) -> void:

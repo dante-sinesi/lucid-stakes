@@ -135,6 +135,7 @@ func _build_info_panel() -> void:
 	info_close.name = "cerrar_info"
 	info_close.pressed.connect(func(): info_panel.visible = false)
 	col.add_child(info_close)
+	PadHints.attach_in(col, [{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "call": func(): info_panel.visible = false}], [info_close])
 	add_child(info_panel)
 	# Con la descripción abierta la grilla queda tapada: se la deja quieta (no se animan sus íconos) hasta que se cierre.
 	info_panel.visibility_changed.connect(func(): grid.process_mode = Node.PROCESS_MODE_DISABLED if info_panel.visible else Node.PROCESS_MODE_INHERIT)
@@ -198,7 +199,6 @@ func show_info(id: String) -> void:
 		else:
 			UI.label(row, "(gratis)", 2, Color(0.65, 0.95, 0.8), false)
 	info_panel.visible = true
-	info_close.grab_focus()
 
 
 ## Casillero de la grilla: el ícono de una habilidad en un marco; gris y quieto si no la tenés, a color y animado si sí.

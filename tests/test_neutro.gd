@@ -17,6 +17,7 @@ func check(cond: bool, label: String) -> void:
 
 func _init() -> void:
 	var rx_lit := RegEx.create_from_string("\"(?:[^\"\\\n]|\\.)*\"")
+	var rx_clitic := RegEx.create_from_string("(?<![A-Za-zñÑáéíóúüÁÉÍÓÚ])(?:cambi|us|tom|dej|mir|pon|agarr|vend|guard|eleg|sac|prob|busc|toc|apret|empuj|tir|llev|ayud|mand|cuid)(?:alo|ala|alos|alas|elo|ela|elos|elas|ilo|ila|ame)(?![A-Za-zñÑáéíóúüÁÉÍÓÚ])")
 	var rx_word := RegEx.create_from_string("(?<![A-Za-zñÑáéíóúüÁÉÍÓÚ])[A-Za-zñÑáéíóúüÁÉÍÓÚ]+(?:ás|és|ís|á|é|í)(?![A-Za-zñÑáéíóúüÁÉÍÓÚ])|(?<![A-Za-zñÑáéíóúüÁÉÍÓÚ])(?:vos|Vos)(?![A-Za-zñÑáéíóúüÁÉÍÓÚ])")
 	var files := 0
 	var found := {}
@@ -28,6 +29,8 @@ func _init() -> void:
 		for line in FileAccess.get_file_as_string("res://scripts/" + f).split("\n"):
 			n += 1
 			for lit in rx_lit.search_all(line):
+				for w in rx_clitic.search_all(lit.get_string()):
+					found["%s:%d  %s" % [f, n, w.get_string()]] = true
 				for w in rx_word.search_all(lit.get_string()):
 					var word := w.get_string()
 					if ALLOWED.has(word):

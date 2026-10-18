@@ -13,7 +13,7 @@ const Loc := preload("res://scripts/loc.gd")
 
 const BY_TIER: Array[String] = ["", "taller", "caja", "seguro"]
 const INFO := {
-	"taller": {"name": "Taller", "desc": "Vende un boost o un consumible por claridad, o cambialo por otro del mismo nivel."},
+	"taller": {"name": "Taller", "desc": "Vende un boost o un consumible por claridad, o cámbialo por otro del mismo nivel."},
 	"caja": {"name": "Caja fuerte", "desc": "Guarda claridad y cobrala con interés en el próximo casino. Mientras tanto no puedes usarla."},
 	"seguro": {"name": "Seguro", "desc": "Paga ahora y el primer reintento de la próxima torre sale gratis."},
 	"tienda": {"name": "Tienda", "desc": "Tres premios de esta visita, a la venta: caro, pero seguro (sin tirar la ruleta)."},

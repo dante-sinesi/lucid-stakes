@@ -29,6 +29,15 @@ static func attach(screen: Control, items: Array, replaced: Array = []) -> Contr
 	return bar
 
 
+## Lo mismo pero dentro de un contenedor (en el lugar de un botón, por ejemplo al final de una ventana).
+static func attach_in(container: Control, items: Array, replaced: Array = []) -> Control:
+	var bar: Control = load("res://scripts/pad_hints.gd").new()
+	container.add_child(bar)
+	bar.set_items(items)
+	bar.replaced = hide_buttons(replaced)
+	return bar
+
+
 static func hide_buttons(buttons: Array) -> Array:
 	for b in buttons:
 		if b != null:

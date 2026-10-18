@@ -93,6 +93,14 @@ func _init() -> void:
 
 
 ## El escenario que está en el centro (el que se ve al desplazar las tarjetas con las flechas).
+func _process(_delta: float) -> void:
+	if not visible or cards.is_empty():
+		return
+	var cur := current_id()
+	for id in cards:
+		cards[id].is_current = (id == cur) and not info_panel.visible
+
+
 func current_id() -> String:
 	var ids: Array = [Scenarios.TUTORIAL.id]
 	for sc in Scenarios.ALL:
@@ -136,6 +144,7 @@ func _build_info_panel() -> void:
 	info_close.name = "cerrar_info"
 	info_close.pressed.connect(func(): info_panel.visible = false)
 	col.add_child(info_close)
+	PadHints.attach_in(col, [{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "call": func(): info_panel.visible = false}], [info_close])
 	add_child(info_panel)
 
 
@@ -242,7 +251,6 @@ func show_info(id: String) -> void:
 		for line in ["Moverte según la brújula y girar la cámara", "Trepar, empujar, tirar y colgarte de los bordes", "El hielo, los bloques pesados y agrietados, y las bombas", "Cómo son las torres de verdad", "Para qué sirven la claridad, la ruleta, las pruebas y las habilidades"]:
 			UI.label(info_box, Loc.f("- %s", [Loc.t(line)]), 2, Color(0.88, 0.84, 0.96), false, 900)
 		info_panel.visible = true
-		info_close.grab_focus()
 		return
 	var pay := HBoxContainer.new()
 	pay.add_theme_constant_override("separation", 24)
@@ -271,4 +279,3 @@ func show_info(id: String) -> void:
 		var a := Abilities.get_ability(aid)
 		UI.label(info_box, Loc.f("- %s: %s%s", [Loc.t(a.name), Loc.t(a.desc), Loc.t("  (ya la tienes)") if Profile.has_ability(aid) else ""]), 2, Color(0.75, 0.95, 0.85), false, 900)
 	info_panel.visible = true
-	info_close.grab_focus()

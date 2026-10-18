@@ -9,6 +9,8 @@ const Items := preload("res://scripts/items.gd")
 const Icons := preload("res://scripts/item_icons.gd")
 const ClarityIcon := preload("res://scripts/clarity_icon.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
@@ -86,6 +88,8 @@ func _init() -> void:
 	close.name = "cerrar"
 	close.pressed.connect(close_window)
 	col.add_child(close)
+	PadHints.attach_in(col, [{"name": "LB|RB", "key": "Q | E", "text": Loc.t("Tipo de apuesta"), "keycode": [KEY_Q, KEY_E], "call": func(): pass},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Cerrar"), "call": close_window}], [close])
 
 
 func open_for(bet_kind: int) -> void:
@@ -134,6 +138,11 @@ func _make_row(r: Dictionary) -> Control:
 
 # Esc cierra la ventana; un clic en el fondo oscuro también.
 func _unhandled_input(event: InputEvent) -> void:
+	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E]:   # LB y RB cambian el tipo de apuesta
+		var ids: Array = Roulette.BETS.keys()
+		show_bet(ids[posmod(ids.find(bet) + (1 if event.keycode == KEY_E else -1), ids.size())])
+		get_viewport().set_input_as_handled()
+		return
 	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		close_window()
 		get_viewport().set_input_as_handled()

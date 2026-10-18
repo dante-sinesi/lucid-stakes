@@ -21,6 +21,10 @@ var key_label := "":
 	set(v):
 		key_label = v
 		queue_redraw()
+var selected := false:   # el casillero elegido (con teclado, mando o mouse): un marco que titila
+	set(v):
+		selected = v
+		queue_redraw()
 var interactive := false     # los de consumibles se usan con un clic
 var _t := 0.0
 var _hover := false
@@ -78,4 +82,6 @@ func _draw() -> void:
 	if key_label != "":
 		var l: Dictionary = VFont.layout([key_label])
 		Draw.text_cells(self, -center + Vector2(s * 1.6, s * 1.4), l.cells, l.size.y, 2.0, Color(1, 0.92, 0.6) if filled else Color(0.6, 0.55, 0.7), 0.0, 1, true)
+	if selected and filled:
+		draw_rect(body.grow(5.0), Color(1.0, 1.0, 0.9, 0.55 + 0.45 * sin(_t * 8.0)), false, 4.0)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
