@@ -389,7 +389,7 @@ func _draw() -> void:
 				PadGlyph.draw(self, gc, 17.0, PadGlyph.slot_for_option(i), not en)
 			else:
 				PadGlyph.draw_key(self, gc, 15.0, str(i + 1), not en)
-	# Indicador de "seguí": un cubito que sube y baja cuando la línea terminó de escribirse
+	# Indicador de "sigue": un cubito que sube y baja cuando la línea terminó de escribirse
 	if blocking and not is_typing() and _options.is_empty():
 		var bob := sin(_t * 5.0) * 3.0
 		Draw.cube(self, Vector2(BOX_W - 56, BOX_H - 54 + bob), 10.0, Draw.GOLD, true)

@@ -549,7 +549,7 @@ func test_hold() -> void:
 	check(g.phase == DiceGame.Phase.HOLD and g.hits() == 0, "con 0 aciertos también se espera la próxima tirada")
 	got.clear()
 	g.request_close()
-	check(got.is_empty() and not g.closing and g.phase == DiceGame.Phase.HOLD, "mientras esperás la próxima tirada no se puede empezar")
+	check(got.is_empty() and not g.closing and g.phase == DiceGame.Phase.HOLD, "mientras esperas la próxima tirada no se puede empezar")
 	# pedir Empezar mientras ruedan: al terminar de revelar se cobra directo (no queda esperando)
 	g.open(rng)
 	g.picks = [1, 2, 3, 4, 5]

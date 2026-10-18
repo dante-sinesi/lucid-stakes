@@ -155,7 +155,7 @@ func test_showcase() -> void:
 	for tier in Showcase.COUNTS:
 		var ids: Array = run.showcase.tiers[str(tier)]
 		check(ids.size() == mini(int(Showcase.COUNTS[tier]), Items.by_tier(tier).size()), "la vitrina muestra %d premios del nivel %d" % [ids.size(), tier])
-	check(not run.showcase.tiers[str(Items.Tier.EPICO)].has("midas"), "no sale un boost que ya tenés")
+	check(not run.showcase.tiers[str(Items.Tier.EPICO)].has("midas"), "no sale un boost que ya tienes")
 	# el premio de la ruleta sale de la vitrina
 	for i in 60:
 		var p := Showcase.pick(run, Items.Tier.EPICO, rng)

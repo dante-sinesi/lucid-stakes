@@ -345,7 +345,7 @@ func open_library(path: String) -> int:
 	undo_stack.clear()
 	redo_stack.clear()
 	if steps.is_empty():
-		_set_status("No hay pasos en %s: creá uno con \"Paso nuevo\"." % path)
+		_set_status("No hay pasos en %s: crea uno con \"Paso nuevo\"." % path)
 	else:
 		select_step(0)
 	refresh_all()
@@ -560,7 +560,7 @@ func set_view_r(r: int) -> void:
 	_refresh_view()
 	_frame_camera()
 	if view_r != 1:
-		_set_status("Mirando con %d repeticiones: para editar volvé a 1." % view_r)
+		_set_status("Mirando con %d repeticiones: para editar vuelve a 1." % view_r)
 
 
 func _on_view_input(ev: InputEvent) -> void:
@@ -632,7 +632,7 @@ func _can_edit() -> bool:
 	if current.is_empty():
 		return false
 	if view_r != 1 and bool(current.repeat.on):
-		_set_status("Mirando con %d repeticiones: volvé a 1 para editar." % view_r)
+		_set_status("Mirando con %d repeticiones: vuelve a 1 para editar." % view_r)
 		return false
 	if play_state != null:
 		_stop_play()
@@ -846,7 +846,7 @@ func click_floor(c: Vector2i) -> void:
 		var v := c.x if current.repeat.axis == "x" else c.y
 		if slab_first < 0:
 			slab_first = v
-			_set_status("Primera columna: %d. Ahora hacé clic en la última." % v)
+			_set_status("Primera columna: %d. Ahora haz clic en la última." % v)
 		else:
 			_push_undo()
 			current.repeat.on = true

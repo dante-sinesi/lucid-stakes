@@ -417,8 +417,8 @@ func _show_result(res: Dictionary) -> void:
 
 func _describe_now(p: Dictionary) -> String:
 	if p.kind == "none":
-		return Loc.t("Retené los rodillos que quieras y volvé a girar, o cobrá.")
-	return Loc.f("Ahora pagaría %d de claridad. Retené los que quieras y volvé a girar, o cobrá.", [int(round(float(p.mult) * Roulette.run_price(run) * game.stake))])
+		return Loc.t("Retén los rodillos que quieras y vuelve a girar, o cobra.")
+	return Loc.f("Ahora pagaría %d de claridad. Retén los que quieras y vuelve a girar, o cobra.", [int(round(float(p.mult) * Roulette.run_price(run) * game.stake))])
 
 
 func _say(text: String, color: Color) -> void:

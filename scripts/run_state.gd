@@ -341,7 +341,7 @@ func discard_error(kind: String, index: int) -> String:
 			cap_b += int(BOOST_SLOTS_FROM.get(id, 0))
 			cap_c += int(CONSUMABLE_SLOTS_FROM.get(id, 0))
 		if after.size() > cap_b or consumables.size() > cap_c:
-			return "Si lo tirás, lo demás no entraría en las barras"
+			return "Si lo tiras, lo demás no entraría en las barras"
 	return ""
 
 

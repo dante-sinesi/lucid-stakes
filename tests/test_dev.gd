@@ -203,7 +203,7 @@ func test_goto_casino() -> void:
 		await process_frame
 	check(main.casino == null and main.stage_number == 15 and main.logic != null, "salir del casino de la etapa 15 no pasa de la 15")
 	main.open_main_menu()
-	check(DevCommands.execute("goto_casino 5", main).contains("Empezá"), "en el menu pide empezar una partida")
+	check(DevCommands.execute("goto_casino 5", main).contains("Empieza"), "en el menu pide empezar una partida")
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
@@ -248,7 +248,7 @@ func test_hud() -> void:
 	all_labels(main.casino.hud_layer, cl)
 	var cbad := ""
 	for l in cl:
-		if l.visible and (str(l.text).contains("WASD") or str(l.text).contains("Esc") or str(l.text).contains("Empujá") or str(l.text).contains("Chocar")):
+		if l.visible and (str(l.text).contains("WASD") or str(l.text).contains("Esc") or str(l.text).contains("Empuja") or str(l.text).contains("Chocar")):
 			cbad = str(l.text)
 	check(cbad == "", "el casino no muestra textos de ayuda (%s)" % cbad)
 	main._cancel_jobs()

@@ -8,7 +8,7 @@ const SwirlBG := preload("res://scripts/swirl_bg.gd")
 const Loc := preload("res://scripts/loc.gd")
 
 const TITLE := "Balatro × Catherine"
-const SUBTITLE := "Escapá de la pesadilla, una torre a la vez"
+const SUBTITLE := "Escapa de la pesadilla, una torre a la vez"
 
 ## Créditos del juego.
 const CREDITS_GAME := "Diseño y desarrollo: Dante\nProgramación asistida por Claude (Anthropic)\nArte, música y sonido: Dante y Claude\n\nGracias por jugar."

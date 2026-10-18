@@ -205,7 +205,7 @@ func rotate_showcase() -> void:
 	shown_claridad = run.claridad
 	resolved.emit()
 	_refresh()
-	result_label.text = Loc.t("La vitrina cambió: mirá los premios")
+	result_label.text = Loc.t("La vitrina cambió: mira los premios")
 	prizes_window.open_for(bet)
 
 
@@ -333,7 +333,7 @@ func _pad_key(code: int) -> bool:
 			elif can_spin():
 				spin()
 			else:
-				spin()   # (muestra por qué no se puede: "elegí N casillas")
+				spin()   # (muestra por qué no se puede: "elige N casillas")
 			return true
 		KEY_SPACE:
 			toggle_pocket(pad_cursor)
@@ -471,7 +471,7 @@ func _refresh() -> void:
 	elif not run.can_afford(price):
 		result_label.text = "No alcanza la claridad para la ficha"
 	else:
-		result_label.text = "Listo: apretá GIRAR"
+		result_label.text = "Listo: aprieta GIRAR"
 
 
 func _exit_tree() -> void:

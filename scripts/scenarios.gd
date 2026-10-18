@@ -13,7 +13,7 @@ const FREE := "pesadilla"
 
 ## El tutorial no es un escenario (no hay run): es la primera tarjeta del selector de "Nueva partida". Gratis, no da Luz ni habilidades.
 const TUTORIAL := {"id": "tutorial", "name": "Tutorial", "entry": 0, "luz_mult": 1.0, "pool": [],
-		"desc": "Aprendé a escapar con el tabernero: te cuenta la historia de la pesadilla y te enseña, torre por torre, todo lo que hace falta."}
+		"desc": "Aprende a escapar con el tabernero: te cuenta la historia de la pesadilla y te enseña, torre por torre, todo lo que hace falta."}
 
 const ALL: Array[Dictionary] = [
 	{"id": "pesadilla", "name": "La Pesadilla", "entry": 0, "luz_mult": 1.0,

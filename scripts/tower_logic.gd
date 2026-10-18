@@ -569,7 +569,7 @@ func _act_hanging(d: Vector3i) -> Dictionary:
 		return _ok()
 	if d == -w:  # soltarse
 		if not release_with_opposite:
-			return _fail("Para soltarte, apretá Espacio")
+			return _fail("Para soltarte, aprieta Espacio")
 		hang_dir = Vector3i.ZERO
 		return _ok()
 	# Hacia un costado: avanzar por el borde o doblar una esquina.
@@ -1145,7 +1145,7 @@ func use_item(id: String) -> Dictionary:
 	match id:
 		"pocion_de_cosecha":
 			if harvest_potion:
-				return {"ok": false, "msg": "Ya tenés la cosecha doble en esta torre"}
+				return {"ok": false, "msg": "Ya tienes la cosecha doble en esta torre"}
 			harvest_potion = true
 			return {"ok": true, "msg": "Poción de cosecha: la claridad de esta torre vale el doble"}
 		"iman_de_luz", "lluvia_de_luz":
@@ -1199,7 +1199,7 @@ func use_item(id: String) -> Dictionary:
 			return {"ok": true, "msg": "Bloque anclado: no cae en esta etapa"}
 		"doble_salto":
 			if double_jump:
-				return {"ok": false, "msg": "Ya tenés el doble salto listo"}
+				return {"ok": false, "msg": "Ya tienes el doble salto listo"}
 			double_jump = true
 			return {"ok": true, "msg": "Doble salto listo: el próximo salto sube 2 bloques"}
 		"escudo", "totem":
@@ -1207,7 +1207,7 @@ func use_item(id: String) -> Dictionary:
 		"vida_extra":
 			return {"ok": false, "msg": "Se usa desde el juego"}
 		"teletransporte", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta":
-			return {"ok": false, "msg": "Elegí un bloque con el mouse"}
+			return {"ok": false, "msg": "Elige un bloque con el mouse"}
 	return {"ok": false, "msg": "Consumible desconocido"}
 
 
@@ -1238,9 +1238,9 @@ func target_error(id: String, cell: Vector3i) -> String:
 	if fixed.has(cell):
 		return "Ese bloque no se puede cambiar"
 	if hang_dir == Vector3i.ZERO and cell == player + DOWN:
-		return "No podés cambiar el bloque en el que estás parado"
+		return "No puedes cambiar el bloque en el que estás parado"
 	if hang_dir != Vector3i.ZERO and cell == player + hang_dir:
-		return "No podés cambiar el bloque del que te colgás"
+		return "No puedes cambiar el bloque del que te cuelgas"
 	if kind_at(cell) == CONVERTERS[id]:
 		return "Ya es de ese tipo"
 	return ""

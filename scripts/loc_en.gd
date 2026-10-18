@@ -7,7 +7,7 @@ static var TABLE: Dictionary = _build()
 
 const MENUS := {
 	# --- menú principal ---
-	"Escapá de la pesadilla, una torre a la vez": "Escape the nightmare, one tower at a time",
+	"Escapa de la pesadilla, una torre a la vez": "Escape the nightmare, one tower at a time",
 	"Continuar": "Continue",
 	"Continuar (etapa %d)": "Continue (stage %d)",
 	"Nueva partida": "New game",

@@ -168,7 +168,7 @@ func _describe(id: String, c: Dictionary, owned: bool) -> void:
 		info_label.text = nm if owned else (preload("res://scripts/demo.gd").full_text() if preload("res://scripts/demo.gd").on() else Loc.f("%s: %s", [nm, Loc.t(str(Characters.get_character(id).how))]))
 	else:
 		var rar := Loc.t(str(Cosmetics.RARITIES[c.rarity].name)).to_lower()
-		info_label.text = Loc.f("%s (%s)", [nm, rar]) if owned else (preload("res://scripts/demo.gd").full_text() if preload("res://scripts/demo.gd").on() else Loc.f("%s (%s): todavía no lo tenés. Sale en los dados de la pantalla de carga.", [nm, rar]))
+		info_label.text = Loc.f("%s (%s)", [nm, rar]) if owned else (preload("res://scripts/demo.gd").full_text() if preload("res://scripts/demo.gd").on() else Loc.f("%s (%s): todavía no lo tienes. Sale en los dados de la pantalla de carga.", [nm, rar]))
 		info_label.color = Cosmetics.RARITIES[c.rarity].color
 
 

@@ -100,7 +100,7 @@ func _summary_lines() -> Array[String]:
 	if int(data.total.plays) == 0:
 		out.append(Loc.t("No jugaste a nada en este casino."))
 	else:
-		out.append(Loc.f("Entraste con %d de claridad y salís con %d (%s).", [data.claridad_in, data.claridad_out, _signed(int(data.claridad_out) - int(data.claridad_in))]))
+		out.append(Loc.f("Entraste con %d de claridad y sales con %d (%s).", [data.claridad_in, data.claridad_out, _signed(int(data.claridad_out) - int(data.claridad_in))]))
 		if int(data.best) > 0:
 			out.append(Loc.f("Mejor jugada: +%d en %s.", [data.best, Loc.t(str(Rules.GAME_NAMES.get(data.best_game, "")))]))
 		else:
@@ -115,7 +115,7 @@ func _summary_lines() -> Array[String]:
 			if int(data.pool) > 0:
 				out.append(Loc.f("El pozo del jackpot quedó con %d de claridad sin cobrar.", [data.pool]))
 	if run.vault > 0:
-		out.append(Loc.f("Caja fuerte: %d guardados (cobrás %d en el próximo casino).", [run.vault, Services.vault_payout(run)]))
+		out.append(Loc.f("Caja fuerte: %d guardados (cobras %d en el próximo casino).", [run.vault, Services.vault_payout(run)]))
 	if run.insurance:
 		out.append(Loc.t("Seguro contratado: el primer reintento de la próxima torre sale gratis."))
 	return out

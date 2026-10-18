@@ -107,7 +107,7 @@ func _process(_dt: float) -> void:
 		for pid in pids:
 			if pid > 0 and OS.is_process_running(pid):
 				running += 1
-		label.text = "Buscando salas sin parar (%d procesos, ronda %d)\n%d candidatas en esta ronda, %d min\n%s\nCerrá la ventana cuando quieras: las rondas terminadas ya están en salas.rooms." % [running, seed_n, _count_rooms(), (Time.get_ticks_msec() - started_ms) / 60000, last_text]
+		label.text = "Buscando salas sin parar (%d procesos, ronda %d)\n%d candidatas en esta ronda, %d min\n%s\nCierra la ventana cuando quieras: las rondas terminadas ya están en salas.rooms." % [running, seed_n, _count_rooms(), (Time.get_ticks_msec() - started_ms) / 60000, last_text]
 		if running == 0 and not finishing:
 			finishing = true
 			phase = "cierre"

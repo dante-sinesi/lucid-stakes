@@ -522,7 +522,7 @@ func test_cracked() -> void:
 	check(t.try_action(E).ok and t.player == Vector3i(3, 2, 2), "se puede trepar a un agrietado")
 	check(t.blocks.has(Vector3i(3, 1, 2)), "mientras estás encima, no se rompe")
 	t.try_action(GRAB, GRAB) if false else null
-	check(t.try_action(E).ok and t.player == Vector3i(4, 1, 2), "bajás de un salto al piso de al lado")
+	check(t.try_action(E).ok and t.player == Vector3i(4, 1, 2), "bajas de un salto al piso de al lado")
 	check(not t.blocks.has(Vector3i(3, 1, 2)) and t.removed_ids.size() == 1, "al bajarte, el agrietado se rompe y cae")
 	# empujar sin moverte no lo rompe
 	t = fresh()
@@ -948,7 +948,7 @@ func test_pull_hang() -> void:
 	t.add_block(Vector3i(1, 1, 2))
 	check(t.try_action(E, GRAB).ok, "tirar sin piso atras se puede")
 	check(t.blocks.has(Vector3i(2, 1, 2)) and not t.blocks.has(Vector3i(1, 1, 2)), "el bloque tirado viene a donde estabas")
-	check(t.player == Vector3i(3, 0, 2) and t.hang_dir == W, "y quedás colgado del bloque en el que estabas parado, un piso más abajo")
+	check(t.player == Vector3i(3, 0, 2) and t.hang_dir == W, "y quedas colgado del bloque en el que estabas parado, un piso más abajo")
 	check(not t.try_action(W).ok and t.player == Vector3i(3, 0, 2), "no se puede trepar de vuelta: el bloque tirado quedó encima")
 	t = fresh()
 	t.player = Vector3i(4, 1, 2)

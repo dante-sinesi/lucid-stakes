@@ -19,20 +19,10 @@ func check(cond: bool, label: String) -> void:
 		print("FAIL: ", label)
 
 
-## Farolín tiene su frase para cada decisión y ninguna usa voseo (el español de los diálogos es neutro).
+## Farolín tiene su frase para cada decisión (que el español sea neutro lo comprueba tests/test_neutro.gd en todo el juego).
 func test_reactions() -> void:
 	for id in [Farolin.PAY, Farolin.REDO, Farolin.GIVE_UP]:
-		var line: String = Farolin.reaction(id)
-		check(line != "", "Farolín contesta cuando eliges %s" % id)
-		for voseo in ["vos", "Pagás", "volvés", "dejás", "tenés"]:
-			check(not line.contains(voseo), "la frase de Farolín para %s no usa voseo (%s)" % [id, voseo])
-	var all := ""
-	for ok in [true, false]:
-		for have in [0, 500]:
-			all += str(Farolin.toll_dialog(100, have, ok).text) + "
-"
-	for voseo in ["Pagás", "volvés", "dejás", "tenés", "podés"]:
-		check(not all.contains(voseo), "lo que dice Farolín en el peaje no usa voseo (%s)" % voseo)
+		check(Farolin.reaction(id) != "", "Farolín contesta cuando eliges %s" % id)
 
 
 func _init() -> void:

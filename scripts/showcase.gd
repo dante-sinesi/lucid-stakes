@@ -149,7 +149,7 @@ static func buy(run, id: String) -> Dictionary:
 	if not run.can_afford(price):
 		return {"ok": false, "error": "No alcanza la claridad"}
 	if not run.has_room_for(it):
-		return {"ok": false, "error": "No tenés lugar: vendé algo en el taller"}
+		return {"ok": false, "error": "No tienes lugar: vende algo en el taller"}
 	run.spend(price)
 	run.take(it)
 	run.showcase["sold"].append(id)

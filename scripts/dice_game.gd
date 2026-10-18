@@ -53,12 +53,12 @@ const PRIZES := {
 
 ## Lo que dice el tabernero según los aciertos.
 const LINES := {
-	0: ["Ni uno. La casa agradece.", "Los dados hoy no te quieren, soñador.", "Nada. Pero tirás con estilo."],
-	1: ["Uno. Algo es algo.", "Uno solo, pero cuenta.", "Un acierto: se nota que sabés."],
+	0: ["Ni uno. La casa agradece.", "Los dados hoy no te quieren, soñador.", "Nada. Pero tiras con estilo."],
+	1: ["Uno. Algo es algo.", "Uno solo, pero cuenta.", "Un acierto: se nota que sabes."],
 	2: ["¡Dos! Vas bien.", "Dos aciertos. Eso ya es puntería.", "Dos de cinco, nada mal."],
 	3: ["¡Tres! Eso es suerte de la buena.", "Tres aciertos, soñador. Me estás asustando.", "¡Tres! La casa empieza a sudar."],
 	4: ["¡CUATRO! Esto no pasa seguido.", "Cuatro... ¡y una luz de regalo!", "¿Cuatro? Estás tocado por la claridad."],
-	5: ["¡LOS CINCO! No lo puedo creer...", "Cinco de cinco. Esto va a quedar en la historia de la taberna.", "¡¡Cinco!! Acá tenés, te lo ganaste."],
+	5: ["¡LOS CINCO! No lo puedo creer...", "Cinco de cinco. Esto va a quedar en la historia de la taberna.", "¡¡Cinco!! Aquí tienes, te lo ganaste."],
 }
 
 const PIPS := {
@@ -355,7 +355,7 @@ func _after_reveal() -> void:
 		_phase_t = 0.0
 		var m := misses()
 		selected = m[0]
-		message = Loc.f("Verdes retenidos. Tirá los demás: te quedan %d tiradas.", [throws_left]) if throws_left > 1 else Loc.t("Verdes retenidos. Tirá los demás: última tirada.")
+		message = Loc.f("Verdes retenidos. Tira los demás: te quedan %d tiradas.", [throws_left]) if throws_left > 1 else Loc.t("Verdes retenidos. Tira los demás: última tirada.")
 		message_label.text = message
 		_update_button()
 	else:

@@ -354,7 +354,7 @@ class CajaScreen extends Base:
 	func _refresh() -> void:
 		super._refresh()
 		if run.vault > 0:
-			vault_label.text = Loc.f("Guardado: %d. En el próximo casino cobrás %d (+%d %%).", [run.vault, Services.vault_payout(run), int(round(Services.VAULT_INTEREST * 100.0))])
+			vault_label.text = Loc.f("Guardado: %d. En el próximo casino cobras %d (+%d %%).", [run.vault, Services.vault_payout(run), int(round(Services.VAULT_INTEREST * 100.0))])
 		else:
 			vault_label.text = Loc.f("No hay nada guardado. Cada casino que pasa rinde un %d %% de interés.", [int(round(Services.VAULT_INTEREST * 100.0))])
 		deposit_buttons.cuarto.disabled = run.claridad < 4
@@ -395,7 +395,7 @@ class SeguroScreen extends Base:
 		super._refresh()
 		var price := Services.insurance_price(run)
 		if run.insurance:
-			status_label.text = Loc.t("Ya tenés seguro: el primer reintento de la próxima torre sale gratis.")
+			status_label.text = Loc.t("Ya tienes seguro: el primer reintento de la próxima torre sale gratis.")
 		else:
 			status_label.text = Loc.f("El primer reintento de la próxima torre costaría %d. Con el seguro, nada.", [Services.first_retry_cost(run)])
 		buy_button.set_label(Loc.f("Contratar (−%d)", [price]))

@@ -440,7 +440,7 @@ func new_tower(s: int) -> void:
 		generating = false
 		_gen_failures += 1
 		if _gen_failures > 5:
-			banner.text = "No se pudo generar la torre.\nVolvé al menú (Esc) y probá de nuevo."
+			banner.text = "No se pudo generar la torre.\nVuelve al menú (Esc) y prueba de nuevo."
 			return
 		banner.text = "Generando otra torre..."
 		await get_tree().create_timer(0.3).timeout
@@ -1745,7 +1745,7 @@ func _on_anim_done() -> void:
 		if training:
 			if tutorial_index >= 0 and tutorial_locked():   # llegaste, pero te faltan las teclas de la lección: no se pasa
 				logic.won = false
-				_flash(Loc.t("Todavía te faltan teclas: probá todas las de arriba."))
+				_flash(Loc.t("Todavía te faltan teclas: prueba todas las de arriba."))
 				await get_tree().create_timer(1.2).timeout
 				if tutorial_index >= 0 and logic != null:
 					restart()   # (las teclas ya doradas se quedan así)
@@ -2000,7 +2000,7 @@ func _on_pay_failed() -> void:
 		cam.make_current()
 	hud_layer.visible = true
 	restart()
-	_flash(Loc.t("Perdiste una vida: volvés a subir la torre"))
+	_flash(Loc.t("Perdiste una vida: vuelves a subir la torre"))
 	save_game()
 
 
@@ -2596,7 +2596,7 @@ func use_consumable_slot(slot: int) -> void:
 			_refresh()
 			save_game()
 		else:
-			_flash(Loc.f("Ya tenés las %d vidas", [run.max_lives()]))
+			_flash(Loc.f("Ya tienes las %d vidas", [run.max_lives()]))
 		return
 	if Items.needs_target(id):
 		_begin_targeting(id, slot)
@@ -2642,7 +2642,7 @@ func _begin_targeting(id: String, slot: int) -> void:
 		_target_box.material_override = mat
 		_target_box.visible = false
 		add_child(_target_box)
-	_flash(Loc.t("Elegí un bloque (clic). Esc cancela."))
+	_flash(Loc.t("Elige un bloque (clic). Esc cancela."))
 
 
 func cancel_targeting() -> void:
@@ -2758,7 +2758,7 @@ func dev_goto_end() -> String:
 	if casino != null:
 		return "Ya estás en el casino"
 	if generating:
-		return "Esperá: se está generando la torre"
+		return "Espera: se está generando la torre"
 	if logic.won or logic.lost:
 		return "La torre ya terminó (R para reintentarla)"
 	var cell: Vector3i = logic.goal_cell
@@ -2808,7 +2808,7 @@ func dev_lab(arg: String) -> String:
 	if arg != "":
 		index = Lab.index_of(arg)
 		if index < 0:
-			return "No hay una estación %s (mirá la lista con: labs)" % arg
+			return "No hay una estación %s (mira la lista con: labs)" % arg
 	if not lab_active:
 		_cancel_jobs()
 		if casino != null:
@@ -2939,11 +2939,11 @@ func dev_collapse(on: bool) -> String:
 ## Comando goto_casino: abre directamente el casino de la etapa `stage` (como si acabaras de pasar esa torre).
 func dev_goto_casino(stage: int) -> String:
 	if in_menu or logic == null:
-		return "Empezá una partida primero (Nueva partida)"
+		return "Empieza una partida primero (Nueva partida)"
 	if training:
 		return "En el tutorial no hay casino"
 	if generating:
-		return "Esperá: se está generando la torre"
+		return "Espera: se está generando la torre"
 	_cancel_jobs()
 	if casino != null:
 		casino.queue_free()
@@ -2963,7 +2963,7 @@ func dev_goto_casino(stage: int) -> String:
 ## desde el menú principal y desde el juego.
 func dev_tower(stage: int, scenario_id := "", seed := -1) -> String:
 	if generating:
-		return "Esperá: se está generando la torre"
+		return "Espera: se está generando la torre"
 	var sc := scenario_id.to_lower() if scenario_id != "" else Scenarios.FREE
 	var known := false
 	var ids: Array[String] = []
@@ -3072,7 +3072,7 @@ func dev_set_claridad(n: int) -> String:
 func dev_give(id: String) -> String:
 	var item := Items.get_item(id)
 	if item.is_empty() or item.type == Items.Type.CLARITY:
-		return "Ítem desconocido: %s (mirá los ids con: items)" % id
+		return "Ítem desconocido: %s (mira los ids con: items)" % id
 	if not run.take(item):
 		return "No hay lugar para %s" % item.name
 	if lab_active and item.type == Items.Type.BOOST:

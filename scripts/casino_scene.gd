@@ -122,7 +122,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	_place_player()
 	_vault_paid = vault_paid
 	if vault_paid > 0:
-		_flash(Loc.f("Caja fuerte: cobrás %d de claridad (con interés).", [vault_paid]))
+		_flash(Loc.f("Caja fuerte: cobras %d de claridad (con interés).", [vault_paid]))
 	_refresh_hud()
 
 
@@ -376,20 +376,20 @@ func use_consumable_slot(slot: int) -> void:
 		return
 	if id == "vida_extra":
 		if not run.add_life():
-			_flash(Loc.f("Ya tenés las %d vidas", [run.max_lives()]))
+			_flash(Loc.f("Ya tienes las %d vidas", [run.max_lives()]))
 			return
 		run.use_consumable(id)
 		_flash(Loc.t("¡Una vida más!"))
 	elif id == "ficha_gratis":
 		if run.free_chip:
-			_flash(Loc.t("Ya tenés una ficha gratis lista"))
+			_flash(Loc.t("Ya tienes una ficha gratis lista"))
 			return
 		run.free_chip = true
 		run.use_consumable(id)
 		_flash(Loc.t("Tu próxima apuesta no cuesta la ficha"))
 	elif id == "rayos_x":
 		if run.xray:
-			_flash(Loc.t("Ya tenés los rayos X listos"))
+			_flash(Loc.t("Ya tienes los rayos X listos"))
 			return
 		run.xray = true
 		run.use_consumable(id)

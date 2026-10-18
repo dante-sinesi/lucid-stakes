@@ -30,9 +30,9 @@ const ALL: Array[Dictionary] = [
 		"fur": Color(0.96, 0.62, 0.28), "light": Color(0.99, 0.95, 0.88), "dark": Color(0.55, 0.3, 0.12)},
 	{"id": "perro", "name": "Perrito", "unlock": "inicio", "how": "Desde el principio.",
 		"fur": Color(0.84, 0.62, 0.4), "light": Color(0.97, 0.9, 0.78), "dark": Color(0.4, 0.24, 0.12)},
-	{"id": "conejo", "name": "Conejito", "unlock": "etapa10", "how": "Llegá a la etapa 10.",
+	{"id": "conejo", "name": "Conejito", "unlock": "etapa10", "how": "Llega a la etapa 10.",
 		"fur": Color(0.94, 0.93, 0.96), "light": Color(1.0, 1.0, 1.0), "dark": Color(0.62, 0.6, 0.68)},
-	{"id": "pinguino", "name": "Pingüino", "unlock": "hielo", "how": "Superá la prueba del Hielo total.",
+	{"id": "pinguino", "name": "Pingüino", "unlock": "hielo", "how": "Supera la prueba del Hielo total.",
 		"fur": Color(0.14, 0.18, 0.32), "light": Color(0.97, 0.97, 1.0), "dark": Color(0.06, 0.08, 0.16)},
 ]
 

@@ -17,7 +17,7 @@ const GOB_PAL := {"r": Color(0.78, 0.12, 0.14), "g": Color(0.42, 0.68, 0.28), "y
 
 const BOX_W := 1040.0
 const BOX_H := 210.0
-const TEXT := "Son 260 de claridad para pasar a la torre que sigue. ¿Pagás, o volvés a subir la que acabás de dejar?"
+const TEXT := "Son 260 de claridad para pasar a la torre que sigue. ¿Pagás, o vuelves a subir la que acabás de dejar?"
 const GOLD := Color(1.0, 0.85, 0.40)
 const WHITE := Color(0.97, 0.95, 0.9)
 
@@ -173,7 +173,7 @@ func _trial(kind: String, root: Control) -> void:
 			bg.painter = func(ci): Draw.card(ci, Rect2(Vector2(300, 560), Vector2(680, 120)), 5.0, 0, 0.06, 31, true, -1.0)
 			root.add_child(bg)
 			_centered(root, "Prueba: Niebla", 5.0, GOLD, 578.0)
-			_centered(root, "Sólo ves unos pocos pisos por encima de vos.", 2.5, WHITE, 632.0)
+			_centered(root, "Sólo ves unos pocos pisos por encima de ti.", 2.5, WHITE, 632.0)
 		"B":   # una franja a todo el ancho, como un subtítulo de película
 			var bg := Canvas.new()
 			bg.painter = func(ci):
@@ -183,11 +183,11 @@ func _trial(kind: String, root: Control) -> void:
 			root.add_child(bg)
 			_label(root, "PRUEBA", 2.5, Color(0.85, 0.7, 0.3), Vector2(70, 598))
 			_label(root, "Niebla", 6.0, GOLD, Vector2(70, 626))
-			_label(root, "Sólo ves unos pocos pisos por encima de vos.", 3.0, WHITE, Vector2(360, 640))
+			_label(root, "Sólo ves unos pocos pisos por encima de ti.", 3.0, WHITE, Vector2(360, 640))
 		"C":   # sin placa: letras grandes que bailan, con sombra, en el tercio de abajo
 			_centered(root, "Prueba", 3.0, Color(0.85, 0.7, 0.3), 540.0)
 			_centered(root, "Niebla", 8.0, GOLD, 572.0, true)
-			_centered(root, "Sólo ves unos pocos pisos por encima de vos.", 3.0, WHITE, 640.0)
+			_centered(root, "Sólo ves unos pocos pisos por encima de ti.", 3.0, WHITE, 640.0)
 
 ## ---- Versión final elegida por Dante: el Farolero, HUD tipo cuadro de texto, cartel de la prueba sin fondo ----
 
@@ -226,7 +226,7 @@ func _dialogue_final(device: String, has_lives: bool, root: Control) -> void:
 			Draw.card(ci, Rect2(Vector2(ox + 196, oy + 136), Vector2(48, 44)), 4.0, 1, 0.0, 21, true, -1.0)
 			Draw.card(ci, Rect2(Vector2(ox + 516, oy + 136), Vector2(48, 44)), 4.0, 0, 0.0, 22, false, -1.0)
 	root.add_child(box)
-	var txt := "Son 260 de claridad para seguir. ¿Pagás, o volvés a subir esta torre?"
+	var txt := "Son 260 de claridad para seguir. ¿Pagás, o vuelves a subir esta torre?"
 	if not has_lives:
 		txt = "Son 260 de claridad, y ya no te queda ninguna vida. ¿Pagás, o dejás que todo se apague?"
 	_label(root, "Farolero", 3.0, GOLD, Vector2(ox + 176, oy + 22))
@@ -246,7 +246,7 @@ func _dialogue_final(device: String, has_lives: bool, root: Control) -> void:
 func _trial_final(root: Control) -> void:
 	_centered(root, "Prueba", 3.0, Color(0.85, 0.7, 0.3), 516.0)
 	_centered(root, "Niebla", 8.0, GOLD, 548.0, true)
-	_centered(root, "Sólo ves unos pocos pisos por encima de vos.", 3.0, WHITE, 650.0)
+	_centered(root, "Sólo ves unos pocos pisos por encima de ti.", 3.0, WHITE, 650.0)
 
 
 ## ---- Tercera corrida: Farolín en 3D, opciones lado a lado con flechas (teclado) o stick (mando), prueba al pausar ----
@@ -345,11 +345,11 @@ func _dialogue_v3(device: String, has_lives: bool, sel: int, can_pay: bool, root
 			_tri(ci, Vector2(ox + 191, oy + 164), -1, 9.0, keycol)
 			_tri(ci, Vector2(ox + 929, oy + 164), 1, 9.0, keycol)
 	root.add_child(box)
-	var txt := "Son 260 de claridad para seguir. ¿Pagás, o volvés a subir esta torre?"
+	var txt := "Son 260 de claridad para seguir. ¿Pagás, o vuelves a subir esta torre?"
 	if not has_lives:
 		txt = "Son 260 de claridad, y ya no te queda ninguna vida. ¿Pagás, o dejás que todo se apague?"
 	if not can_pay:
-		txt = "Son 260 de claridad y te faltan 40. Sin luz no hay camino: ¿volvés a subir la torre?"
+		txt = "Son 260 de claridad y te faltan 40. Sin luz no hay camino: ¿vuelves a subir la torre?"
 	_label(root, "Farolín", 3.0, GOLD, Vector2(ox + 176, oy + 22))
 	_label(root, "\n".join(VFont.wrap(txt, 330)), 2.5, WHITE, Vector2(ox + 176, oy + 62))
 	_label(root, "Pagar 260", 2.5, Color(0.5, 0.45, 0.45) if not can_pay else Color(1, 0.95, 0.7), Vector2(ox + 280, oy + 154))

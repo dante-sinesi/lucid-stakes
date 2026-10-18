@@ -86,7 +86,7 @@ static func keeper(rule: Dictionary, known: bool, next: Dictionary, greeting: in
 		out.append(Loc.f("Ah, y tu caja fuerte rindió: te toca cobrar %d de claridad, con interés.", [vault]))
 	var name := Loc.t(str(rule.name))
 	var desc := Loc.t(str(rule.desc))
-	out.append(Loc.f("Te lo repito: en esta sala rige «%s». %s", [name, desc]) if known else Loc.f("En esta sala rige «%s». %s Mientras estés acá, vale.", [name, desc]))
+	out.append(Loc.f("Te lo repito: en esta sala rige «%s». %s", [name, desc]) if known else Loc.f("En esta sala rige «%s». %s Mientras estés aquí, vale.", [name, desc]))
 	if not next.is_empty():
 		var t: Dictionary = next.trial
 		if int(next.left) == 0:

@@ -49,7 +49,7 @@ func _init() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
 	center.add_child(col)
-	var title := UI.label(col, "Elegí el escenario", 5, UI.GOLD)
+	var title := UI.label(col, "Elige el escenario", 5, UI.GOLD)
 	title.dance = true
 	var top := HBoxContainer.new()
 	top.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -221,7 +221,7 @@ static func rule_lines(s: Dictionary) -> Array[String]:
 	if float(s.get("diff_offset", 0.0)) > 0.0:
 		out.append("Las torres son más difíciles.")
 	if bool(s.get("permadeath", false)):
-		out.append("Una sola vida: si morís, se termina.")
+		out.append("Una sola vida: si mueres, se termina.")
 	if bool(s.get("no_totem", false)) or bool(s.get("no_extra_life", false)):
 		out.append("Los Tótems y las Vidas extra no funcionan.")
 	if out.is_empty():
@@ -269,6 +269,6 @@ func show_info(id: String) -> void:
 	UI.label(info_box, "Habilidades que se pueden ganar al escapar (de a una por vez)", 3, Color(0.65, 0.95, 0.8), false, 900)
 	for aid in Scenarios.ability_ids(s):
 		var a := Abilities.get_ability(aid)
-		UI.label(info_box, Loc.f("- %s: %s%s", [Loc.t(a.name), Loc.t(a.desc), Loc.t("  (ya la tenés)") if Profile.has_ability(aid) else ""]), 2, Color(0.75, 0.95, 0.85), false, 900)
+		UI.label(info_box, Loc.f("- %s: %s%s", [Loc.t(a.name), Loc.t(a.desc), Loc.t("  (ya la tienes)") if Profile.has_ability(aid) else ""]), 2, Color(0.75, 0.95, 0.85), false, 900)
 	info_panel.visible = true
 	info_close.grab_focus()

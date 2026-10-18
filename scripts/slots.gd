@@ -97,7 +97,7 @@ func respin(held: Array) -> Dictionary:
 	for h in held:
 		all_held = all_held and h
 	if all_held:
-		return {"ok": false, "error": Loc.t("Soltá algún rodillo para volver a girar")}
+		return {"ok": false, "error": Loc.t("Suelta algún rodillo para volver a girar")}
 	var cost := 0 if run.boosts.has("giro_de_cortesia") else respin_price(price)   # (Giro de cortesía: volver a girar es gratis)
 	run.spend(cost)
 	run.casino_spent += cost

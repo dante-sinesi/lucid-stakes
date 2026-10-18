@@ -117,7 +117,7 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 			if top and int(v.pool) > 0:
 				out.jackpot = int(v.pool)
 				v.pool = 0
-				out.notes.append(Loc.f("¡Jackpot! Te llevás el pozo: +%d de claridad.", [out.jackpot]))
+				out.notes.append(Loc.f("¡Jackpot! Te llevas el pozo: +%d de claridad.", [out.jackpot]))
 	# boosts y consumibles del casino (docs/diseno.md §49)
 	if win and reward > 0:
 		var extra := 0

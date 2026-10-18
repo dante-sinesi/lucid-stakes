@@ -89,7 +89,7 @@ static func execute(line: String, game) -> String:
 			return game.dev_set_claridad(int(parts[1]))
 		"give":
 			if parts.size() < 2:
-				return "Uso: give <id>   (mirá los ids con: items)"
+				return "Uso: give <id>   (mira los ids con: items)"
 			return game.dev_give(parts[1])
 		"lab":
 			return game.dev_lab(parts[1] if parts.size() > 1 else "")
@@ -115,4 +115,4 @@ static func execute(line: String, game) -> String:
 				if it.type != Items.Type.CLARITY:
 					ids.append(it.id)
 			return "Ids: " + ", ".join(ids)
-	return "Comando desconocido: %s (escribí help)" % cmd
+	return "Comando desconocido: %s (escribe help)" % cmd

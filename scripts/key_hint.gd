@@ -1,6 +1,6 @@
 extends Control
 ## La ayuda del tutorial, arriba en el centro de la pantalla: una frase simple con las teclas dibujadas adentro, por ejemplo
-## "Mantené [Shift] y pulsá [W] [A] [S] [D]". Las teclas están grises y se ponen doradas a medida que el jugador las usa bien.
+## "Mantén [Shift] y pulsa [W] [A] [S] [D]". Las teclas están grises y se ponen doradas a medida que el jugador las usa bien.
 ## El texto lleva palabras sueltas y teclas entre llaves: {empujar} (Shift), {colgarse} (Espacio), {mover_adelante}... (WASD), {camara_arriba}... (flechas).
 ## Una tecla con `?` ({?mover_atras}) se dibuja pero no es obligatoria. Cuando todas las obligatorias están doradas se emite `completed`.
 ## `mode` dice qué cuenta como usarlas: "move" (caminar), "camera" (girar la cámara), "push" (empujar un bloque con Shift), "pull" (tirar de un bloque con Shift),

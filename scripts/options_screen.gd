@@ -419,8 +419,8 @@ func _refresh_bindings() -> void:
 		var b: Dictionary = bind_buttons[id]
 		var waiting_key: bool = capturing == id and capture_kind == "key"
 		var waiting_pad: bool = capturing == id and capture_kind == "pad"
-		b.key.set_label(Loc.t("Apretá una tecla...") if waiting_key else Loc.literal(Controls.key_name(Controls.key_of(id))))
-		b.pad.set_label(Loc.t("Apretá un botón...") if waiting_pad else Controls.pad_name(Controls.pad_of(id)))
+		b.key.set_label(Loc.t("Aprieta una tecla...") if waiting_key else Loc.literal(Controls.key_name(Controls.key_of(id))))
+		b.pad.set_label(Loc.t("Aprieta un botón...") if waiting_pad else Controls.pad_name(Controls.pad_of(id)))
 		b.key.selected = waiting_key
 		b.pad.selected = waiting_pad
 
