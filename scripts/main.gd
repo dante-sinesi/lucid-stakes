@@ -196,6 +196,8 @@ var _pending_action := ""     # la acción de movimiento que se está resolviend
 var block_discovery := true   # al llegar a la fila de un bloque nuevo, el tabernero lo explica (las pruebas lo apagan)
 var _dice_intro_pending := false   # tutorial: al abrirse los dados, el tabernero explica el juego
 var _dice_talk := false
+var _leaving_casino := false   # se le pagó a Farolín y se está yendo del casino: si se cierra el juego ahora, se continúa en la pantalla de carga (no hay que volver a pagar)
+var _loading_dice_done := false   # ya se jugaron los dados de esta pantalla de carga (no se vuelven a ofrecer al continuar)
 var _toll_options: Array = []   # las salidas que ofrece Farolín en la puerta (ver Farolin.toll_dialog)
 var _keeper_talk := false   # el tabernero del casino está hablando (cuadro de diálogo)
 var key_hint                # las teclas de la lección arriba al centro: grises hasta que se aprietan (ver key_hint.gd)
@@ -486,6 +488,7 @@ func new_tower(s: int) -> void:
 	run.tower_retries = 0
 	restart()
 	generating = false
+	_loading_dice_done = false
 	save_game()
 	_prefetch_next_stage()
 	_announce_trial()
@@ -542,7 +545,7 @@ func _start_job(stage: int, s: int) -> Dictionary:
 		var th := Thread.new()
 		th.start(_generate_worker.bind(k, s, prof, tower_rows if tower_rows != TOWER_ROWS else RunState.rows_for(stage), token, box, mutex, custom_tower, idea_mode))
 		threads.append(th)
-	var job := {"stage": stage, "thread": threads[0], "threads": threads, "token": token, "box": box, "t0": Time.get_ticks_msec(), "done": false, "no_dice": not custom_tower.is_empty() or idea_mode}   # (una torre de prueba armada con una idea no pasa por los dados)
+	var job := {"stage": stage, "thread": threads[0], "threads": threads, "token": token, "box": box, "t0": Time.get_ticks_msec(), "done": false, "no_dice": not custom_tower.is_empty() or idea_mode or _loading_dice_done}   # (una torre de prueba armada con una idea no pasa por los dados)
 	_jobs.append(job)
 	return job
 
@@ -606,6 +609,7 @@ func _await_job(job: Dictionary) -> Dictionary:
 ## Premio de un tiro de los dados de la pantalla de carga: claridad (con tope por partida), Luz y, con los 5 aciertos, un cosmético.
 ## Completa `info` con lo que de verdad se dio (`granted`, `cosmetic_name`) para que el minijuego lo muestre.
 func _on_dice_prize(info: Dictionary) -> void:
+	_loading_dice_done = true   # el premio ya está dado (el cosmético y la Luz van al perfil): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
 	var granted := 0
 	var want := int(info.get("claridad", 0))
 	if want > 0 and run != null:
@@ -630,6 +634,7 @@ func _on_dice_prize(info: Dictionary) -> void:
 			info["cosmetic_rarity"] = c.rarity
 			info["cosmetic_id"] = c.id
 			info["cosmetic_slot"] = c.slot
+	save_game()
 
 
 ## Mientras se juega la etapa actual se generan las siguientes en otros hilos (cada torre es nueva: nada pregenerado). La torre sólo depende de la etapa, el escenario y la
@@ -2044,6 +2049,9 @@ func _on_pay_failed() -> void:
 func leave_casino() -> void:
 	if casino == null or balance_layer != null:
 		return
+	_leaving_casino = true   # (desde acá el guardado es el de la pantalla de carga de la torre que sigue)
+	_loading_dice_done = false
+	save_game()
 	if casino_balance and CasinoRules.active(run):
 		balance_layer = CanvasLayer.new()
 		balance_layer.layer = 50
@@ -2068,6 +2076,7 @@ func _leave_casino_now() -> void:
 	if casino == null:
 		return
 	if Demo.is_last_casino(stage_number) and not training:   # el casino que cierra la demo: se le pagó a Farolín, se terminó
+		_leaving_casino = false
 		end_run(true, "")
 		return
 	Music.play(_tower_music(mini(stage_number + 1, FINAL_STAGE)))
@@ -2078,6 +2087,7 @@ func _leave_casino_now() -> void:
 	hud_layer.visible = true
 	stage_number = mini(stage_number + 1, FINAL_STAGE)
 	run.stage = stage_number
+	_leaving_casino = false
 	new_tower(randi() % 100000)
 
 
@@ -3145,7 +3155,18 @@ func _notification(what: int) -> void:
 		save_game()
 
 
+## ¿Se está entre el casino y la torre que sigue (peaje pagado, torre generándose o dados en pantalla)?
+func _loading_state() -> bool:
+	if training or lab_active or tutorial_index >= 0 or run == null or run_over or in_menu:
+		return false
+	return _leaving_casino or (generating and casino == null)
+
+
 func save_game() -> void:
+	if _loading_state():   # pagado el peaje (o generando la torre): se guarda "cargando la torre" para no repetir el casino ni los dados
+		var next_stage := mini(stage_number + 1, FINAL_STAGE) if casino != null else stage_number
+		SaveGame.write({"run": run.to_dict(), "stage": next_stage, "seed": seed_value, "phase": "loading", "dice_done": _loading_dice_done})
+		return
 	if not _run_active():
 		return
 	var data := {"run": run.to_dict(), "stage": stage_number, "seed": seed_value}
@@ -3181,6 +3202,12 @@ func continue_game() -> void:
 	if data.phase == "casino":
 		run.stage = stage_number
 		enter_casino(true)
+		return
+	if data.phase == "loading":   # había pagado el peaje: sigue la carga de la torre (y los dados sólo si no los había jugado)
+		run.stage = stage_number
+		_loading_dice_done = bool(data.get("dice_done", false))
+		Music.play(_tower_music(stage_number))
+		new_tower(seed_value)
 		return
 	stage_start = TowerLogic.from_dict(data.tower)
 	solution = Meteors.decode(data.get("solution", []))

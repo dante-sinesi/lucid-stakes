@@ -144,6 +144,31 @@ func refresh() -> void:
 	if not worn.is_empty():
 		name_label.text = Loc.f("%s: %s", [Loc.t(str(ch_info.name)), ", ".join(worn)])
 	info_label.text = ""
+	_link_focus()
+
+
+## El foco se mueve como se ve: izquierda y derecha dentro de la fila, arriba y abajo de fila en fila; desde la primera fila se sube a las solapas y desde las solapas se baja
+## a los casilleros. En los bordes se queda donde está (antes, de costado a veces saltaba a otra fila o a las solapas).
+func _link_focus() -> void:
+	var list: Array = grid.get_children()
+	var tab_list: Array = []
+	for t in TABS:
+		tab_list.append(tab_buttons[t])
+	for i in list.size():
+		var n: Control = list[i]
+		var row_start := (i / COLUMNS) * COLUMNS
+		var row_end := mini(row_start + COLUMNS, list.size()) - 1
+		n.focus_neighbor_left = n.get_path_to(list[i - 1] if i > row_start else n)
+		n.focus_neighbor_right = n.get_path_to(list[i + 1] if i < row_end else n)
+		n.focus_neighbor_bottom = n.get_path_to(list[i + COLUMNS] if i + COLUMNS < list.size() else n)
+		var up: Control = list[i - COLUMNS] if i >= COLUMNS else tab_buttons[tab]
+		n.focus_neighbor_top = n.get_path_to(up)
+	for k in tab_list.size():
+		var b: Control = tab_list[k]
+		b.focus_neighbor_left = b.get_path_to(tab_list[maxi(k - 1, 0)])
+		b.focus_neighbor_right = b.get_path_to(tab_list[mini(k + 1, tab_list.size() - 1)])
+		b.focus_neighbor_top = b.get_path_to(b)
+		b.focus_neighbor_bottom = b.get_path_to(list[0] if not list.is_empty() else b)
 
 
 ## Un casillero. `id` es lo que se elige ("" = quitar). `c` la descripción (nombre, rareza). El dibujito muestra al animalito `ch` con
@@ -194,7 +219,10 @@ func choose(id: String) -> void:
 				changed = Profile.equip(id)
 	if changed:
 		Sfx.play("item")
+		var had_focus: bool = tiles.has(id) and tiles[id].has_focus()
 		refresh()
+		if had_focus and tiles.has(id):   # (se arma todo de nuevo: el foco vuelve al mismo casillero)
+			tiles[id].grab_focus()
 
 
 ## El animalito en 3D dentro de su propia mini-escena: gira despacio (el grande) o se dibuja una sola vez (los casilleros).
