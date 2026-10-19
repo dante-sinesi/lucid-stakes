@@ -156,6 +156,7 @@ func _build() -> void:
 
 	prizes_window = PrizesWindow.new()
 	prizes_window.run = run
+	prizes_window.rotate_cb = rotate_showcase
 	add_child(prizes_window)
 	flash_rect = ColorRect.new()
 	flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -206,7 +207,8 @@ func rotate_showcase() -> void:
 	resolved.emit()
 	_refresh()
 	result_label.text = Loc.t("La vitrina cambió: mira los premios")
-	prizes_window.open_for(bet)
+	if not prizes_window.visible:
+		prizes_window.open_for(bet)
 
 
 func open_prizes() -> void:

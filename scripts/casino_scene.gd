@@ -197,7 +197,7 @@ func _build_portals() -> void:
 	_update_toll_ui()
 
 
-## Farolín, junto a la puerta de salida (en su celda, libre de muebles y mirando a la cámara): cobra el precio de la torre que sigue. El portal se apaga hasta que alcanza para pagarle.
+## Farolín, junto a la puerta de salida (en su celda, libre de muebles y mirando a la cámara): cobra el precio de la torre que sigue. El portal queda apagado hasta que se le paga.
 func toll_now() -> int:
 	return run.toll_after_discounts(toll_base)
 
@@ -249,11 +249,12 @@ func pay_toll() -> bool:
 			_flash(Loc.f("Interés: +%d de claridad", [interest]))
 		_refresh_hud()
 	leaving = true
+	_update_toll_ui()
 	left.emit()
 	return true
 
 
-## El portal de salida brilla sólo si alcanza para pagar; el precio se ve arriba a la izquierda (en rojo si falta).
+## El portal de salida se prende sólo al pagarle a Farolín; el precio se ve arriba a la izquierda (en rojo si falta).
 func _update_toll_ui() -> void:
 	var price := toll_now()
 	if hud_panel != null:
@@ -261,7 +262,7 @@ func _update_toll_ui() -> void:
 	if not portals.is_empty():
 		var mat := portals[0].material_override as ShaderMaterial
 		if mat != null:
-			mat.set_shader_parameter("lit", 1.0 if run.claridad >= price else 0.0)
+			mat.set_shader_parameter("lit", 1.0 if (toll_base <= 0 or leaving) else 0.0)   # el portal se prende al pagarle a Farolín, no antes
 	if _farolin != null:
 		_farolin.set_mood("contento" if run.claridad >= price else "triste")
 
@@ -455,6 +456,7 @@ func step(dir: Vector2i) -> String:
 				ask_toll()
 				return "blocked"
 			leaving = true
+			_update_toll_ui()
 			left.emit()
 			return "exit"
 		return "blocked"

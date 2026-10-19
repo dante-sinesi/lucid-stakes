@@ -24,6 +24,8 @@ var run   # (el run: con él la ventana muestra la vitrina de la visita y no tod
 var tabs := {}
 var list: VBoxContainer
 var title: Control
+var hints   # la botonera de la ventana
+var rotate_cb := Callable()   # rota la vitrina de la visita (lo pone la ruleta); la ventana sigue abierta y muestra lo nuevo
 
 
 ## Filas de la ventana para una apuesta: [{id, name, desc, prob}] (prob en 0..1).
@@ -88,8 +90,30 @@ func _init() -> void:
 	close.name = "cerrar"
 	close.pressed.connect(close_window)
 	col.add_child(close)
-	PadHints.attach_in(col, [{"name": "LB|RB", "key": "Q | E", "text": Loc.t("Tipo de apuesta"), "keycode": [KEY_Q, KEY_E], "call": func(): pass},
-			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Cerrar"), "call": close_window}], [close])
+	hints = PadHints.attach_in(col, [], [close])
+	_update_hints()
+
+
+func _can_rotate() -> bool:
+	return run != null and not run.showcase.is_empty() and rotate_cb.is_valid()
+
+
+func _update_hints() -> void:
+	if hints == null:
+		return
+	var items := [{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Tipo de apuesta"), "call": func(): pass}]
+	if _can_rotate():
+		items.append({"name": "LT", "key": "Shift", "text": Loc.f("Rotar vitrina (%d)", [Showcase.rotate_cost(run)]), "call": rotate_here, "dim": not run.can_afford(Showcase.rotate_cost(run))})
+	items.append({"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Cerrar"), "call": close_window})
+	hints.set_items(items)
+
+
+## Rota la vitrina sin salir de la ventana: las filas se arman de nuevo con los premios nuevos.
+func rotate_here() -> void:
+	if not _can_rotate():
+		return
+	rotate_cb.call()
+	show_bet(bet)
 
 
 func open_for(bet_kind: int) -> void:
@@ -113,6 +137,7 @@ func show_bet(bet_kind: int) -> void:
 		list.remove_child(ch)
 	for r in rows_for(bet_kind, run):
 		list.add_child(_make_row(r))
+	_update_hints()
 	MenuAnim.stagger(list.get_children(), 0.04, 0.22, 0.05)   # al cambiar de apuesta, las filas entran una tras otra
 
 
@@ -138,9 +163,13 @@ func _make_row(r: Dictionary) -> Control:
 
 # Esc cierra la ventana; un clic en el fondo oscuro también.
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E]:   # LB y RB cambian el tipo de apuesta
+	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E, KEY_LEFT, KEY_RIGHT]:   # las flechas, LB y RB cambian el tipo de apuesta
 		var ids: Array = Roulette.BETS.keys()
-		show_bet(ids[posmod(ids.find(bet) + (1 if event.keycode == KEY_E else -1), ids.size())])
+		show_bet(ids[posmod(ids.find(bet) + (1 if event.keycode in [KEY_E, KEY_RIGHT] else -1), ids.size())])
+		get_viewport().set_input_as_handled()
+		return
+	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SHIFT:   # Shift (LT) rota la vitrina sin cerrar la ventana
+		rotate_here()
 		get_viewport().set_input_as_handled()
 		return
 	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:

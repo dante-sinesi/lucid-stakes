@@ -239,7 +239,7 @@ const TABLE := {
 	# --- diálogo ---
 	"Tabernero": "Innkeeper",
 	# --- créditos ---
-	"Diseño y desarrollo: Dante\nProgramación asistida por Claude (Anthropic)\nArte, música y sonido: Dante y Claude\n\nGracias por jugar.": "Design and development: Dante\nProgramming assisted by Claude (Anthropic)\nArt, music and sound: Dante and Claude\n\nThanks for playing.",
+	"Diseño y desarrollo: Dante Jorge Sinesi, Argentina\nArte, música y sonido: Dante Jorge Sinesi\n\nGracias por jugar.": "Design and development: Dante Jorge Sinesi, Argentina\nArt, music and sound: Dante Jorge Sinesi\n\nThanks for playing.",
 	"Hecho con Godot Engine - https://godotengine.org\n": "Made with Godot Engine - https://godotengine.org\n",
 	"Godot Engine se distribuye bajo la licencia MIT.\n\n": "Godot Engine is distributed under the MIT license.\n\n",
 	"Componentes de terceros incluidos en el motor (nombre: licencias):\n": "Third-party components included in the engine (name: licenses):\n",
