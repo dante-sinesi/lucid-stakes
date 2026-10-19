@@ -30,6 +30,7 @@ const Services := preload("res://scripts/casino_services.gd")
 const HudPanel := preload("res://scripts/hud_panel.gd")
 const Story := preload("res://scripts/story.gd")
 const RunState := preload("res://scripts/run_state.gd")
+const GameHelp := preload("res://scripts/game_help.gd")
 const PORTAL_SHADER := preload("res://shaders/portal.gdshader")
 const ServiceScreens := preload("res://scripts/casino_service_screens.gd")
 
@@ -594,6 +595,7 @@ func _open_screen(new_screen: Control) -> void:
 	screen = new_screen
 	overlay.add_child(screen)
 	screen.setup(run, rng, quick)
+	GameHelp.attach(screen, GameHelp.id_for(screen))   # la ayuda del juego: se abre sola la primera vez y con H o Select
 	screen.closed.connect(close_roulette)
 	screen.resolved.connect(func(): changed.emit())
 	if screen.has_signal("open_shop"):   # las estaciones de servicio tienen un botón para pasar a la tienda

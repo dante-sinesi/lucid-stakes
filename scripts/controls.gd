@@ -49,6 +49,7 @@ const PAD_FIXED := [
 	{"pad": {"button": JOY_BUTTON_B}, "keys": [KEY_ESCAPE]},
 	{"pad": {"button": JOY_BUTTON_X}, "keys": [KEY_SPACE]},
 	{"pad": {"button": JOY_BUTTON_Y}, "keys": [KEY_C]},
+	{"pad": {"button": JOY_BUTTON_BACK}, "keys": [KEY_H]},   # Select: la ayuda del juego (en la torre sigue siendo reintentar)
 	{"pad": {"button": JOY_BUTTON_DPAD_UP}, "keys": [KEY_UP]},
 	{"pad": {"button": JOY_BUTTON_DPAD_DOWN}, "keys": [KEY_DOWN]},
 	{"pad": {"button": JOY_BUTTON_DPAD_LEFT}, "keys": [KEY_LEFT]},

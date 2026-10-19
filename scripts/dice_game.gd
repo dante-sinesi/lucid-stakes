@@ -19,6 +19,7 @@ const LuzIcon := preload("res://scripts/luz_icon.gd")
 const VFont := preload("res://scripts/voxel_font.gd")
 const UI := preload("res://scripts/menu_ui.gd")
 const Dice3D := preload("res://scripts/dice_3d.gd")
+const GameHelp := preload("res://scripts/game_help.gd")
 const PadHints := preload("res://scripts/pad_hints.gd")
 const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
@@ -201,6 +202,7 @@ func _init() -> void:
 	loading_spiral.owner_game = self
 	loading_spiral.only_at_end = true
 	add_child(loading_spiral)
+	GameHelp.attach(self, "dados")   # la ayuda de los dados: se abre sola la primera vez que se juegan y con H o Select
 
 
 func is_open() -> bool:
