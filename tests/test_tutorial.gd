@@ -197,7 +197,12 @@ func test_flow() -> void:
 	check(not main.in_menu and main.casino != null and main.casino.story and main.story_kind == "outro" and main.casino.lay.tier == 1, "al terminar la ultima leccion el tabernero te recibe en el salon de piedra")
 	check(main.dialogue.blocking and main.dialogue.lines.size() >= 6 and not main.hud_layer.visible, "y te explica las habilidades, la Luz y lo demas")
 	main.dialogue.skip_all()
-	check(main.in_menu and main.tutorial_index == -1 and not main.training and main.casino == null and not main.dialogue.is_active(), "al terminar su cierre se vuelve al menu")
+	check(main.story_kind == "outro" and main.casino != null and not main.casino.input_locked, "al terminar de hablar se camina hasta Farolín (peaje de práctica)")
+	main.casino.ask_toll()
+	main.dialogue.confirm_choice()
+	await process_frame
+	main.dialogue.skip_all()
+	check(main.in_menu and main.tutorial_index == -1 and not main.training and main.casino == null and not main.dialogue.is_active(), "al terminar el peaje de práctica se vuelve al menu")
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
