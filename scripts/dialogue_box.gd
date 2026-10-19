@@ -361,13 +361,17 @@ func _draw() -> void:
 		face_rows = Farolin.face_rows()
 		face_pal = Farolin.FACE_PAL
 		draw_circle(origin + Vector2(6, 6) * s, 64.0, Color(1.0, 0.8, 0.3, 0.06 + 0.02 * sin(_t * 6.0)))   # (la luz de su llama sobre el cuadro)
+	var bob := Vector2(0, sin(_t * 2.0) * 1.2 if is_typing() and int(_t * 8.0) % 2 == 0 else 0.0)
+	if speaker == Farolin.SPEAKER:
+		Farolin.draw_face(self, origin, s, -1, bob)
+		face_rows = []   # (Farolín dibuja su propia cara)
 	for y in face_rows.size():
 		var row: String = face_rows[y]
 		for x in row.length():
 			if row[x] == ".":
 				continue
 			var col: Color = face_pal.get(row[x], Color.MAGENTA)
-			var p := origin + Vector2(x, y) * s + Vector2(0, sin(_t * 2.0) * 1.2 if is_typing() and int(_t * 8.0) % 2 == 0 else 0.0)
+			var p := origin + Vector2(x, y) * s + bob
 			draw_rect(Rect2(p, Vector2(s, s)), col)
 			draw_rect(Rect2(p, Vector2(s, maxf(s * 0.18, 1.0))), col.lightened(0.3))
 			draw_rect(Rect2(p + Vector2(0, s * 0.82), Vector2(s, maxf(s * 0.18, 1.0))), col.darkened(0.35))
@@ -391,5 +395,5 @@ func _draw() -> void:
 				PadGlyph.draw_key(self, gc, 15.0, str(i + 1), not en)
 	# Indicador de "sigue": un cubito que sube y baja cuando la línea terminó de escribirse
 	if blocking and not is_typing() and _options.is_empty():
-		var bob := sin(_t * 5.0) * 3.0
-		Draw.cube(self, Vector2(BOX_W - 56, BOX_H - 54 + bob), 10.0, Draw.GOLD, true)
+		var arrow_bob := sin(_t * 5.0) * 3.0
+		Draw.cube(self, Vector2(BOX_W - 56, BOX_H - 54 + arrow_bob), 10.0, Draw.GOLD, true)

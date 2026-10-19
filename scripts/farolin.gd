@@ -14,14 +14,14 @@ const FACE := ["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", "
 const FACE_VARIANTS := [
 	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYEEYYEEYk.", ".kYEEYYEEYk.",
 			"aakYYYYYYkaa", ".kYEYYYYEYk.", ".kOYEEEEYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
-	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOEYYYYEOk.", ".kYEYYYYEYk.", ".kYEYYYYEYk.",
-			"aakYYYYYYkaa", ".kYYYYYYYYk.", ".kOYYYYYYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
+	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYEwYYEwYk.", ".kYEEYYEEYk.",
+			"aakEEYYEEkaa", ".kYYYYYYYYk.", ".kOYYYYYYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
 	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYEEYYEEYk.", ".kYEEYYEEYk.",
 			"aakYYYYYYkaa", ".kYYYEEYYYk.", ".kOYYEEYYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
 	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYYYEEYYYk.", ".kYYEEEEYYk.",
 			"aakYEEEEYkaa", ".kYYYEEYYYk.", ".kOYYYYYYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
 ]
-static var variant := 0   # el diseño de Farolín que se usa (el 0 es el de siempre)
+static var variant := 1   # el diseño de Farolín que se usa (0 = el de siempre con sonrisa; 1 = "Sereno", el elegido)
 
 
 static func face_rows(v := -1) -> Array:
@@ -29,7 +29,7 @@ static func face_rows(v := -1) -> Array:
 
 
 const FACE_PAL := {"k": Color(0.16, 0.14, 0.18), "Y": Color(1.0, 0.86, 0.35), "E": Color(0.18, 0.1, 0.05), "O": Color(1.0, 0.55, 0.15),
-		"a": Color(0.3, 0.27, 0.32), "b": Color(0.3, 0.27, 0.32)}
+		"a": Color(0.3, 0.27, 0.32), "b": Color(0.3, 0.27, 0.32), "w": Color(1.0, 0.98, 0.85)}
 
 ## Lo que sale de las decisiones de la puerta.
 const PAY := "pagar"
@@ -54,18 +54,24 @@ static func reaction(id: String) -> String:
 
 
 ## Dibuja la cara de Farolín en un control: `origin` es la esquina de arriba a la izquierda y `s` el lado de un cubito.
-static func draw_face(ci: CanvasItem, origin: Vector2, s: float, v := -1) -> void:
+static func draw_face(ci: CanvasItem, origin: Vector2, s: float, v := -1, bob := Vector2.ZERO) -> void:
 	var rows: Array = face_rows(v)
 	for y in rows.size():
 		var row: String = rows[y]
 		for x in row.length():
-			if row[x] == ".":
+			var ch: String = row[x]
+			if ch == ".":
 				continue
-			var col: Color = FACE_PAL.get(row[x], Color.MAGENTA)
-			var p := origin + Vector2(x, y) * s
-			ci.draw_rect(Rect2(p, Vector2(s, s)), col)
-			ci.draw_rect(Rect2(p, Vector2(s, maxf(s * 0.18, 1.0))), col.lightened(0.3))
-			ci.draw_rect(Rect2(p + Vector2(0, s * 0.82), Vector2(s, maxf(s * 0.18, 1.0))), col.darkened(0.35))
+			var col: Color = FACE_PAL.get(ch, Color.MAGENTA)
+			var p := origin + Vector2(x, y) * s + bob
+			if ch == "Y" or ch == "O" or ch == "E" or ch == "w":   # el vidrio con la llama: liso (sin biseles) y más claro hacia el centro
+				if ch == "Y":
+					col = col.lerp(Color(1.0, 0.97, 0.72), (1.0 - absf(float(x) - 5.5) / 5.5) * 0.4)
+				ci.draw_rect(Rect2(p, Vector2(s + 0.6, s + 0.6)), col)
+			else:   # el hierro, en cubitos
+				ci.draw_rect(Rect2(p, Vector2(s, s)), col)
+				ci.draw_rect(Rect2(p, Vector2(s, maxf(s * 0.18, 1.0))), col.lightened(0.3))
+				ci.draw_rect(Rect2(p + Vector2(0, s * 0.82), Vector2(s, maxf(s * 0.18, 1.0))), col.darkened(0.35))
 
 
 ## Lo que dice Farolín en la puerta y las dos salidas que ofrece: {text, options: [{id, text, enabled}]}.
