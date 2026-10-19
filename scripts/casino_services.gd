@@ -4,24 +4,22 @@ extends RefCounted
 ## - Taberna: ninguno (es el primer casino: lo justo para jugar).
 ## - Salón, "Taller": se vende un boost o consumible por claridad, o se cambia por otro del mismo nivel (se libera lugar en las barras).
 ## - Casino, "Caja fuerte": se guarda claridad y se cobra con interés en el casino siguiente; mientras tanto no sirve para reintentar.
-## - Gran casino, "Seguro": por un precio fijo, el primer reintento de la torre siguiente sale gratis.
+## - Gran casino: ninguno.
 
 const Items := preload("res://scripts/items.gd")
 const Roulette := preload("res://scripts/roulette.gd")
 const RunState := preload("res://scripts/run_state.gd")
 const Loc := preload("res://scripts/loc.gd")
 
-const BY_TIER: Array[String] = ["", "taller", "caja", "seguro"]
+const BY_TIER: Array[String] = ["", "taller", "caja", ""]
 const INFO := {
 	"taller": {"name": "Taller", "desc": "Vende un boost o un consumible por claridad, o cámbialo por otro del mismo nivel."},
 	"caja": {"name": "Caja fuerte", "desc": "Guarda claridad y cobrala con interés en el próximo casino. Mientras tanto no puedes usarla."},
-	"seguro": {"name": "Seguro", "desc": "Paga ahora y el primer reintento de la próxima torre sale gratis."},
 	"tienda": {"name": "Tienda", "desc": "Tres premios de esta visita, a la venta: caro, pero seguro (sin tirar la ruleta)."},
 }
 const SELL_FRACTION := 0.4      # el taller paga esta fracción del valor del ítem
 const SWAP_FRACTION := 0.3      # cambiar un ítem cuesta esta fracción de la ficha
 const VAULT_INTEREST := 0.15    # interés de la caja fuerte por pasar un casino
-const INSURANCE_FRACTION := 0.6 # el seguro cuesta esta fracción de lo que costaría ese primer reintento
 
 
 
@@ -30,10 +28,9 @@ static func service_for_tier(tier: int) -> String:
 	return BY_TIER[clampi(tier, 0, BY_TIER.size() - 1)]
 
 
-## Se entra al casino: expira el seguro que quedara sin usar y se paga la caja fuerte de un casino anterior (con interés).
+## Se entra al casino: se paga la caja fuerte de un casino anterior (con interés).
 ## Devuelve la claridad cobrada de la caja (0 si no había nada que cobrar).
 static func enter(run) -> int:
-	run.insurance = false
 	if run.vault > 0 and run.stage > run.vault_stage:
 		var paid := int(round(float(run.vault) * (1.0 + VAULT_INTEREST)))
 		run.vault = 0
@@ -145,25 +142,3 @@ static func withdraw(run) -> int:
 	run.gain(n)
 	return n
 
-
-# --- Seguro ----------------------------------------------------------------------------------------------------------------
-
-## Cuánto costaría el primer reintento de la próxima torre (sin seguro).
-static func first_retry_cost(run) -> int:
-	return maxi(int(round(float(RunState.RESTART_BASE + 2 * run.stage) * (1.0 - run.restart_discount))), 1)
-
-
-static func insurance_price(run) -> int:
-	return maxi(int(round(float(first_retry_cost(run)) * INSURANCE_FRACTION)), 1)
-
-
-## Contrata el seguro. {ok, error}.
-static func buy_insurance(run) -> Dictionary:
-	if run.insurance:
-		return {"ok": false, "error": Loc.t("Ya tienes seguro para la próxima torre")}
-	var price := insurance_price(run)
-	if not run.can_afford(price):
-		return {"ok": false, "error": Loc.f("No alcanza la claridad (el seguro cuesta %d)", [price])}
-	run.spend(price)
-	run.insurance = true
-	return {"ok": true, "error": "", "price": price}

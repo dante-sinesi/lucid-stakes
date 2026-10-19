@@ -47,9 +47,9 @@ func _init() -> void:
 	await process_frame
 	check(not main.confirm_box.visible, "sin partida guardada no se pide confirmación")
 	# en el casino no hay reintentar
-	main.pause_menu.set_restart(3, false, false, true)
+	main.pause_menu.set_restart(3, false, true)
 	check(not main.pause_menu.buttons["reiniciar"].visible, "en la pausa del casino no aparece reintentar")
-	main.pause_menu.set_restart(3, false, false, false)
+	main.pause_menu.set_restart(3, false, false)
 	check(main.pause_menu.buttons["reiniciar"].visible and main.pause_menu.buttons["reiniciar"].text.contains("vida"), "en la torre sí, y dice que cuesta una vida")
 	SaveGame.delete()   # (no se deja una partida guardada en el espacio de pruebas)
 	main._cancel_jobs()

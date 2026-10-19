@@ -94,13 +94,12 @@ func test_screen() -> void:
 	Rules.settle(run, 100, 0, false, false, "tragamonedas")
 	run.vault = 80
 	run.vault_stage = 3
-	run.insurance = true
 	var sc := BalanceScreen.new()
 	root.add_child(sc)
 	sc.setup(run)
 	await process_frame
 	check(sc.table.get_child_count() == 7 * 5, "la tabla tiene el encabezado, las tres mesas y el total (%d celdas)" % sc.table.get_child_count())
-	check(sc.lines.size() >= 4 and sc.lines[0].contains("Entraste con") and sc.lines.any(func(t): return t.contains("Caja fuerte") and t.contains("92")) and sc.lines.any(func(t): return t.contains("Seguro")), "los renglones cuentan la entrada y la salida, la caja fuerte y el seguro")
+	check(sc.lines.size() >= 4 and sc.lines[0].contains("Entraste con") and sc.lines.any(func(t): return t.contains("Caja fuerte") and t.contains("92")), "los renglones cuentan la entrada y la salida y la caja fuerte")
 	var finished := [0]
 	sc.done.connect(func(): finished[0] += 1)
 	sc.continue_button.pressed.emit()

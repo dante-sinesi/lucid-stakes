@@ -75,7 +75,7 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 					heights[Vector2i(x, z)] = 4 if maxi(dx, dz) <= 1 else 2
 			return {"tier": 3, "cells": Vector2i(13, 11), "entry": Vector2i(0, 9), "exit": Vector2i(9, 0), "table": table,
 					"dealer": Vector2i(6, 3), "machines": machines, "card_tables": [Rect2i(10, 3, 2, 2), Rect2i(10, 6, 2, 2)] as Array[Rect2i],
-					"obstacles": obstacles, "station": {"id": "seguro", "cell": Vector2i(11, 9)}, "farolin": Vector2i(8, 0), "heights": heights, "table_h": 4, "cam_size": 19.0}
+					"obstacles": obstacles, "farolin": Vector2i(8, 0), "heights": heights, "table_h": 4, "cam_size": 19.0}
 
 
 ## La distribución por omisión (la del nivel 2) para quien no pasa una.
@@ -556,7 +556,7 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 		glow[Vector3i(int(ccx) + 2, 7, int(ccz) + 2)] = L.gold   # fichas
 		glow[Vector3i(int(ccx) + 2, 8, int(ccz) + 2)] = L.gold
 
-	# Estación de servicio del nivel (Rumores, Taller, Caja fuerte o Seguro): un mueble con su forma propia.
+	# Estación de servicio del nivel (Taller o Caja fuerte): un mueble con su forma propia.
 	if lay.has("station"):
 		_station(solid, glow, lay.station, L)
 
@@ -631,7 +631,7 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
 
 
-## El mueble de una estación de servicio, en su celda: yunque del taller, caja fuerte o escritorio del seguro.
+## El mueble de una estación de servicio, en su celda: yunque del taller o caja fuerte.
 static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dictionary) -> void:
 	var ox: int = st.cell.x * CELL_VOX
 	var oz: int = st.cell.y * CELL_VOX
@@ -650,14 +650,6 @@ static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dic
 			_box(solid, ox + 4, 5, oz + 5, ox + 5, 7, oz + 6, L.gold)   # manija
 			glow[Vector3i(ox + 2, 6, oz + 6)] = L.gold
 			glow[Vector3i(ox + 2, 7, oz + 6)] = L.gold
-		_:   # seguro: escritorio con un contrato, el sello rojo y una lámpara
-			_box(solid, ox, 5, oz, ox + 5, 6, oz + 5, wood)
-			for p in [[0, 0], [4, 0], [0, 4], [4, 4]]:
-				_box(solid, ox + p[0], 2, oz + p[1], ox + p[0] + 1, 5, oz + p[1] + 1, wood.darkened(0.25))
-			_box(solid, ox + 1, 6, oz + 1, ox + 3, 7, oz + 4, Color(0.95, 0.9, 0.75))
-			solid[Vector3i(ox + 3, 6, oz + 3)] = Color(0.7, 0.1, 0.12)
-			_box(solid, ox + 4, 6, oz + 1, ox + 5, 8, oz + 2, L.gold)
-			glow[Vector3i(ox + 4, 8, oz + 1)] = L.lamp
 
 
 ## Posición en el mundo del centro de una celda (a la altura del piso de esa celda).

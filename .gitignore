@@ -20,3 +20,6 @@ biblioteca/
 biblioteca_*/
 biblioteca_*.jsonl
 audio_prueba/
+
+# Copia de la biblioteca anterior que deja el generador al sumar salas
+data/*.rooms.bak

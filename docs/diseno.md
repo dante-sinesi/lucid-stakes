@@ -388,8 +388,8 @@ Todo el texto, los botones, los menús, la pantalla de la ruleta (incluida la ru
 ## 31. Los casinos se diferencian: reglas, servicios, balance y habilidades por escenario
 
 - **Las mesas por nivel** (`Room.layout`): la taberna (primer casino) sólo tiene la ruleta y una tragamonedas, sin mesa de cartas ni estación de servicio; el salón suma una segunda tragamonedas y una mesa de blackjack; el casino y el gran casino, más.
-- **Reglas de la casa** (`casino_rules.gd`, estado en `run.casino_visit`, uno por visita): **Taberna: Fiado** (la primera pérdida de la visita devuelve la mitad) · **Salón: Racha** (+10 % por cada victoria seguida sobre la anterior, tope +50 %) · **Casino: Apuesta libre** (1, 2, 3 o 5 fichas juntas en tragamonedas y blackjack; la ruleta sigue con una) · **Gran casino: Jackpot** (la mitad de lo perdido va a un pozo que se lleva el premio mayor: pleno, tres coronas o blackjack). Cada pantalla de juego muestra el renglón de la regla y los avisos de lo que pagó (`casino_rule_ui.gd`).
-- **Servicios** (`casino_services.gd`, pantallas en `casino_service_screens.gd`; una estación-mueble por sala, salvo en la taberna; se choca como con las mesas): **Taller** (salón: vende un ítem por 40 % de su valor, o lo cambia por otro del mismo nivel por 30 % de la ficha; no deja vender un boost que agranda las barras si lo demás ya no entraría) · **Caja fuerte** (casino: se guarda claridad y se cobra con 15 % de interés en el casino siguiente; no sirve para reintentar mientras está guardada; se puede retirar sin interés) · **Seguro** (gran casino: 60 % del primer reintento de la próxima torre, que sale gratis; expira al llegar al casino siguiente). `run.vault`, `run.vault_stage` y `run.insurance` se guardan con el run. En el tutorial las estaciones están cerradas.
+- **Reglas de la casa** (`casino_rules.gd`, estado en `run.casino_visit`, uno por visita): **Taberna: sin regla** (el Fiado se eliminó el 2026-10-19) · **Salón: Racha** (+10 % por cada victoria seguida sobre la anterior, tope +50 %) · **Casino: Apuesta libre** (1, 2, 3 o 5 fichas juntas en tragamonedas y blackjack; la ruleta sigue con una) · **Gran casino: Jackpot** (la mitad de lo perdido va a un pozo que se lleva el premio mayor: pleno, tres coronas o blackjack). Cada pantalla de juego muestra el renglón de la regla y los avisos de lo que pagó (`casino_rule_ui.gd`).
+- **Servicios** (`casino_services.gd`, pantallas en `casino_service_screens.gd`; una estación-mueble por sala, salvo en la taberna; se choca como con las mesas): **Taller** (salón: vende un ítem por 40 % de su valor, o lo cambia por otro del mismo nivel por 30 % de la ficha; no deja vender un boost que agranda las barras si lo demás ya no entraría) · **Caja fuerte** (casino: se guarda claridad y se cobra con 15 % de interés en el casino siguiente; no sirve para reintentar mientras está guardada; se puede retirar sin interés) (el **Seguro** del gran casino se eliminó el 2026-10-19: el gran casino ya no tiene estación de servicio). `run.vault` y `run.vault_stage` se guardan con el run. En el tutorial las estaciones están cerradas.
 - **Balance del casino** (`casino_balance_screen.gd`): al salir, antes de la torre siguiente (mientras se genera), tabla por mesa con partidas, ganadas, perdidas, gastado, ganado y neto, más entrada y salida de claridad, mejor jugada, datos de la regla (mejor racha, pozo sin cobrar, fiado), la caja fuerte y el seguro. Las estadísticas se anotan en `CasinoRules.settle(..., game)`.
 - **El HUD del casino** tiene un solo contador (la claridad que tenés); ya no muestra el precio de la ficha.
 - **Habilidades persistentes por escenario** (`Scenarios.abilities`): se ganan **al escapar de la pesadilla** (terminar las 27 etapas) en ese escenario, una por vez y al azar entre las que todavía no tenés; cuando no quedan, da **Luz** (`Profile.ABILITY_LUZ` = 30 × el multiplicador del escenario). La Pesadilla: Mente despejada, Ojos de gato, Racha firme · Glaciar: Garras de hielo · Ruinas: Fuerza bruta · Polvorín: Mecha larga · Relojería: Pies ligeros · Gran Casino: Bolsillo de soñador, Segunda oportunidad. Las pruebas siguen dando claridad extra y un boost, pero ya no habilidades.
@@ -520,11 +520,11 @@ Decidido con Dante el 2026-10-16; todavía **no está implementado el ciclo nuev
 - Se pierde **una vida** y se vuelve a subir **la misma torre** (no se genera otra).
 - La claridad juntada en el intento fallido **se conserva**.
 - Sin vidas termina el run.
-- **La deuda o fiado está descartada** (hay que quitar o replantear la regla "Fiado" de la taberna).
+- **La deuda o fiado está descartada** y la regla "Fiado" de la taberna se eliminó (2026-10-19).
 
 ### Vidas y reintentos
-- Las vidas se recuperan con el consumible **Vida extra** de la ruleta. Ese consumible tiene que poder usarse **también dentro del casino**; hoy sólo se puede usar en la torre. *(pendiente)*
-- **Morir en la torre ya no cuesta claridad**: el costo es la vida que se pierde (`RunState.restart_cost(dead)` da 0). Reiniciar por voluntad (menú de pausa) sigue costando `25 + 2 por etapa` por reintento de la misma torre. El Tótem sigue sirviendo (salva la vida). **El Seguro** del gran casino (60 % del primer reintento) sólo cubre ya los reinicios por voluntad: conviene replantear su sentido. *(hecho en el código; falta repensar el Seguro)*
+- Las vidas se recuperan con el consumible **Vida extra** de la ruleta, que se puede usar también dentro del casino.
+- **Morir en la torre ya no cuesta claridad**: el costo es la vida que se pierde (`RunState.restart_cost(dead)` da 0). Reiniciar por voluntad (menú de pausa) sigue costando `25 + 2 por etapa` por reintento de la misma torre. El Tótem sigue sirviendo (salva la vida). El Seguro del gran casino se eliminó (2026-10-19).
 - Los boosts deberían **multiplicar** (no sólo sumar) para seguir la curva: hoy ninguno multiplica el ingreso de la torre (el que más se acerca es Mano de oro, que sube el paso de la racha).
 
 ### La economía, medida
@@ -558,7 +558,7 @@ Pedido de Dante: **desde la etapa 8 no se puede pasar sin habilidades o consumib
 ### Pendiente
 - Monedas en la torre (ítems recogibles por tipo de juego), contador en el HUD y el precio de Farolín visible desde el casino anterior.
 - ~~Mover Farolín y el peaje a la puerta trasera del casino~~ (hecho: `casino_scene.gd`; si no se alcanza y se insiste, se pierde una vida y se sube la misma torre).
-- Usar la Vida extra dentro del casino; quitar o replantear la regla de la taberna ("Fiado") y el Seguro.
+- ~~Usar la Vida extra dentro del casino~~ (ya estaba hecho: `casino_scene.gd`, `use_consumable_slot`, probado en `test_boosts_ganancia.gd`) y ~~quitar el Fiado y el Seguro~~ (hecho el 2026-10-19).
 - Boosts multiplicativos y su efecto en la curva; más mediciones de ingreso (con las torres de la biblioteca, que cambian el ingreso).
 - Lore: los bloques y mesas son recuerdos que se reescriben al apostar certeza (claridad); el tabernero subió, apostó y se quedó.
 
@@ -688,3 +688,6 @@ Decisiones de Dante tomadas al planificar la demo (`docs/plan_demo.md`, `docs/de
 - **Bloques con variantes** (`BlockModels.VARIANTS`, 4 por tipo; `variant_for`): sólo visual, estable por bloque dentro de cada torre; editor de modelos para hacer más (`docs/editor_modelos.md`).
 - **La guía de bloques se eliminó**; quedan los avisos del tabernero al descubrir un bloque.
 - **La demo** es el mismo código con un interruptor (`Demo.on()`), con banco de torres para las etapas 1 y 2 y su propia carpeta de guardado.
+
+## 51. Premios de los dados pendientes hasta superar una torre (2026-10-19)
+La Luz y los cosméticos que dan los dados quedan **pendientes en el run** (`run.dice_pending`, se guarda con la partida) y pasan al perfil recién al superar la torre (`main._claim_dice_rewards`, al entrar al casino), al terminar el tutorial o al terminar un run en el que se superó alguna torre. Así no se pueden sacar empezando una partida, tirando los dados y cerrando. La claridad de los dados ya iba al run (con tope por partida). Además, pagar el peaje guarda ya la carga de la torre siguiente (`phase: "loading"`, con la marca de que los dados se jugaron): cerrar el juego después de pagar no obliga a repetir el casino ni los dados.

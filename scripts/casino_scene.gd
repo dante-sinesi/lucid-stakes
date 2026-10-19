@@ -108,7 +108,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 		CasinoTheme.apply_ui(int(lay.tier))   # los botones y textos se limpian según el nivel de la sala (se restablece al salir)
 	var vault_paid := 0
 	if not story:
-		vault_paid = Services.enter(run)   # expira el seguro sin usar y se paga la caja fuerte del casino anterior
+		vault_paid = Services.enter(run)   # se paga la caja fuerte del casino anterior
 		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
 		Showcase.enter(run, rng)   # la vitrina de premios de esta visita (showcase.gd)
 	_build_room()
@@ -570,7 +570,7 @@ func open_slots() -> void:
 	_open_screen(SlotsScreen.new())
 
 
-## Abre la estación de servicio de la sala (Rumores, Taller, Caja fuerte o Seguro).
+## Abre la estación de servicio de la sala (Taller o Caja fuerte).
 func open_service() -> void:
 	_open_screen(ServiceScreens.make(str(lay.station.id)))
 

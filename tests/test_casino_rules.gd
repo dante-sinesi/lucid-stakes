@@ -1,5 +1,5 @@
 extends SceneTree
-## Pruebas de las reglas de la casa por nivel de sala (fiado, racha, apuesta libre, jackpot) y de su efecto en las tres mesas (headless).
+## Pruebas de las reglas de la casa por nivel de sala (racha, apuesta libre, jackpot) y de su efecto en las tres mesas (headless).
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_casino_rules.gd
 
 const Rules := preload("res://scripts/casino_rules.gd")
@@ -19,7 +19,7 @@ func check(cond: bool, label: String) -> void:
 
 func _init() -> void:
 	test_catalog()
-	test_fiado()
+	test_taberna_sin_regla()
 	test_racha()
 	test_libre()
 	test_jackpot()
@@ -39,44 +39,33 @@ func make_run(tier: int, claridad := 5000) -> RunState:
 
 func test_catalog() -> void:
 	check(Rules.RULES.size() == 4, "hay una regla por nivel de sala")
-	check(Rules.rule_of(0).id == "fiado" and Rules.rule_of(1).id == "racha" and Rules.rule_of(2).id == "libre" and Rules.rule_of(3).id == "jackpot", "taberna: fiado, salón: racha, casino: apuesta libre, gran casino: jackpot")
-	check(Rules.rule_of(99).id == "jackpot" and Rules.rule_of(-3).id == "fiado", "un nivel fuera de rango se acota")
+	check(Rules.rule_of(0).id == "" and Rules.rule_of(1).id == "racha" and Rules.rule_of(2).id == "libre" and Rules.rule_of(3).id == "jackpot", "taberna: sin regla, salón: racha, casino: apuesta libre, gran casino: jackpot")
+	check(Rules.rule_of(99).id == "jackpot" and Rules.rule_of(-3).id == "", "un nivel fuera de rango se acota")
 
 
-## Taberna: la primera apuesta perdida de cada visita devuelve la mitad de lo perdido.
-func test_fiado() -> void:
+## Taberna: no tiene regla de la casa (antes tenía el "Fiado"): perder no devuelve nada, en ninguna de las tres mesas.
+func test_taberna_sin_regla() -> void:
 	var run := make_run(0)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
 	var price := Roulette.run_price(run)
 	var before := run.claridad
 	var res := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)   # cae el 5: se pierde
-	check(not res.won and res.rules.refund == int(round(price * 0.5)), "la primera pérdida devuelve la mitad de la ficha")
-	check(run.claridad == before - price + res.rules.refund and res.claridad_delta == -price + res.rules.refund, "la claridad y el resultado reflejan la devolución")
-	check(res.rules.notes.size() == 1, "hay un aviso para mostrar")
-	var res2 := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)
-	check(res2.rules.refund == 0 and res2.claridad_delta == -price, "la segunda pérdida de la visita no devuelve nada")
-	var res3 := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 1)
-	check(res3.won and res3.rules.refund == 0, "ganar no activa el fiado")
-	# una visita nueva lo vuelve a dar
-	Rules.enter(run, 0)
-	Rules.accept(run)
-	var res4 := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 7)
-	check(res4.rules.refund > 0, "en otra visita vuelve a haber fiado")
-	# en las tragamonedas y el blackjack también
+	check(not res.won and res.rules.refund == 0 and res.rules.notes.is_empty(), "la primera pérdida no devuelve nada")
+	check(run.claridad == before - price and res.claridad_delta == -price, "la claridad refleja la pérdida entera")
 	Rules.enter(run, 0)
 	Rules.accept(run)
 	var s := Slots.new(run, rng)
 	s.start()
 	s.reels = [0, 1, 2]
 	var sr := s.collect()
-	check(sr.claridad == 0 and sr.rules.refund == int(round(s.price * 0.5)), "las tragamonedas sin premio devuelven la mitad")
+	check(sr.claridad == 0 and sr.rules.refund == 0, "las tragamonedas sin premio no devuelven nada")
 	Rules.enter(run, 0)
 	Rules.accept(run)
 	var bj := Blackjack.new(run, rng)
-	bj.deal([Vector2i(10, 0), Vector2i(10, 1), Vector2i(9, 2), Vector2i(8, 3), Vector2i(2, 0)])   # se saca desde el final: el jugador 2, 9 / el crupier 10, 10 (no, ver abajo)
+	bj.deal([Vector2i(10, 0), Vector2i(10, 1), Vector2i(9, 2), Vector2i(8, 3), Vector2i(2, 0)])
 	bj.stand()
-	check(bj.result.rules.refund >= 0, "el blackjack también pasa por la regla")
+	check(bj.result.rules.refund == 0, "el blackjack tampoco devuelve nada")
 
 
 ## Salón: cada victoria seguida suma 10 % al pago de la siguiente (tope 50 %); perder corta la racha.

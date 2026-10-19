@@ -32,6 +32,7 @@ var max_stage := 1
 var scenario_id := "pesadilla"      # escenario del run (ver scenarios.gd)
 var trial_schedule := {}          # etapa -> id de la prueba que toca (se sortea al empezar el run; ver trials.gd)
 var price_mult := 1.0             # multiplicador del precio de la ficha (lo fija el escenario)
+var dice_pending := {"luz": 0, "cosmetics": []}   # la Luz y los cosméticos que dieron los dados: pasan al perfil recién al superar una torre (así no se pueden sacar empezando y cerrando)
 var dice_claridad := 0          # claridad ganada con los dados de la pantalla de carga (tiene tope por partida)
 var meta_consumable_slots := 0   # mejoras permanentes del Despertar (ver profile.gd)
 var restart_discount := 0.0
@@ -42,7 +43,6 @@ var lives := MAX_LIVES    # vidas: cuántas veces se puede reintentar después d
 var casino_visit := {}    # estado de la visita al casino actual (casino_rules.gd); no se guarda
 var vault := 0            # claridad guardada en la caja fuerte (casino_services.gd); se cobra con interés en el casino siguiente
 var vault_stage := 0      # etapa del casino en el que se guardó
-var insurance := false    # seguro contratado: el primer reintento de la próxima torre sale gratis
 
 ## Reintentar la torre cuesta claridad: la mitad de la ficha de la ruleta de la etapa, y un poco más por cada reintento
 ## que ya hiciste en esta misma torre (el primero cuesta 1 vez, el segundo 2 veces, etc.).
@@ -185,19 +185,17 @@ func next_trial_text(from_stage: int) -> String:
 	return Loc.f("Próxima prueba: %s (en %d etapa%s)", [Loc.t(n.trial.name), n.left, "" if n.left == 1 else "s"])
 
 
-## `dead`: se reintenta después de morir: no cuesta claridad (el costo ya es la vida que se pierde; el Tótem la salva). Reiniciar por voluntad sí cuesta, salvo con seguro.
+## `dead`: se reintenta después de morir: no cuesta claridad (el costo ya es la vida que se pierde; el Tótem la salva). Reiniciar por voluntad sí cuesta.
 func restart_cost(dead := false) -> int:
-	if dead or insurance:
+	if dead:
 		return 0
 	var base := (RESTART_BASE + 2 * maxi(stage - 1, 0)) * (1 + tower_retries)   # (la mitad de la ficha de la ruleta de esa etapa)
 	return maxi(int(round(base * (1.0 - restart_discount))), 1)
 
 
-## Reintentar la torre desde la pausa (por voluntad): cuesta una vida y no gasta claridad (el seguro lo hace gratis). false si no se puede (sin vidas o sin segundas oportunidades).
+## Reintentar la torre desde la pausa (por voluntad): cuesta una vida y no gasta claridad. false si no se puede (sin vidas o sin segundas oportunidades).
 func pay_voluntary_retry() -> bool:
-	if insurance:
-		insurance = false
-	elif permadeath() or lives <= 0:
+	if permadeath() or lives <= 0:
 		return false
 	else:
 		lives -= 1
@@ -207,11 +205,10 @@ func pay_voluntary_retry() -> bool:
 
 
 func can_voluntary_retry() -> bool:
-	return insurance or (not permadeath() and lives > 0)
+	return not permadeath() and lives > 0
 
 
 ## Anota un reintento de la torre. Después de morir, el Tótem (si lo tenés) lo hace gratis y sin gastar una vida; si no, cuesta una vida.
-## El seguro, si había, se gasta en el reintento gratis (si el Tótem ya lo cubrió, el seguro queda para otro).
 func note_retry(dead := false) -> void:
 	retries += 1
 	tower_retries += 1
@@ -219,8 +216,6 @@ func note_retry(dead := false) -> void:
 	if dead and _totem_works():
 		use_consumable("totem")
 		saved_by_totem = true
-	elif insurance and not dead:   # (morir ya es gratis: el seguro queda para un reinicio por voluntad)
-		insurance = false
 	if dead and not saved_by_totem:
 		lives = maxi(lives - 1, 0)
 
@@ -360,8 +355,8 @@ func to_dict() -> Dictionary:
 			"casino_spent": casino_spent, "casino_won": casino_won, "retries": retries, "tower_retries": tower_retries,
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "collapse_bonus": collapse_bonus,
-			"scenario_id": scenario_id, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad,
-			"vault": vault, "vault_stage": vault_stage, "insurance": insurance, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
+			"scenario_id": scenario_id, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
+			"vault": vault, "vault_stage": vault_stage, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
 
 
 func _schedule_out() -> Dictionary:
@@ -395,9 +390,13 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.scenario_id = str(d.get("scenario_id", "pesadilla"))
 	r.price_mult = float(d.get("price_mult", 1.0))
 	r.dice_claridad = int(d.get("dice_claridad", 0))
+	var dp = d.get("dice_pending", {})
+	if dp is Dictionary:
+		r.dice_pending = {"luz": int(dp.get("luz", 0)), "cosmetics": []}
+		for id in dp.get("cosmetics", []):
+			r.dice_pending.cosmetics.append(str(id))
 	r.vault = int(d.get("vault", 0))
 	r.vault_stage = int(d.get("vault_stage", 0))
-	r.insurance = bool(d.get("insurance", false))
 	r.toll_bribe = bool(d.get("toll_bribe", false))
 	var sc = d.get("showcase", {})
 	r.showcase = sc.duplicate(true) if sc is Dictionary else {}
