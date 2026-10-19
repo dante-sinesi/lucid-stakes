@@ -36,6 +36,7 @@ static func defaults() -> Dictionary:
 		"reading_mode": false,    # modo de lectura: letras más claras y con contorno (ver voxel_draw.gd)
 		"high_contrast": false,   # alto contraste: cartas oscuras de borde claro y la escena con más contraste y color
 		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
+		"focus_frame": false,     # marco blanco que titila alrededor del botón apuntado (ayuda con el mando; por defecto sólo las flechitas doradas)
 		"compass": true,          # rosa de los vientos (la que indica a qué eje va cada tecla)
 		"volume": VOLUME_STEPS,   # en pasos de 0 a VOLUME_STEPS
 		"music": MUSIC_DEFAULT,   # música (se multiplica por el volumen general); por defecto al 80 %
@@ -70,6 +71,7 @@ static func _sanitize() -> void:
 	data.reading_mode = data.reading_mode is bool and data.reading_mode
 	data.high_contrast = data.high_contrast is bool and data.high_contrast
 	data.compass = not (data.compass is bool) or data.compass
+	data.focus_frame = data.focus_frame is bool and data.focus_frame
 	var us := int(data.ui_scale)
 	data.ui_scale = us if UI_SCALES.has(us) else 100
 	data.volume = clampi(int(data.volume), 0, VOLUME_STEPS)

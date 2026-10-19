@@ -20,6 +20,7 @@ signal language_changed
 const TABS := ["general", "graficos", "sonido", "controles"]
 const TAB_NAMES := {"general": "General", "graficos": "Gráficos", "sonido": "Sonido", "controles": "Controles"}
 
+var focus_buttons := {}    # Marco del foco: sí o no
 var device_buttons := {}   # Ayudas de: automático, teclado o mando
 var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox o PlayStation
 var lang_buttons := {}      # código -> botón
@@ -152,6 +153,11 @@ func _build_general(page: Control) -> void:
 	compass_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "rosa_si", _on_compass.bind(true))
 	compass_buttons["off"] = _toggle(row, Loc.t("No"), group, "rosa_no", _on_compass.bind(false))
 	UI.label(_page, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	row = _row(Loc.t("Marco del foco"))
+	group = ButtonGroup.new()
+	focus_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "marco_si", _on_focus_frame.bind(true))
+	focus_buttons["off"] = _toggle(row, Loc.t("No"), group, "marco_no", _on_focus_frame.bind(false))
+	UI.label(_page, Loc.t("Un marco blanco que titila alrededor del botón elegido, para verlo mejor con el mando."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Alto contraste"))
 	group = ButtonGroup.new()
 	contrast_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "contraste_si", _on_contrast.bind(true))
@@ -338,6 +344,7 @@ func reset_tab() -> void:
 			Settings.set_value("reading_mode", false)
 			Settings.set_value("high_contrast", false)
 			Settings.set_value("compass", true)
+			Settings.set_value("focus_frame", false)
 		"graficos":
 			Settings.set_value("fullscreen", false)
 			Settings.set_value("resolution", [1280, 720])
@@ -374,6 +381,9 @@ func refresh() -> void:
 		device_buttons[k].selected = k == str(Settings.get_value("input_device"))
 	for k in style_buttons:
 		style_buttons[k].selected = k == str(Settings.get_value("pad_style"))
+	var ff: bool = Settings.get_value("focus_frame")
+	focus_buttons.on.selected = ff
+	focus_buttons.off.selected = not ff
 	var rm: bool = Settings.get_value("reading_mode")
 	reading_buttons.on.selected = rm
 	reading_buttons.off.selected = not rm
@@ -531,6 +541,11 @@ func _on_device(which: String) -> void:
 
 func _on_pad_style(which: String) -> void:
 	Settings.set_value("pad_style", which)
+	refresh()
+
+
+func _on_focus_frame(on: bool) -> void:
+	Settings.set_value("focus_frame", on)
 	refresh()
 
 

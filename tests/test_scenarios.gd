@@ -270,10 +270,20 @@ func test_screens() -> void:
 	await process_frame
 	await process_frame
 	sc.scroll.scroll_horizontal = 0
-	sc.scroll_cards(1)
-	check(sc.scroll.scroll_horizontal > 0, "se desplazan las tarjetas hacia la derecha")
+	sc.sel_index = 0
+	check(sc.current_id() == "tutorial" and sc.cards["tutorial"].is_current and not sc.cards["glaciar"].is_current, "al abrir está elegido el tutorial")
+	for i in 3:
+		sc.scroll_cards(1)
+	check(sc.scroll.scroll_horizontal > 0, "al elegir los siguientes se desplazan las tarjetas hacia la derecha")
+	for i in 20:   # (con las flechas se llega hasta el último escenario, aunque el desplazamiento no alcance a centrarlo)
+		sc.scroll_cards(1)
+	var last_id: String = Scenarios.ALL[Scenarios.ALL.size() - 1].id
+	check(sc.current_id() == last_id, "las flechas llegan hasta el último escenario (%s)" % sc.current_id())
 	sc.scroll_cards(-1)
-	check(sc.scroll.scroll_horizontal == 0, "y hacia la izquierda")
+	check(sc.current_id() == Scenarios.ALL[Scenarios.ALL.size() - 2].id, "y el anteúltimo también se puede elegir")
+	for i in 30:
+		sc.scroll_cards(-1)
+	check(sc.scroll.scroll_horizontal == 0 and sc.current_id() == "tutorial", "y se vuelve hasta el primero")
 	check(not all_text(sc).contains("Luz"), "el selector no nombra la Luz con texto: es el sol")
 	# El "?" abre toda la informacion
 	card.info_button.pressed.emit()

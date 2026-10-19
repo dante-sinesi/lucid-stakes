@@ -93,6 +93,16 @@ func _init() -> void:
 
 
 ## El escenario que está en el centro (el que se ve al desplazar las tarjetas con las flechas).
+var sel_index := 0   # el escenario elegido (0 = el tutorial): con las flechas se llega a todos, aunque el desplazamiento no alcance a centrar los últimos
+
+
+func _ids() -> Array:
+	var ids: Array = [Scenarios.TUTORIAL.id]
+	for sc in Scenarios.ALL:
+		ids.append(sc.id)
+	return ids
+
+
 func _process(_delta: float) -> void:
 	if not visible or cards.is_empty():
 		return
@@ -101,11 +111,18 @@ func _process(_delta: float) -> void:
 		cards[id].is_current = (id == cur) and not info_panel.visible
 
 
+## El escenario elegido.
 func current_id() -> String:
-	var ids: Array = [Scenarios.TUTORIAL.id]
-	for sc in Scenarios.ALL:
-		ids.append(sc.id)
-	return str(ids[clampi(int(round(float(scroll.scroll_horizontal) / CARD_STEP)), 0, ids.size() - 1)])
+	var ids := _ids()
+	return str(ids[clampi(sel_index, 0, ids.size() - 1)])
+
+
+## Elige otro escenario (con las flechas o la rueda) y desplaza las tarjetas para que se vea.
+func move_selection(dir: int) -> void:
+	sel_index = clampi(sel_index + dir, 0, _ids().size() - 1)
+	var max_scroll := maxf(cards_box.get_combined_minimum_size().x - scroll.size.x, 0.0)
+	var target := float(sel_index) * CARD_STEP - (scroll.size.x - CARD_STEP) * 0.5
+	scroll.scroll_horizontal = int(clampf(target, 0.0, max_scroll))
 
 
 func _enter_current() -> void:
@@ -170,6 +187,7 @@ func refresh() -> void:
 		cards[s.id] = card
 		play_buttons[s.id] = card.enter_button
 	info_panel.visible = false
+	sel_index = 0
 	scroll.scroll_horizontal = 0
 
 
@@ -179,8 +197,7 @@ func focus_default() -> void:
 
 ## Desplaza las tarjetas una a la izquierda (-1) o a la derecha (1).
 func scroll_cards(dir: int) -> void:
-	var max_scroll := maxf(cards_box.get_combined_minimum_size().x - scroll.size.x, 0.0)
-	scroll.scroll_horizontal = int(clampf(round(scroll.scroll_horizontal / CARD_STEP) * CARD_STEP + dir * CARD_STEP, 0.0, max_scroll))
+	move_selection(dir)
 
 
 func _scroll_input(event: InputEvent) -> void:

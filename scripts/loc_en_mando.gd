@@ -40,4 +40,6 @@ const TABLE := {
 	"Dado": "Die",
 	"Número": "Number",
 	"Generando la torre...": "Generating the tower...",
+	"Marco del foco": "Focus frame",
+	"Un marco blanco que titila alrededor del botón elegido, para verlo mejor con el mando.": "A blinking white frame around the selected button, to see it better with a gamepad.",
 }
