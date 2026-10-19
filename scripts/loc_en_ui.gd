@@ -126,7 +126,7 @@ const TABLE := {
 	"Tres aciertos, soñador. Me estás asustando.": "Three hits, dreamer. You're scaring me.",
 	"¡Tres! La casa empieza a sudar.": "Three! The house is starting to sweat.",
 	"¡CUATRO! Esto no pasa seguido.": "FOUR! This doesn't happen often.",
-	"Cuatro... ¡y una luz de regalo!": "Four... and a light as a gift!",
+	"Cuatro... ¡y un cosmético de regalo, tal vez!": "Four... and maybe a cosmetic as a gift!",
 	"¿Cuatro? Estás tocado por la claridad.": "Four? You're touched by clarity.",
 	"¡LOS CINCO! No lo puedo creer...": "ALL FIVE! I can't believe it...",
 	"Cinco de cinco. Esto va a quedar en la historia de la taberna.": "Five out of five. This will go down in tavern history.",

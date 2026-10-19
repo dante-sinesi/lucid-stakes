@@ -52,14 +52,14 @@ func test_prizes() -> void:
 	check(DiceGame.prize_for(0).claridad == 0 and DiceGame.prize_for(1).claridad == 0 and DiceGame.prize_for(2).claridad == 8, "premios: con 0 o 1 acierto nada, con 2 +8 de claridad")
 	check(DiceGame.prize_for(0).luz == 0 and DiceGame.prize_for(1).luz == 0 and DiceGame.prize_for(2).luz == 0, "con 2 aciertos o menos no hay Luz")
 	var three := DiceGame.prize_for(3)
-	check(three.claridad == 25 and three.luz == 1 and three.cosmetic.is_empty(), "3 aciertos: claridad y 1 de Luz, sin cosmetico")
+	check(three.claridad == 25 and three.luz == 0 and three.cosmetic.is_empty(), "3 aciertos: claridad, sin Luz ni cosmetico")
 	var four := DiceGame.prize_for(4)
-	check(four.claridad == 80 and four.luz == 2 and four.cosmetic.has("comun") and four.cosmetic.has("raro") and not four.cosmetic.has("epico") and four.cosmetic.comun > four.cosmetic.raro, "4 aciertos: Luz y un cosmetico comun (a veces raro)")
+	check(four.claridad == 80 and four.luz == 0 and four.cosmetic.has("comun") and four.cosmetic.has("raro") and not four.cosmetic.has("epico") and four.cosmetic.comun > four.cosmetic.raro, "4 aciertos: Luz y un cosmetico comun (a veces raro)")
 	check(is_equal_approx(float(four.cosmetic_chance), 0.15), "con 4 aciertos el cosmetico sale con 15 % de chance")
 	var five := DiceGame.prize_for(5)
-	check(five.luz == 5 and five.claridad == 150 and five.cosmetic.has("raro") and five.cosmetic.has("epico") and not five.cosmetic.has("comun") and five.cosmetic.raro > five.cosmetic.epico, "5 aciertos: mas Luz y un cosmetico raro (a veces epico)")
+	check(five.luz == 0 and five.claridad == 150 and five.cosmetic.has("raro") and five.cosmetic.has("epico") and not five.cosmetic.has("comun") and five.cosmetic.raro > five.cosmetic.epico, "5 aciertos: mas Luz y un cosmetico raro (a veces epico)")
 	check(is_equal_approx(float(five.cosmetic_chance), 1.0), "con 5 aciertos el cosmetico es seguro")
-	check(DiceGame.prize_for(-3).claridad == 0 and DiceGame.prize_for(99).luz == 5, "los aciertos fuera de rango se acotan")
+	check(DiceGame.prize_for(-3).claridad == 0 and DiceGame.prize_for(99).luz == 0, "los aciertos fuera de rango se acotan")
 	for n in 6:
 		check(DiceGame.LINES.has(n) and DiceGame.LINES[n].size() >= 3, "el tabernero tiene varias frases para %d aciertos" % n)
 	check(DiceGame.THROWS == 3 and DiceGame.DICE == 5, "una predicción de 5 dados y 3 tiradas para cumplirla")
@@ -256,17 +256,17 @@ func test_main() -> void:
 	info3["cosmetic_chance"] = 1.0   # (acá se prueba el cosmético: en el juego sale con 15 % de chance)
 	var before: int = main.run.claridad
 	main._on_dice_prize(info3)
-	check(Profile.luz() == 0 and Profile.owned_cosmetics().is_empty() and int(main.run.dice_pending.luz) == 3, "los dados dejan la Luz y el cosmético pendientes: no pasan al perfil hasta superar una torre")
+	check(Profile.luz() == 0 and Profile.owned_cosmetics().is_empty() and main.run.dice_pending.cosmetics.size() == 1, "los dados dejan el cosmético pendiente: no pasan al perfil hasta superar una torre")
 	main._claim_dice_rewards()
 	check(main.run.dice_pending.luz == 0 and main.run.dice_pending.cosmetics.is_empty(), "al reclamarlos el run queda sin pendientes")
-	check(info3.granted == 0 and main.run.claridad == before and Profile.luz() == 3, "con el tope lleno ya no da claridad, pero la Luz se da igual")
+	check(info3.granted == 0 and main.run.claridad == before and Profile.luz() == 0, "con el tope lleno ya no da claridad (y los dados no dan Luz)")
 	check(str(info3.cosmetic_name) != "" and Cosmetics.get_cosmetic(Profile.owned_cosmetics()[0]).rarity in ["comun", "raro"], "4 aciertos dan un cosmetico comun o raro")
 	check(RunState.from_dict(JSON.parse_string(JSON.stringify(main.run.to_dict()))).dice_claridad == RunState.DICE_CAP, "el tope se guarda con el run")
 	# cosmetico
 	var info5 := DiceGame.prize_for(5)
 	main._on_dice_prize(info5)
 	main._claim_dice_rewards()
-	check(str(info5.cosmetic_name) != "" and Profile.owned_cosmetics().size() == 2 and str(info5.cosmetic_rarity) in ["raro", "epico"] and Profile.luz() == 8, "5 aciertos: Luz y un cosmetico raro o epico")
+	check(str(info5.cosmetic_name) != "" and Profile.owned_cosmetics().size() == 2 and str(info5.cosmetic_rarity) in ["raro", "epico"] and Profile.luz() == 0, "5 aciertos: un cosmetico raro o epico (los dados no dan Luz)")
 	for c in Cosmetics.ALL:
 		Profile.grant_cosmetic(c.id)
 	var info6 := DiceGame.prize_for(5)
@@ -527,7 +527,7 @@ func test_hold() -> void:
 	g._process(0.0)
 	g._phase_t = DiceGame.REVEAL_STEP * 4.0
 	g._process(0.0)
-	check(g.phase == DiceGame.Phase.RESULT and got.size() == 1 and got[0].hits == 3 and got[0].luz == 1, "sin tiradas se cobra solo con lo que haya (3 aciertos)")
+	check(g.phase == DiceGame.Phase.RESULT and got.size() == 1 and got[0].hits == 3 and got[0].luz == 0, "sin tiradas se cobra solo con lo que haya (3 aciertos)")
 	g._phase_t = DiceGame.RESULT_TIME
 	g._process(0.0)
 	check(g.phase == DiceGame.Phase.DONE and not g.can_throw() and not g.throw_button.visible, "después del premio se terminó: una sola predicción por carga")
