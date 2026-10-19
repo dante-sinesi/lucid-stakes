@@ -108,6 +108,7 @@ func _init() -> void:
 			scroll.name = "pagina_" + t
 			scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 			scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			scroll.follow_focus = true   # al bajar con las flechas o el mando, la lista acompaña al botón elegido
 			holder.add_child(scroll)
 			scroll.add_child(page)
 			pages[t] = scroll
@@ -264,6 +265,7 @@ func _build_controls(page: Control) -> void:
 	scroll.name = "desplazamiento_controles"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
 	page.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 6)
@@ -333,6 +335,47 @@ func show_tab(t: String) -> void:
 		pages[k].visible = k == t
 		tab_buttons[k].selected = k == t
 	refresh()
+	_link_focus()
+
+
+## El foco se mueve como se ve: izquierda y derecha dentro de la fila, arriba y abajo de fila en fila (a la misma columna, o a la última si la fila tiene menos); desde la primera fila se
+## sube a las pestañas y desde las pestañas se baja a la primera fila. En los bordes se queda donde está (antes saltaba de forma impredecible, sobre todo en Controles).
+func _link_focus() -> void:
+	var rows: Array = []
+	_collect_rows(pages[tab], rows)
+	var tab_list: Array = []
+	for t in TABS:
+		tab_list.append(tab_buttons[t])
+	for k in tab_list.size():
+		var b: Control = tab_list[k]
+		b.focus_neighbor_left = b.get_path_to(tab_list[maxi(k - 1, 0)])
+		b.focus_neighbor_right = b.get_path_to(tab_list[mini(k + 1, tab_list.size() - 1)])
+		b.focus_neighbor_top = b.get_path_to(b)
+		b.focus_neighbor_bottom = b.get_path_to(rows[0][0] if not rows.is_empty() else b)
+	for r in rows.size():
+		var row: Array = rows[r]
+		for c in row.size():
+			var n: Control = row[c]
+			n.focus_neighbor_left = n.get_path_to(row[c - 1] if c > 0 else n)
+			n.focus_neighbor_right = n.get_path_to(row[c + 1] if c < row.size() - 1 else n)
+			var up: Control = tab_buttons[tab] if r == 0 else rows[r - 1][mini(c, rows[r - 1].size() - 1)]
+			n.focus_neighbor_top = n.get_path_to(up)
+			var down: Control = n if r == rows.size() - 1 else rows[r + 1][mini(c, rows[r + 1].size() - 1)]
+			n.focus_neighbor_bottom = n.get_path_to(down)
+
+
+## Las filas de botones de una pestaña, en el orden en que se ven (cada fila, sus botones de izquierda a derecha).
+func _collect_rows(node: Node, out: Array) -> void:
+	for ch in node.get_children():
+		if ch is HBoxContainer:
+			var buttons: Array = []
+			for b in ch.get_children():
+				if b is BaseButton and b.focus_mode != Control.FOCUS_NONE:
+					buttons.append(b)
+			if not buttons.is_empty():
+				out.append(buttons)
+				continue
+		_collect_rows(ch, out)
 
 
 ## Restablece sólo los ajustes de la pestaña que se está viendo (el idioma no se toca).

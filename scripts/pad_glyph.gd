@@ -95,20 +95,21 @@ static func draw_key(ci: CanvasItem, center: Vector2, r: float, text: String, di
 	ci.draw_string(font, center + Vector2(-w * 0.5, size * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.1, 0.07, 0.14))
 
 
-## Botones que no son de cara (se piden por nombre): "LB", "RB", "LT", "RT" (hombros y gatillos), "DPAD" (cruceta), "DPAD_LR" (izquierda y derecha), "START".
+## Botones que no son de cara (se piden por nombre): "LB", "RB", "LT", "RT" (hombros y gatillos), "DPAD" (cruceta), "DPAD_LR" (izquierda y derecha), "START", "BACK" (Select).
 static func draw_named(ci: CanvasItem, center: Vector2, r: float, which: String, dim := false) -> void:
 	var col := Color(0.62, 0.62, 0.70) if not dim else Color(0.3, 0.28, 0.32)
 	var ink := Color(0.08, 0.05, 0.12)
 	var font := ThemeDB.fallback_font
 	match which:
-		"LB", "RB", "LT", "RT", "START":
-			var w := r * (2.6 if which != "START" else 3.2)
+		"LB", "RB", "LT", "RT", "START", "BACK":
+			var w := r * (2.6 if which != "START" and which != "BACK" else 3.2)
 			var rect := Rect2(center - Vector2(w * 0.5, r * 0.75), Vector2(w, r * 1.5))
 			ci.draw_rect(rect.grow(2.0), Color(0.05, 0.03, 0.09))
 			ci.draw_rect(rect, col)
-			var size := int(r * 1.2)
-			var tw := font.get_string_size(which, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-			ci.draw_string(font, center + Vector2(-tw * 0.5, size * 0.36), which, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
+			var size := int(r * 1.2) if which != "BACK" else int(r * 0.75)
+			var label := "SELECT" if which == "BACK" else which
+			var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			ci.draw_string(font, center + Vector2(-tw * 0.5, size * 0.36), label, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
 		"DPAD", "DPAD_LR":
 			ci.draw_circle(center, r + 2.0, Color(0.05, 0.03, 0.09))
 			var arm := r * 0.42

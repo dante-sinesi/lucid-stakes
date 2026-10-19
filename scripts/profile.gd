@@ -22,7 +22,7 @@ static var _loaded_from := ""
 
 static func default_data() -> Dictionary:
 	return {"version": VERSION, "luz": 0, "luz_total": 0, "best_stage": 0, "runs": 0, "victories": 0, "trials_cleared": 0, "abilities": {}, "cosmetics": {},
-			"hat": "", "outfit": "", "characters": {"gato": true, "perro": true, "dante": true, "gaby": true}, "character": "gato", "blocks_seen": {}, "tutorial_done": false}
+			"hat": "", "outfit": "", "characters": {"gato": true, "perro": true, "dante": true, "gaby": true}, "character": "gato", "blocks_seen": {}, "help_seen": {}, "tutorial_done": false}
 
 
 ## Carga el perfil (una vez por ruta). Si no hay archivo o está dañado, uno vacío.
@@ -150,6 +150,24 @@ static func discover_block(id: String) -> bool:
 	load_profile().blocks_seen[id] = true
 	save()
 	return true
+
+
+# --- ayudas de los juegos --------------------------------------------------------------------------------------------
+
+## ¿Ya se mostró la ayuda de ese juego (se abre sola la primera vez que se entra)?
+static func help_seen(id: String) -> bool:
+	var d := load_profile()
+	return bool((d.get("help_seen", {}) as Dictionary).get(id, false))
+
+
+static func mark_help_seen(id: String) -> void:
+	var d := load_profile()
+	if not d.has("help_seen") or not (d.help_seen is Dictionary):
+		d["help_seen"] = {}
+	if bool(d.help_seen.get(id, false)):
+		return
+	d.help_seen[id] = true
+	save()
 
 
 # --- habilidades ---------------------------------------------------------------------------------------------------

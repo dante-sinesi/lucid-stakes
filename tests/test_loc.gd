@@ -1,4 +1,6 @@
 extends SceneTree
+
+const GameHelp := preload("res://scripts/game_help.gd")
 ## Cobertura de las traducciones (headless): (1) toda frase que el código pide con Loc.t / Loc.f está en la tabla inglesa y los textos
 ## fijos del catálogo también; (2) se recorren las pantallas en inglés y no queda ninguna frase sin traducir.
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_loc.gd
@@ -99,6 +101,10 @@ func test_catalog() -> void:
 			continue
 		need(r.name, "regla de la casa")
 		need(r.desc, "descripción de la regla " + r.id)
+	for gid in GameHelp.PAGES:
+		for pg in GameHelp.PAGES[gid]:
+			need(pg.title, "título de la ayuda de " + gid)
+			need(pg.text, "texto de la ayuda de " + gid)
 	for a in Controls.ACTIONS:
 		need(a.name, "acción de controles")
 		need(a.group, "grupo de controles")

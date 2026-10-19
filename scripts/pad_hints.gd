@@ -13,6 +13,8 @@ var items: Array = []
 var _icons: Array = []
 var _labels: Array = []
 var _was_pad := false
+var extra_items: Array = []   # ítems que se agregan siempre al final (la ayuda del juego)
+var _base_items: Array = []
 var replaced: Array = []   # los botones que esta botonera reemplaza (ocultos): se liberan al cerrar la pantalla
 
 
@@ -192,7 +194,8 @@ func _process(_dt: float) -> void:
 
 
 func set_items(new_items: Array) -> void:
-	items = new_items
+	_base_items = new_items
+	items = new_items + extra_items
 	_was_pad = Controls.using_pad
 	for c in get_children():
 		c.queue_free()
@@ -218,6 +221,12 @@ func set_items(new_items: Array) -> void:
 		box.add_child(l)
 		_icons.append(icon)
 		_labels.append(l)
+
+
+## Agrega un ítem fijo al final (sigue ahí aunque la pantalla cambie sus ítems).
+func add_extra(item: Dictionary) -> void:
+	extra_items.append(item)
+	set_items(_base_items)
 
 
 ## Apaga o enciende un ítem (por posición) sin rearmar la barra.
