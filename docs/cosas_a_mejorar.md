@@ -63,3 +63,7 @@ A partir de ahora, la salida de cada torre será un portal (como el de los casin
 A partir de ahora, el suelo no se pondrá mas rojo cuando esté por caerse, sino que los bloques comenzarán a temblar, y aguantarán ahí 3 movimientos desde que comiencen a temblar hasta que caigan. Hasta ahora, si se ponía en rojo y estabas sobre el suelo, era perder automáticamente.
 
 Cloude, esto es para ti, gracias por el maravilloso trabajo que estas realizando al hacer este, mi sueño, realidad.
+
+### Ideas anotadas (no son objetivos por ahora)
+- **Telemetría remota de la demo (2026-10-18):** hoy `telemetry.gd` guarda todo sólo en la compu del jugador. Se podría enviar de forma anónima y automática (sin que suban archivos): un servidor mínimo propio (por ejemplo una función en Cloudflare o Supabase) que reciba los eventos por HTTPS, con consentimiento la primera vez y un interruptor en Opciones, identificador aleatorio, cola de reenvío sin internet y una línea en la página de Steam. Alternativa o complemento: estadísticas y logros de Steamworks (contadores, no jugadas). Serviría para reemplazar la calibración inventada del bot (muertes por torre, curva del peaje) con datos reales.
+- **Música (2026-10-18):** las cuatro estaciones ya suenan en el juego. Se probaron variantes más lentas (90 %, 80 % y 70 % del tempo, `herramientas/musica/render_estaciones.py --tempo=0.8 --solo-previa`) sin preferencia clara; queda pendiente decidir tempo, volumen y si se agrega percusión.
