@@ -66,7 +66,7 @@ static func outro() -> Array:
 		"Cada tres torres la pesadilla te pone a prueba y cambia las reglas. Nunca se sabe qué desafío viene.",
 		"Si superas todos los pisos, te llevas una habilidad para siempre, incluso si vuelves a soñar.",
 		{"text": "Y esto que brilla también te lo deja la pesadilla, según hasta dónde llegues. No sé para qué sirve, pero es lindo, ¿no?", "icon": "luz"},
-		"Eso es todo. Ahora ve, soñador. ¡A despertar!",
+		"Eso es todo, soñador. Ahora acércate a Farolín: te presto la claridad para que pagues tu primer peaje. ¡Y después, a despertar!",
 	]
 
 

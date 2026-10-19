@@ -23,6 +23,9 @@ func _init() -> void:
 
 
 func make_main(test := false) -> Node:
+	var SaveG := preload("res://scripts/save_game.gd")
+	SaveG.path = "user://test_save.json"   # (que una partida guardada por otra prueba no cambie cómo arranca el menú)
+	SaveG.delete()
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.test_mode = test
 	main.quit_game_override = true  # no cerrar el proceso de pruebas

@@ -115,7 +115,6 @@ func show_summary(run, completed: bool) -> void:
 		slot.custom_minimum_size = Vector2(54, 54)
 		items_row.add_child(slot)
 	visible = true
-	wishlist_button.grab_focus()
 	MenuAnim.pop_in(title, 1.5, 0.4)
 	MenuAnim.stagger(stats_box.get_children(), 0.12, 0.3, 0.35)
 	MenuAnim.stagger(items_row.get_children(), 0.06, 0.25, 0.35 + 0.12 * rows.size())

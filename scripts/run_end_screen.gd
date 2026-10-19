@@ -138,7 +138,6 @@ func show_summary(run, victory: bool, reason := "", luz := -1, luz_total := 0, n
 		slot.custom_minimum_size = Vector2(54, 54)
 		items_row.add_child(slot)
 	visible = true
-	new_button.grab_focus()
 	# Entrada: el título cae con un golpe, las filas aparecen una a una y sus números cuentan hacia arriba.
 	MenuAnim.pop_in(title, 1.5, 0.4)
 	MenuAnim.stagger(stats_box.get_children(), 0.12, 0.3, 0.35)

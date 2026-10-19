@@ -187,6 +187,8 @@ var _model: Node3D          # el animalito (y su copia de silueta): se vuelve a 
 var _ghost: Node3D
 var _sun: DirectionalLight3D
 var dialogue                 # cuadro de diálogo del tabernero (historia y consejos del tutorial)
+const TUTORIAL_TOLL := 25   # lo que cuesta el peaje de práctica del final del tutorial
+var _outro_phase := 0       # el cierre del tutorial: 0 el tabernero habla, 1 se camina hasta Farolín, 2 Farolín contesta y se termina
 var story_kind := ""         # "intro" o "outro" mientras se está en una sala de historia del tutorial
 var tutorial_label: Control # cartel con la lección
 var _pending_action := ""     # la acción de movimiento que se está resolviendo (para dorar su tecla en el tutorial si sale bien)
@@ -1948,10 +1950,17 @@ func _on_keeper_talk(lines: Array) -> void:
 
 
 ## Farolín en la puerta de salida: el cuadro de diálogo con sus salidas (pagar, rehacer la torre o, sin vidas, abandonar). Mientras tanto no se camina.
+## Termina el tutorial (después del peaje de práctica): se marca como hecho y se vuelve al menú.
+func _finish_tutorial() -> void:
+	tutorial_forced = false
+	Profile.mark_tutorial_done()
+	open_main_menu()
+
+
 func _on_toll_talk() -> void:
 	if casino == null or dialogue.is_active():
 		return
-	var d: Dictionary = casino.toll_dialog()
+	var d: Dictionary = Farolin.practice_dialog(casino.toll_now()) if story_kind == "outro" else casino.toll_dialog()
 	_toll_options = d.options
 	casino.input_locked = true
 	dialogue.show_choice(d.text, d.options, Farolin.SPEAKER)
@@ -1968,6 +1977,11 @@ func _on_dialogue_chosen(index: int) -> void:
 		return
 	var id := str(_toll_options[index].id)
 	_toll_options = []
+	if story_kind == "outro":   # el peaje de práctica: Farolín contesta y se termina el tutorial (no se cobra nada de verdad)
+		_outro_phase = 2
+		casino.input_locked = true
+		dialogue.show_lines([Farolin.reaction(Farolin.PAY)], Farolin.SPEAKER, true, true)
+		return
 	Telemetry.log_event("peaje", {"stage": stage_number, "price": casino.toll_now(), "claridad": run.claridad, "choice": id})
 	if farolin_reacts and not test_mode:   # Farolín contesta antes de que pase lo que se eligió
 		casino.input_locked = true
@@ -2402,6 +2416,10 @@ func _open_story_room(stage: int, lines: Array, kind: String) -> void:
 	casino = CasinoScene.new()
 	casino.position = Vector3(500, 0, 0)   # lejos de la torre, como el casino normal
 	casino.story = true
+	if kind == "outro":   # en el salón de piedra Farolín espera junto a la puerta: se le paga un peaje de práctica
+		casino.toll_base = TUTORIAL_TOLL
+		_outro_phase = 0
+		casino.toll_talk.connect(_on_toll_talk)
 	add_child(casino)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -2422,10 +2440,16 @@ func _on_dialogue_finished() -> void:
 	if story_kind == "intro" and casino != null:   # terminó de contar la historia: ahora hay que ir a la puerta de atrás
 		casino.input_locked = false
 		casino.show_exit_arrow(true)
-	elif story_kind == "outro":   # terminó el cierre: el tutorial se acabó
-		tutorial_forced = false
-		Profile.mark_tutorial_done()
-		open_main_menu()
+	elif story_kind == "outro":
+		match _outro_phase:
+			0:   # terminó de hablar el tabernero: ahora a pagarle a Farolín (el tabernero presta la claridad)
+				_outro_phase = 1
+				run.claridad = maxi(run.claridad, casino.toll_now())
+				casino.input_locked = false
+				casino.show_exit_arrow(true)
+				casino._refresh_hud()
+			2:   # Farolín contestó: el tutorial se acabó
+				_finish_tutorial()
 	elif _dice_talk:   # terminó de explicar los dados: se puede jugar
 		_dice_talk = false
 		dice.paused = false

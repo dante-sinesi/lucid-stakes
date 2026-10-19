@@ -17,6 +17,11 @@ const PAY := "pagar"
 const REDO := "rehacer"
 const GIVE_UP := "abandonar"
 
+## El peaje de práctica del final del tutorial: una sola salida (pagar), con la claridad que presta el tabernero.
+static func practice_dialog(price: int) -> Dictionary:
+	return {"text": Loc.f("Son %d de claridad para seguir. Como es tu primera vez, hoy te la presta el tabernero.", [price]), "options": [{"id": PAY, "text": Loc.f("Pagar %d", [price]), "enabled": true}]}
+
+
 ## Lo que dice Farolín después de cada decisión (antes de que pase lo que se eligió).
 const REACTIONS := {
 	PAY: "Gracias, soñador. Te prendo el camino.",
