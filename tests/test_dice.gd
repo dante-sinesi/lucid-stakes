@@ -605,6 +605,6 @@ func test_hold() -> void:
 
 
 func test_white_dice() -> void:
-	for c in DiceGame.DIE_COLORS:
-		check(c == Color.WHITE, "todos los dados son blancos")
-	check(DiceGame.DIE_COLORS.size() == DiceGame.DICE, "hay un color por dado")
+	var g := DiceGame.new()
+	check(g.dice3d != null and g.dice3d.dice.size() == DiceGame.DICE, "hay un dado 3D por dado")
+	g.free()
