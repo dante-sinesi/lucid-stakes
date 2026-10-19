@@ -9,6 +9,25 @@ const SPEAKER := "Farolín"
 
 const FACE := ["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYEEYYEEYk.", ".kYEEYYEEYk.",
 		"aakYYYYYYkaa", ".kYEYYYYEYk.", ".kOYEEEEYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."]
+## Tres diseños nuevos de la cara (sin la sonrisa) para elegir: 1 "Sereno" (ojos altos, sin boca), 2 "Boquita" (ojos redondos y una boca chica en o), 3 "Cíclope" (un solo ojo grande).
+## El 0 es el de siempre. `Farolin.variant` es el que se usa en el juego.
+const FACE_VARIANTS := [
+	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYEEYYEEYk.", ".kYEEYYEEYk.",
+			"aakYYYYYYkaa", ".kYEYYYYEYk.", ".kOYEEEEYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
+	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOEYYYYEOk.", ".kYEYYYYEYk.", ".kYEYYYYEYk.",
+			"aakYYYYYYkaa", ".kYYYYYYYYk.", ".kOYYYYYYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
+	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYEEYYEEYk.", ".kYEEYYEEYk.",
+			"aakYYYYYYkaa", ".kYYYEEYYYk.", ".kOYYEEYYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
+	["....kkkk....", "...k....k...", "..kkkkkkkk..", ".kkkkkkkkkk.", ".kOYYYYYYOk.", ".kYYYEEYYYk.", ".kYYEEEEYYk.",
+			"aakYEEEEYkaa", ".kYYYEEYYYk.", ".kOYYYYYYOk.", ".kkkkkkkkkk.", "..kkkkkkkk..", "..bb....bb.."],
+]
+static var variant := 0   # el diseño de Farolín que se usa (el 0 es el de siempre)
+
+
+static func face_rows(v := -1) -> Array:
+	return FACE_VARIANTS[clampi(variant if v < 0 else v, 0, FACE_VARIANTS.size() - 1)]
+
+
 const FACE_PAL := {"k": Color(0.16, 0.14, 0.18), "Y": Color(1.0, 0.86, 0.35), "E": Color(0.18, 0.1, 0.05), "O": Color(1.0, 0.55, 0.15),
 		"a": Color(0.3, 0.27, 0.32), "b": Color(0.3, 0.27, 0.32)}
 
@@ -35,9 +54,10 @@ static func reaction(id: String) -> String:
 
 
 ## Dibuja la cara de Farolín en un control: `origin` es la esquina de arriba a la izquierda y `s` el lado de un cubito.
-static func draw_face(ci: CanvasItem, origin: Vector2, s: float) -> void:
-	for y in FACE.size():
-		var row: String = FACE[y]
+static func draw_face(ci: CanvasItem, origin: Vector2, s: float, v := -1) -> void:
+	var rows: Array = face_rows(v)
+	for y in rows.size():
+		var row: String = rows[y]
 		for x in row.length():
 			if row[x] == ".":
 				continue
@@ -90,7 +110,8 @@ static func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, glow
 
 ## Farolín en 3D (unos 0,55 de alto, los pies en y = 0), mirando hacia +z: un farol de hierro con asa, la llama con ojos y sonrisa dentro del vidrio,
 ## bracitos y patitas. La llama titila (ver farolin_node.gd) y alumbra la sala con una luz cálida.
-static func build() -> Node3D:
+static func build(v := -1) -> Node3D:
+	var kind := variant if v < 0 else v
 	var r: Node3D = preload("res://scripts/farolin_node.gd").new()
 	r.name = "farolin"
 	var iron := Color(0.16, 0.14, 0.18)
@@ -109,19 +130,38 @@ static func build() -> Node3D:
 	_box(r, Vector3(0, 0.505, 0), Vector3(0.11, 0.02, 0.02), iron)       # asa
 	_box(r, Vector3(-0.055, 0.465, 0), Vector3(0.02, 0.08, 0.02), iron)
 	_box(r, Vector3(0.055, 0.465, 0), Vector3(0.02, 0.08, 0.02), iron)
-	_box(r, Vector3(-0.04, 0.31, 0.092), Vector3(0.035, 0.055, 0.012), dark)   # ojos
-	_box(r, Vector3(0.04, 0.31, 0.092), Vector3(0.035, 0.055, 0.012), dark)
-	r.smile = Node3D.new()   # sonrisa
+	r.smile = Node3D.new()   # la cara "contenta" (la de siempre lleva sonrisa; los diseños nuevos no)
 	r.add_child(r.smile)
-	_box(r.smile, Vector3(0, 0.235, 0.092), Vector3(0.09, 0.02, 0.012), dark)
-	_box(r.smile, Vector3(-0.045, 0.25, 0.092), Vector3(0.02, 0.02, 0.012), dark)
-	_box(r.smile, Vector3(0.045, 0.25, 0.092), Vector3(0.02, 0.02, 0.012), dark)
-	r.frown = Node3D.new()   # (carita triste: las puntas de la boca para abajo)
+	r.frown = Node3D.new()   # la cara "triste"
 	r.frown.visible = false
 	r.add_child(r.frown)
-	_box(r.frown, Vector3(0, 0.25, 0.092), Vector3(0.09, 0.02, 0.012), dark)
-	_box(r.frown, Vector3(-0.045, 0.235, 0.092), Vector3(0.02, 0.02, 0.012), dark)
-	_box(r.frown, Vector3(0.045, 0.235, 0.092), Vector3(0.02, 0.02, 0.012), dark)
+	match kind:
+		1:   # Sereno: ojos altos, sin boca; triste = cejitas caídas
+			_box(r, Vector3(-0.045, 0.285, 0.092), Vector3(0.03, 0.085, 0.012), dark)
+			_box(r, Vector3(0.045, 0.285, 0.092), Vector3(0.03, 0.085, 0.012), dark)
+			_box(r.smile, Vector3(0, 0.34, 0.092), Vector3(0.001, 0.001, 0.001), dark)
+			_box(r.frown, Vector3(-0.05, 0.345, 0.092), Vector3(0.045, 0.012, 0.012), dark)
+			_box(r.frown, Vector3(0.05, 0.345, 0.092), Vector3(0.045, 0.012, 0.012), dark)
+		2:   # Boquita: ojos redondos y una o chica; triste = la o más abajo y más chica
+			_box(r, Vector3(-0.04, 0.31, 0.092), Vector3(0.035, 0.045, 0.012), dark)
+			_box(r, Vector3(0.04, 0.31, 0.092), Vector3(0.035, 0.045, 0.012), dark)
+			_box(r.smile, Vector3(0, 0.24, 0.092), Vector3(0.04, 0.04, 0.012), dark)
+			_box(r.smile, Vector3(0, 0.24, 0.0935), Vector3(0.018, 0.018, 0.012), glow)
+			_box(r.frown, Vector3(0, 0.225, 0.092), Vector3(0.03, 0.025, 0.012), dark)
+		3:   # Cíclope: un solo ojo grande con un brillo; triste = el párpado a medio cerrar
+			_box(r, Vector3(0, 0.285, 0.092), Vector3(0.095, 0.075, 0.012), dark)
+			_box(r, Vector3(0.015, 0.295, 0.0935), Vector3(0.025, 0.025, 0.012), glow)
+			_box(r.smile, Vector3(0, 0.34, 0.092), Vector3(0.001, 0.001, 0.001), dark)
+			_box(r.frown, Vector3(0, 0.315, 0.0945), Vector3(0.1, 0.03, 0.012), glow)
+		_:   # el de siempre: ojos y sonrisa
+			_box(r, Vector3(-0.04, 0.31, 0.092), Vector3(0.035, 0.055, 0.012), dark)
+			_box(r, Vector3(0.04, 0.31, 0.092), Vector3(0.035, 0.055, 0.012), dark)
+			_box(r.smile, Vector3(0, 0.235, 0.092), Vector3(0.09, 0.02, 0.012), dark)
+			_box(r.smile, Vector3(-0.045, 0.25, 0.092), Vector3(0.02, 0.02, 0.012), dark)
+			_box(r.smile, Vector3(0.045, 0.25, 0.092), Vector3(0.02, 0.02, 0.012), dark)
+			_box(r.frown, Vector3(0, 0.25, 0.092), Vector3(0.09, 0.02, 0.012), dark)
+			_box(r.frown, Vector3(-0.045, 0.235, 0.092), Vector3(0.02, 0.02, 0.012), dark)
+			_box(r.frown, Vector3(0.045, 0.235, 0.092), Vector3(0.02, 0.02, 0.012), dark)
 	_box(r, Vector3(-0.145, 0.24, 0), Vector3(0.05, 0.13, 0.05), iron2)  # bracitos
 	_box(r, Vector3(0.145, 0.24, 0), Vector3(0.05, 0.13, 0.05), iron2)
 	var light := OmniLight3D.new()

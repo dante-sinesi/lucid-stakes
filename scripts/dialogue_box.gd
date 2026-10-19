@@ -358,7 +358,7 @@ func _draw() -> void:
 	var face_rows: Array = FACE
 	var face_pal: Dictionary = FACE_PAL
 	if speaker == Farolin.SPEAKER:
-		face_rows = Farolin.FACE
+		face_rows = Farolin.face_rows()
 		face_pal = Farolin.FACE_PAL
 		draw_circle(origin + Vector2(6, 6) * s, 64.0, Color(1.0, 0.8, 0.3, 0.06 + 0.02 * sin(_t * 6.0)))   # (la luz de su llama sobre el cuadro)
 	for y in face_rows.size():

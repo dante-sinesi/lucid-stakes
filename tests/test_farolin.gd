@@ -25,7 +25,26 @@ func test_reactions() -> void:
 		check(Farolin.reaction(id) != "", "Farolín contesta cuando eliges %s" % id)
 
 
+## Los diseños de Farolín (el de siempre y tres sin sonrisa): cada cara tiene 13 filas de 12 con colores válidos y cada modelo 3D se arma y cambia de ánimo.
+func test_variants() -> void:
+	check(Farolin.FACE_VARIANTS.size() == 4, "hay cuatro diseños de Farolín")
+	for v in Farolin.FACE_VARIANTS.size():
+		var rows: Array = Farolin.face_rows(v)
+		var ok: bool = rows.size() == 13
+		for row in rows:
+			ok = ok and str(row).length() == 12
+			for ch in str(row):
+				ok = ok and (ch == "." or Farolin.FACE_PAL.has(ch))
+		check(ok, "la cara del diseño %d es válida" % v)
+		var f: Node3D = Farolin.build(v)
+		check(f != null and f.smile != null and f.frown != null and f.flame != null, "el modelo 3D del diseño %d se arma" % v)
+		f.set_mood("triste")
+		check(f.frown.visible and not f.smile.visible, "el diseño %d cambia a la cara triste" % v)
+		f.free()
+
+
 func _init() -> void:
+	test_variants()
 	test_reactions()
 	test_face()
 	test_model()
