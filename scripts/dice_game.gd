@@ -754,19 +754,20 @@ class _Showcase extends Control:
 		cosmetic_box.add_theme_constant_override("separation", 6)
 		col.add_child(cosmetic_box)
 		preview = CosmeticsScreen._Preview.new()
-		preview.custom_minimum_size = Vector2(250, 270)
+		preview.custom_minimum_size = Vector2(190, 200)
 		preview.spin = true
 		preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		cosmetic_box.add_child(preview)
-		cosmetic_label = UI.label(cosmetic_box, "", 3.5, Color(1.0, 0.9, 0.5), true, 700)
+		cosmetic_label = UI.label(cosmetic_box, "", 3.0, Color(1.0, 0.9, 0.5), true, 1000)
 		cosmetic_label.name = "cosmetico"
 
 	## Una tarjeta oscura y translúcida sólo alrededor de lo que se muestra: los dados siguen a la vista.
 	func _draw() -> void:
 		if col == null or not col.visible:
 			return
-		var r := Rect2(col.global_position - global_position, col.size).grow(18.0)
-		draw_rect(r, Color(0.04, 0.025, 0.08, 0.88))
+		var csize := col.get_combined_minimum_size()
+		var r := Rect2(center.position + (center.size - csize) * 0.5, csize).grow(18.0)
+		draw_rect(r, Color(0.04, 0.025, 0.08, 0.8))
 		Draw.card(self, r, 4.0, 0, 0.1, 778, false, -1.0)
 
 	## Sin cosmético: una tira abajo de la mesa; con cosmético: ocupa el centro de la mesa (lleva el muñeco).
@@ -775,6 +776,7 @@ class _Showcase extends Control:
 		var area := panel if _has_cosmetic else Rect2(panel.position.x, panel.end.y - 92.0, panel.size.x, 84.0)
 		center.position = area.position
 		center.size = area.size
+		queue_redraw()
 
 	func hide_prize() -> void:
 		visible = false
