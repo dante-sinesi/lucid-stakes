@@ -168,12 +168,11 @@ func test_totem() -> void:
 	run.note_retry(true)
 	check(run.consumables == ["freno"] and run.retries == 1, "el Tótem se gasta al reintentar gratis")
 	check(run.restart_cost(true) == 0, "y sin él, después de morir sigue sin costar claridad (el costo es la vida)")
-	# después de morir el Tótem tiene prioridad (cubre también la vida) y el seguro queda para otro reintento
+	# después de morir el Tótem tiene prioridad (cubre también la vida)
 	run.consumables.assign(["totem"])
-	run.insurance = true
 	var lives_before := run.lives
 	run.note_retry(true)
-	check(run.insurance and run.consumables.is_empty() and run.lives == lives_before, "si había seguro y Tótem, se gasta el Tótem (sin perder una vida) y el seguro queda")
+	check(run.consumables.is_empty() and run.lives == lives_before, "con Tótem se gasta el Tótem (sin perder una vida)")
 	check(Items.get_item("totem").desc.contains("sin costo"), "la descripción lo dice")
 
 

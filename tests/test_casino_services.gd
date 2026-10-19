@@ -1,5 +1,5 @@
 extends SceneTree
-## Pruebas de los servicios del casino (Rumores, Taller, Caja fuerte, Seguro), sus pantallas y cómo se enganchan a la sala y al run (headless).
+## Pruebas de los servicios del casino (Taller y Caja fuerte), sus pantallas y cómo se enganchan a la sala y al run (headless).
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_casino_services.gd
 
 const Services := preload("res://scripts/casino_services.gd")
@@ -23,7 +23,6 @@ func _init() -> void:
 	test_layout()
 	test_taller()
 	test_vault()
-	test_insurance()
 	test_run_state()
 	await test_screens()
 	await test_pad_screens()
@@ -42,7 +41,8 @@ func make_run(stage := 5, claridad := 1000) -> RunState:
 func test_layout() -> void:
 	var ids := []
 	check(not Room.layout(1).has("station") and Services.service_for_tier(0) == "", "la taberna no tiene estación de servicio")
-	for st in [5, 9, 13]:
+	check(not Room.layout(13).has("station") and Services.service_for_tier(3) == "", "el gran casino no tiene estación de servicio (ya no hay seguro)")
+	for st in [5, 9]:
 		var lay := Room.layout(st)
 		ids.append(lay.station.id)
 		check(Services.service_for_tier(lay.tier) == lay.station.id, "la estación de la etapa %d es la de su nivel" % st)
@@ -53,7 +53,7 @@ func test_layout() -> void:
 			near = near or reach.has(lay.station.cell + d)
 		check(near, "se llega caminando hasta la estación de la etapa %d" % st)
 		check(not Room.build_voxels(st).solid.is_empty(), "la sala de la etapa %d se arma con su estación" % st)
-	check(ids == ["taller", "caja", "seguro"], "una estación distinta por nivel (menos la taberna): %s" % str(ids))
+	check(ids == ["taller", "caja"], "una estación distinta por nivel (sólo salón y casino): %s" % str(ids))
 
 
 func test_taller() -> void:
@@ -106,34 +106,13 @@ func test_vault() -> void:
 	check(not poor.can_afford_restart(), "mientras está guardada no alcanza para reintentar")
 
 
-func test_insurance() -> void:
-	var run := make_run(5, 500)
-	var first := Services.first_retry_cost(run)
-	check(first == RunState.RESTART_BASE + 10 and Services.insurance_price(run) == int(round(first * 0.6)), "el seguro cuesta 60 % del primer reintento")
-	var bal := run.claridad
-	check(Services.buy_insurance(run).ok and run.insurance and run.claridad == bal - Services.insurance_price(run), "se contrata")
-	check(not Services.buy_insurance(run).ok, "no se contrata dos veces")
-	check(run.restart_cost() == 0 and run.can_afford_restart(), "con seguro el reintento es gratis")
-	run.note_retry()
-	check(not run.insurance and run.retries == 1 and run.tower_retries == 1 and run.restart_cost() > 0, "el primer reintento gasta el seguro")
-	var poor := make_run(5, 1)
-	check(not Services.buy_insurance(poor).ok, "sin claridad no se contrata")
-	# expira si no se usa
-	var run2 := make_run(5, 500)
-	Services.buy_insurance(run2)
-	run2.stage = 6
-	Services.enter(run2)
-	check(not run2.insurance, "el seguro expira al llegar al casino siguiente")
-
-
 func test_run_state() -> void:
 	var run := make_run(7, 100)
 	run.vault = 40
 	run.vault_stage = 7
-	run.insurance = true
 	var back := RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict())))
-	check(back.vault == 40 and back.vault_stage == 7 and back.insurance, "la caja y el seguro se guardan con el run")
-	check(RunState.from_dict({}).vault == 0 and not RunState.from_dict({}).insurance, "un guardado viejo no los trae")
+	check(back.vault == 40 and back.vault_stage == 7, "la caja se guarda con el run")
+	check(RunState.from_dict({}).vault == 0, "un guardado viejo no la trae")
 
 
 ## Con el mando (o el teclado) los servicios se manejan con la botonera: flechas para elegir el casillero, Enter, Espacio o C para lo que dice cada ítem.
@@ -214,29 +193,18 @@ func test_screens() -> void:
 	c.find_child("retirar", true, false).pressed.emit()
 	check(run.vault == 0 and run.claridad == 200, "Retirar")
 	c.queue_free()
-	# Seguro
-	run = make_run(5, 500)
-	var s = ServiceScreens.make("seguro")
-	root.add_child(s)
-	s.setup(run, rng, true)
-	await process_frame
-	check(not s.find_child("contratar", true, false).disabled, "se puede contratar")
-	s.find_child("contratar", true, false).pressed.emit()
-	check(run.insurance and s.find_child("contratar", true, false).disabled, "contratar el seguro")
-	s.queue_free()
 
 
 func test_scene() -> void:
-	var run := make_run(14, 500)
+	var run := make_run(10, 500)
 	run.vault = 100
-	run.vault_stage = 13
-	run.insurance = true
+	run.vault_stage = 9
 	var c := CasinoScene.new()
 	root.add_child(c)
 	c.quick = true
 	c.setup(run, RandomNumberGenerator.new())
 	await process_frame
-	check(run.vault == 0 and run.claridad == 615 and not run.insurance, "al entrar al casino se cobra la caja fuerte y expira el seguro")
+	check(run.vault == 0 and run.claridad == 615, "al entrar al casino se cobra la caja fuerte")
 	var st: Vector2i = c.lay.station.cell
 	check(c._bump(st) == "service" and c.screen != null, "chocar con la estación abre su pantalla")
 	c.close_roulette()

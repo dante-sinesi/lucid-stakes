@@ -56,11 +56,10 @@ func test_run() -> void:
 	var back := RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict())))
 	check(back.lives == 1, "las vidas se guardan con la partida")
 	check(RunState.from_dict({}).lives == 3 and RunState.from_dict({"lives": 99}).lives == 3, "un guardado viejo (o raro) arranca con 3")
-	# morir ya no cuesta claridad, así que el seguro no se gasta; la vida sí
+	# morir ya no cuesta claridad: la vida sí
 	var r2 := RunState.new()
-	r2.insurance = true
 	r2.note_retry(true)
-	check(r2.lives == 2 and r2.insurance, "morir gasta la vida pero no el seguro (queda para un reinicio por voluntad)")
+	check(r2.lives == 2 and r2.restart_cost(true) == 0, "morir gasta la vida y no cuesta claridad")
 
 
 func test_item() -> void:
@@ -107,9 +106,9 @@ func test_main() -> void:
 	main.request_restart()
 	check(main.run.lives == 2 and not main.run_over and not main.logic.lost, "morir y reintentar cuesta una vida")
 	check(main.lives_hud.lives == 2, "y el contador se actualiza")
-	# reintentar sin morir no gasta vidas
+	# reintentar sin morir (desde la pausa) también cuesta una vida
 	main.request_restart()
-	check(main.run.lives == 2, "un reintento voluntario no gasta vidas")
+	check(main.run.lives == 1, "un reintento voluntario cuesta una vida")
 	# sin vidas, morir termina la partida
 	main.run.lives = 0
 	main.logic.lost = true

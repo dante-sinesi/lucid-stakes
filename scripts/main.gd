@@ -609,7 +609,7 @@ func _await_job(job: Dictionary) -> Dictionary:
 ## Premio de un tiro de los dados de la pantalla de carga: claridad (con tope por partida), Luz y, con los 5 aciertos, un cosmético.
 ## Completa `info` con lo que de verdad se dio (`granted`, `cosmetic_name`) para que el minijuego lo muestre.
 func _on_dice_prize(info: Dictionary) -> void:
-	_loading_dice_done = true   # el premio ya está dado (el cosmético y la Luz van al perfil): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
+	_loading_dice_done = true   # el premio ya está dado (la Luz y el cosmético quedan pendientes en el run hasta superar una torre): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
 	var granted := 0
 	var want := int(info.get("claridad", 0))
 	if want > 0 and run != null:
@@ -617,24 +617,41 @@ func _on_dice_prize(info: Dictionary) -> void:
 		run.dice_claridad += granted
 		run.gain(granted)
 	info["granted"] = granted
-	if int(info.get("luz", 0)) > 0:
-		Profile.add_luz(int(info.luz))
+	if int(info.get("luz", 0)) > 0 and run != null:
+		run.dice_pending.luz = int(run.dice_pending.luz) + int(info.luz)
 	var weights: Dictionary = info.get("cosmetic", {})
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	if not weights.is_empty() and rng.randf() < float(info.get("cosmetic_chance", 1.0)):   # el cosmético sale con la rareza que toca (y que todavía no tengas)
-		var c := Cosmetics.roll(weights, Profile.owned_cosmetics(), rng)
+		var have: Array[String] = Profile.owned_cosmetics()
+		if run != null:
+			for pid in run.dice_pending.cosmetics:
+				have.append(str(pid))
+		var c := Cosmetics.roll(weights, have, rng)
 		if c.is_empty():   # ya los tiene todos: claridad grande en su lugar
 			if run != null:
 				run.gain(100)
 			info["granted"] = int(info.get("granted", 0)) + 100
 		else:
-			Profile.grant_cosmetic(c.id)
+			if run != null:
+				run.dice_pending.cosmetics.append(str(c.id))
 			info["cosmetic_name"] = c.name
 			info["cosmetic_rarity"] = c.rarity
 			info["cosmetic_id"] = c.id
 			info["cosmetic_slot"] = c.slot
 	save_game()
+
+
+## Lo que dieron los dados (Luz y cosméticos) pasa al perfil: se llama al superar una torre (entrar al casino), al terminar el tutorial y al terminar un run en el que se superó alguna.
+func _claim_dice_rewards() -> void:
+	if run == null or training:
+		return
+	var luz := int(run.dice_pending.luz)
+	if luz > 0:
+		Profile.add_luz(luz)
+	for id in run.dice_pending.cosmetics:
+		Profile.grant_cosmetic(str(id))
+	run.dice_pending = {"luz": 0, "cosmetics": []}
 
 
 ## Mientras se juega la etapa actual se generan las siguientes en otros hilos (cada torre es nueva: nada pregenerado). La torre sólo depende de la etapa, el escenario y la
@@ -1942,6 +1959,8 @@ func _character_msg(ids: Array) -> String:
 func enter_casino(restoring := false) -> void:
 	if casino != null:
 		return
+	if not restoring:
+		_claim_dice_rewards()   # (superaste la torre: lo que dieron los dados es tuyo)
 	if trial_banner != null:
 		trial_banner.clear()
 	Music.play("casino")
@@ -1979,6 +1998,7 @@ func _on_keeper_talk(lines: Array) -> void:
 ## Farolín en la puerta de salida: el cuadro de diálogo con sus salidas (pagar, rehacer la torre o, sin vidas, abandonar). Mientras tanto no se camina.
 ## Termina el tutorial (después del peaje de práctica): se marca como hecho y se vuelve al menú.
 func _finish_tutorial() -> void:
+	_claim_dice_rewards()
 	tutorial_forced = false
 	Profile.mark_tutorial_done()
 	open_main_menu()
@@ -2148,7 +2168,7 @@ func _rebuild_menus() -> void:
 		main_menu.visible = true
 		main_menu.show_panel("opciones")
 	elif was_paused:
-		pause_menu.set_restart(run.lives, training or lab_active, run.insurance, casino != null)
+		pause_menu.set_restart(run.lives, training or lab_active, casino != null)
 		pause_menu.open()
 		pause_menu.show_options(true)
 		if trial.get("no_retry", false):
@@ -2256,7 +2276,7 @@ func pause_game() -> void:
 	pause_menu.make_room_for_banner(trial_banner != null and trial_banner.active)   # (al pausar el cartel de la prueba se ve entero: el menú sube para no taparlo)
 	if trial_banner != null:
 		trial_banner.pin()
-	pause_menu.set_restart(run.lives, training or lab_active, run.insurance, casino != null)
+	pause_menu.set_restart(run.lives, training or lab_active, casino != null)
 	pause_menu.open()
 	if trial.get("no_retry", false):
 		pause_menu.buttons["reiniciar"].disabled = true   # (la prueba "Todo o nada" no tiene reintentos)
@@ -2379,6 +2399,8 @@ func end_run(victory: bool, reason := "") -> void:
 	hud_layer.visible = false
 	in_menu = true
 	SaveGame.delete()   # el run terminó: no hay nada que continuar
+	if run.towers_cleared > 0:
+		_claim_dice_rewards()   # (si se abandona antes de superar una torre, lo de los dados se pierde)
 	var luz := Profile.record_run(run, victory)   # la Luz y las estadísticas pasan al perfil
 	if victory and not training and not Demo.on():   # escapar da una habilidad persistente del escenario (o Luz si ya las tenés todas; en la demo no hay habilidades)
 		var rng := RandomNumberGenerator.new()

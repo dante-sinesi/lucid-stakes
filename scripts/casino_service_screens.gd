@@ -1,5 +1,5 @@
 extends RefCounted
-## Pantallas de las estaciones de servicio del casino (las reglas están en casino_services.gd): Taller, Caja fuerte y Seguro.
+## Pantallas de las estaciones de servicio del casino (las reglas están en casino_services.gd): Taller y Caja fuerte (y la Tienda).
 ## Todas se abren como los juegos (casino_scene._open_screen): `setup(run, rng, quick)`, señal `closed` al salir y `resolved` cuando algo cambió
 ## en el run (hay que guardar).
 
@@ -20,13 +20,13 @@ const GOOD := Color(0.8, 1.0, 0.7)
 const BAD := Color(1.0, 0.65, 0.55)
 
 
-## La pantalla de una estación según su id ("taller", "caja" o "seguro").
+## La pantalla de una estación según su id ("taller", "caja" o "tienda").
 static func make(id: String) -> Control:
 	match id:
 		"taller": return TallerScreen.new()
 		"caja": return CajaScreen.new()
 		"tienda": return TiendaScreen.new()
-	return SeguroScreen.new()
+	return TiendaScreen.new()
 
 
 ## Lo común: fondo, contador de claridad, Salir, título y una columna central.
@@ -420,44 +420,3 @@ class CajaScreen extends Base:
 				{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": deposit_buttons.mitad.text, "dim": deposit_buttons.mitad.disabled, "keycode": KEY_SPACE, "call": func(): deposit(int(run.claridad / 2))},
 				{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": deposit_buttons.todo.text, "dim": deposit_buttons.todo.disabled, "keycode": KEY_C, "call": func(): deposit(run.claridad)},
 				{"name": "RB", "key": "E", "text": withdraw_button.text, "dim": withdraw_button.disabled, "keycode": KEY_E, "call": func(): withdraw()}])
-
-
-## Gran casino: seguro para el primer reintento de la próxima torre.
-class SeguroScreen extends Base:
-	var status_label: Control
-	var buy_button: Button
-
-	func _init() -> void:
-		service_id = "seguro"
-
-	func _build_body() -> void:
-		status_label = UI.label(col, "", 3, Draw.MARBLE, true, 900)
-		status_label.custom_minimum_size = Vector2(900, 70)
-		status_label.vcenter = true
-		buy_button = button(col, "", "contratar", func(): buy(), true, 60)
-		buy_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		hints.replaced.append_array(PadHints.hide_buttons([buy_button]))
-		message = UI.label(col, "", 2.5, Color(0.9, 0.86, 1.0), true, 900)
-		message.custom_minimum_size = Vector2(900, 40)
-		message.vcenter = true
-
-	func buy() -> void:
-		var res: Dictionary = Services.buy_insurance(run)
-		if res.ok:
-			Sfx.play("coin")
-			say(Loc.f("Contrataste el seguro (−%d).", [int(res.price)]), GOOD)
-			resolved.emit()
-		else:
-			say(str(res.error), BAD)
-		_refresh()
-
-	func _refresh() -> void:
-		super._refresh()
-		var price := Services.insurance_price(run)
-		if run.insurance:
-			status_label.text = Loc.t("Ya tienes seguro: el primer reintento de la próxima torre sale gratis.")
-		else:
-			status_label.text = Loc.t("El primer reintento de la próxima torre costaría una vida. Con el seguro, nada.")
-		buy_button.set_label(Loc.f("Contratar (−%d)", [price]))
-		buy_button.disabled = run.insurance or not run.can_afford(price)
-		_set_hints([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": buy_button.text, "dim": buy_button.disabled, "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): if not buy_button.disabled: buy()}])

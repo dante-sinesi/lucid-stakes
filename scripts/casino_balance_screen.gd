@@ -1,7 +1,7 @@
 extends Control
 ## Balance del casino: se ve al salir de la sala, antes de la torre siguiente (y mientras ésta se genera). Muestra cuántas partidas se jugaron en
 ## cada mesa, cuántas se ganaron o perdieron, lo gastado, lo ganado y el neto, más datos sueltos de la visita (mejor jugada, la regla de la casa,
-## lo que hay en la caja fuerte, el seguro). Los datos salen de `CasinoRules.balance(run)`.
+## lo que hay en la caja fuerte). Los datos salen de `CasinoRules.balance(run)`.
 ## Uso: crear, add_child, setup(run); emite `done` al apretar Continuar.
 
 const Rules := preload("res://scripts/casino_rules.gd")
@@ -95,7 +95,7 @@ static func _signed(n: int) -> String:
 	return "+%d" % n if n > 0 else str(n)
 
 
-## Los renglones de abajo de la tabla: entrada y salida, mejor jugada, regla de la casa, caja fuerte y seguro.
+## Los renglones de abajo de la tabla: entrada y salida, mejor jugada, regla de la casa y caja fuerte.
 func _summary_lines() -> Array[String]:
 	var out: Array[String] = []
 	if int(data.total.plays) == 0:
@@ -107,8 +107,6 @@ func _summary_lines() -> Array[String]:
 		else:
 			out.append(Loc.t("Ninguna apuesta te dejó ganancia esta vez."))
 	match str(data.rule):
-		"fiado":
-			out.append(Loc.t("Fiado: te devolvieron parte de tu primera pérdida.") if data.fiado_used else Loc.t("Fiado: no hizo falta, no perdiste nada."))
 		"racha":
 			if int(data.max_streak) >= 2:
 				out.append(Loc.f("Tu mejor racha fue de %d victorias seguidas.", [data.max_streak]))
@@ -117,8 +115,6 @@ func _summary_lines() -> Array[String]:
 				out.append(Loc.f("El pozo del jackpot quedó con %d de claridad sin cobrar.", [data.pool]))
 	if run.vault > 0:
 		out.append(Loc.f("Caja fuerte: %d guardados (cobras %d en el próximo casino).", [run.vault, Services.vault_payout(run)]))
-	if run.insurance:
-		out.append(Loc.t("Seguro contratado: el primer reintento de la próxima torre sale gratis."))
 	return out
 
 

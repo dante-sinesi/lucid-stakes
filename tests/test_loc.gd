@@ -95,6 +95,8 @@ func test_catalog() -> void:
 	for g in CasinoRules.GAME_NAMES.values() + CasinoRules.ROOM_NAMES:
 		need(g, "balance del casino")
 	for r in CasinoRules.RULES:
+		if str(r.id) == "":   # (la taberna no tiene regla)
+			continue
 		need(r.name, "regla de la casa")
 		need(r.desc, "descripción de la regla " + r.id)
 	for a in Controls.ACTIONS:
@@ -145,7 +147,7 @@ func test_screens() -> void:
 	for r in [true, false]:
 		var run := RunState.new()
 		main.run_end.show_summary(run, r, "", 12, 30, ["Garras de hielo"])
-	main.pause_menu.set_restart(2, false, false, false)
+	main.pause_menu.set_restart(2, false, false)
 	main.pause_menu.open()
 	main.pause_menu.show_options(true)
 	main.dialogue.show_lines(Story.intro(), Story.SPEAKER, true)

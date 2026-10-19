@@ -60,15 +60,13 @@ func _button(id: String, text: String, primary: bool, action: Callable) -> void:
 	buttons[id] = b
 
 
-## El botón de reintentar: cuesta una vida (gratis en el tutorial y el entrenamiento o con seguro) y en el casino no aparece. `lives`: las vidas que quedan.
-func set_restart(lives: int, free: bool, insured: bool, in_casino: bool) -> void:
+## El botón de reintentar: cuesta una vida (gratis en el tutorial y el entrenamiento) y en el casino no aparece. `lives`: las vidas que quedan.
+func set_restart(lives: int, free: bool, in_casino: bool) -> void:
 	var b = buttons["reiniciar"]
 	b.visible = not in_casino
 	b.disabled = false
 	if free:
 		b.set_label(Loc.t("Reintentar la torre"))
-	elif insured:
-		b.set_label(Loc.t("Reintentar la torre (gratis: seguro)"))
 	elif lives <= 0:
 		b.disabled = true
 		b.set_label(Loc.t("Reintentar (sin vidas)"))

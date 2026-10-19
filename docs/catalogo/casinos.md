@@ -10,7 +10,7 @@ Entre torre y torre se pasa por un casino. Hay cuatro niveles de sala según la 
 - tragamonedas: 1
 - mesas_de_cartas: 0
 - servicio: (ninguno)
-- regla: fiado
+- regla: (ninguna)
 
 ## 1 - Salón
 - etapas: 7 a 13
@@ -33,15 +33,12 @@ Entre torre y torre se pasa por un casino. Hay cuatro niveles de sala según la 
 - tamaño_celdas: 13 x 11
 - tragamonedas: 3
 - mesas_de_cartas: 2
-- servicio: seguro
+- servicio: (ninguno)
 - regla: jackpot
 
 # Reglas de la casa
 
-Constantes: devolución del fiado 0.5 · extra de racha 0.1 por victoria seguida (hasta 5 pasos) · fichas que se pueden apostar con Apuesta libre: 1, 2, 3, 5 · parte de lo perdido que va al pozo del jackpot: 0.5.
-
-## fiado - Fiado
-- descripción: La primera apuesta que perdés en cada visita te devuelve la mitad de lo perdido.
+Constantes: extra de racha 0.1 por victoria seguida (hasta 5 pasos) · fichas que se pueden apostar con Apuesta libre: 1, 2, 3, 5 · parte de lo perdido que va al pozo del jackpot: 0.5.
 
 ## racha - Racha
 - descripción: Cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta.
@@ -54,16 +51,13 @@ Constantes: devolución del fiado 0.5 · extra de racha 0.1 por victoria seguida
 
 # Servicios
 
-Constantes: el taller paga 0.4 del valor de un ítem y cambiar cuesta 0.3 de la ficha · la caja fuerte da 0.15 de interés por casino · el seguro cuesta 0.6 de lo que costaría ese primer reintento.
+Constantes: el taller paga 0.4 del valor de un ítem y cambiar cuesta 0.3 de la ficha · la caja fuerte da 0.15 de interés por casino.
 
 ## taller - Taller
 - descripción: Vendé un boost o un consumible por claridad, o cambialo por otro del mismo nivel.
 
 ## caja - Caja fuerte
 - descripción: Guardá claridad y cobrala con interés en el próximo casino. Mientras tanto no podés usarla.
-
-## seguro - Seguro
-- descripción: Pagá ahora y el primer reintento de la próxima torre sale gratis.
 
 # Ruleta
 

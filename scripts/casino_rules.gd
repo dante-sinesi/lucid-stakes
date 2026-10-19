@@ -1,6 +1,6 @@
 extends RefCounted
 ## Reglas de la casa: cada nivel de sala (taberna, salón, casino, gran casino) paga distinto, en las tres mesas (ruleta, tragamonedas, blackjack).
-## - Taberna, "Fiado": la primera apuesta que perdés en cada visita te devuelve la mitad de lo perdido.
+## - Taberna: sin regla (es el primer casino: lo justo para jugar).
 ## - Salón, "Racha": cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %); perder la corta.
 ## - Casino, "Apuesta libre": en las tragamonedas y el blackjack se puede apostar 1, 2, 3 o 5 fichas juntas (paga proporcional).
 ## - Gran casino, "Jackpot": parte de lo que se pierde en la sala va a un pozo, y el premio mayor (tres coronas, blackjack, pleno) se lo lleva.
@@ -10,7 +10,7 @@ extends RefCounted
 const Loc := preload("res://scripts/loc.gd")
 
 const RULES := [
-	{"id": "fiado", "name": "Fiado", "desc": "La primera apuesta que pierdes en cada visita te devuelve la mitad de lo perdido."},
+	{"id": "", "name": "", "desc": ""},   # la taberna no tiene regla
 	{"id": "racha", "name": "Racha", "desc": "Cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta."},
 	{"id": "libre", "name": "Apuesta libre", "desc": "En las tragamonedas y el blackjack puedes apostar 1, 2, 3 o 5 fichas juntas."},
 	{"id": "jackpot", "name": "Jackpot", "desc": "Lo que pierdes en la sala va a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva."},
@@ -19,7 +19,6 @@ const GAMES: Array[String] = ["ruleta", "tragamonedas", "blackjack"]
 const GAME_NAMES := {"ruleta": "Ruleta", "tragamonedas": "Tragamonedas", "blackjack": "Blackjack"}
 const ROOM_NAMES: Array[String] = ["Taberna", "Salón", "Casino", "Gran casino"]
 const STAKES: Array[int] = [1, 2, 3, 5]
-const FIADO_REFUND := 0.5        # fracción de lo perdido que devuelve el fiado
 const STREAK_STEP := 0.1         # lo que suma cada victoria seguida (desde la segunda)
 const STREAK_MAX := 5            # tope del extra: 5 pasos de 10 % (+50 %)
 const POOL_SHARE := 0.5          # fracción de lo perdido que va al pozo del jackpot
@@ -31,7 +30,7 @@ static func rule_of(tier: int) -> Dictionary:
 
 ## Estado nuevo de una visita a la sala de ese nivel.
 static func new_visit(tier: int) -> Dictionary:
-	return {"tier": tier, "accepted": false, "fiado_used": false, "streak": 0, "max_streak": 0, "pool": 0, "stake": 1, "stats": {}, "claridad_in": 0, "best": 0, "best_game": ""}
+	return {"tier": tier, "accepted": false, "streak": 0, "max_streak": 0, "pool": 0, "stake": 1, "stats": {}, "claridad_in": 0, "best": 0, "best_game": ""}
 
 
 ## Se entra a la sala: arma el estado de la visita en el run.
@@ -96,11 +95,6 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 		return out
 	var lost := (not win) and reward < wager
 	match rule_id(run):
-		"fiado":
-			if lost and not v.fiado_used:
-				v.fiado_used = true
-				out.refund = int(round(float(wager - reward) * FIADO_REFUND))
-				out.notes.append(Loc.f("Fiado: te devuelven %d de claridad.", [out.refund]))
 		"racha":
 			if win:
 				v.streak = int(v.streak) + 1
@@ -177,5 +171,5 @@ static func balance(run) -> Dictionary:
 			total[k] += int(row[k])
 	return {"rows": rows, "total": total, "best": int(v.get("best", 0)), "best_game": str(v.get("best_game", "")),
 			"claridad_in": int(v.get("claridad_in", 0)), "claridad_out": run.claridad, "max_streak": int(v.get("max_streak", 0)),
-			"pool": int(v.get("pool", 0)), "fiado_used": bool(v.get("fiado_used", false)), "rule": rule_id(run),
+			"pool": int(v.get("pool", 0)), "rule": rule_id(run),
 			"room": ROOM_NAMES[clampi(int(v.get("tier", 0)), 0, ROOM_NAMES.size() - 1)] if not v.is_empty() else ""}

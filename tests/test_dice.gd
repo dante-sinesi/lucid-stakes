@@ -256,18 +256,23 @@ func test_main() -> void:
 	info3["cosmetic_chance"] = 1.0   # (acá se prueba el cosmético: en el juego sale con 15 % de chance)
 	var before: int = main.run.claridad
 	main._on_dice_prize(info3)
+	check(Profile.luz() == 0 and Profile.owned_cosmetics().is_empty() and int(main.run.dice_pending.luz) == 3, "los dados dejan la Luz y el cosmético pendientes: no pasan al perfil hasta superar una torre")
+	main._claim_dice_rewards()
+	check(main.run.dice_pending.luz == 0 and main.run.dice_pending.cosmetics.is_empty(), "al reclamarlos el run queda sin pendientes")
 	check(info3.granted == 0 and main.run.claridad == before and Profile.luz() == 3, "con el tope lleno ya no da claridad, pero la Luz se da igual")
 	check(str(info3.cosmetic_name) != "" and Cosmetics.get_cosmetic(Profile.owned_cosmetics()[0]).rarity in ["comun", "raro"], "4 aciertos dan un cosmetico comun o raro")
 	check(RunState.from_dict(JSON.parse_string(JSON.stringify(main.run.to_dict()))).dice_claridad == RunState.DICE_CAP, "el tope se guarda con el run")
 	# cosmetico
 	var info5 := DiceGame.prize_for(5)
 	main._on_dice_prize(info5)
+	main._claim_dice_rewards()
 	check(str(info5.cosmetic_name) != "" and Profile.owned_cosmetics().size() == 2 and str(info5.cosmetic_rarity) in ["raro", "epico"] and Profile.luz() == 8, "5 aciertos: Luz y un cosmetico raro o epico")
 	for c in Cosmetics.ALL:
 		Profile.grant_cosmetic(c.id)
 	var info6 := DiceGame.prize_for(5)
 	var before6: int = main.run.claridad
 	main._on_dice_prize(info6)
+	main._claim_dice_rewards()
 	check(not info6.has("cosmetic_name") and info6.granted == 100 and main.run.claridad == before6 + 100, "si ya los tiene todos, da claridad en su lugar")
 	# el aspecto elegido se ve en el personaje de la torre
 	Profile.equip("copa")

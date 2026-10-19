@@ -319,7 +319,7 @@ func _show_overlay(res: Dictionary) -> void:
 	if res.won and extra > 0:
 		delta += extra
 	elif not res.won and extra > 0:
-		delta += extra   # (el fiado devuelve parte de lo perdido)
+		delta += extra
 	overlay.show_result(res.won, delta, item_id, item_name, RuleUI.notes(res))
 
 
