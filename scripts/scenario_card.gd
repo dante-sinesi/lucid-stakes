@@ -73,6 +73,7 @@ func lock_soon() -> void:
 	locked_soon = true
 	affordable = false
 	enter_button.disabled = true
+	info_button.disabled = true   # (sin detalles: todavía no hay nada que contar)
 	enter_button.cost = 0
 	enter_button.cube = 2.2   # (el texto es más largo que "Jugar": se achica para que entre en la tarjeta)
 	enter_button.min_cells_w = 30
@@ -96,6 +97,9 @@ func _draw() -> void:
 	draw_rect(panel, theme)
 	draw_rect(panel, Color(1, 1, 1, 0.12), false, 2.0)
 	var bob := sin(_t * 1.6) * 3.0
+	if locked_soon:   # sin logo todavía: signos de pregunta
+		_draw_question_marks(panel, bob)
+		return
 	ScenarioArt.draw(self, scenario.get("id", ""), panel.get_center() + Vector2(0, bob), 11.0)
 	# Cuánta Luz paga: "×1.5" y el sol (el gratuito paga lo normal y no muestra nada)
 	var mult: float = float(scenario.get("luz_mult", 1.0))
@@ -107,6 +111,20 @@ func _draw() -> void:
 		var origin := Vector2((SIZE.x - w - 40.0) * 0.5, 288.0)
 		Draw.text_cells(self, origin, l.cells, l.size.y, cs, Color(1.0, 0.95, 0.7), 0.0, 3, true)
 		LuzIcon.draw_sun(self, origin + Vector2(w + 24.0, 12.0), 2.2, _t)
+
+
+## El "logo" de un escenario que todavía no está: un signo de pregunta grande y dos chicos a los lados que se mecen.
+func _draw_question_marks(panel: Rect2, bob: float) -> void:
+	var col := Color(0.78, 0.72, 0.95)
+	var l: Dictionary = VFont.layout(["?"])
+	var big := 13.0
+	var sz := Vector2(l.size) * big
+	Draw.text_cells(self, panel.get_center() + Vector2(0, bob) - sz * 0.5, l.cells, l.size.y, big, col, 0.0, 7, true)
+	var small := 5.0
+	var ssz := Vector2(l.size) * small
+	for side in [-1.0, 1.0]:
+		var c := panel.get_center() + Vector2(side * 84.0, -34.0 - bob * side)
+		Draw.text_cells(self, c - ssz * 0.5, l.cells, l.size.y, small, col.darkened(0.25), 0.0, 9, true)
 
 
 ## Botón de entrada: el costo y el sol de la Luz a la derecha del número.

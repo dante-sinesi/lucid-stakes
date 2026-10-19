@@ -11,6 +11,9 @@ const K := TowerLogic.Kind
 
 const FREE := "pesadilla"
 
+## Los escenarios que se pueden elegir hoy en el selector (el tutorial, La Pesadilla y el Glaciar); el resto está definido pero se muestra como "Próximamente" hasta que se les arme su contenido.
+const AVAILABLE: Array[String] = ["tutorial", "pesadilla", "glaciar"]
+
 ## El tutorial no es un escenario (no hay run): es la primera tarjeta del selector de "Nueva partida". Gratis, no da Luz ni habilidades.
 const TUTORIAL := {"id": "tutorial", "name": "Tutorial", "entry": 0, "luz_mult": 1.0, "pool": [],
 		"desc": "Aprende a escapar con el tabernero: te cuenta la historia de la pesadilla y te enseña, torre por torre, todo lo que hace falta."}
@@ -51,6 +54,11 @@ const ALL: Array[Dictionary] = [
 		"pool": ["niebla", "oscuridad", "prisa", "sin_ayudas", "todo_o_nada", "sin_racha", "meteoritos"],
 		"diff_offset": 0.15, "casino_tier": 3, "price_mult": 0.8},
 ]
+
+
+## ¿Se puede jugar este escenario desde el selector? (los demás dicen "Próximamente")
+static func playable(id: String) -> bool:
+	return AVAILABLE.has(id)
 
 
 static func get_scenario(id: String) -> Dictionary:

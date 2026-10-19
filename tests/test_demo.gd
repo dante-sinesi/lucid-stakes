@@ -98,10 +98,10 @@ func test_scenarios() -> void:
 	root.add_child(s2)
 	await process_frame
 	s2.refresh()
-	var any_locked := false
+	var locked_ok := true
 	for id in s2.cards:
-		any_locked = any_locked or s2.cards[id].locked_soon
-	check(not any_locked, "sin la demo no hay tarjetas bloqueadas")
+		locked_ok = locked_ok and (s2.cards[id].locked_soon == not Scenarios.playable(id))
+	check(locked_ok, "sin la demo sólo están bloqueados los escenarios que todavía no se arman")
 	s2.queue_free()
 	await process_frame
 

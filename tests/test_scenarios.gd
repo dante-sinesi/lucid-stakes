@@ -270,9 +270,19 @@ func test_screens() -> void:
 	check(card.enter_button.cost == 15 and sc.cards["pesadilla"].enter_button.cost == 0 and sc.cards["pesadilla"].enter_button.text == "Jugar", "el boton de entrada muestra el costo (el gratuito dice Jugar)")
 	await process_frame
 	await process_frame
+	check(sc.current_id() == "pesadilla" and sc.cards["pesadilla"].is_current and not sc.cards["tutorial"].is_current, "al abrir apunta a La Pesadilla, no al tutorial")
+	# los escenarios sin armar dicen "Próximamente": sin logo, sin entrar y sin detalles; el Glaciar, la Pesadilla y el tutorial sí
+	for id in ["ruinas", "polvorin", "relojeria", "compromiso", "gran_casino"]:
+		var cd = sc.cards[id]
+		check(cd.locked_soon and cd.enter_button.disabled and cd.info_button.disabled and str(cd.enter_button.text).contains("Próximamente"), id + ": Próximamente, sin entrar y sin detalles")
+		sc.show_info(id)
+		check(not sc.info_panel.visible, id + ": no abre sus detalles")
+	for id in ["tutorial", "pesadilla", "glaciar"]:
+		check(not sc.cards[id].locked_soon and not sc.cards[id].info_button.disabled, id + ": se puede elegir y abrir")
 	sc.scroll.scroll_horizontal = 0
 	sc.sel_index = 0
-	check(sc.current_id() == "tutorial" and sc.cards["tutorial"].is_current and not sc.cards["glaciar"].is_current, "al abrir está elegido el tutorial")
+	await process_frame
+	check(sc.current_id() == "tutorial" and sc.cards["tutorial"].is_current and not sc.cards["glaciar"].is_current, "con las flechas se llega al tutorial")
 	for i in 3:
 		sc.scroll_cards(1)
 	check(sc.scroll.scroll_horizontal > 0, "al elegir los siguientes se desplazan las tarjetas hacia la derecha")

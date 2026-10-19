@@ -47,6 +47,7 @@ Juego de puzzle de torres de cubos (estilo Catherine) con casino y economía de 
 - **Música** (`docs/musica.md`): Las Cuatro Estaciones de Vivaldi (dominio público; partituras MIDI de Mutopia Project en `herramientas/musica/fuentes/`) tocadas en chiptune: `audio/music/{menu,torre,casino,pruebas}.ogg` (Primavera, Verano, Otoño, Invierno); se regeneran con `herramientas/musica/render_estaciones.py`.
 - **Tutorial** (`scripts/tutorial.gd`): las salas se dibujan por capas de abajo hacia arriba (`_from_layers`: `[capa],[capa]`, filas con `;`, celdas con `,`; `0` vacío, `1` bloque, `H` hierro, `I` hielo, `C` agrietado, `p` jugador, `portal`); la ayuda de teclas (`key_hint.gd`) se dibuja con botones del mando cuando se juega con mando.
 - **Generador portable** (`scripts/generador_todo.gd`, `herramientas/construir.ps1` → `build/Generar_Salas/`): `Generar_Salas.exe` + `Generar_Salas.pck` + `generador_nativo.exe`, corre en rondas sin parar y guarda `salas.rooms` junto al .exe.
+- **Escenarios**: en el selector sólo se pueden elegir el tutorial, La Pesadilla y el Glaciar (`Scenarios.AVAILABLE`, `Scenarios.playable`); el resto dice "Próximamente" con signos de pregunta, sin entrar ni detalles. Al abrir el selector el puntero apunta a La Pesadilla. Plan del Glaciar (salas dirigidas al hielo, curaduría en el Estudio, variedad medible): `docs/plan_glaciar.md`.
 - Documentos: `docs/diseno.md` (diseño, §41–45 el generador), `docs/plan_generador.md` (bitácora de rondas), `docs/cosas_a_mejorar.md`.
 
 ## Lo aprendido sobre la dificultad de las torres
