@@ -5,6 +5,7 @@ extends SceneTree
 const GameHelp := preload("res://scripts/game_help.gd")
 const Profile := preload("res://scripts/profile.gd")
 const Controls := preload("res://scripts/controls.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const RunState := preload("res://scripts/run_state.gd")
 const CasinoScene := preload("res://scripts/casino_scene.gd")
 const DiceGame := preload("res://scripts/dice_game.gd")
@@ -49,13 +50,28 @@ func test_content() -> void:
 
 
 func test_fill() -> void:
-	Controls.using_pad = false
-	var t := GameHelp.fill("Gira con {enter}, elige con {space}, {arrows}, {shift}")
-	check(t.contains("Enter") and t.contains("Espacio") and t.contains("las flechas") and t.contains("Shift") and not t.contains("{"), "con teclado los textos nombran las teclas")
-	Controls.using_pad = true
-	var t2 := GameHelp.fill("Gira con {enter}, {arrows}, {shift}, {qe}")
-	check(t2.contains("A") and t2.contains("la cruceta") and t2.contains("LT") and t2.contains("LB y RB") and not t2.contains("{"), "con mando nombran los botones")
-	Controls.using_pad = false
+	var kb := GameHelp.glyph_parts("space", false)
+	check(kb.size() == 1 and kb[0].get("cap", "") == "Espacio", "con teclado {space} es la tecla Espacio")
+	check(GameHelp.glyph_parts("lr", false).size() == 2 and GameHelp.glyph_parts("hold", false).size() == 3 and GameHelp.glyph_parts("arrows", false).size() == 4, "las flechas y 1, 2, 3 son varias teclas")
+	var pad := GameHelp.glyph_parts("space", true)
+	check(pad.size() == 1 and pad[0].has("slot") and int(pad[0].slot) == PadGlyph.Slot.WEST, "con mando {space} es el botón de la izquierda (X o cuadrado)")
+	check(GameHelp.glyph_parts("enter", true)[0].has("slot") and GameHelp.glyph_parts("shift", true)[0].named == "LT" and GameHelp.glyph_parts("help", true)[0].named == "BACK" and GameHelp.glyph_parts("hold", true)[0].named == "DPAD", "con mando: A, LT, Select y la cruceta")
+	# ningún texto nombra una tecla suelta: todas son fichas
+	for id in GameHelp.PAGES:
+		for p in GameHelp.PAGES[id]:
+			var t := str(p.text)
+			for bad in ["Enter", "Espacio", "Shift", "Esc ", " con C", "las flechas", "la cruceta"]:
+				check(not t.contains(bad), "el texto de %s no nombra la tecla a mano (%s)" % [id, bad])
+	# el texto con fichas se acomoda en renglones
+	var rich = GameHelp.new()
+	root.add_child(rich)
+	var r = GameHelp._Rich.new()
+	r.size = Vector2(880, 150)
+	root.add_child(r)
+	r.set_markup("Gira con {enter} y elige con {space}, {lr}")
+	check(r._ops.size() >= 5, "el texto con fichas arma sus piezas (%d)" % r._ops.size())
+	r.queue_free()
+	rich.queue_free()
 
 
 func test_flow() -> void:

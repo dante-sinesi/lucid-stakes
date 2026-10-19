@@ -19,8 +19,8 @@ const MenuAnim := preload("res://scripts/menu_anim.gd")
 
 signal closed
 
-## Las páginas de cada juego: {title, art (nombre del dibujito), text}. En los textos, {enter}, {space}, {c}, {esc}, {qe}, {shift}, {arrows} y {help} se
-## reemplazan por la tecla o el botón que corresponde al dispositivo que se esté usando.
+## Las páginas de cada juego: {title, art (nombre del dibujito), text}. En los textos, {enter}, {space}, {c}, {esc}, {qe}, {shift}, {lr}, {ud}, {arrows}, {hold} y {help} se
+## dibujan como la tecla (con teclado) o el botón (con mando) que corresponde, con el mismo diseño de las botoneras.
 const PAGES := {
 	"ruleta": [
 		{"title": "La ruleta", "art": "ruleta_rueda", "text": "Hay 13 casillas: la 0 es de la casa y la 1 a la 12 son tuyas. Con {arrows} mueves la marca y con {space} eliges las casillas que cubres (el tipo de apuesta fija cuántas). Gira con {enter}."},
@@ -31,7 +31,7 @@ const PAGES := {
 	"tragamonedas": [
 		{"title": "Los rodillos", "art": "slots_rodillos", "text": "Pagas una ficha y giran tres rodillos con cinco símbolos: cubo, hielo, bomba, sol y corona. Los comunes salen más seguido y la corona es la más rara. Gira con {enter}."},
 		{"title": "Qué paga", "art": "slots_pagos", "text": "Dos símbolos iguales pagan un poco; tres iguales pagan bastante más. Tres coronas son el premio gordo y además te dan un boost épico. Los pagos son claridad, en múltiplos de la ficha."},
-		{"title": "Retener", "art": "slots_retener", "text": "Cuando los rodillos frenan puedes retener los que te gustan (con 1, 2 y 3, o con las flechas) y volver a girar los demás por media ficha. Se puede una sola vez por jugada: lo mejor es retener las parejas."},
+		{"title": "Retener", "art": "slots_retener", "text": "Cuando los rodillos frenan puedes retener los que te gustan (con {hold}) y volver a girar los demás por media ficha. Se puede una sola vez por jugada: lo mejor es retener las parejas."},
 		{"title": "Cobrar", "art": "slots_cobrar", "text": "En cualquier momento puedes cobrar lo que tengas con {space}, sin volver a girar. Elegir bien qué retener es lo que hace que la máquina rinda: sin pensarlo, cada ficha devuelve algo menos de lo que cuesta."},
 	],
 	"blackjack": [
@@ -41,7 +41,7 @@ const PAGES := {
 		{"title": "Pagos", "art": "bj_pagos", "text": "Ganar paga 1 a 1. Un blackjack (21 con las dos primeras cartas) paga 3 a 2. Si empatas, te devuelven la apuesta."},
 	],
 	"dados": [
-		{"title": "Los dados del tabernero", "art": "dados_elegir", "text": "Mientras se genera la torre puedes jugar. Elige con {arrows} qué cara crees que saldrá en cada uno de los 5 dados (arriba y abajo cambian el número) y tira con {enter}."},
+		{"title": "Los dados del tabernero", "art": "dados_elegir", "text": "Mientras se genera la torre puedes jugar. Elige con {lr} qué cara crees que saldrá en cada uno de los 5 dados (con {ud} cambias el número) y tira con {enter}."},
 		{"title": "Tres tiradas", "art": "dados_tiradas", "text": "Tienes 3 tiradas para cumplir tu predicción. Los dados que aciertan quedan retenidos, en verde y con candado, y solo se vuelven a tirar los que fallaron."},
 		{"title": "Premios", "art": "dados_premios", "text": "Con 2 aciertos ganas 8 de claridad, con 3 ganas 25, con 4 ganas 80 y con 5 ganas 150. Con 4 o 5 aciertos también puede salir un cosmético. Los premios son tuyos cuando superes la torre."},
 	],
@@ -104,23 +104,33 @@ static func id_for(screen: Control) -> String:
 	return ""
 
 
-## Reemplaza {enter}, {space}... por la tecla o el botón del dispositivo que se usa.
-static func fill(text: String) -> String:
-	var pad := Controls.using_pad
-	var map := {
-		"{enter}": PadGlyph.name_of(PadGlyph.Slot.SOUTH) if pad else "Enter",
-		"{space}": PadGlyph.name_of(PadGlyph.Slot.WEST) if pad else "Espacio",
-		"{c}": PadGlyph.name_of(PadGlyph.Slot.NORTH) if pad else "C",
-		"{esc}": PadGlyph.name_of(PadGlyph.Slot.EAST) if pad else "Esc",
-		"{qe}": "LB y RB" if pad else "Q y E",
-		"{shift}": "LT" if pad else "Shift",
-		"{arrows}": "la cruceta" if pad else "las flechas",
-		"{help}": "Select" if pad else "H",
-	}
-	var out := Loc.t(text)
-	for k in map:
-		out = out.replace(k, Loc.t(str(map[k])))
-	return out
+## Las piezas que se dibujan para un token ({enter}, {space}...): cada una {cap: texto de tecla} / {slot: botón de cara} / {named: botón con nombre}.
+static func glyph_parts(token: String, pad := Controls.using_pad) -> Array:
+	if pad:
+		match token:
+			"enter": return [{"slot": PadGlyph.Slot.SOUTH}]
+			"space": return [{"slot": PadGlyph.Slot.WEST}]
+			"c": return [{"slot": PadGlyph.Slot.NORTH}]
+			"esc": return [{"slot": PadGlyph.Slot.EAST}]
+			"qe": return [{"named": "LB"}, {"named": "RB"}]
+			"shift": return [{"named": "LT"}]
+			"lr": return [{"named": "DPAD_LR"}]
+			"ud", "arrows", "hold": return [{"named": "DPAD"}]
+			"help": return [{"named": "BACK"}]
+	else:
+		match token:
+			"enter": return [{"cap": "Enter"}]
+			"space": return [{"cap": "Espacio"}]
+			"c": return [{"cap": "C"}]
+			"esc": return [{"cap": "Esc"}]
+			"qe": return [{"cap": "Q"}, {"cap": "E"}]
+			"shift": return [{"cap": "Shift"}]
+			"lr": return [{"cap": "←"}, {"cap": "→"}]
+			"ud": return [{"cap": "↑"}, {"cap": "↓"}]
+			"arrows": return [{"cap": "←"}, {"cap": "↑"}, {"cap": "↓"}, {"cap": "→"}]
+			"hold": return [{"cap": "1"}, {"cap": "2"}, {"cap": "3"}]
+			"help": return [{"cap": "H"}]
+	return [{"cap": token}]
 
 
 func _init() -> void:
@@ -154,8 +164,10 @@ func _init() -> void:
 	_art.custom_minimum_size = Vector2(0, 220)
 	_art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(_art)
-	_body = UI.label(col, "", 2.5, Draw.MARBLE, true, 880)
-	_body.custom_minimum_size = Vector2(880, 130)
+	_body = _Rich.new()
+	_body.custom_minimum_size = Vector2(880, 150)
+	_body.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(_body)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(spacer)
@@ -226,7 +238,7 @@ func prev_page() -> void:
 func _show_page() -> void:
 	var p: Dictionary = _pages[page]
 	_title.text = Loc.t(str(p.title))
-	_body.text = fill(str(p.text))
+	_body.set_markup(Loc.t(str(p.text)))
 	_art.kind = str(p.art)
 	_art.queue_redraw()
 	_count.text = "%d / %d" % [page + 1, _pages.size()]
@@ -264,6 +276,113 @@ class _Card extends Control:
 
 	func _draw() -> void:
 		D.card(self, Rect2(Vector2.ZERO, size), 6.0, 0, 0.1, 4242, false, -1.0)
+
+
+## Texto con fichas de teclas o botones en línea ({enter}, {space}...): se parte en palabras, se acomoda en renglones centrados y las fichas se dibujan con el diseño de las botoneras
+## (teclas con teclado, botones del mando con mando; se redibuja solo si cambia el dispositivo).
+class _Rich extends Control:
+	const D := preload("res://scripts/voxel_draw.gd")
+	const VF := preload("res://scripts/voxel_font.gd")
+	const PG := preload("res://scripts/pad_glyph.gd")
+	const Ctl := preload("res://scripts/controls.gd")
+
+	const CS := 2.5          # lado de un cubito de las letras
+	const LINE_H := 40.0
+	const GAP := 4.0         # separación entre las piezas de una ficha
+
+	var markup := ""
+	var _ops: Array = []
+	var _was_pad := false
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(_relayout)
+
+	func set_markup(text: String) -> void:
+		markup = text
+		_relayout()
+
+	func _process(_dt: float) -> void:
+		if Ctl.using_pad != _was_pad:
+			_relayout()
+
+	static func _part_width(part: Dictionary) -> float:
+		if part.has("cap"):
+			return maxf(26.0, ThemeDB.fallback_font.get_string_size(str(part.cap), HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 14.0)
+		if part.has("slot"):
+			return 30.0
+		return {"LB": 32.0, "RB": 32.0, "LT": 32.0, "RT": 32.0, "BACK": 40.0, "START": 40.0}.get(str(part.named), 30.0)
+
+	func _relayout() -> void:
+		_was_pad = Ctl.using_pad
+		_ops.clear()
+		var width := minf(size.x if size.x > 0.0 else 880.0, 900.0)
+		var re := RegEx.new()
+		re.compile("\\{[a-z0-9]+\\}|[^\\s{]+")
+		var toks: Array = []
+		for m in re.search_all(markup):
+			var t: String = m.get_string()
+			var before := m.get_start() > 0 and markup[m.get_start() - 1] in [" ", "\n"]
+			var tok := {"space": before, "gap": 0.0}
+			if t.begins_with("{"):
+				var parts: Array = load("res://scripts/game_help.gd").glyph_parts(t.substr(1, t.length() - 2), Ctl.using_pad)
+				var w := GAP * (parts.size() - 1)
+				for part in parts:
+					w += _part_width(part)
+				tok["parts"] = parts
+				tok["w"] = w
+			else:
+				var l: Dictionary = VF.layout([t])
+				tok["word"] = t
+				tok["cells"] = l.cells
+				tok["rows"] = int(l.size.y)
+				tok["w"] = float(l.size.x) * CS
+			toks.append(tok)
+		var lines: Array = []
+		var line: Array = []
+		var cur := 0.0
+		for tok in toks:
+			var gap := CS * 4.0 if (not line.is_empty() and tok.space) else 0.0
+			if not line.is_empty() and cur + gap + tok.w > width:
+				lines.append({"items": line, "w": cur})
+				line = []
+				cur = 0.0
+				gap = 0.0
+			tok["gap"] = gap
+			line.append(tok)
+			cur += gap + tok.w
+		if not line.is_empty():
+			lines.append({"items": line, "w": cur})
+		var y := 0.0
+		for L in lines:
+			var x: float = (size.x - float(L.w)) * 0.5 if size.x > 0.0 else (width - float(L.w)) * 0.5
+			for tok in L.items:
+				x += float(tok.gap)
+				tok["x"] = x
+				tok["y"] = y
+				x += float(tok.w)
+				_ops.append(tok)
+			y += LINE_H
+		queue_redraw()
+
+	func _draw() -> void:
+		for tok in _ops:
+			var cy: float = float(tok.y) + LINE_H * 0.5
+			if tok.has("word"):
+				var h := float(tok.rows) * CS
+				D.text_cells(self, Vector2(tok.x, cy - h * 0.5), tok.cells, int(tok.rows), CS, Color(0.84, 0.82, 0.9), 0.0, str(tok.word).hash() & 0xFFFF, true)
+				continue
+			var x: float = tok.x
+			for part in tok.parts:
+				var w := _part_width(part)
+				var c := Vector2(x + w * 0.5, cy)
+				if part.has("cap"):
+					PG.draw_cap(self, c, w, 13.0, str(part.cap))
+				elif part.has("slot"):
+					PG.draw(self, c, 13.0, int(part.slot))
+				else:
+					PG.draw_named(self, c, 12.0, str(part.named))
+				x += w + GAP
 
 
 ## El dibujito de cada página, hecho con cubitos.
