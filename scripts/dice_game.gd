@@ -242,6 +242,7 @@ func open(random: RandomNumberGenerator = null) -> void:
 func set_ready(ready: bool) -> void:
 	tower_ready = ready
 	start_button.disabled = not ready
+	_update_hints()
 	if ready and auto_start:
 		request_close()
 
@@ -490,6 +491,8 @@ func _process(delta: float) -> void:
 			pass
 	_try_close()
 	dice3d.update(self, delta)
+	if showcase.visible:
+		showcase.layout()
 	overlay_layer.queue_redraw()
 	queue_redraw()
 
@@ -714,33 +717,36 @@ class _Showcase extends Control:
 	var preview
 	var cosmetic_label: Control
 	var _card := Rect2()
+	var center: CenterContainer
+	var _has_cosmetic := false
+	var col: VBoxContainer
 
 	func _init() -> void:
 		name = "recompensas"
 		visible = false
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		var center := CenterContainer.new()
-		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		center.offset_left = -SHIFT * 2.0   # (centrado sobre el panel de los dados, que se corre a la izquierda)
-		center.offset_top = 90
-		center.offset_bottom = -110
+		center = CenterContainer.new()
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(center)
-		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 14)
+		col = VBoxContainer.new()
+		col.add_theme_constant_override("separation", 8)
 		col.alignment = BoxContainer.ALIGNMENT_CENTER
 		center.add_child(col)
-		title = UI.label(col, "", 7, Draw.GOLD)
+		var line := HBoxContainer.new()   # el título y los premios en una sola línea, chica, sobre la mesa
+		line.alignment = BoxContainer.ALIGNMENT_CENTER
+		line.add_theme_constant_override("separation", 40)
+		col.add_child(line)
+		title = UI.label(line, "", 4, Draw.GOLD)
 		title.name = "titulo"
 		row = HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 46)
-		col.add_child(row)
-		clarity = ClarityCounter.new(6.0, Color(1.0, 0.97, 0.8))
+		row.add_theme_constant_override("separation", 34)
+		line.add_child(row)
+		clarity = ClarityCounter.new(3.5, Color(1.0, 0.97, 0.8))
 		clarity.name = "claridad"
 		row.add_child(clarity)
-		luz = LuzCounter.new(6.0)
+		luz = LuzCounter.new(3.5)
 		luz.name = "luz"
 		row.add_child(luz)
 		cosmetic_box = VBoxContainer.new()
@@ -755,10 +761,20 @@ class _Showcase extends Control:
 		cosmetic_label = UI.label(cosmetic_box, "", 3.5, Color(1.0, 0.9, 0.5), true, 700)
 		cosmetic_label.name = "cosmetico"
 
+	## Una tarjeta oscura y translúcida sólo alrededor de lo que se muestra: los dados siguen a la vista.
 	func _draw() -> void:
-		var panel := Rect2(Vector2(size.x * 0.5 - SHIFT - 420.0, 126.0), Vector2(840.0, size.y - 126.0 - 206.0))
-		draw_rect(panel, Color(0.04, 0.025, 0.08, 1.0))
-		Draw.card(self, panel, 6.0, 0, 0.1, 778, false, -1.0)
+		if col == null or not col.visible:
+			return
+		var r := Rect2(col.global_position - global_position, col.size).grow(18.0)
+		draw_rect(r, Color(0.04, 0.025, 0.08, 0.88))
+		Draw.card(self, r, 4.0, 0, 0.1, 778, false, -1.0)
+
+	## Sin cosmético: una tira abajo de la mesa; con cosmético: ocupa el centro de la mesa (lleva el muñeco).
+	func layout() -> void:
+		var panel: Rect2 = get_parent()._panel_rect()
+		var area := panel if _has_cosmetic else Rect2(panel.position.x, panel.end.y - 92.0, panel.size.x, 84.0)
+		center.position = area.position
+		center.size = area.size
 
 	func hide_prize() -> void:
 		visible = false
@@ -786,4 +802,6 @@ class _Showcase extends Control:
 			else:
 				outfit = str(info.get("cosmetic_id", outfit))
 			preview.show_model(Profile.character(), hat, outfit)
+		_has_cosmetic = cname != ""
+		layout()
 		visible = true
