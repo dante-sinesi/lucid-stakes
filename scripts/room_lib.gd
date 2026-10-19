@@ -284,19 +284,35 @@ static func path_stats(room: Dictionary, path: Array) -> Dictionary:
 	var grabs := 0
 	var levels := {}
 	var max_y := 0
+	var slides := 0
+	var ice_moved := {}
 	for a in path:
 		var before: Dictionary = {}
+		var player_before: Vector3i = t.player
 		if a.mode == TowerLogic.Mode.GRAB:
 			before = t.positions.duplicate()
 			grabs += 1
 			levels[t.player.y] = true
 			max_y = maxi(max_y, t.player.y)
-		t.try_action(a.dir, a.mode)
+		var ice_cells_before := {}
 		if a.mode == TowerLogic.Mode.GRAB:
+			for id in t.positions:
+				if t.kind_at(t.positions[id]) == TowerLogic.Kind.ICE:
+					ice_cells_before[id] = true
+		t.try_action(a.dir, a.mode)
+		if a.mode == TowerLogic.Mode.MOVE and t.hang_dir == Vector3i.ZERO and t.player.y == player_before.y and absi(t.player.x - player_before.x) + absi(t.player.z - player_before.z) >= 2:
+			slides += 1   # resbaló
+		if a.mode == TowerLogic.Mode.GRAB:
+			var pushed_ice := false
 			for id in t.positions:
 				if before.get(id, t.positions[id]) != t.positions[id]:
 					moved[id] = true
-	return {"moved": moved.size(), "grabs": grabs, "levels": levels.size(), "reach": float(max_y) / float(maxi(int(room.h), 1))}
+					if ice_cells_before.has(id):
+						ice_moved[id] = true
+						pushed_ice = true
+			if pushed_ice:
+				slides += 1   # empujó o tiró de un bloque de hielo
+	return {"moved": moved.size(), "grabs": grabs, "levels": levels.size(), "reach": float(max_y) / float(maxi(int(room.h), 1)), "slides": slides, "ice_moved": ice_moved.size()}
 
 
 # --- resolver y evaluar -----------------------------------------------------------------------------------------------------
@@ -406,7 +422,7 @@ static func apply_result(room: Dictionary, path: Array, proof: String, lower: in
 	path = simplify_path(room, path)
 	var st := path_stats(room, path)
 	room.path = path
-	room.opt = {"moves": path.size(), "lower": lower, "grabs": st.grabs, "moved": st.moved, "proof": proof, "states": states, "levels": st.levels, "reach": snappedf(float(st.reach), 0.01)}
+	room.opt = {"moves": path.size(), "lower": lower, "grabs": st.grabs, "moved": st.moved, "proof": proof, "states": states, "levels": st.levels, "reach": snappedf(float(st.reach), 0.01), "slides": st.slides, "ice_moved": st.ice_moved}
 	room.opt["diff"] = difficulty(room.opt)
 	finalize(room)
 

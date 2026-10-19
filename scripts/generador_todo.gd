@@ -1,7 +1,7 @@
 extends Control
 ## Generar_Salas.exe: el generador de salas completo en un solo programa para llevar a otra PC (sin Godot, sin el proyecto, sin nada instalado). Junto al .exe tiene que estar generador_nativo.exe.
 ## Pone en marcha varias copias del generador nativo, espera, comprueba cada sala con las reglas del juego y escribe salas.rooms (la biblioteca) en la misma carpeta; si ya había una, suma y deja salas.rooms.bak.
-## Corre en rondas sin parar (cada ronda guarda y empieza otra con semilla nueva, guardada en semilla.txt) hasta que se cierre la ventana. Opciones (por línea de comandos o en opciones.txt, una por línea): --pasos=1500 --procesos=N --altura=12 --alcance=0.5
+## Corre en rondas sin parar (cada ronda guarda y empieza otra con semilla nueva, guardada en semilla.txt) hasta que se cierre la ventana. Opciones (por línea de comandos o en opciones.txt, una por línea): --pasos=1500 --procesos=N --altura=12 --alcance=0.5 --glaciar (sólo salas de hielo con pesado, agrietado y pinchos como compañeros: escribe glaciar.rooms en vez de salas.rooms)
 ## Para usar la biblioteca en el juego: copiar salas.rooms a data\salas.rooms del proyecto.
 
 const GenMain := preload("res://scripts/generador_main.gd")
@@ -13,6 +13,8 @@ var pids: Array = []
 var steps := 1500
 var hhi := 12
 var min_reach := 0.5
+var glaciar := false   # --glaciar: busca salas del escenario Glaciar (ver docs/plan_glaciar.md)
+var extra: Array = []   # opciones de la mina nativa que agrega --glaciar
 var seed_n := 1
 var label: Label
 var phase := "mina"
@@ -46,6 +48,10 @@ func _ready() -> void:
 			hhi = int(a.substr(9))
 		elif a.begins_with("--alcance="):
 			min_reach = float(a.substr(10))
+		elif a == "--glaciar":
+			glaciar = true
+	if glaciar:
+		extra = ["--types=i,h,c,s", "--p-ice=0.7", "--p-type=0.6", "--min-ice=2", "--min-slides=3"]
 	label = Label.new()
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -62,7 +68,7 @@ func _ready() -> void:
 
 func _start_round() -> void:
 	pids.clear()
-	var seed_path := dir.path_join("semilla.txt")
+	var seed_path := dir.path_join("semilla_glaciar.txt" if glaciar else "semilla.txt")
 	if FileAccess.file_exists(seed_path):
 		seed_n = int(FileAccess.get_file_as_string(seed_path).strip_edges()) + 1
 	var f := FileAccess.open(seed_path, FileAccess.WRITE)
@@ -75,7 +81,7 @@ func _start_round() -> void:
 		d.remove(fn)
 	for i in procs:
 		var out := work.path_join("gen_%d.txt" % i)
-		pids.append(OS.create_process(native, ["mina", "--out=" + out, "--steps=%d" % steps, "--hhi=%d" % hhi, "--seed=%d" % seed_n, "--part=%d" % i, "--parts=%d" % procs]))
+		pids.append(OS.create_process(native, ["mina", "--out=" + out, "--steps=%d" % steps, "--hhi=%d" % hhi, "--seed=%d" % seed_n, "--part=%d" % i, "--parts=%d" % procs] + extra))
 	started_ms = Time.get_ticks_msec()
 	finishing = false
 	phase = "mina"
@@ -118,8 +124,9 @@ func _process(_dt: float) -> void:
 
 
 func _close() -> void:
-	var lib := dir.path_join("salas.rooms")
-	var res := GenMain.run(dir.path_join("trabajo"), "", lib if FileAccess.file_exists(lib) else "res://data/salas.rooms", lib, min_reach, 1, native, false)
+	var lib := dir.path_join("glaciar.rooms" if glaciar else "salas.rooms")
+	var base := "" if glaciar else "res://data/salas.rooms"   # (el Glaciar empieza de cero: no se mezcla con la biblioteca común)
+	var res := GenMain.run(dir.path_join("trabajo"), "", lib if (FileAccess.file_exists(lib) or glaciar) else base, lib, min_reach, 1, native, false)
 	var f := FileAccess.open(dir.path_join("resumen.txt"), FileAccess.WRITE)
 	f.store_string(res.text)
 	f.close()

@@ -86,8 +86,14 @@ H1 y H4 son trabajo mío; H2 es tiempo de máquina; H3 y H6 necesitan la vista d
 - **Monotonía visual:** casi todo es hielo. Mitigación: las "Mixtas ligeras" y variantes de bloques de hielo (`BlockModels.VARIANTS` ya tiene 4 por tipo) y color de ambiente del escenario.
 - **Generador:** el modo `--types=i` toca el C++; hay que comprobar que no cambia lo que produce sin ese flag (las pruebas de determinismo ya existentes).
 
-## Preguntas para Dante
+## Decisiones de Dante (2026-10-19)
 
-1. ¿El Glaciar tiene las 15 etapas como la Pesadilla, o un run más corto (por ejemplo 10)?
-2. ¿Se permite que las salas mixtas usen pesados y agrietados como compañeros del hielo, o hielo "puro"?
-3. ¿Cuántas salas aprobadas son suficientes para vos antes de armar el banco (propongo 150 como mínimo)?
+1. **El Glaciar dura 8 etapas** (no 15). Hay que comprimir la curva: propuesta, la etapa real `k` (1 a 8) usa la dificultad, el precio de Farolín, el nivel de casino y la escalera de bloques de la etapa "virtual" `1 + 2 (k - 1)` (1, 3, 5, 7, 9, 11, 13, 15), así el recorrido de dificultad y de economía llega igual de lejos en menos torres. Las pruebas caen en las virtuales 3, 9 y 15 (etapas reales 2, 5 y 8, tres pruebas). La pared de precios (virtual 8) queda entre la etapa real 4 y la 5. Las torres tienen menos pisos (piso mínimo por etapa real, a definir con el bot). Cada escenario pasa a tener `stages` (15 por defecto) y la etapa final sale de ahí; habrá que revisar `FINAL_STAGE`, `RunState.rows_for`, `Stages`, el cartel de la última torre y la Luz (el bono de escapar y el multiplicador).
+2. **Las salas mixtas usan pesados, agrietados y pinchos como compañeros del hielo**, para que la partida no sea "todo hielo". Es el modo `--types=i,h,c,s` del generador. Las salas con hielo "puro" también existen, pero no son la regla.
+3. **150 salas aprobadas para empezar.** Después se genera en cantidad fuera de línea (con `Generar_Salas.exe --glaciar` o `herramientas\generador_glaciar.bat`) una vez confirmado que el generador cumple (H1).
+
+## Estado
+
+- **H1 hecho (2026-10-19):** `generador.cpp` con `--types`, `--p-ice`, `--min-ice`, `--min-slides` y la métrica de resbalones; el cierre y `RoomLib.path_stats` guardan `opt.slides` y `opt.ice_moved` medidos con las reglas del juego (coinciden con los del generador); el Estudio ordena y filtra por resbalones; `generador_todo.gd --glaciar` y `herramientas\generador_glaciar.bat`. Pruebas: `test_generador` (`test_ice`), `test_studio_model`.
+- Prueba de rendimiento: con `--min-ice=2 --min-slides=2` salen unas 6 salas por cada ~5 minutos de un solo proceso (mucho filtro); con `--min-ice=1 --min-slides=1` y `--p-type=0.9`, 8 a 10 salas en 18 segundos. Los parámetros definitivos (`--p-type`, `--p-ice`, mínimos) se calibran con la primera tanda larga.
+- **Sigue H2:** una tanda de 24 a 48 horas con `--glaciar` para ver cuántas salas buenas salen y con qué `slides`, antes de curar.

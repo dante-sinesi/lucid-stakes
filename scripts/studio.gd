@@ -10,7 +10,7 @@ const StudioModel := preload("res://scripts/studio_model.gd")
 
 const TOOLS := [["select", "Seleccionar"], ["add", "Agregar bloque (clic en una cara, como en Minecraft)"], ["delete", "Borrar bloque"], ["type", "Cambiar tipo"], ["move", "Mover a otra columna"], ["delete_gap", "Borrar y dejar el hueco"]]
 const SHAPE_NAMES := {"3x3": "Chica (3x3)", "3x5": "Mediana (3x5)", "3x8": "Grande (3x8)", "L": "L", "U": "U"}
-const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["moved", "Bloques distintos"], ["moves", "Pasos"], ["h", "Altura"], ["reciente", "Recientes"]]
+const SORTS := [["diff", "Dificultad"], ["grabs", "Empujes y tirones"], ["slides", "Resbalones (hielo)"], ["moved", "Bloques distintos"], ["moves", "Pasos"], ["h", "Altura"], ["reciente", "Recientes"]]
 
 ## Tipos de bloque por los que se puede filtrar (caracteres de la sala): hielo, arenisca, bomba, catapulta (trampolín), trampa, pinchos y pesado.
 const KIND_FILTERS := ["i", "c", "b", "k", "t", "s", "h"]
@@ -55,6 +55,7 @@ var f_hlo: SpinBox
 var f_hhi: SpinBox
 var f_moves: SpinBox
 var f_grabs: SpinBox
+var f_slides: SpinBox
 var f_diff: SpinBox
 var f_kind: OptionButton
 var f_kind_needed: CheckBox
@@ -189,6 +190,9 @@ func _build_ui() -> void:
 	row2a.add_child(_label("Con desplazamiento ≥"))
 	f_grabs = _spin(0, 60, 0, func(_v): refresh_list())
 	row2a.add_child(f_grabs)
+	row2a.add_child(_label("Resbalones ≥"))
+	f_slides = _spin(0, 60, 0, func(_v): refresh_list())
+	row2a.add_child(f_slides)
 	left.add_child(row2a)
 	var row2b := HBoxContainer.new()
 	row2b.add_child(_label("Dificultad ≥ %"))
@@ -459,7 +463,7 @@ func open_library(path: String) -> int:
 
 
 func filters() -> Dictionary:
-	var f := {"sort": SORTS[f_sort.selected][0], "h_lo": int(f_hlo.value), "h_hi": int(f_hhi.value), "min_moves": int(f_moves.value), "min_grabs": int(f_grabs.value), "min_diff": f_diff.value / 100.0, "text": f_text.text}
+	var f := {"sort": SORTS[f_sort.selected][0], "h_lo": int(f_hlo.value), "h_hi": int(f_hhi.value), "min_moves": int(f_moves.value), "min_grabs": int(f_grabs.value), "min_slides": int(f_slides.value), "min_diff": f_diff.value / 100.0, "text": f_text.text}
 	if f_shape.selected > 0:
 		f["shape"] = RoomLib.SHAPES[f_shape.selected - 1]
 	if f_kind.selected > 0:
@@ -481,6 +485,7 @@ func clear_filters() -> void:
 	f_hhi.value = 20
 	f_moves.value = 0
 	f_grabs.value = 0
+	f_slides.value = 0
 	f_diff.value = 0
 	f_status.select(0)
 	f_kind.select(0)

@@ -62,7 +62,7 @@ func _write() -> bool:
 
 ## Las salas que cumplen los filtros, ordenadas. filters: shape, h_lo, h_hi (altura), min_moves (pasos totales), min_grabs (empujes y tirones: los pasos con desplazamiento de bloques), min_diff (0 a 1),
 ## min_moved (bloques distintos), status, origin, proof, text (prefijo de id, familia o patrón),
-## sort ("diff" = dificultad, "grabs" = empujes y tirones, "moved", "moves", "h", "reciente").
+## sort ("diff" = dificultad, "grabs" = empujes y tirones, "slides" = resbalones, "moved", "moves", "h", "reciente"). min_slides: resbalones y empujes de hielo del camino.
 func filtered(filters: Dictionary = {}) -> Array:
 	var out: Array = []
 	var text := str(filters.get("text", "")).strip_edges().to_lower()
@@ -72,6 +72,8 @@ func filtered(filters: Dictionary = {}) -> Array:
 		if int(r.opt.get("moved", 0)) < int(filters.get("min_moved", 0)):
 			continue
 		if int(r.opt.get("moves", 0)) < int(filters.get("min_moves", 0)):
+			continue
+		if int(r.opt.get("slides", 0)) < int(filters.get("min_slides", 0)):   # (el Glaciar: resbalones y empujes de hielo del camino)
 			continue
 		if int(r.opt.get("grabs", 0)) < int(filters.get("min_grabs", 0)) or float(r.opt.get("diff", 0.0)) < float(filters.get("min_diff", 0.0)) - 0.0001:
 			continue
@@ -109,6 +111,10 @@ func filtered(filters: Dictionary = {}) -> Array:
 			"grabs":
 				if int(a.opt.get("grabs", 0)) != int(b.opt.get("grabs", 0)):
 					return int(a.opt.get("grabs", 0)) > int(b.opt.get("grabs", 0))
+				return float(a.opt.get("diff", 0.0)) > float(b.opt.get("diff", 0.0))
+			"slides":
+				if int(a.opt.get("slides", 0)) != int(b.opt.get("slides", 0)):
+					return int(a.opt.get("slides", 0)) > int(b.opt.get("slides", 0))
 				return float(a.opt.get("diff", 0.0)) > float(b.opt.get("diff", 0.0))
 			"moves":
 				return int(a.opt.get("moves", 0)) > int(b.opt.get("moves", 0))
