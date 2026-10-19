@@ -3,6 +3,7 @@
 // Uso:  solver_nativo ENTRADA SALIDA     (archivos de texto; ver scripts/native_solver.gd, que los arma y los lee)
 // Se compila con native/construir.bat (g++ -O2 -static). Las pruebas contra GDScript están en tests/test_native.gd.
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -28,7 +29,7 @@ static const int SLIDE_LIMIT = 40;
 enum Kind { NORMAL = 0, ICE = 1, BOMB = 2, CATAPULT = 3, CRACKED = 4, HEAVY = 5, TRAP = 6, SPIKES = 7 };
 
 static const int OFF = 8;
-static const int GX = 28, GZ = 28, GY = 44;
+static const int GX = 28, GZ = 28, GY = 160;   // capas: las torres llegan a 100 pisos (y el solucionador usa las coordenadas absolutas de la torre)
 static const int CELLS = GX * GZ * GY;
 
 static int sizeX = 8, sizeZ = 8, floorY = 0, goalY = 0;
@@ -476,7 +477,7 @@ static bool actGrab(Sim &s, V d) {
 		arrive(s, d);
 		return true;
 	}
-	return false;
+	return actWalk(s, d);   // Shift + dirección sin nada que empujar ni tirar es un paso común (igual que TowerLogic._act_grab)
 }
 
 static bool actHangOver(Sim &s, V d) {
@@ -521,6 +522,12 @@ static bool actHanging(Sim &s, V d) {
 	if (inHangReach(g2) && !has(s, s.p + w + UP)) {
 		setP(s, g2);
 		s.hang = -d;
+		return true;
+	}
+	if (has(s, g2 + DOWN)) {   // el borde del bloque termina y del otro lado hay piso: se sube a ese piso y queda parado
+		s.hang = ZERO;
+		setP(s, g2);
+		arrive(s, d);
 		return true;
 	}
 	return false;
@@ -568,9 +575,12 @@ static void afterAction(Sim &s) {
 		s.won = true;
 		return;
 	}
-	if (anyBomb) {   // una bomba cuenta sólo cuando el jugador está en su fila; al llegar a 0 explota
+	if (anyBomb) {   // una bomba cuenta sólo cuando el jugador está dentro de su zona (esfera de radio² 5); al llegar a 0 explota
 		for (int ci : s.d->list) {
-			if ((s.d->g[ci] & 7) != BOMB || !s.d->tm[ci] || cellOf(ci).y != s.p.y) continue;
+			if ((s.d->g[ci] & 7) != BOMB || !s.d->tm[ci]) continue;
+			V bc = cellOf(ci);
+			int dx = bc.x - s.p.x, dy = bc.y - s.p.y, dz = bc.z - s.p.z;
+			if (dx * dx + dy * dy + dz * dz > 5) continue;
 			s.d->tm[ci]--;
 			wVersion++;
 			if (s.d->tm[ci] == 0) {   // explota: la torre se derrumba
@@ -809,13 +819,38 @@ static long long exMaxNodes = 1000000;
 static bool exKeepSpecials = false;            // los bloques especiales (todos menos común y pesado) tienen que quedar en su lugar
 static bool exNoFloor = false;                 // sin piso: no se exige que haya piso debajo de cada celda
 static vector<char> exArenaOk;                  // si no está vacío, las celdas (x, z) permitidas (x * 64 + z)
+static bool exCheckStable = false;           // los candidatos tienen que ser estables al empezar (ningún bloque cae si se arma la sala de cero, sin marcar apoyados)
 static int exTopK = 20, exEntryX = 0, exEntryZ = 0, exExitX = -99, exExitZ = -99, exMinD = 0, exColumns = 1, exMaxY = 19;
 
 struct EdgeRec { int u, v; u8 grab; };
 
 static string exPath;   // camino solución conocido (letras como las de la salida): se exploran los estados alrededor de todo el camino
 
-static void excavate(Sim &root, ofstream &out) {
+// ¿Una configuración de bloques es estable al empezar? (igual que RoomLib.is_stable: se carga sin marcar apoyados y se revisa el apoyo)
+static bool exStableCfg(int cfg) {
+	for (int ci : W.list) {
+		W.g[ci] = 0;
+		W.tm[ci] = 0;
+	}
+	W.list.clear();
+	CfgView c = cfgGet(cfg);
+	for (size_t i = 0; i < c.size(); i += 4) {
+		int ci = c[i] | (c[i + 1] << 8);
+		W.g[ci] = c[i + 2] & ~STAND;
+		W.tm[ci] = c[i + 3];
+		W.list.push_back(ci);
+	}
+	Sim s;
+	s.d = &W;
+	s.dirty = true;
+	return !settleBlocks(s);   // (anotar un apoyo cambia wVersion: sólo cuenta que algún bloque se haya movido o caído)
+}
+
+struct ExcCand { int d, g; vector<array<int, 4>> blocks; };
+struct ExcRes { bool capped = false; int nodes = 0; long long edges = 0; int wins = 0, maxd = 0, maxg = 0; long long cands = 0, ms = 0; vector<ExcCand> top; };
+
+static ExcRes excavateRun(Sim &root) {
+	ExcRes R;
 	auto t0 = chrono::steady_clock::now();
 	vector<Node> nodes;
 	unordered_map<Key, int, KeyHash> idx;
@@ -961,6 +996,7 @@ static void excavate(Sim &root, ofstream &out) {
 				break;
 			}
 		}
+		if (ok && exCheckStable && !exStableCfg(cfg)) ok = false;
 		exprOk[cfg] = ok ? 1 : 0;
 		return ok;
 	};
@@ -993,32 +1029,163 @@ static void excavate(Sim &root, ofstream &out) {
 		if (dist[i] > maxd) maxd = dist[i];
 		if (dist[i] >= 0 && gm[i] > maxg) maxg = gm[i];
 	}
-	out << "STATUS " << (capped ? "capped" : "complete") << "\n";
-	out << "NODES " << N << "\n";
-	out << "EDGES " << edges.size() << "\n";
-	out << "WINS " << wins << "\n";
-	out << "MAXD " << maxd << "\n";
-	out << "MAXG " << maxg << "\n";
-	out << "CANDS " << cands.size() << "\n";
-	out << "MS " << ms << "\n";
+	R.capped = capped;
+	R.nodes = N;
+	R.edges = (long long)edges.size();
+	R.wins = wins;
+	R.maxd = maxd;
+	R.maxg = maxg;
+	R.cands = (long long)cands.size();
+	R.ms = ms;
 	for (int i = 0; i < (int)cands.size() && i < exTopK; i++) {
 		const Lay &cd = cands[i];
-		out << "CAND " << cd.d << " " << cd.g << " ";
+		ExcCand ec;
+		ec.d = cd.d;
+		ec.g = cd.g;
 		CfgView c = cfgGet(nodes[cd.node].cfg);
-		bool first = true;
 		for (size_t j = 0; j < c.size(); j += 4) {
 			int ci = c[j] | (c[j + 1] << 8);
 			V b = cellOf(ci);
 			if (b.x == exExitX && b.z == exExitZ) continue;
+			ec.blocks.push_back({b.x, b.y, b.z, c[j + 2] & 7});
+		}
+		R.top.push_back(ec);
+	}
+	return R;
+}
+
+static void excavate(Sim &root, ofstream &out) {
+	ExcRes R = excavateRun(root);
+	out << "STATUS " << (R.capped ? "capped" : "complete") << "\n";
+	out << "NODES " << R.nodes << "\n";
+	out << "EDGES " << R.edges << "\n";
+	out << "WINS " << R.wins << "\n";
+	out << "MAXD " << R.maxd << "\n";
+	out << "MAXG " << R.maxg << "\n";
+	out << "CANDS " << R.cands << "\n";
+	out << "MS " << R.ms << "\n";
+	for (auto &cd : R.top) {
+		out << "CAND " << cd.d << " " << cd.g << " ";
+		bool first = true;
+		for (auto &b : cd.blocks) {
 			if (!first) out << ";";
 			first = false;
-			out << b.x << "," << b.y << "," << b.z << "," << (c[j + 2] & 7);
+			out << b[0] << "," << b[1] << "," << b[2] << "," << b[3];
 		}
 		out << "\n";
 	}
 }
 
-int main(int argc, char **argv) {
+struct SolveRes { string status = "unsolvable"; long long generated = 0, expanded = 0; int fReached = 0; string path; int moves = -1; long long ms = 0; };
+
+static SolveRes runAstar(Sim root, long long maxStates, long long maxMs) {
+	SolveRes R;
+	auto t0 = chrono::steady_clock::now();
+	vector<Node> nodes;
+	unordered_map<Key, int, KeyHash> best;
+	unordered_map<i64, int> cfgIndex;
+	vector<vector<int>> buckets;
+	nodes.reserve(1 << 16);
+	best.reserve(1 << 18);
+	vector<int> tmp;
+	cfgReset();
+	{
+		addCfg(root);
+			Node n0 = {0, root.p, root.hang, 0, -1, 255, root.dirty, root.won};
+		nodes.push_back(n0);
+		best[keyOf(root)] = 0;
+	}
+	int f0 = heuristic(root) * unitCost;
+	buckets.resize(f0 + 64);
+	buckets[f0].push_back(0);
+	long long open = 1, generated = 1, expanded = 0;
+	int f = f0;
+	string status = "unsolvable";
+	int solvedIdx = -1;
+	int fReached = f0;
+	while (open > 0) {
+		if (maxMs > 0 && (expanded & 255) == 0) {
+			long long ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t0).count();
+			if (ms > maxMs) {
+				status = "limit";
+				break;
+			}
+		}
+		if (f >= (int)buckets.size()) buckets.resize(f + 64);
+		if (buckets[f].empty()) {
+			f++;
+			continue;
+		}
+		int idx = buckets[f].back();
+		buckets[f].pop_back();
+		open--;
+		fReached = f;
+		const Node cur = nodes[idx];
+		if (cur.won) {
+			status = "solved";
+			solvedIdx = idx;
+			break;
+		}
+		expanded++;
+		Sim base = simFromNode(cur, 0);
+		// el zob del nodo: se recalcula desde la configuración (la identidad del estado es id-agnóstica)
+		{
+			i64 z = staticZob;
+			for (int ci : base.d->list) z ^= zobHash(cellOf(ci), base.d->g[ci] & 7);
+			base.zob = z;
+		}
+		bool limitHit = false;
+		for (int di = 0; di < 4 && !limitHit; di++) {
+			V dd = DIRS[di];
+			for (int mode2 = 0; mode2 < 3; mode2++) {
+				if (noGrab && mode2 == 1) continue;
+				if (cur.hang != ZERO && mode2 != 0) continue;
+				if (mode2 == 1 && !(has(base, base.p + dd) || has(base, base.p - dd))) continue;
+				if (mode2 == 2) {
+					V ht = base.p + dd;
+					if (has(base, ht) || has(base, ht + DOWN) || has(base, ht + DOWN + DOWN)) continue;
+				}
+				snapshot();
+				RestoreGuard rg;
+				long long ver0 = wVersion;
+				Sim n = base;
+				if (!tryAction(n, dd, mode2) || n.lost) continue;
+				Key k = keyOf(n);
+				auto it = best.find(k);
+				int ng = cur.g + unitCost + ((unitCost > 1 && mode2 != 0) ? 1 : 0);
+				if (it != best.end() && it->second <= ng) continue;
+				best[k] = ng;
+				int cfg = cur.cfg;
+				if (wVersion != ver0) cfg = addCfg(n);
+				Node nn = {cfg, n.p, n.hang, ng, idx, (u8)(di * 3 + mode2), n.dirty, n.won};
+				nodes.push_back(nn);
+				int nf = ng + heuristic(n) * unitCost;
+				if (nf >= (int)buckets.size()) buckets.resize(nf + 64);
+				buckets[nf].push_back((int)nodes.size() - 1);
+				open++;
+				generated++;
+				if (generated >= maxStates) {
+					status = "limit";
+					limitHit = true;
+					break;
+				}
+			}
+		}
+		if (limitHit) break;
+	}
+	R.status = status;
+	R.generated = generated;
+	R.expanded = expanded;
+	R.fReached = fReached;
+	if (solvedIdx >= 0) {
+		R.path = pathText(nodes, solvedIdx);
+		R.moves = (int)(R.path.size() / 2);
+	}
+	R.ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t0).count();
+	return R;
+}
+
+static int solverMain(int argc, char **argv) {
 	if (argc < 3) {
 		fprintf(stderr, "uso: solver_nativo ENTRADA SALIDA\n");
 		return 2;
@@ -1126,109 +1293,19 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	auto t0 = chrono::steady_clock::now();
-	vector<Node> nodes;
-	unordered_map<Key, int, KeyHash> best;
-	unordered_map<i64, int> cfgIndex;
-	vector<vector<int>> buckets;
-	nodes.reserve(1 << 16);
-	best.reserve(1 << 18);
-	vector<int> tmp;
-	cfgReset();
-	{
-		addCfg(root);
-			Node n0 = {0, root.p, root.hang, 0, -1, 255, root.dirty, root.won};
-		nodes.push_back(n0);
-		best[keyOf(root)] = 0;
+	SolveRes R = runAstar(root, maxStates, maxMs);
+	out << "STATUS " << R.status << "\n";
+	out << "STATES " << R.generated << "\n";
+	out << "EXPANDED " << R.expanded << "\n";
+	out << "FREACHED " << R.fReached << "\n";
+	if (R.moves >= 0) {
+		out << "MOVES " << R.moves << "\n";
+		out << "PATH " << (R.path.empty() ? "-" : R.path) << "\n";
 	}
-	int f0 = heuristic(root) * unitCost;
-	buckets.resize(f0 + 64);
-	buckets[f0].push_back(0);
-	long long open = 1, generated = 1, expanded = 0;
-	int f = f0;
-	string status = "unsolvable";
-	int solvedIdx = -1;
-	int fReached = f0;
-	while (open > 0) {
-		if (maxMs > 0 && (expanded & 255) == 0) {
-			long long ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t0).count();
-			if (ms > maxMs) {
-				status = "limit";
-				break;
-			}
-		}
-		if (f >= (int)buckets.size()) buckets.resize(f + 64);
-		if (buckets[f].empty()) {
-			f++;
-			continue;
-		}
-		int idx = buckets[f].back();
-		buckets[f].pop_back();
-		open--;
-		fReached = f;
-		const Node cur = nodes[idx];
-		if (cur.won) {
-			status = "solved";
-			solvedIdx = idx;
-			break;
-		}
-		expanded++;
-		Sim base = simFromNode(cur, 0);
-		// el zob del nodo: se recalcula desde la configuración (la identidad del estado es id-agnóstica)
-		{
-			i64 z = staticZob;
-			for (int ci : base.d->list) z ^= zobHash(cellOf(ci), base.d->g[ci] & 7);
-			base.zob = z;
-		}
-		bool limitHit = false;
-		for (int di = 0; di < 4 && !limitHit; di++) {
-			V dd = DIRS[di];
-			for (int mode2 = 0; mode2 < 3; mode2++) {
-				if (noGrab && mode2 == 1) continue;
-				if (cur.hang != ZERO && mode2 != 0) continue;
-				if (mode2 == 1 && !(has(base, base.p + dd) || has(base, base.p - dd))) continue;
-				if (mode2 == 2) {
-					V ht = base.p + dd;
-					if (has(base, ht) || has(base, ht + DOWN) || has(base, ht + DOWN + DOWN)) continue;
-				}
-				snapshot();
-				RestoreGuard rg;
-				long long ver0 = wVersion;
-				Sim n = base;
-				if (!tryAction(n, dd, mode2) || n.lost) continue;
-				Key k = keyOf(n);
-				auto it = best.find(k);
-				int ng = cur.g + unitCost + ((unitCost > 1 && mode2 != 0) ? 1 : 0);
-				if (it != best.end() && it->second <= ng) continue;
-				best[k] = ng;
-				int cfg = cur.cfg;
-				if (wVersion != ver0) cfg = addCfg(n);
-				Node nn = {cfg, n.p, n.hang, ng, idx, (u8)(di * 3 + mode2), n.dirty, n.won};
-				nodes.push_back(nn);
-				int nf = ng + heuristic(n) * unitCost;
-				if (nf >= (int)buckets.size()) buckets.resize(nf + 64);
-				buckets[nf].push_back((int)nodes.size() - 1);
-				open++;
-				generated++;
-				if (generated >= maxStates) {
-					status = "limit";
-					limitHit = true;
-					break;
-				}
-			}
-		}
-		if (limitHit) break;
-	}
-	out << "STATUS " << status << "\n";
-	out << "STATES " << generated << "\n";
-	out << "EXPANDED " << expanded << "\n";
-	out << "FREACHED " << fReached << "\n";
-	if (solvedIdx >= 0) {
-		string p = pathText(nodes, solvedIdx);
-		out << "MOVES " << p.size() / 2 << "\n";
-		out << "PATH " << (p.empty() ? "-" : p) << "\n";
-	}
-	long long ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t0).count();
-	out << "MS " << ms << "\n";
+	out << "MS " << R.ms << "\n";
 	return 0;
 }
+
+#ifndef SOLVER_LIB
+int main(int argc, char **argv) { return solverMain(argc, argv); }
+#endif

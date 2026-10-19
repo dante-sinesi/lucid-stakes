@@ -110,16 +110,24 @@ func test_move_lesson() -> void:
 	check(not straight.won, "ir siempre derecho no llega")
 
 
-## Tirar: un bloque suelto; con tirar de él una vez alcanza, y empujarlo no cuenta (el tutorial distingue una cosa de la otra).
+## Tirar: la escalera queda a la espalda y el bloque que la hace demasiado alta se saca tirando de él; sin agarrar no se llega y el camino más corto incluye un tirón.
 func test_pull_lesson() -> void:
 	var t = Tutorial.build(_index_of("tirar"))
-	check(t.goal_y > 100 and t.blocks.size() == 8 + 1, "la lección de tirar no tiene meta: un piso y un solo bloque")
-	var pushed = t.clone()
-	check(pushed.try_action(Vector3i(1, 0, 0), TowerLogic.Mode.GRAB).ok and pushed.last_grab == "push", "Shift hacia el bloque lo empuja (se nota que fue un empujón)")
-	var pulled = t.clone()
-	check(pulled.try_action(Vector3i(-1, 0, 0), TowerLogic.Mode.GRAB).ok and pulled.last_grab == "pull", "Shift hacia el otro lado tira de él (se nota que fue un tirón)")
+	check(t.goal_y < 100, "la lección de tirar tiene meta (el portal)")
+	check(Solver.solve(t, t.goal_y, {"max_states": 400000, "no_grab": true}).status != "solved", "sin agarrar no se llega al portal")
+	var res := Solver.solve(t, t.goal_y, {"max_states": 400000})
+	var sim = t.clone()
+	var pulls := 0
+	var pushes := 0
+	for a in res.path:
+		sim.try_action(a.dir, a.mode)
+		if sim.last_grab == "pull":
+			pulls += 1
+		elif sim.last_grab == "push":
+			pushes += 1
+	check(res.status == "solved" and pulls >= 1 and sim.won, "la solución tira de un bloque (%d tirones, %d empujes)" % [pulls, pushes])
 	var walked = t.clone()
-	walked.try_action(Vector3i(-1, 0, 0))
+	walked.try_action(Vector3i(0, 0, -1))
 	check(walked.last_grab == "", "caminar no es ni empujar ni tirar")
 
 
@@ -183,13 +191,23 @@ func test_flow() -> void:
 	await main.start_tutorial(Tutorial.count() - 1, true)
 	check(main.tutorial_index == Tutorial.count() - 1 and main.logic != null and main.logic.goal_y == 5 and main.tower_rows == main.TOWER_ROWS, "la ultima leccion es una torre generada chica")
 	check(main.dialogue.is_active() and not main.dice.visible, "el tabernero cuenta el lore de la torre cuando ya cerro la pantalla de los dados")
+	check(main.moved_blocks(main.stage_start, main.solution) >= main.TUTORIAL_MIN_MOVED, "la torre final del tutorial obliga a mover al menos dos bloques (%d)" % main.moved_blocks(main.stage_start, main.solution))
 	# Despues de la ultima se vuelve al menu
 	main.logic.won = true
 	await main._on_anim_done()
 	check(not main.in_menu and main.casino != null and main.casino.story and main.story_kind == "outro" and main.casino.lay.tier == 1, "al terminar la ultima leccion el tabernero te recibe en el salon de piedra")
 	check(main.dialogue.blocking and main.dialogue.lines.size() >= 6 and not main.hud_layer.visible, "y te explica las habilidades, la Luz y lo demas")
 	main.dialogue.skip_all()
-	check(main.in_menu and main.tutorial_index == -1 and not main.training and main.casino == null and not main.dialogue.is_active(), "al terminar su cierre se vuelve al menu")
+	check(main.story_kind == "outro" and main.casino != null and not main.casino.input_locked, "al terminar de hablar se camina hasta Farolín (peaje de práctica)")
+	main.casino.ask_toll()
+	var wait := 0
+	while not main.dialogue.options_visible() and wait < 600:   # (el texto se escribe letra por letra)
+		await process_frame
+		wait += 1
+	main.dialogue.confirm_choice()
+	await process_frame
+	main.dialogue.skip_all()
+	check(main.in_menu and main.tutorial_index == -1 and not main.training and main.casino == null and not main.dialogue.is_active(), "al terminar el peaje de práctica se vuelve al menu")
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
@@ -279,7 +297,7 @@ func test_key_hint() -> void:
 	check(h.all_done() and done[0] == 1, "con las cuatro doradas se completa (una sola vez)")
 	h.note("mover_atras", TowerLogic.Mode.MOVE)
 	check(done[0] == 1, "no se repite el aviso")
-	h.show_help("Mantené {empujar} y pulsá {?mover_adelante} {?mover_izquierda} {?mover_atras} {?mover_derecha}", "push")
+	h.show_help("Mantén {empujar} y pulsa {?mover_adelante} {?mover_izquierda} {?mover_atras} {?mover_derecha}", "push")
 	check(h.required_keys() == ["empujar"] and h.pressed.is_empty(), "empujar: sólo Shift es obligatoria (las demás se doran pero no se exigen)")
 	h.note("mover_derecha", TowerLogic.Mode.MOVE)
 	check(h.pressed.is_empty(), "sin Shift no se doran")
@@ -287,14 +305,14 @@ func test_key_hint() -> void:
 	check(h.pressed.is_empty(), "en la lección de empujar, tirar de un bloque no cuenta")
 	h.note("mover_derecha", TowerLogic.Mode.GRAB, "push")
 	check(h.pressed.has("empujar") and h.pressed.has("mover_derecha") and h.all_done(), "con Shift se doran Shift y la dirección")
-	h.show_help("Mantené {empujar} y pulsá {?mover_adelante} {?mover_izquierda} {?mover_atras} {?mover_derecha}", "pull")
+	h.show_help("Mantén {empujar} y pulsa {?mover_adelante} {?mover_izquierda} {?mover_atras} {?mover_derecha}", "pull")
 	h.note("mover_atras", TowerLogic.Mode.GRAB, "push")
 	check(h.pressed.is_empty(), "en la lección de tirar, empujar no cuenta")
 	h.note("mover_atras", TowerLogic.Mode.GRAB, "pull")
 	check(h.all_done(), "tirar de un solo bloque alcanza")
 	var rects: Dictionary = h.key_rects()
 	check(rects.has("empujar") and (rects.empujar as Rect2).end.x < (rects.mover_adelante as Rect2).position.x, "el Shift va a la izquierda de las direcciones, en una sola fila")
-	h.show_help("Mantené {colgarse} y pulsá una dirección", "hang")
+	h.show_help("Mantén {colgarse} y pulsa una dirección", "hang")
 	h.note("mover_atras", TowerLogic.Mode.HANG)
 	check(h.pressed.has("colgarse") and h.all_done(), "con Espacio se dora Espacio")
 	h.show_help("Pulsá {camara_arriba} {camara_izquierda} {camara_abajo} {camara_derecha}", "camera")

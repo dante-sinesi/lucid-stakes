@@ -61,21 +61,26 @@ func test_restart_flow() -> void:
 	await wait_tower(main)
 	main.run.stage = 1
 	main.run.claridad = 100
+	var l0: int = main.run.lives
 	main.request_restart()
-	check(main.run.claridad == 75 and main.run.retries == 1 and main.run.tower_retries == 1 and not main.run_over, "el primer reintento cuesta 25")
-	check(main.toast.text.contains("25"), "se avisa cuanto costo")
+	check(main.run.claridad == 100 and main.run.lives == l0 - 1 and main.run.retries == 1 and main.run.tower_retries == 1 and not main.run_over, "reintentar por voluntad cuesta una vida y no claridad")
+	check(main.toast.text.contains("vida"), "se avisa que costó una vida")
 	main.request_restart()
-	check(main.run.claridad == 25 and main.run.retries == 2, "el segundo cuesta 50")
-	check(main.run.restart_cost() == 75 and not main.run.can_afford_restart(), "el tercero ya no se puede pagar")
-	# al perder, el aviso dice cuanto cuesta (o que ya no alcanza)
+	check(main.run.claridad == 100 and main.run.lives == l0 - 2 and main.run.retries == 2, "el segundo también cuesta una vida")
+	main.run.lives = 0
+	main.request_restart()
+	check(main.run.retries == 2 and not main.run_over and main.toast.text.contains("vidas"), "sin vidas no se puede reintentar por voluntad")
+	main.run.lives = 2
+	main.run.claridad = 25
+	# al perder (morir no cuesta claridad: el costo ya es la vida) se puede reintentar aunque no quede claridad
 	main.logic.lost = true
 	main.logic.lost_reason = "Caíste al vacío"
 	main._on_anim_done()
 	check(main.lost_screen.visible and main.lost_screen.title_label.text == "Caíste al vacío", "al perder aparece la pantalla de derrota con el motivo")
-	check(main.lost_screen.hint_label.text.contains("No te alcanza") and main.lost_screen.hint_label.text.contains("75") and main.lost_screen.retry_button.text == "Terminar el run", "sin claridad el boton pasa a Terminar el run y dice cuanto costaba")
+	check(main.lost_screen.retry_button.text == "Reintentar" and main.lost_screen.hint_label.text == "", "después de morir el botón es Reintentar, sin costo de claridad, aunque no alcance la claridad")
+	var lives_before: int = main.run.lives
 	main.lost_screen.retry_button.pressed.emit()
-	check(main.run_over and main.run_end.visible and main.in_menu, "sin claridad para reintentar el run termina")
-	check(main.run_end.reason_label.text.contains("No te alcanza"), "la pantalla de fin dice el motivo")
+	check(not main.run_over and main.run.claridad == 25 and main.run.lives == lives_before - 1 and not main.logic.lost, "reintentar después de morir no cobra claridad: cuesta una vida")
 	main.queue_free()
 	await process_frame
 	# aviso con claridad suficiente
@@ -86,9 +91,9 @@ func test_restart_flow() -> void:
 	main.logic.lost = true
 	main.logic.lost_reason = "Caíste al vacío"
 	main._on_anim_done()
-	check(main.lost_screen.visible and main.lost_screen.retry_button.text.contains("−25") and main.lost_screen.menu_button.text == "Salir al menú principal", "al perder se muestran los botones Reintentar (con su costo) y Salir al menu")
+	check(main.lost_screen.visible and main.lost_screen.retry_button.text == "Reintentar" and main.lost_screen.menu_button.text == "Salir al menú principal", "al perder se muestran los botones Reintentar y Salir al menu")
 	main.lost_screen.retry_button.pressed.emit()
-	check(not main.lost_screen.visible and main.run.claridad == 475 and main.run.retries == 1 and not main.logic.lost, "Reintentar con el boton cobra, vuelve a empezar y esconde la pantalla")
+	check(not main.lost_screen.visible and main.run.claridad == 500 and main.run.retries == 1 and not main.logic.lost, "Reintentar con el boton no cobra claridad, vuelve a empezar y esconde la pantalla")
 	# entrenamiento: gratis
 	main.logic.lost = false
 	main._set_training(true)
@@ -121,13 +126,22 @@ func test_pause_menu() -> void:
 	main.run.stage = 1
 	main.run.claridad = 200
 	main.pause_game()
-	check(main.pause_menu.buttons["reiniciar"].text.contains("(−25)") and main.pause_menu.buttons["abandonar"].visible, "la pausa muestra el costo del reintento y el boton de abandonar")
+	var lives0: int = main.run.lives
+	check(main.pause_menu.buttons["reiniciar"].text.contains("−1 vida") and not main.pause_menu.buttons["reiniciar"].text.contains("claridad") and main.pause_menu.buttons["abandonar"].visible, "la pausa muestra que reintentar cuesta una vida (no claridad) y el boton de abandonar")
 	main.pause_menu.buttons["reiniciar"].pressed.emit()
-	check(main.run.claridad == 175 and not get_root_paused(), "reintentar desde la pausa cobra el costo")
+	check(main.run.claridad == 200 and main.run.lives == lives0 - 1 and not get_root_paused(), "reintentar desde la pausa cuesta una vida y no cobra claridad")
 	main.pause_game()
-	check(main.pause_menu.buttons["reiniciar"].text.contains("(−50)"), "y el siguiente cuesta mas")
 	main.pause_menu.buttons["abandonar"].pressed.emit()
-	check(main.run_over and main.run_end.visible and main.run_end.title.text == "Fin del run", "Abandonar el run lleva a la pantalla de fin de run")
+	await process_frame
+	check(main.confirm_box.visible and not main.run_over, "abandonar pide confirmación antes de terminar la partida")
+	main.confirm_box._open_t = -10.0
+	main.confirm_box._answer(false)
+	check(not main.run_over, "decir que no sigue la partida")
+	main.pause_menu.buttons["abandonar"].pressed.emit()
+	await process_frame
+	main.confirm_box._open_t = -10.0
+	main.confirm_box._answer(true)
+	check(main.run_over and main.run_end.visible and main.run_end.title.text == "Fin de la partida", "confirmar lleva a la pantalla de fin de la partida")
 	main.queue_free()
 	await process_frame
 	main = make_main()
@@ -154,7 +168,7 @@ func test_end_screen() -> void:
 	r.retries = 3
 	r.moves = 987
 	r.boosts.assign(["freno_inexistente"])
-	check(RunState.rows_for(1) == 25 and RunState.rows_for(5) == 25 and RunState.rows_for(8) == 31 and RunState.rows_for(15) == 41, "las torres crecen con la etapa: 25 filas hasta la 5, hasta 41")
+	check(RunState.rows_for(1) == 50 and RunState.rows_for(8) == 75 and RunState.rows_for(15) == 100 and RunState.rows_for(4) < RunState.rows_for(5), "las torres crecen con la etapa: de 50 filas en la etapa 1 a 100 en la 15")
 	var rows := RunEnd.summary_rows(r, false)
 	check(rows[0] == ["Etapa alcanzada", "7 / 15", false] and rows[1][1] == "6" and rows[2][1] == "1234" and rows[3][1] == "300" and rows[4][1] == "450" and rows[5][1] == "3" and rows[6][1] == "987", "el resumen trae etapa, torres, claridad, ruleta, reintentos y movimientos")
 	check(RunEnd.summary_rows(r, true)[0][1] == "15 / 15", "si escapaste figura 15 / 15")
@@ -173,7 +187,7 @@ func test_end_screen() -> void:
 	await process_frame
 	main = make_main()
 	await wait_tower(main)
-	main.end_run(false, "Abandonaste el run.")
+	main.end_run(false, "Abandonaste la partida.")
 	main.run_end.new_button.pressed.emit()
 	check(not main.run_end.visible and main.in_menu and main.main_menu.scenarios.visible, "Nueva partida del fin de run lleva al selector de escenario")
 	main.main_menu.scenarios.play_buttons["pesadilla"].pressed.emit()

@@ -181,10 +181,16 @@ func test_abilities_effects() -> void:
 
 
 func test_price_and_casino() -> void:
+	var old_base: int = Roulette.base_price   # (se razona con la ficha de los primeros balances: 50 y +4 por etapa)
+	var old_step: int = Roulette.price_step
+	Roulette.base_price = 50
+	Roulette.price_step = 4
 	var run := RunState.new()
 	check(Roulette.run_price(run) == 50, "el precio de la ficha normal")
 	run.price_mult = 0.75
 	check(Roulette.run_price(run) == 38 and Roulette.price(10, 0.5) == 43 and Roulette.price(1) == 50, "el escenario puede abaratar la ficha")
+	Roulette.base_price = old_base
+	Roulette.price_step = old_step
 	var lay := Room.layout(1, 3)
 	check(lay.tier == 3 and Room.layout(1).tier == 0 and Room.layout(15, 0).tier == 0, "el escenario puede fijar el nivel del casino")
 	var v := Room.build_voxels(1, 3)
@@ -264,10 +270,20 @@ func test_screens() -> void:
 	await process_frame
 	await process_frame
 	sc.scroll.scroll_horizontal = 0
-	sc.scroll_cards(1)
-	check(sc.scroll.scroll_horizontal > 0, "se desplazan las tarjetas hacia la derecha")
+	sc.sel_index = 0
+	check(sc.current_id() == "tutorial" and sc.cards["tutorial"].is_current and not sc.cards["glaciar"].is_current, "al abrir está elegido el tutorial")
+	for i in 3:
+		sc.scroll_cards(1)
+	check(sc.scroll.scroll_horizontal > 0, "al elegir los siguientes se desplazan las tarjetas hacia la derecha")
+	for i in 20:   # (con las flechas se llega hasta el último escenario, aunque el desplazamiento no alcance a centrarlo)
+		sc.scroll_cards(1)
+	var last_id: String = Scenarios.ALL[Scenarios.ALL.size() - 1].id
+	check(sc.current_id() == last_id, "las flechas llegan hasta el último escenario (%s)" % sc.current_id())
 	sc.scroll_cards(-1)
-	check(sc.scroll.scroll_horizontal == 0, "y hacia la izquierda")
+	check(sc.current_id() == Scenarios.ALL[Scenarios.ALL.size() - 2].id, "y el anteúltimo también se puede elegir")
+	for i in 30:
+		sc.scroll_cards(-1)
+	check(sc.scroll.scroll_horizontal == 0 and sc.current_id() == "tutorial", "y se vuelve hasta el primero")
 	check(not all_text(sc).contains("Luz"), "el selector no nombra la Luz con texto: es el sol")
 	# El "?" abre toda la informacion
 	card.info_button.pressed.emit()
@@ -321,18 +337,18 @@ func test_screens() -> void:
 	meta.tiles["garras_de_hielo"].mouse_exited.emit()
 	check(not meta.tip.visible, "y se va al sacar el mouse")
 	meta.tiles["fuerza_bruta"].mouse_entered.emit()
-	check(meta.tip.text.contains("Todavía no la tenés") and meta.tip.text.contains("Ruinas"), "el cartel dice si todavía no se tiene y dónde ganarla")
+	check(meta.tip.text.contains("Todavía no la tienes") and meta.tip.text.contains("Ruinas"), "el cartel dice si todavía no se tiene y dónde ganarla")
 	meta.tiles["fuerza_bruta"].mouse_exited.emit()
 	# Tocar un icono abre la descripcion: efecto, como se consiguio y en que escenarios
 	meta.tiles["garras_de_hielo"].pressed.emit()
 	var t2 := all_text(meta.info_panel)
-	check(meta.info_panel.visible and t2.contains("Garras de hielo") and t2.contains("Ya la tenés") and t2.contains("Podés colgarte de los bloques de hielo"), "tocar un icono muestra la habilidad que se tiene y su efecto")
+	check(meta.info_panel.visible and t2.contains("Garras de hielo") and t2.contains("Ya la tienes") and t2.contains("Puedes colgarte de los bloques de hielo"), "tocar un icono muestra la habilidad que se tiene y su efecto")
 	check(t2.contains("Cómo la conseguiste") and t2.contains("Escapando de la pesadilla") and t2.contains("Glaciar") and not t2.contains("La Pesadilla"), "dice que se gana al escapar y en que escenarios (el Glaciar, no La Pesadilla)")
 	meta.info_close.pressed.emit()
 	check(not meta.info_panel.visible, "se cierra con Volver")
 	meta.tiles["fuerza_bruta"].pressed.emit()
 	var t3 := all_text(meta.info_panel)
-	check(t3.contains("Todavía no la tenés") and t3.contains("Cómo conseguirla") and t3.contains("Escapando de la pesadilla") and t3.contains("Ruinas") and t3.contains("empujar"), "la que no se tiene tambien da su descripcion y como y donde conseguirla")
+	check(t3.contains("Todavía no la tienes") and t3.contains("Cómo conseguirla") and t3.contains("Escapando de la pesadilla") and t3.contains("Ruinas") and t3.contains("empujar"), "la que no se tiene tambien da su descripcion y como y donde conseguirla")
 	check(not t3.contains("Luz"), "la descripcion tampoco nombra la Luz con texto")
 	check(meta.info_panel.find_child("*", true, false) != null, "la ventana de descripcion tiene contenido")
 	# La prueba de la Pesadilla aparece en la Pesadilla (gratis)

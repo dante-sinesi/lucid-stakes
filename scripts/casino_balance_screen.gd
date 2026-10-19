@@ -6,6 +6,8 @@ extends Control
 
 const Rules := preload("res://scripts/casino_rules.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Services := preload("res://scripts/casino_services.gd")
 const Loc := preload("res://scripts/loc.gd")
@@ -68,6 +70,7 @@ func _build() -> void:
 	continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	continue_button.pressed.connect(finish)
 	col.add_child(continue_button)
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Continuar"), "call": finish}], [continue_button])
 
 
 func _cell(color: Color, i: int, text: String) -> Control:
@@ -98,7 +101,7 @@ func _summary_lines() -> Array[String]:
 	if int(data.total.plays) == 0:
 		out.append(Loc.t("No jugaste a nada en este casino."))
 	else:
-		out.append(Loc.f("Entraste con %d de claridad y salís con %d (%s).", [data.claridad_in, data.claridad_out, _signed(int(data.claridad_out) - int(data.claridad_in))]))
+		out.append(Loc.f("Entraste con %d de claridad y sales con %d (%s).", [data.claridad_in, data.claridad_out, _signed(int(data.claridad_out) - int(data.claridad_in))]))
 		if int(data.best) > 0:
 			out.append(Loc.f("Mejor jugada: +%d en %s.", [data.best, Loc.t(str(Rules.GAME_NAMES.get(data.best_game, "")))]))
 		else:
@@ -113,7 +116,7 @@ func _summary_lines() -> Array[String]:
 			if int(data.pool) > 0:
 				out.append(Loc.f("El pozo del jackpot quedó con %d de claridad sin cobrar.", [data.pool]))
 	if run.vault > 0:
-		out.append(Loc.f("Caja fuerte: %d guardados (cobrás %d en el próximo casino).", [run.vault, Services.vault_payout(run)]))
+		out.append(Loc.f("Caja fuerte: %d guardados (cobras %d en el próximo casino).", [run.vault, Services.vault_payout(run)]))
 	if run.insurance:
 		out.append(Loc.t("Seguro contratado: el primer reintento de la próxima torre sale gratis."))
 	return out

@@ -8,8 +8,8 @@ extends RefCounted
 ## - Tipos de bloque (Kind):
 ##   ICE      al empujarlo se desliza hasta chocar con algo (o hasta salir de la huella). Si el jugador llega a una celda apoyada
 ##            en hielo sigue deslizándose en la dirección del movimiento; no se puede colgar de su borde.
-##   BOMB     cuenta movimientos sólo mientras el jugador está en su misma fila (player.y == y del
-##            bloque); al llegar a 0 explota y la torre entera cae. Si cae al vacío se desactiva.
+##   BOMB     cuenta movimientos sólo mientras el jugador está dentro de su zona: una esfera de celdas con dx²+dy²+dz² <= BOMB_RADIUS2
+##            (5: en la capa de la bomba es un 5x5 sin las esquinas); al llegar a 0 explota y la torre entera cae. Si cae al vacío se desactiva.
 ##   TRAP     (trampa) parece un bloque común, pero tiene una marca roja arriba: al quedar parado sobre ella se desarma y cae, y el
 ##            jugador con ella (si abajo hay otro bloque, se aterriza ahí; si no, se pierde).
 ##   SPIKES   (pinchos) quedar parado sobre un bloque con pinchos pierde el run. Se puede empujar y tirar como un bloque común.
@@ -32,7 +32,7 @@ extends RefCounted
 const Loc := preload("res://scripts/loc.gd")
 
 enum Mode { MOVE, GRAB, HANG }
-## ICE: resbala. BOMB: explota si te quedás en su fila. CATAPULT: lanza hacia arriba. CRACKED (agrietado): se rompe y cae apenas
+## ICE: resbala. BOMB: explota si te quedás en su zona. CATAPULT: lanza hacia arriba. CRACKED (agrietado): se rompe y cae apenas
 ## te bajás de él. HEAVY (pesado): no se empuja ni se tira (es una pared que se puede trepar); cae como cualquier bloque si se queda sin apoyo.
 ## TRAP: trampa (se desarma al pisarla). SPIKES: pinchos (pisarlos pierde).
 enum Kind { NORMAL, ICE, BOMB, CATAPULT, CRACKED, HEAVY, TRAP, SPIKES }
@@ -86,6 +86,8 @@ var trail: Array[Vector3i] = []   # celdas que ocupó el jugador durante la últ
 var last_purified: Array[int] = []  # ids purificados en la última acción (para la vista)
 var last_gain := 0                # claridad ganada en la última acción
 var claridad := 0
+var harvest_potion := false      # Poción de cosecha: la claridad de esta torre vale el doble
+var max_floor := 0               # el piso más alto al que llegó el jugador (Escalador: cada piso nuevo da claridad)
 var streak := 0                   # acciones seguidas que purificaron algo nuevo
 var best_streak := 0
 var purified_count := 0
@@ -100,7 +102,7 @@ var collapse_every := 6
 var moves_to_collapse := 6
 var moves_made := 0
 var won := false
-var toll := 0                     # lo que cobra el duende para encender el portal de salida (0 = el portal siempre está encendido)
+var toll := 0                     # lo que cobra Farolín para encender el portal de salida (0 = el portal siempre está encendido)
 var wallet := 0                   # la claridad que traés al empezar la torre (se suma a la que juntás para pagar el peaje)
 var toll_blocked := false         # estás en el portal pero no alcanza para pagar: hay que juntar más (o el suelo cae)
 var lost := false
@@ -389,6 +391,8 @@ func clone() -> RefCounted:
 	c._maps_shared = true
 	_maps_shared = true
 	c.claridad = claridad
+	c.harvest_potion = harvest_potion
+	c.max_floor = max_floor
 	c.streak = streak
 	c.best_streak = best_streak
 	c.purified_count = purified_count
@@ -504,7 +508,9 @@ func _act_grab(d: Vector3i) -> Dictionary:
 		_set_player(t)
 		_arrive(d)
 		return _ok()
-	return _fail("Nada que empujar ni tirar")
+	# Shift + dirección sin nada que empujar ni tirar (ni un bloque delante ni uno detrás) es un paso común: la mecánica vale en todo el juego.
+	# (Si hay un bloque pero está trabado —fijo, pesado, sin lugar— no se camina: devuelve el aviso de arriba.)
+	return _act_walk(d)
 
 
 ## Empuja la fila de bloques que empieza en `t` (el de enfrente y los pegados detrás): se mueven todos una celda si la de más allá
@@ -563,7 +569,7 @@ func _act_hanging(d: Vector3i) -> Dictionary:
 		return _ok()
 	if d == -w:  # soltarse
 		if not release_with_opposite:
-			return _fail("Para soltarte, apretá Espacio")
+			return _fail("Para soltarte, aprieta Espacio")
 		hang_dir = Vector3i.ZERO
 		return _ok()
 	# Hacia un costado: avanzar por el borde o doblar una esquina.
@@ -589,6 +595,11 @@ func _act_hanging(d: Vector3i) -> Dictionary:
 	if in_hang_reach(g2) and not blocks.has(player + w + UP):
 		_set_player(g2)
 		hang_dir = -d
+		return _ok()
+	if blocks.has(g2 + DOWN):   # el borde del bloque termina y del otro lado hay piso (el bloque de arriba impide rodearlo colgado): se sube a ese piso y se queda parado
+		hang_dir = Vector3i.ZERO
+		_set_player(g2)
+		_arrive(d)
 		return _ok()
 	return _fail("No se puede avanzar por el borde")
 
@@ -662,12 +673,12 @@ func _on_goal() -> bool:
 	return true
 
 
-## ¿Se puede pagar el peaje del duende con lo que traés y lo que juntaste?
+## ¿Se puede pagar el peaje de Farolín con lo que traés y lo que juntaste?
 func can_pay_toll() -> bool:
 	return toll <= 0 or wallet + claridad >= toll
 
 
-## Si estás en la meta y el portal está encendido (pagaste el peaje), ganás; si no, el duende no lo enciende y la torre sigue (la fila de abajo no espera).
+## Si estás en la meta y el portal está encendido (pagaste el peaje), ganás; si no, Farolín no lo enciende y la torre sigue (la fila de abajo no espera).
 func _try_win() -> bool:
 	toll_blocked = false
 	if not _on_goal():
@@ -699,6 +710,7 @@ func _after_action() -> void:
 	if hang_dir == Vector3i.ZERO and blocks.has(player + DOWN):
 		last_safe = player
 	_purify_trail()
+	_action_bonuses()
 	if not platform_row.is_empty():
 		var pr: int = platform_row.get(blocks.get(player + DOWN, -1), 0)
 		if pr > reached_row:
@@ -750,7 +762,7 @@ func streak_mult(n: int) -> float:
 	if perks.has("sin_racha"):   # prueba "Sin racha": el multiplicador no sube
 		return 1.0
 	var step := 1.0 if perks.has("mano_de_oro") else STREAK_STEP
-	var cap := 6.0 if perks.has("racha_larga") else STREAK_MAX_MULT
+	var cap := 8.0 if perks.has("racha_imparable") else (6.0 if perks.has("racha_larga") else STREAK_MAX_MULT)
 	return minf(1.0 + step * maxi(n - 1, 0), cap)
 
 
@@ -759,6 +771,54 @@ func clarity_at(c: Vector3i) -> int:
 	if fixed.has(c):
 		return FIXED_CLARITY
 	return CLARITY[kind_at(c)]
+
+
+const CLIMB_BONUS := 2     # Escalador: claridad por cada piso nuevo
+const PUSH_BONUS := 1      # Empuje rentable: claridad por cada bloque que se empuja o tira
+const POCKET_START := 60   # Bolsillo de luz: claridad con la que se empieza la torre
+
+
+## Lo que dan Escalador (pisos nuevos) y Empuje rentable (empujes y tirones) después de cada acción.
+func _action_bonuses() -> void:
+	if track_purify:
+		if perks.has("escalador") and player.y > max_floor:
+			_earn(float((player.y - max_floor) * CLIMB_BONUS))
+		if perks.has("empuje_rentable") and last_grab != "":
+			_earn(float(PUSH_BONUS))
+	max_floor = maxi(max_floor, player.y)
+
+
+## Cuánto multiplica a la claridad que se junta en la torre: Cosecha doble (×2), Cosecha (×1,5) y la Poción de cosecha (×2); se multiplican entre sí.
+func harvest_mult() -> float:
+	var m := 1.0
+	if perks.has("cosecha_doble"):
+		m *= 2.0
+	if perks.has("cosecha"):
+		m *= 1.5
+	if harvest_potion:
+		m *= 2.0
+	return m
+
+
+## Claridad de más por cada bloque purificado: Pies de luz +1, Pies de oro +2, Midas +3 (suman).
+func flat_per_block() -> int:
+	return (1 if perks.has("pies_de_luz") else 0) + (2 if perks.has("pies_de_oro") else 0) + (3 if perks.has("midas") else 0)
+
+
+## Lo que da purificar el bloque de la celda `c`, con Buen ojo (los especiales dan el doble) y lo que se suma por bloque.
+func block_clarity(c: Vector3i) -> int:
+	var base := clarity_at(c)
+	if perks.has("buen_ojo") and not fixed.has(c) and kind_at(c) != Kind.NORMAL:
+		base *= 2
+	return base + flat_per_block()
+
+
+## Suma claridad ya multiplicada por la cosecha y la anota como ganada en esta acción.
+func _earn(n: float) -> int:
+	var g := int(round(n * harvest_mult()))
+	claridad += g
+	last_gain += g
+	return g
 
 
 ## Purifica los bloques sobre los que estuvo el jugador en la última acción (y el del que cuelga).
@@ -775,8 +835,15 @@ func _purify_trail() -> void:
 			for dd in DIRS:
 				extra.append(b + dd)
 		cells.append_array(extra)
+	_purify_cells(cells, true)
+
+
+## Purifica esos bloques (y desactiva las bombas): da claridad por cada uno nuevo, por la racha y por los multiplicadores. `from_trail`: es lo que pisó el jugador
+## en la acción (si no purificó nada nuevo, la racha se corta, salvo con Racha imparable cuando la acción fue empujar o tirar); si no, es un consumible.
+func _purify_cells(cells: Array[Vector3i], from_trail: bool) -> int:
 	var seen := {}
 	var base := 0
+	var got_new := 0
 	for b in cells:
 		if seen.has(b) or not blocks.has(b):
 			continue
@@ -790,23 +857,33 @@ func _purify_trail() -> void:
 		_own_maps()
 		purified[id] = true
 		last_purified.append(id)
-		base += clarity_at(b) + (1 if perks.has("pies_de_luz") else 0)
+		base += block_clarity(b)
+		got_new += 1
 	if not track_purify:
-		return
-	if last_purified.is_empty():
-		streak = 0
-		return
+		return 0
+	if got_new == 0:
+		if from_trail and not (perks.has("racha_imparable") and last_grab != ""):
+			streak = 0
+		return 0
 	streak += 1
 	best_streak = maxi(best_streak, streak)
-	last_gain = int(round(base * streak_mult(streak)))
-	claridad += last_gain
-	purified_count += last_purified.size()
+	purified_count += got_new
+	return _earn(float(base) * streak_mult(streak))
 
 
-## Una bomba cuenta sólo cuando el jugador está en su fila; al llegar a 0 explota.
+const BOMB_RADIUS2 := 5   # la zona de una bomba: celdas a distancia (al cuadrado) de 5 o menos de ella
+
+
+## ¿Está la celda `c` dentro de la zona de la bomba que está en `bomb_cell`?
+static func in_bomb_zone(bomb_cell: Vector3i, c: Vector3i) -> bool:
+	var d := c - bomb_cell
+	return d.x * d.x + d.y * d.y + d.z * d.z <= BOMB_RADIUS2
+
+
+## Una bomba cuenta sólo cuando el jugador está dentro de su zona; al llegar a 0 explota.
 func _tick_bombs() -> void:
 	for id in bomb_timer.keys():
-		if positions[id].y == player.y:
+		if in_bomb_zone(positions[id], player):
 			_own_maps()
 			bomb_timer[id] -= 1
 			if bomb_timer[id] <= 0:
@@ -1044,6 +1121,10 @@ func apply_perks(boost_ids: Array) -> void:
 			bomb_timer[id] += 3
 	if perks.has("ahorro"):  # cada etapa se arranca con 20 de claridad
 		claridad += 20
+	if perks.has("bolsillo_de_luz"):
+		claridad += POCKET_START
+	harvest_potion = false
+	max_floor = player.y
 
 
 ## Cambia el tipo de un bloque (mantiene la huella del estado al día).
@@ -1062,6 +1143,36 @@ func use_item(id: String) -> Dictionary:
 	if won or lost:
 		return {"ok": false, "msg": ""}
 	match id:
+		"pocion_de_cosecha":
+			if harvest_potion:
+				return {"ok": false, "msg": "Ya tienes la cosecha doble en esta torre"}
+			harvest_potion = true
+			return {"ok": true, "msg": "Poción de cosecha: la claridad de esta torre vale el doble"}
+		"iman_de_luz", "lluvia_de_luz":
+			var cells: Array[Vector3i] = []
+			for c in blocks:
+				var near: bool = false
+				if id == "iman_de_luz":
+					var d: Vector3i = c - player
+					near = d.x * d.x + d.y * d.y + d.z * d.z <= 4
+				else:
+					near = c.y == player.y - 1
+				if near:
+					cells.append(c)
+			last_purified.clear()
+			last_gain = 0
+			var got := _purify_cells(cells, false)
+			if last_purified.is_empty():
+				return {"ok": false, "msg": "No hay nada por purificar"}
+			return {"ok": true, "msg": "+%d de claridad (%d bloques)" % [got, last_purified.size()]}
+		"baraja_de_racha":
+			streak = maxi(streak, 7)
+			return {"ok": true, "msg": "Racha ×4"}
+		"reloj_de_arena":
+			collapse_pause += 10
+			return {"ok": true, "msg": "Reloj de arena: la fila de abajo se detiene 10 movimientos"}
+		"soborno":
+			return {"ok": false, "msg": "Se usa en el casino, frente a Farolín"}
 		"freno":
 			collapse_pause += 5
 			return {"ok": true, "msg": "Freno: la fila de abajo se detiene 5 movimientos"}
@@ -1088,7 +1199,7 @@ func use_item(id: String) -> Dictionary:
 			return {"ok": true, "msg": "Bloque anclado: no cae en esta etapa"}
 		"doble_salto":
 			if double_jump:
-				return {"ok": false, "msg": "Ya tenés el doble salto listo"}
+				return {"ok": false, "msg": "Ya tienes el doble salto listo"}
 			double_jump = true
 			return {"ok": true, "msg": "Doble salto listo: el próximo salto sube 2 bloques"}
 		"escudo", "totem":
@@ -1096,7 +1207,7 @@ func use_item(id: String) -> Dictionary:
 		"vida_extra":
 			return {"ok": false, "msg": "Se usa desde el juego"}
 		"teletransporte", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta":
-			return {"ok": false, "msg": "Elegí un bloque con el mouse"}
+			return {"ok": false, "msg": "Elige un bloque con el mouse"}
 	return {"ok": false, "msg": "Consumible desconocido"}
 
 
@@ -1127,9 +1238,9 @@ func target_error(id: String, cell: Vector3i) -> String:
 	if fixed.has(cell):
 		return "Ese bloque no se puede cambiar"
 	if hang_dir == Vector3i.ZERO and cell == player + DOWN:
-		return "No podés cambiar el bloque en el que estás parado"
+		return "No puedes cambiar el bloque en el que estás parado"
 	if hang_dir != Vector3i.ZERO and cell == player + hang_dir:
-		return "No podés cambiar el bloque del que te colgás"
+		return "No puedes cambiar el bloque del que te cuelgas"
 	if kind_at(cell) == CONVERTERS[id]:
 		return "Ya es de ese tipo"
 	return ""

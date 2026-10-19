@@ -5,6 +5,9 @@ extends RefCounted
 ## `build_hat` y `build_outfit` arman el modelo 3D de una pieza; las medidas son las del personaje: la cabeza termina en y = 0,73 y el torso
 ## (de 0,30 de ancho) va de y = 0,15 a 0,41.
 
+const ModelLib := preload("res://scripts/model_lib.gd")
+const Demo := preload("res://scripts/demo.gd")
+
 const RARITIES := {
 	"comun": {"name": "Común", "color": Color(0.78, 0.78, 0.84)},
 	"raro": {"name": "Raro", "color": Color(0.42, 0.68, 1.0)},
@@ -58,7 +61,7 @@ static func by_slot(slot: String) -> Array[Dictionary]:
 static func draw_unowned(owned: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool: Array[Dictionary] = []
 	for c in ALL:
-		if not owned.has(c.id):
+		if not owned.has(c.id) and Demo.cosmetic_allowed(c.id):
 			pool.append(c)
 	if pool.is_empty():
 		return {}
@@ -99,7 +102,7 @@ static func roll(weights: Dictionary, owned: Array, rng: RandomNumberGenerator) 
 	for k in order:
 		var pool: Array[Dictionary] = []
 		for c in by_rarity(k):
-			if not owned.has(c.id):
+			if not owned.has(c.id) and Demo.cosmetic_allowed(c.id):
 				pool.append(c)
 		if not pool.is_empty():
 			return pool[rng.randi() % pool.size()]
@@ -132,6 +135,16 @@ static func box(parent: Node3D, size: Vector3, pos: Vector3, color: Color, ghost
 
 ## El gorro `id` ("" = ninguno: devuelve null), apoyado sobre la cabeza.
 static func build_hat(id: String, ghost := false) -> Node3D:
+	if id == "":
+		return null
+	var rec := ModelLib.cosmetic(id)   # (si el editor de modelos guardó un diseño para este gorro, se usa ese)
+	if not rec.is_empty():
+		return ModelLib.build_node(rec, "gorro", func(c: Color): return preload("res://scripts/characters.gd").ghost_material(c) if ghost else null)
+	return build_hat_from_code(id, ghost)
+
+
+## El gorro de siempre, armado con cajas en código.
+static func build_hat_from_code(id: String, ghost := false) -> Node3D:
 	if id == "":
 		return null
 	var h := Node3D.new()
@@ -175,6 +188,16 @@ static func build_hat(id: String, ghost := false) -> Node3D:
 
 ## La prenda `id` ("" = ninguna: devuelve null) sobre el torso (x de -0,15 a 0,15, y de 0,15 a 0,41, z de -0,12 a 0,12).
 static func build_outfit(id: String, ghost := false) -> Node3D:
+	if id == "":
+		return null
+	var rec := ModelLib.cosmetic(id)   # (idem: un diseño del editor reemplaza al de código)
+	if not rec.is_empty():
+		return ModelLib.build_node(rec, "prenda", func(c: Color): return preload("res://scripts/characters.gd").ghost_material(c) if ghost else null)
+	return build_outfit_from_code(id, ghost)
+
+
+## La prenda de siempre, armada con cajas en código.
+static func build_outfit_from_code(id: String, ghost := false) -> Node3D:
 	if id == "":
 		return null
 	var o := Node3D.new()

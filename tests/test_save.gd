@@ -221,10 +221,18 @@ func test_flow_casino() -> void:
 	b.casino.quick = true
 	b.casino.cell = b.casino.lay.exit
 	b.casino.step(Vector2i(0, -1))
-	while b.generating:
+	var loading := SaveGame.read()
+	check(b.generating and str(loading.get("phase", "")) == "loading" and int(loading.stage) == stage_saved + 1, "al irse del casino (peaje pagado) se guarda la carga de la torre que sigue: al cerrar y volver no se repite el casino")
+	var c := make_main()   # cerrar el juego ahora y volver: continúa la carga de la torre siguiente, no el casino
+	await wait_tower(c)
+	SaveGame.write(loading)   # (lo que había en disco al cerrar el juego justo después de pagar)
+	c.continue_game()
+	check(c.casino == null and c.stage_number == stage_saved + 1 and c.generating, "continuar después de pagar sigue la torre siguiente (sin volver al casino)")
+	while b.generating or c.generating:
 		await process_frame
 	check(b.stage_number == stage_saved + 1 and b.logic != null, "al salir del casino empieza la etapa siguiente")
-	for m in [a, b]:
+	check(c.logic != null and c.stage_number == stage_saved + 1, "la partida continuada llega a la torre siguiente")
+	for m in [a, b, c]:
 		m._cancel_jobs()
 		m.queue_free()
 	await process_frame

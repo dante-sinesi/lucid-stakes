@@ -12,6 +12,7 @@ extends RefCounted
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Solver := preload("res://scripts/solver.gd")
+const Abort := preload("res://scripts/gen_abort.gd")
 
 const ROOM := 4
 const PUNISH_SAMPLES := 24
@@ -23,7 +24,10 @@ const WEIGHTS := {"movers": 2.0, "grabs": 1.5, "moved": 1.0, "punish": 2.0, "pre
 static func survival(tower, path: Array, n: int, k: int, trials: int, rng: RandomNumberGenerator, grace := 2.0, window := 0) -> float:
 	var wins := 0
 	for _t in trials:
+		if Abort.flag:
+			return 0.0
 		var lg = tower.clone()
+		lg.track_purify = false   # (la claridad no cambia si se gana o no: es lo caro de cada acción)
 		lg.collapse_every = n
 		lg.moves_to_collapse = maxi(int(round(float(n) * grace)), 1)
 		var at := {}
@@ -32,6 +36,8 @@ static func survival(tower, path: Array, n: int, k: int, trials: int, rng: Rando
 		var i := 0
 		var fine := true
 		for a in path:
+			if Abort.flag and i % 32 == 0:
+				return 0.0
 			if at.has(i) and not lg.lost and not lg.won:
 				for d in TowerLogic.DIRS:
 					var probe = lg.clone()
@@ -67,9 +73,12 @@ static func tightest_n(tower, path: Array, n_max: int, k: int, need: float, rng:
 	if survival(tower, path, hi, 0, 1, rng, grace) < 1.0:
 		return n_max
 	var front := maxi(15, path.size() / 4)   # titubeos metidos todos al principio (lo peor: arriba hay poco colchón): sale caro quedarse mucho en las primeras salas
+	var trials := 8 if path.size() < 250 else 5   # (cada intento repasa todo el camino: en una torre larga son menos)
 	while lo < hi:   # (con un n más grande se aguanta más: se busca por bisección)
+		if Abort.flag:
+			return n_max
 		var mid := (lo + hi) / 2
-		if survival(tower, path, mid, 0, 1, rng, grace) >= 1.0 and survival(tower, path, mid, k, 8, rng, grace) >= need and survival(tower, path, mid, front, 8, rng, grace, maxi(path.size() / 4, 20)) >= need:
+		if survival(tower, path, mid, 0, 1, rng, grace) >= 1.0 and survival(tower, path, mid, k, trials, rng, grace) >= need and survival(tower, path, mid, front, trials, rng, grace, maxi(path.size() / 4, 20)) >= need:
 			hi = mid
 		else:
 			lo = mid + 1

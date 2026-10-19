@@ -37,7 +37,7 @@ func _init() -> void:
 	output.add_theme_font_size_override("normal_font_size", 16)
 	col.add_child(output)
 	input = LineEdit.new()
-	input.placeholder_text = "Modo dev: escribí un comando (help para ver la lista)"
+	input.placeholder_text = "Modo dev: escribe un comando (help para ver la lista)"
 	input.add_theme_font_size_override("font_size", 18)
 	input.text_submitted.connect(_on_submit)
 	input.gui_input.connect(_on_input_key)

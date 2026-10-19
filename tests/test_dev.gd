@@ -203,7 +203,7 @@ func test_goto_casino() -> void:
 		await process_frame
 	check(main.casino == null and main.stage_number == 15 and main.logic != null, "salir del casino de la etapa 15 no pasa de la 15")
 	main.open_main_menu()
-	check(DevCommands.execute("goto_casino 5", main).contains("Empezá"), "en el menu pide empezar una partida")
+	check(DevCommands.execute("goto_casino 5", main).contains("Empieza"), "en el menu pide empezar una partida")
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
@@ -237,19 +237,18 @@ func test_hud() -> void:
 	check(main.debug_hud and main.hud.visible, "F2 muestra los textos de depuracion")
 	main._unhandled_input(f2)
 	check(not main.debug_hud and not main.hud.visible, "F2 otra vez los oculta")
-	# Lo que si ve el jugador: etapa, claridad y racha (la cuenta de la fila de abajo ya no se muestra)
+	# Lo que si ve el jugador: etapa y claridad (la racha sólo sale en el cartel de ganancia; la cuenta de la fila de abajo ya no se muestra)
 	check(main.stage_label.text.contains("Etapa") and not main.stage_label.text.contains("Piso"), "se ve la etapa, sin el piso")
-	check(not main.streak_label.visible, "sin racha no se muestra el multiplicador")
+	check(main.hud_panel.get("streak_label") == null, "la racha no está en la ventana de la partida: sólo sale en el cartel de ganancia")
 	main.logic.streak = 3
 	main._refresh()
-	check(main.streak_label.visible and main.streak_label.text.contains("Racha"), "con racha se muestra el multiplicador")
 	# Casino: sin textos de ayuda
 	main.enter_casino()
 	var cl: Array = []
 	all_labels(main.casino.hud_layer, cl)
 	var cbad := ""
 	for l in cl:
-		if l.visible and (str(l.text).contains("WASD") or str(l.text).contains("Esc") or str(l.text).contains("Empujá") or str(l.text).contains("Chocar")):
+		if l.visible and (str(l.text).contains("WASD") or str(l.text).contains("Esc") or str(l.text).contains("Empuja") or str(l.text).contains("Chocar")):
 			cbad = str(l.text)
 	check(cbad == "", "el casino no muestra textos de ayuda (%s)" % cbad)
 	main._cancel_jobs()

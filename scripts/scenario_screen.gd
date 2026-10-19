@@ -4,6 +4,8 @@ extends Control
 ## es gratis. Sin la palabra "Luz": la moneda es el ícono del sol.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Profile := preload("res://scripts/profile.gd")
 const Scenarios := preload("res://scripts/scenarios.gd")
@@ -13,6 +15,7 @@ const ScenarioCard := preload("res://scripts/scenario_card.gd")
 const LuzCounter := preload("res://scripts/luz_counter.gd")
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Loc := preload("res://scripts/loc.gd")
+const Demo := preload("res://scripts/demo.gd")
 
 signal chosen(scenario_id: String)
 signal back
@@ -46,7 +49,7 @@ func _init() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
 	center.add_child(col)
-	var title := UI.label(col, "Elegí el escenario", 5, UI.GOLD)
+	var title := UI.label(col, "Elige el escenario", 5, UI.GOLD)
 	title.dance = true
 	var top := HBoxContainer.new()
 	top.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -82,6 +85,54 @@ func _init() -> void:
 	back_button.pressed.connect(func(): back.emit())
 	col.add_child(back_button)
 	_build_info_panel()
+	PadHints.attach(self, [{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir escenario")},
+			{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Entrar"), "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": _enter_current, "when": func(): return not info_panel.visible},
+			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Información"), "keycode": KEY_C, "call": _info_current, "when": func(): return not info_panel.visible},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": func(): back.emit(), "when": func(): return not info_panel.visible}],
+			[back_button, left_button, right_button])
+
+
+## El escenario que está en el centro (el que se ve al desplazar las tarjetas con las flechas).
+var sel_index := 0   # el escenario elegido (0 = el tutorial): con las flechas se llega a todos, aunque el desplazamiento no alcance a centrar los últimos
+
+
+func _ids() -> Array:
+	var ids: Array = [Scenarios.TUTORIAL.id]
+	for sc in Scenarios.ALL:
+		ids.append(sc.id)
+	return ids
+
+
+func _process(_delta: float) -> void:
+	if not visible or cards.is_empty():
+		return
+	var cur := current_id()
+	for id in cards:
+		cards[id].is_current = (id == cur) and not info_panel.visible
+
+
+## El escenario elegido.
+func current_id() -> String:
+	var ids := _ids()
+	return str(ids[clampi(sel_index, 0, ids.size() - 1)])
+
+
+## Elige otro escenario (con las flechas o la rueda) y desplaza las tarjetas para que se vea.
+func move_selection(dir: int) -> void:
+	sel_index = clampi(sel_index + dir, 0, _ids().size() - 1)
+	var max_scroll := maxf(cards_box.get_combined_minimum_size().x - scroll.size.x, 0.0)
+	var target := float(sel_index) * CARD_STEP - (scroll.size.x - CARD_STEP) * 0.5
+	scroll.scroll_horizontal = int(clampf(target, 0.0, max_scroll))
+
+
+func _enter_current() -> void:
+	var id := current_id()
+	if play_buttons.has(id) and not play_buttons[id].disabled:
+		play_buttons[id].pressed.emit()
+
+
+func _info_current() -> void:
+	show_info(current_id())
 
 
 func _build_info_panel() -> void:
@@ -110,6 +161,7 @@ func _build_info_panel() -> void:
 	info_close.name = "cerrar_info"
 	info_close.pressed.connect(func(): info_panel.visible = false)
 	col.add_child(info_close)
+	PadHints.attach_in(col, [{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "call": func(): info_panel.visible = false}], [info_close])
 	add_child(info_panel)
 
 
@@ -128,23 +180,24 @@ func refresh() -> void:
 		card.name = "tarjeta_" + s.id
 		cards_box.add_child(card)
 		card.setup(s, Profile.can_enter(s.id))
+		if not Demo.scenario_allowed(str(s.id)):   # la demo: los demás escenarios dicen "Próximamente" y no se puede entrar
+			card.lock_soon()
 		card.info_pressed.connect(show_info)
 		card.enter_pressed.connect(func(id): chosen.emit(id))
 		cards[s.id] = card
 		play_buttons[s.id] = card.enter_button
 	info_panel.visible = false
+	sel_index = 0
 	scroll.scroll_horizontal = 0
 
 
 func focus_default() -> void:
-	if play_buttons.has(Scenarios.FREE):
-		play_buttons[Scenarios.FREE].grab_focus()
+	pass   # (se elige con las flechas y Enter: ningún botón queda apuntado)
 
 
 ## Desplaza las tarjetas una a la izquierda (-1) o a la derecha (1).
 func scroll_cards(dir: int) -> void:
-	var max_scroll := maxf(cards_box.get_combined_minimum_size().x - scroll.size.x, 0.0)
-	scroll.scroll_horizontal = int(clampf(round(scroll.scroll_horizontal / CARD_STEP) * CARD_STEP + dir * CARD_STEP, 0.0, max_scroll))
+	move_selection(dir)
 
 
 func _scroll_input(event: InputEvent) -> void:
@@ -194,7 +247,7 @@ static func rule_lines(s: Dictionary) -> Array[String]:
 	if float(s.get("diff_offset", 0.0)) > 0.0:
 		out.append("Las torres son más difíciles.")
 	if bool(s.get("permadeath", false)):
-		out.append("Una sola vida: si morís, se termina.")
+		out.append("Una sola vida: si mueres, se termina.")
 	if bool(s.get("no_totem", false)) or bool(s.get("no_extra_life", false)):
 		out.append("Los Tótems y las Vidas extra no funcionan.")
 	if out.is_empty():
@@ -215,7 +268,6 @@ func show_info(id: String) -> void:
 		for line in ["Moverte según la brújula y girar la cámara", "Trepar, empujar, tirar y colgarte de los bordes", "El hielo, los bloques pesados y agrietados, y las bombas", "Cómo son las torres de verdad", "Para qué sirven la claridad, la ruleta, las pruebas y las habilidades"]:
 			UI.label(info_box, Loc.f("- %s", [Loc.t(line)]), 2, Color(0.88, 0.84, 0.96), false, 900)
 		info_panel.visible = true
-		info_close.grab_focus()
 		return
 	var pay := HBoxContainer.new()
 	pay.add_theme_constant_override("separation", 24)
@@ -242,6 +294,5 @@ func show_info(id: String) -> void:
 	UI.label(info_box, "Habilidades que se pueden ganar al escapar (de a una por vez)", 3, Color(0.65, 0.95, 0.8), false, 900)
 	for aid in Scenarios.ability_ids(s):
 		var a := Abilities.get_ability(aid)
-		UI.label(info_box, Loc.f("- %s: %s%s", [Loc.t(a.name), Loc.t(a.desc), Loc.t("  (ya la tenés)") if Profile.has_ability(aid) else ""]), 2, Color(0.75, 0.95, 0.85), false, 900)
+		UI.label(info_box, Loc.f("- %s: %s%s", [Loc.t(a.name), Loc.t(a.desc), Loc.t("  (ya la tienes)") if Profile.has_ability(aid) else ""]), 2, Color(0.75, 0.95, 0.85), false, 900)
 	info_panel.visible = true
-	info_close.grab_focus()

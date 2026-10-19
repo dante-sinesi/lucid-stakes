@@ -59,6 +59,24 @@ const PAD_FIXED := [
 static var capturing := false
 ## ¿Lo último que se usó fue el mando? (los textos de ayuda muestran los nombres de los botones o de las teclas)
 static var using_pad := false
+## Lo que detecta el puente del mando: ¿lo último que se tocó fue el mando? (con "auto" las ayudas lo siguen; con "teclado" o "mando" en Opciones no importa)
+static var detected_pad := false
+
+
+## El puente avisa qué dispositivo se usó último; `using_pad` sigue la elección del jugador en Opciones (automático, teclado o mando).
+static func set_pad_detected(on: bool) -> void:
+	detected_pad = on
+	apply_device()
+
+
+static func apply_device() -> void:
+	match str(Settings.get_value("input_device")):
+		"keyboard":
+			using_pad = false
+		"pad":
+			using_pad = true
+		_:
+			using_pad = detected_pad
 ## Los cambios del jugador sobre lo de fábrica: {id: {"key": código, "pad": {"button": n} | {"axis": n, "sign": ±1}}}.
 static var overrides := {}
 static var _loaded := false

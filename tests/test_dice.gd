@@ -442,15 +442,15 @@ func test_cosmetics_screen() -> void:
 	check(mm.buttons.has("cosmeticos"), "el menu tiene el boton Cosmeticos")
 	mm.buttons["cosmeticos"].pressed.emit()
 	var cs = mm.cosmetics
-	check(cs.visible and cs.tab == "personajes" and cs.tiles.size() == 6 and cs.tiles["dante"].owned and cs.tiles["dante"].equipped and cs.tiles["gaby"].owned and not cs.tiles["perro"].owned, "la pantalla empieza en Personajes: Dante (elegido) y Gaby disponibles, los animalitos por desbloquear")
+	check(cs.visible and cs.tab == "personajes" and cs.tiles.size() == 6 and cs.tiles["gato"].owned and cs.tiles["gato"].equipped and cs.tiles["dante"].owned and cs.tiles["gaby"].owned and cs.tiles["perro"].owned and not cs.tiles["pinguino"].owned, "la pantalla empieza en Personajes: el gatito (elegido), Dante, Gaby y el perrito disponibles; el pingüino por desbloquear")
 	check(cs.count_label.text.contains("Común 0/") and cs.count_label.text.contains("Raro 0/") and cs.count_label.text.contains("Épico 0/"), "dice cuantos se tienen de cada rareza")
-	cs.tiles["perro"].pressed.emit()
-	check(Profile.character() == "dante", "un personaje que no se tiene no se puede elegir")
-	Profile.unlock_character("perro")
+	cs.tiles["pinguino"].pressed.emit()
+	check(Profile.character() == "gato", "un personaje que no se tiene no se puede elegir")
+	Profile.unlock_character("pinguino")
 	cs.refresh()
-	cs.tiles["perro"].pressed.emit()
-	check(Profile.character() == "perro" and cs.tiles["perro"].equipped and not cs.tiles["dante"].equipped, "un personaje desbloqueado se elige con un clic")
-	check(cs.name_label.text.contains("Perrito"), "y su nombre se muestra")
+	cs.tiles["pinguino"].pressed.emit()
+	check(Profile.character() == "pinguino" and cs.tiles["pinguino"].equipped and not cs.tiles["gato"].equipped, "un personaje desbloqueado se elige con un clic")
+	check(cs.name_label.text.contains("Pingüino"), "y su nombre se muestra")
 	cs.set_tab("gorros")
 	check(cs.tiles.size() == Cosmetics.by_slot("gorro").size() + 1 and cs.tiles.has("") and cs.tiles[""].equipped and not cs.tiles["copa"].owned, "la solapa Gorros muestra 'sin gorro' y los gorros")
 	cs.tiles["copa"].pressed.emit()
@@ -549,7 +549,7 @@ func test_hold() -> void:
 	check(g.phase == DiceGame.Phase.HOLD and g.hits() == 0, "con 0 aciertos también se espera la próxima tirada")
 	got.clear()
 	g.request_close()
-	check(got.is_empty() and not g.closing and g.phase == DiceGame.Phase.HOLD, "mientras esperás la próxima tirada no se puede empezar")
+	check(got.is_empty() and not g.closing and g.phase == DiceGame.Phase.HOLD, "mientras esperas la próxima tirada no se puede empezar")
 	# pedir Empezar mientras ruedan: al terminar de revelar se cobra directo (no queda esperando)
 	g.open(rng)
 	g.picks = [1, 2, 3, 4, 5]
@@ -586,7 +586,9 @@ func test_hold() -> void:
 	g.rolls = [6, 6, 6, 6, 6]
 	g.set_ready(true)
 	g._unhandled_input(sp)
-	check(shut.size() == 1 and not g.visible, "Espacio en la animación de la última tirada la saltea y entra a la torre")
+	check(g.phase == DiceGame.Phase.RESULT and g.visible and shut.size() == 0, "Espacio en la animación de la última tirada la saltea y muestra los resultados (no entra a la torre)")
+	g._unhandled_input(sp)
+	check(shut.size() == 1 and not g.visible, "con los resultados a la vista, otro Espacio entra a la torre")
 	# la última tirada sin la torre lista: se saltea y se espera
 	g.open(rng)
 	g.picks = [1, 2, 3, 4, 5]
@@ -603,6 +605,6 @@ func test_hold() -> void:
 
 
 func test_white_dice() -> void:
-	for c in DiceGame.DIE_COLORS:
-		check(c == Color.WHITE, "todos los dados son blancos")
-	check(DiceGame.DIE_COLORS.size() == DiceGame.DICE, "hay un color por dado")
+	var g := DiceGame.new()
+	check(g.dice3d != null and g.dice3d.dice.size() == DiceGame.DICE, "hay un dado 3D por dado")
+	g.free()

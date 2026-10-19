@@ -10,6 +10,7 @@ const Items := preload("res://scripts/items.gd")
 const Roulette := preload("res://scripts/roulette.gd")
 const Loc := preload("res://scripts/loc.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
+const Showcase := preload("res://scripts/showcase.gd")
 
 const SYMBOLS: Array[String] = ["cubo", "hielo", "bomba", "sol", "corona"]
 const NAMES: Array[String] = ["Cubo", "Hielo", "Bomba", "Sol", "Corona"]
@@ -73,8 +74,9 @@ func start() -> Dictionary:
 	price = Roulette.run_price(run) * stake
 	if not run.can_afford(price):
 		return {"ok": false, "error": Loc.f("No alcanza la claridad (la ficha cuesta %d)", [price])}
-	run.spend(price)
-	run.casino_spent += price
+	var charge := Roulette.chip_charge(run, price)
+	run.spend(charge)
+	run.casino_spent += charge
 	for i in REELS:
 		reels[i] = random_symbol(rng)
 	respins_left = 1
@@ -84,7 +86,7 @@ func start() -> Dictionary:
 
 
 func can_respin() -> bool:
-	return phase == Phase.HOLD and respins_left > 0 and run.can_afford(respin_price(price))
+	return phase == Phase.HOLD and respins_left > 0 and (run.boosts.has("giro_de_cortesia") or run.can_afford(respin_price(price)))
 
 
 ## Vuelve a girar los rodillos que NO están retenidos (`held`: tres bools). Cobra media ficha y termina la tirada (paga).
@@ -95,8 +97,8 @@ func respin(held: Array) -> Dictionary:
 	for h in held:
 		all_held = all_held and h
 	if all_held:
-		return {"ok": false, "error": Loc.t("Soltá algún rodillo para volver a girar")}
-	var cost := respin_price(price)
+		return {"ok": false, "error": Loc.t("Suelta algún rodillo para volver a girar")}
+	var cost := 0 if run.boosts.has("giro_de_cortesia") else respin_price(price)   # (Giro de cortesía: volver a girar es gratis)
 	run.spend(cost)
 	run.casino_spent += cost
 	price += cost   # (lo gastado en la tirada, para el resumen)
@@ -118,8 +120,10 @@ func collect() -> Dictionary:
 	var item := {}
 	var converted := false
 	if p.kind == "triple" and p.symbol == CROWN:   # el premio gordo trae además un boost épico
-		item = Items.pick(Items.Tier.EPICO, rng)
-		if not run.take(item):   # sin lugar (o boost repetido): se convierte en claridad, la mitad de su valor
+		item = Showcase.pick(run, Items.Tier.EPICO, rng)
+		if item.type == Items.Type.CLARITY:   # (una bolsa grande: va entera como claridad)
+			reward += int(round(float(item.mult) * ficha))
+		elif not run.take(item):   # sin lugar (o boost repetido): se convierte en claridad, la mitad de su valor
 			converted = true
 			reward += int(round(Items.value_of(item, ficha) * 0.5))
 	run.gain(reward)

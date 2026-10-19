@@ -20,7 +20,8 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 $tools = @(
 	@{ name = "Minero"; scene = "res://scenes/miner.tscn" },
 	@{ name = "Estudio"; scene = "res://scenes/studio.tscn" },
-	@{ name = "Empaquetador"; scene = "res://scenes/pack.tscn" }
+	@{ name = "Empaquetador"; scene = "res://scenes/pack.tscn" },
+	@{ name = "Generar_Salas"; scene = "res://scenes/generador_todo.tscn" }
 )
 
 foreach ($t in $tools) {
@@ -45,4 +46,6 @@ foreach ($t in $tools) {
 # el solucionador nativo (C++): sin él el minero y el Estudio andan igual pero mucho más despacio (se arma con native\construir.bat)
 $nativo = Join-Path $root "tools\solver_nativo.exe"
 if (Test-Path $nativo) { Copy-Item $nativo (Join-Path $out "solver_nativo.exe") -Force; Write-Host "   solver_nativo.exe" } else { Write-Host "AVISO: falta tools\solver_nativo.exe (native\construir.bat): los programas van a usar el solucionador lento" }
+$gen = Join-Path $root "tools\generador.exe"
+if (Test-Path $gen) { Copy-Item $gen (Join-Path $out "generador_nativo.exe") -Force; Write-Host "   generador_nativo.exe" }
 Write-Host "Listo. Programas en $out"

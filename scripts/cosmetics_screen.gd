@@ -4,6 +4,8 @@ extends Control
 ## tenés se ve en gris con un "?" y, al pasar el mouse, dice cómo conseguirlo. Los cosméticos se ganan con los dados de la pantalla de carga.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Profile := preload("res://scripts/profile.gd")
 const Cosmetics := preload("res://scripts/cosmetics.gd")
@@ -84,6 +86,8 @@ func _init() -> void:
 	back_button.name = "volver_cosmeticos"
 	back_button.pressed.connect(func(): back.emit())
 	_col.add_child(back_button)
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "← | → | ↑ | ↓", "text": Loc.t("Moverse")},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": func(): back.emit()}], [back_button])
 
 
 func set_tab(t: String) -> void:
@@ -118,14 +122,18 @@ func refresh() -> void:
 				_add_tile(c.id, c, Profile.has_cosmetic(c.id), outfit == c.id, cur_char, "", c.id)
 	var owned := 0
 	var by_rarity := {}
+	var demo := preload("res://scripts/demo.gd")   # (en la demo los totales son los de lo que la demo incluye)
+	var total := 0
 	for r in Cosmetics.RARITY_ORDER:
 		var have := 0
-		for c in Cosmetics.by_rarity(r):
+		var pool: Array = Cosmetics.by_rarity(r).filter(func(c): return demo.cosmetic_allowed(c.id))
+		for c in pool:
 			if Profile.has_cosmetic(c.id):
 				have += 1
 		owned += have
-		by_rarity[r] = Loc.f("%s %d/%d", [Loc.t(str(Cosmetics.RARITIES[r].name)), have, Cosmetics.by_rarity(r).size()])
-	count_label.text = Loc.f("Conseguidos: %d de %d     %s     %s     %s", [owned, Cosmetics.ALL.size(), by_rarity.comun, by_rarity.raro, by_rarity.epico])
+		total += pool.size()
+		by_rarity[r] = Loc.f("%s %d/%d", [Loc.t(str(Cosmetics.RARITIES[r].name)), have, pool.size()])
+	count_label.text = Loc.f("Conseguidos: %d de %d     %s     %s     %s", [owned, total, by_rarity.comun, by_rarity.raro, by_rarity.epico])
 	var ch_info := Characters.get_character(cur_char)
 	name_label.text = Loc.t(str(ch_info.name))
 	var worn: Array[String] = []
@@ -136,6 +144,31 @@ func refresh() -> void:
 	if not worn.is_empty():
 		name_label.text = Loc.f("%s: %s", [Loc.t(str(ch_info.name)), ", ".join(worn)])
 	info_label.text = ""
+	_link_focus()
+
+
+## El foco se mueve como se ve: izquierda y derecha dentro de la fila, arriba y abajo de fila en fila; desde la primera fila se sube a las solapas y desde las solapas se baja
+## a los casilleros. En los bordes se queda donde está (antes, de costado a veces saltaba a otra fila o a las solapas).
+func _link_focus() -> void:
+	var list: Array = grid.get_children()
+	var tab_list: Array = []
+	for t in TABS:
+		tab_list.append(tab_buttons[t])
+	for i in list.size():
+		var n: Control = list[i]
+		var row_start := (i / COLUMNS) * COLUMNS
+		var row_end := mini(row_start + COLUMNS, list.size()) - 1
+		n.focus_neighbor_left = n.get_path_to(list[i - 1] if i > row_start else n)
+		n.focus_neighbor_right = n.get_path_to(list[i + 1] if i < row_end else n)
+		n.focus_neighbor_bottom = n.get_path_to(list[i + COLUMNS] if i + COLUMNS < list.size() else n)
+		var up: Control = list[i - COLUMNS] if i >= COLUMNS else tab_buttons[tab]
+		n.focus_neighbor_top = n.get_path_to(up)
+	for k in tab_list.size():
+		var b: Control = tab_list[k]
+		b.focus_neighbor_left = b.get_path_to(tab_list[maxi(k - 1, 0)])
+		b.focus_neighbor_right = b.get_path_to(tab_list[mini(k + 1, tab_list.size() - 1)])
+		b.focus_neighbor_top = b.get_path_to(b)
+		b.focus_neighbor_bottom = b.get_path_to(list[0] if not list.is_empty() else b)
 
 
 ## Un casillero. `id` es lo que se elige ("" = quitar). `c` la descripción (nombre, rareza). El dibujito muestra al animalito `ch` con
@@ -157,10 +190,10 @@ func _describe(id: String, c: Dictionary, owned: bool) -> void:
 	if id == "":
 		info_label.text = nm
 	elif tab == "personajes":
-		info_label.text = nm if owned else Loc.f("%s: %s", [nm, Loc.t(str(Characters.get_character(id).how))])
+		info_label.text = nm if owned else (preload("res://scripts/demo.gd").full_text() if preload("res://scripts/demo.gd").on() else Loc.f("%s: %s", [nm, Loc.t(str(Characters.get_character(id).how))]))
 	else:
 		var rar := Loc.t(str(Cosmetics.RARITIES[c.rarity].name)).to_lower()
-		info_label.text = Loc.f("%s (%s)", [nm, rar]) if owned else Loc.f("%s (%s): todavía no lo tenés. Sale en los dados de la pantalla de carga.", [nm, rar])
+		info_label.text = Loc.f("%s (%s)", [nm, rar]) if owned else (preload("res://scripts/demo.gd").full_text() if preload("res://scripts/demo.gd").on() else Loc.f("%s (%s): todavía no lo tienes. Sale en los dados de la pantalla de carga.", [nm, rar]))
 		info_label.color = Cosmetics.RARITIES[c.rarity].color
 
 
@@ -186,7 +219,10 @@ func choose(id: String) -> void:
 				changed = Profile.equip(id)
 	if changed:
 		Sfx.play("item")
+		var had_focus: bool = tiles.has(id) and tiles[id].has_focus()
 		refresh()
+		if had_focus and tiles.has(id):   # (se arma todo de nuevo: el foco vuelve al mismo casillero)
+			tiles[id].grab_focus()
 
 
 ## El animalito en 3D dentro de su propia mini-escena: gira despacio (el grande) o se dibuja una sola vez (los casilleros).
@@ -305,3 +341,7 @@ class _Mark extends Control:
 	func _draw() -> void:
 		var l: Dictionary = VFont.layout(["?"])
 		D.text_cells(self, size * 0.5 - Vector2(l.size) * 4.0 * 0.5 - Vector2(0, 4), l.cells, l.size.y, 4.0, Color(0.9, 0.87, 1.0), 0.0, 1, true)
+
+
+func focus_default() -> void:
+	PadHints.focus_first(self)

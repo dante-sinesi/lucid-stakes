@@ -4,11 +4,15 @@ extends Control
 ## tiene su botón Restablecer. Al cambiar el idioma avisa con `language_changed` para que main reconstruya los menús.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
+const NOTE_WRAP := 940   # ancho máximo (px) de las notas bajo cada ajuste: más largas se parten en renglones
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Loc := preload("res://scripts/loc.gd")
 const Settings := preload("res://scripts/settings.gd")
 const Graphics := preload("res://scripts/graphics.gd")
 const Controls := preload("res://scripts/controls.gd")
+const Telemetry := preload("res://scripts/telemetry.gd")
 
 signal back
 signal language_changed
@@ -16,6 +20,9 @@ signal language_changed
 const TABS := ["general", "graficos", "sonido", "controles"]
 const TAB_NAMES := {"general": "General", "graficos": "Gráficos", "sonido": "Sonido", "controles": "Controles"}
 
+var focus_buttons := {}    # Marco del foco: sí o no
+var device_buttons := {}   # Ayudas de: automático, teclado o mando
+var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox o PlayStation
 var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
 var contrast_buttons := {}  # "on" / "off"
@@ -67,7 +74,7 @@ func _init() -> void:
 	margin.add_theme_constant_override("margin_bottom", 14)
 	add_child(margin)
 	_col = VBoxContainer.new()
-	_col.add_theme_constant_override("separation", 9)
+	_col.add_theme_constant_override("separation", 4)
 	_col.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(_col)
 	var title := UI.label(_col, Loc.t("Opciones"), 5, UI.GOLD)
@@ -90,7 +97,7 @@ func _init() -> void:
 	var inner := {}
 	for t in TABS:
 		var page := VBoxContainer.new()
-		page.add_theme_constant_override("separation", 9)
+		page.add_theme_constant_override("separation", 3)
 		if t == "controles":   # (esta pestaña tiene su propio desplazamiento, con el aviso fijo abajo)
 			page.name = "pagina_" + t
 			page.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -121,6 +128,10 @@ func _init() -> void:
 	back_button.name = "volver_opciones"
 	back_button.pressed.connect(func(): back.emit())
 	bottom.add_child(back_button)
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")},
+			{"name": "LB|RB", "key": "Q | E", "text": Loc.t("Pestaña")},
+			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Restablecer"), "keycode": KEY_C, "call": reset_tab, "when": func(): return not Controls.capturing},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "call": func(): back.emit()}], [reset_button, back_button])
 	show_tab("general")
 	refresh()
 
@@ -136,17 +147,28 @@ func _build_general(page: Control) -> void:
 	group = ButtonGroup.new()
 	reading_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "lectura_si", _on_reading.bind(true))
 	reading_buttons["off"] = _toggle(row, Loc.t("No"), group, "lectura_no", _on_reading.bind(false))
-	UI.label(_page, Loc.t("Letras más claras y con contorno."), 2, Draw.MARBLE)
+	UI.label(_page, Loc.t("Letras más claras y con contorno."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Rosa de los vientos"))
 	group = ButtonGroup.new()
 	compass_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "rosa_si", _on_compass.bind(true))
 	compass_buttons["off"] = _toggle(row, Loc.t("No"), group, "rosa_no", _on_compass.bind(false))
-	UI.label(_page, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), 2, Draw.MARBLE)
+	UI.label(_page, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	row = _row(Loc.t("Marco del foco"))
+	group = ButtonGroup.new()
+	focus_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "marco_si", _on_focus_frame.bind(true))
+	focus_buttons["off"] = _toggle(row, Loc.t("No"), group, "marco_no", _on_focus_frame.bind(false))
+	UI.label(_page, Loc.t("Un marco blanco que titila alrededor del botón elegido, para verlo mejor con el mando."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Alto contraste"))
 	group = ButtonGroup.new()
 	contrast_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "contraste_si", _on_contrast.bind(true))
 	contrast_buttons["off"] = _toggle(row, Loc.t("No"), group, "contraste_no", _on_contrast.bind(false))
-	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE)
+	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	row = _row(Loc.t("Datos de juego"))
+	var data_button := UI.button(Loc.t("Abrir la carpeta"), false, 2.4, 0, false)
+	data_button.name = "abrir_carpeta"
+	data_button.pressed.connect(Telemetry.open_folder)
+	row.add_child(data_button)
+	UI.label(_page, Loc.t("Tus datos quedan sólo en tu compu. Para ayudar, mandanos telemetria.jsonl."), 2, Draw.MARBLE, false, NOTE_WRAP)
 
 
 func _build_interface() -> void:
@@ -230,6 +252,14 @@ func _choice(key: String, title: String, options: Array) -> void:
 
 func _build_controls(page: Control) -> void:
 	_page = page
+	var row0 := _row(Loc.t("Ayudas de"))
+	var dev_group := ButtonGroup.new()
+	for d in [["auto", "Automático"], ["keyboard", "Teclado"], ["pad", "Mando"]]:
+		device_buttons[d[0]] = _toggle(row0, Loc.t(d[1]), dev_group, "entrada_" + d[0], _on_device.bind(d[0]))
+	var row1 := _row(Loc.t("Botones del mando"))
+	var style_group := ButtonGroup.new()
+	for st in [["auto", "Automático"], ["xbox", "Xbox"], ["playstation", "PlayStation"]]:
+		style_buttons[st[0]] = _toggle(row1, Loc.t(st[1]), style_group, "estilo_" + st[0], _on_pad_style.bind(st[0]))
 	var scroll := ScrollContainer.new()
 	scroll.name = "desplazamiento_controles"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -314,6 +344,7 @@ func reset_tab() -> void:
 			Settings.set_value("reading_mode", false)
 			Settings.set_value("high_contrast", false)
 			Settings.set_value("compass", true)
+			Settings.set_value("focus_frame", false)
 		"graficos":
 			Settings.set_value("fullscreen", false)
 			Settings.set_value("resolution", [1280, 720])
@@ -321,8 +352,11 @@ func reset_tab() -> void:
 			Graphics.reset()
 		"sonido":
 			for key in ["volume", "music", "sfx"]:
-				Settings.set_value(key, Settings.VOLUME_STEPS)
+				Settings.set_value(key, Settings.MUSIC_DEFAULT if key == "music" else Settings.VOLUME_STEPS)
 		"controles":
+			Settings.set_value("input_device", "auto")
+			Settings.set_value("pad_style", "auto")
+			Controls.apply_device()
 			Controls.reset_all()
 			bind_message.text = ""
 	refresh()
@@ -343,6 +377,13 @@ func refresh() -> void:
 	ui_label.text = "%d%%" % us
 	ui_prev.disabled = us <= Settings.UI_SCALES[0]
 	ui_next.disabled = us >= Settings.UI_SCALES[Settings.UI_SCALES.size() - 1]
+	for k in device_buttons:
+		device_buttons[k].selected = k == str(Settings.get_value("input_device"))
+	for k in style_buttons:
+		style_buttons[k].selected = k == str(Settings.get_value("pad_style"))
+	var ff: bool = Settings.get_value("focus_frame")
+	focus_buttons.on.selected = ff
+	focus_buttons.off.selected = not ff
 	var rm: bool = Settings.get_value("reading_mode")
 	reading_buttons.on.selected = rm
 	reading_buttons.off.selected = not rm
@@ -388,8 +429,8 @@ func _refresh_bindings() -> void:
 		var b: Dictionary = bind_buttons[id]
 		var waiting_key: bool = capturing == id and capture_kind == "key"
 		var waiting_pad: bool = capturing == id and capture_kind == "pad"
-		b.key.set_label(Loc.t("Apretá una tecla...") if waiting_key else Loc.literal(Controls.key_name(Controls.key_of(id))))
-		b.pad.set_label(Loc.t("Apretá un botón...") if waiting_pad else Controls.pad_name(Controls.pad_of(id)))
+		b.key.set_label(Loc.t("Aprieta una tecla...") if waiting_key else Loc.literal(Controls.key_name(Controls.key_of(id))))
+		b.pad.set_label(Loc.t("Aprieta un botón...") if waiting_pad else Controls.pad_name(Controls.pad_of(id)))
 		b.key.selected = waiting_key
 		b.pad.selected = waiting_pad
 
@@ -492,6 +533,22 @@ func _on_compass(on: bool) -> void:
 	refresh()
 
 
+func _on_device(which: String) -> void:
+	Settings.set_value("input_device", which)
+	Controls.apply_device()
+	refresh()
+
+
+func _on_pad_style(which: String) -> void:
+	Settings.set_value("pad_style", which)
+	refresh()
+
+
+func _on_focus_frame(on: bool) -> void:
+	Settings.set_value("focus_frame", on)
+	refresh()
+
+
 func _on_reading(on: bool) -> void:
 	Settings.set_value("reading_mode", on)
 	refresh()
@@ -538,7 +595,7 @@ func _on_volume(dir: int) -> void:
 
 
 func focus_default() -> void:
-	back_button.grab_focus()
+	PadHints.focus_first(self)
 
 
 ## Esc vuelve; las acciones de vista (Q y E, LB y RB en el mando) cambian de pestaña.

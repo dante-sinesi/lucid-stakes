@@ -18,6 +18,9 @@ const Cosmetics := preload("res://scripts/cosmetics.gd")
 const LuzIcon := preload("res://scripts/luz_icon.gd")
 const VFont := preload("res://scripts/voxel_font.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const Dice3D := preload("res://scripts/dice_3d.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const LuzCounter := preload("res://scripts/luz_counter.gd")
@@ -36,7 +39,7 @@ const REVEAL_STEP := 0.6     # segundos entre un dado y el siguiente
 const RESULT_TIME := 1.6     # cuánto se queda el resultado antes del próximo tiro
 const DIE := 30.0            # lado de un dado, en píxeles
 const SLOT := 150.0          # separación entre dados
-const SHIFT := 110.0         # el juego se corre a la izquierda para dejar lugar al botón "Empezar" a la derecha
+const SHIFT := 0.0           # (antes el juego se corría a la izquierda para dejar lugar al botón "Empezar": ahora ocupa todo el ancho y se sigue con Espacio o Enter)
 
 enum Phase { IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE }   # HOLD: los dados acertados quedan retenidos y se espera la próxima tirada de los que fallaron
 
@@ -53,12 +56,12 @@ const PRIZES := {
 
 ## Lo que dice el tabernero según los aciertos.
 const LINES := {
-	0: ["Ni uno. La casa agradece.", "Los dados hoy no te quieren, soñador.", "Nada. Pero tirás con estilo."],
-	1: ["Uno. Algo es algo.", "Uno solo, pero cuenta.", "Un acierto: se nota que sabés."],
+	0: ["Ni uno. La casa agradece.", "Los dados hoy no te quieren, soñador.", "Nada. Pero tiras con estilo."],
+	1: ["Uno. Algo es algo.", "Uno solo, pero cuenta.", "Un acierto: se nota que sabes."],
 	2: ["¡Dos! Vas bien.", "Dos aciertos. Eso ya es puntería.", "Dos de cinco, nada mal."],
 	3: ["¡Tres! Eso es suerte de la buena.", "Tres aciertos, soñador. Me estás asustando.", "¡Tres! La casa empieza a sudar."],
 	4: ["¡CUATRO! Esto no pasa seguido.", "Cuatro... ¡y una luz de regalo!", "¿Cuatro? Estás tocado por la claridad."],
-	5: ["¡LOS CINCO! No lo puedo creer...", "Cinco de cinco. Esto va a quedar en la historia de la taberna.", "¡¡Cinco!! Acá tenés, te lo ganaste."],
+	5: ["¡LOS CINCO! No lo puedo creer...", "Cinco de cinco. Esto va a quedar en la historia de la taberna.", "¡¡Cinco!! Aquí tienes, te lo ganaste."],
 }
 
 const PIPS := {
@@ -95,10 +98,13 @@ var paused := false              # el tabernero está hablando encima: los dados
 var tower_ready := false       # la torre ya se generó: se puede empezar
 var auto_start := false        # pruebas: apenas la torre está lista se cierra solo (sin esperar el botón)
 var start_button: Button
+var loading_spiral
 var prize_info := {}
 var _t := 0.0
 var _phase_t := 0.0
 var showcase                   # las recompensas en grande, al terminar las tiradas
+var dice3d                     # los dados en 3D (dice_3d.gd)
+var overlay_layer              # lo que se dibuja encima: flechas, números y la predicción
 
 
 func _init() -> void:
@@ -106,6 +112,11 @@ func _init() -> void:
 	visible = false
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	dice3d = Dice3D.new()
+	add_child(dice3d)
+	overlay_layer = _Overlay.new()
+	overlay_layer.game = self
+	add_child(overlay_layer)
 	var title := VoxelLabel.new()
 	title.cube = 4.0
 	title.color = UI.GOLD
@@ -165,6 +176,12 @@ func _init() -> void:
 	start_button.disabled = true
 	start_button.pressed.connect(request_close)
 	start_box.add_child(start_button)
+	start_box.modulate.a = 0.0   # (ya no se ve: se sigue con Espacio o Enter; el botón queda como estado para las pruebas)
+	start_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	start_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	start_button.focus_mode = Control.FOCUS_NONE
+	hints = PadHints.attach(self, [], [throw_button])   # la botonera de abajo reemplaza a Tirar (Empezar se queda: es también el indicador de que la torre se está generando)
+	hints.offset_left = -SHIFT * 2.0
 	var spiral := _Spiral.new()
 	spiral.name = "espiral"
 	spiral.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
@@ -174,6 +191,16 @@ func _init() -> void:
 	spiral.offset_bottom = 22
 	spiral.owner_game = self
 	start_button.add_child(spiral)
+	loading_spiral = _Spiral.new()   # el indicador de carga que se ve: abajo en el centro, sobre la botonera
+	loading_spiral.name = "espiral_visible"
+	loading_spiral.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	loading_spiral.offset_left = -22
+	loading_spiral.offset_right = 22
+	loading_spiral.offset_top = -108
+	loading_spiral.offset_bottom = -64
+	loading_spiral.owner_game = self
+	loading_spiral.only_at_end = true
+	add_child(loading_spiral)
 
 
 func is_open() -> bool:
@@ -215,6 +242,7 @@ func open(random: RandomNumberGenerator = null) -> void:
 func set_ready(ready: bool) -> void:
 	tower_ready = ready
 	start_button.disabled = not ready
+	_update_hints()
 	if ready and auto_start:
 		request_close()
 
@@ -310,6 +338,8 @@ func skip_animation() -> bool:
 		return false
 	for k in unrevealed:
 		_reveal_t[k] = _t
+		if rolls[k] == picks[k]:
+			dice3d.burst(k)
 	if not unrevealed.is_empty():
 		Sfx.play("ding") if hits() > 0 else Sfx.play("miss")
 	unrevealed.clear()
@@ -355,7 +385,7 @@ func _after_reveal() -> void:
 		_phase_t = 0.0
 		var m := misses()
 		selected = m[0]
-		message = Loc.f("Verdes retenidos. Tirá los demás: te quedan %d tiradas.", [throws_left]) if throws_left > 1 else Loc.t("Verdes retenidos. Tirá los demás: última tirada.")
+		message = Loc.f("Verdes retenidos. Tira los demás: te quedan %d tiradas.", [throws_left]) if throws_left > 1 else Loc.t("Verdes retenidos. Tira los demás: última tirada.")
 		message_label.text = message
 		_update_button()
 	else:
@@ -392,11 +422,36 @@ func _show_prize(info: Dictionary) -> void:
 		showcase.show_prize(info)
 
 
+var hints
+var _hint_key := ""
+
+
+## La botonera según la fase: elegir dado y número, tirar, tirar de nuevo y entrar a la torre (apagado hasta que está lista).
+func _update_hints() -> void:
+	if hints == null:
+		return
+	var key := "%d%s%s" % [phase, str(can_throw()), str(tower_ready)]
+	if key == _hint_key:
+		return
+	_hint_key = key
+	match phase:
+		Phase.PICK:
+			hints.set_items([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Dado")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Número")},
+					{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Tirar"), "dim": not can_throw(), "call": throw_dice}])
+		Phase.HOLD:
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Tirar de nuevo"), "dim": not can_throw(), "call": throw_dice}])
+		Phase.RESULT, Phase.DONE:
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Empezar") if tower_ready else Loc.t("Generando la torre..."), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
+		_:
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Saltear")}])
+
+
 func _update_button() -> void:
 	throw_button.set_label(Loc.t("Tirar de nuevo") if phase == Phase.HOLD else Loc.t("Tirar"))
 	throw_button.disabled = not can_throw()
-	throw_button.visible = phase != Phase.DONE and phase != Phase.RESULT
+	throw_button.visible = false   # (la botonera de abajo lo reemplaza)
 	start_button.visible = phase == Phase.RESULT or phase == Phase.DONE   # "Empezar" aparece cuando se terminaron las tiradas
+	_update_hints()
 
 
 func _process(delta: float) -> void:
@@ -404,6 +459,9 @@ func _process(delta: float) -> void:
 		return
 	_t += delta
 	_phase_t += delta
+	var panel := _panel_rect()
+	dice3d.position = panel.position + Vector2(6, 6)
+	dice3d.size = panel.size - Vector2(12, 12)
 	match phase:
 		Phase.ROLLING:
 			if _phase_t >= ROLL_TIME:
@@ -417,6 +475,8 @@ func _process(delta: float) -> void:
 				revealed += 1
 				_round_done += 1
 				_reveal_t[k] = _t
+				if rolls[k] == picks[k]:
+					dice3d.burst(k)
 				Sfx.play("ding", 1.0 + 0.12 * _round_done) if rolls[k] == picks[k] else Sfx.play("miss")
 			if unrevealed.is_empty() and _phase_t >= REVEAL_STEP * (_round_total + 0.4):
 				_after_reveal()
@@ -430,24 +490,37 @@ func _process(delta: float) -> void:
 		_:
 			pass
 	_try_close()
+	dice3d.update(self, delta)
+	if showcase.visible:
+		showcase.layout()
+	var hide_dice: bool = showcase.visible and showcase._has_cosmetic   # con un cosmético nuevo el muñeco ocupa el centro: los dados se apartan
+	for n in dice3d.dice + dice3d.shadows:
+		n.visible = not hide_dice
+	if hide_dice:
+		for n in dice3d.locks:
+			n.visible = false
+	overlay_layer.visible = not hide_dice
+	overlay_layer.queue_redraw()
 	queue_redraw()
 
 
 # --- entrada ---------------------------------------------------------------------------------------------------------
 
 func _slot_center(i: int) -> Vector2:
-	return Vector2(size.x * 0.5 - SHIFT + (i - 2) * SLOT, size.y * 0.5 - 20.0)
+	if dice3d == null:
+		return Vector2(size.x * 0.5 + (i - 2) * 200.0, size.y * 0.5 - 20.0)
+	return dice3d.position + dice3d.slot_screen_pos(i)
 
 
 ## Qué dado (y qué parte: 1 = arriba, 0 = el dado, -1 = abajo) está bajo un punto.
 func _hit_test(p: Vector2) -> Vector2i:
 	for i in DICE:
 		var c := _slot_center(i)
-		if Rect2(c + Vector2(-38, -92), Vector2(76, 36)).has_point(p):
+		if Rect2(c + Vector2(-46, -100), Vector2(92, 40)).has_point(p):
 			return Vector2i(i, 1)
-		if Rect2(c + Vector2(-38, 64), Vector2(76, 36)).has_point(p):
+		if Rect2(c + Vector2(-46, 64), Vector2(92, 40)).has_point(p):
 			return Vector2i(i, -1)
-		if Rect2(c + Vector2(-48, -62), Vector2(96, 124)).has_point(p):
+		if Rect2(c + Vector2(-56, -58), Vector2(112, 120)).has_point(p):
 			return Vector2i(i, 0)
 	return Vector2i(-1, 0)
 
@@ -475,10 +548,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if paused or not visible or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	var go: bool = event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
-	if go and (phase == Phase.ROLLING or phase == Phase.REVEAL):   # Espacio durante la animación: se saltea; si era la última tirada y la torre está lista, se entra
+	if go and (phase == Phase.ROLLING or phase == Phase.REVEAL):   # Espacio durante la animación: se saltea (se ven los resultados; para entrar a la torre hay que apretar otra vez)
 		skip_animation()
-		if phase == Phase.RESULT and tower_ready:
-			request_close()
 		get_viewport().set_input_as_handled()
 		return
 	if go and (phase == Phase.RESULT or phase == Phase.DONE) and tower_ready:   # terminadas las tiradas, Espacio entra a la torre
@@ -518,144 +589,64 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # --- dibujo ------------------------------------------------------------------------------------------------------------
 
+func _panel_rect() -> Rect2:
+	return Rect2(Vector2(60.0, 126.0), Vector2(size.x - 120.0, size.y - 126.0 - 206.0))
+
+
 func _draw() -> void:
 	if not visible:
 		return
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.04, 0.025, 0.08, 1.0))   # el fondo se dibuja acá: un hijo taparía los dados
-	var panel := Rect2(Vector2(size.x * 0.5 - SHIFT - 420.0, 126.0), Vector2(840.0, size.y - 126.0 - 206.0))
+	var panel := _panel_rect()
 	Draw.card(self, panel, 6.0, 0, 0.1, 777, false, -1.0)
-	_draw_face(Vector2(panel.position.x + 56.0, panel.position.y + 34.0))
-	_draw_throws(Vector2(panel.end.x - 140.0, panel.position.y + 40.0))
-	for i in DICE:
-		_draw_die(i)
 
 
 ## La cara del tabernero (la del cuadro de diálogo), arriba a la izquierda del panel.
-func _draw_face(origin: Vector2) -> void:
+func _draw_face(ci: CanvasItem, origin: Vector2) -> void:
 	var s := 5.0
 	for y in DialogueBox.FACE.size():
 		var row: String = DialogueBox.FACE[y]
 		for x in row.length():
 			if row[x] == ".":
 				continue
-			draw_rect(Rect2(origin + Vector2(x, y) * s, Vector2(s, s)), DialogueBox.FACE_PAL.get(row[x], Color.MAGENTA))
+			ci.draw_rect(Rect2(origin + Vector2(x, y) * s, Vector2(s, s)), DialogueBox.FACE_PAL.get(row[x], Color.MAGENTA))
 
 
 ## Los tiros que quedan: tres cubitos dorados (los gastados, apagados).
-func _draw_throws(origin: Vector2) -> void:
+func _draw_throws(ci: CanvasItem, origin: Vector2) -> void:
 	for i in THROWS:
 		var col := Draw.GOLD if i < throws_left else Color(0.25, 0.22, 0.3)
-		Draw.cube(self, origin + Vector2(i * 36.0, 0.0), 24.0, col, true)
+		Draw.cube(ci, origin + Vector2(i * 36.0, 0.0), 24.0, col, true)
 
 
-## Color de los dados (todos blancos) y las caras de los costados de cada uno según la de
-## arriba: (izquierda, derecha), una orientación real de dado (las caras opuestas suman 7).
-const DIE_COLORS := [Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE]
-const SIDES := {1: [2, 3], 2: [3, 1], 3: [1, 2], 4: [2, 1], 5: [1, 3], 6: [3, 2]}
-const DROP := 430.0   # desde qué altura (en píxeles) caen los dados
-
-
-## El movimiento de un dado en el momento actual: {height (px sobre la mesa), squash (0..1, aplastón al pegar), slide (corrimiento
-## horizontal), face (la cara que muestra), age (segundos desde que se reveló; -1 si no)}. Cae desde arriba acelerando, pega, rebota
-## cada vez menos y se frena; mientras cae gira (cambia de cara cada vez más lento).
-func _die_motion(i: int) -> Dictionary:
-	var out := {"height": 0.0, "squash": 0.0, "slide": 0.0, "face": picks[i], "age": -1.0}
-	var is_revealed := _is_revealed(i)
-	if unrevealed.has(i) and (phase == Phase.ROLLING or phase == Phase.REVEAL):
-		var t := _phase_t if phase == Phase.ROLLING else ROLL_TIME + _phase_t
-		var t_land := 0.55 + 0.09 * i
-		var cycle := 0.0
-		if t < t_land:
-			var k := t / t_land
-			out.height = DROP * (1.0 - k * k)
-			cycle = 24.0 * t
-		else:
-			var u := t - t_land
-			out.height = absf(sin(u * 10.0)) * 46.0 * exp(-u * 4.2)
-			out.squash = 0.22 * exp(-u * 14.0)
-			out.slide = (1.0 if i % 2 == 0 else -1.0) * 20.0 * exp(-u * 3.0) * (1.0 - float(i) * 0.1)
-		if t < t_land:
-			out.face = 1 + int(cycle + float(i) * 3.0) % 6   # en el aire gira mostrando caras al azar
-		else:
-			out.face = rolls[i]   # al pegar en la mesa ya muestra su número de verdad: no cambia después, al validarlo
-	elif is_revealed:
-		out.face = rolls[i]
-		out.age = maxf(_t - float(_reveal_t[i]), 0.0)
-		out.height = maxf(0.0, 1.0 - out.age * 3.0) * 16.0
-	return out
-
-
-## Un dado: cubo isométrico blanco, un relieve en cada cara y los puntos en las tres caras que se ven; cae desde arriba,
-## rebota y se frena (con su sombra en la mesa); al revelarse salta un poquito y, si acertó, suelta chispas doradas.
-func _draw_die(i: int) -> void:
-	var c := _slot_center(i)
-	var mo := _die_motion(i)
-	var picking := phase == Phase.PICK
-	var is_revealed := _is_revealed(i)
-	var shown: int = mo.face
-	var hit := is_revealed and rolls[i] == picks[i]
-	var tint := Color(1, 1, 1)
-	if is_revealed:
-		tint = Color(0.62, 1.0, 0.7) if hit else Color(1.0, 0.62, 0.62)
-	elif picking and i == selected:
-		tint = Color(1.0, 0.97, 0.78)
-	var squash: float = mo.squash
-	var a := Vector2(0.866, 0.5) * DIE * (1.0 + squash * 0.7)
-	var b := Vector2(-0.866, 0.5) * DIE * (1.0 + squash * 0.7)
-	var h := Vector2(0, -DIE * (1.0 - squash))
-	var lift: float = mo.height
-	var ground := c + Vector2(mo.slide, 0)
-	var o := ground + Vector2(0, -lift) - (a + b + h) * 0.5 + Vector2(0, 8)
-	# Sombra en la mesa: más chica y más clara cuanto más alto está
-	var near := 1.0 - clampf(lift / DROP, 0.0, 1.0)
-	var sw := (46.0 * (0.55 + 0.45 * near))
-	draw_colored_polygon(PackedVector2Array([ground + Vector2(-sw, 40), ground + Vector2(sw, 40), ground + Vector2(sw * 0.78, 54), ground + Vector2(-sw * 0.78, 54)]), Color(0, 0, 0, 0.15 + 0.25 * near))
-	var base: Color = (DIE_COLORS[i] as Color) * tint
-	base.a = 1.0
-	var faces := [
-		{"poly": [o + a, o + a + b, o + a + b + h, o + a + h], "col": base.darkened(0.12), "origin": o + a + h, "u": b, "v": -h, "value": (SIDES[shown] as Array)[1]},   # derecha
-		{"poly": [o + b, o + a + b, o + a + b + h, o + b + h], "col": base.darkened(0.3), "origin": o + b + h, "u": a, "v": -h, "value": (SIDES[shown] as Array)[0]},     # izquierda
-		{"poly": [o + h, o + a + h, o + a + b + h, o + b + h], "col": base, "origin": o + h, "u": a, "v": b, "value": shown},                                          # arriba
-	]
-	for f in faces:
-		var pts: Array = f.poly
-		draw_colored_polygon(PackedVector2Array(pts), f.col)
-		draw_colored_polygon(_inset(pts, 0.8), (f.col as Color).lightened(0.07))   # el relieve de cada cara (se ve redondeado)
-		_pips(f.origin, f.u, f.v, int(f.value), Color(0.17, 0.1, 0.22))
-		draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), (f.col as Color).darkened(0.25), 1.5)
-	# Chispas doradas del acierto
-	if hit and mo.age >= 0.0 and mo.age < 0.8:
-		for k in 7:
-			var ang := float(k) / 7.0 * TAU + float(i)
-			var d: float = 24.0 + float(mo.age) * 70.0
-			var sp := Vector2(cos(ang) * d, sin(ang) * d * 0.7 - 14.0)
-			var al: float = 1.0 - float(mo.age) / 0.8
-			draw_rect(Rect2(c + sp - Vector2(3, 3), Vector2(6, 6)), Color(1.0, 0.92, 0.45, al))
-	# Retenido: los dados acertados llevan un candado mientras se espera la próxima tirada
-	if phase == Phase.HOLD and hit:
-		var lc := c + Vector2(0, -108.0)
-		draw_rect(Rect2(lc + Vector2(-11, -2), Vector2(22, 16)), Color(0.6, 1.0, 0.7))
-		draw_rect(Rect2(lc + Vector2(-11, -2), Vector2(22, 4)), Color(0.8, 1.0, 0.85))
-		draw_polyline(PackedVector2Array([lc + Vector2(-7, -2), lc + Vector2(-7, -12), lc + Vector2(7, -12), lc + Vector2(7, -2)]), Color(0.6, 1.0, 0.7), 3.0)
-	# Flechas de elegir y lo pedido
-	if picking:
-		var arrow := Color(1.0, 0.85, 0.3) if i == selected else Color(0.6, 0.55, 0.72)
-		draw_colored_polygon(PackedVector2Array([c + Vector2(-16, -66), c + Vector2(16, -66), c + Vector2(0, -84)]), arrow)
-		draw_colored_polygon(PackedVector2Array([c + Vector2(-16, 70), c + Vector2(16, 70), c + Vector2(0, 88)]), arrow)
-	var col := Color(0.9, 0.85, 1.0)
-	if is_revealed:
-		col = Color(0.6, 1.0, 0.7) if hit else Color(1.0, 0.6, 0.6)
-	if picking or phase == Phase.IDLE:   # mientras se elige, el número de la cara pedida
-		var l: Dictionary = VFont.layout([str(picks[i])])
-		var cs := 4.0
-		var tsize := Vector2(l.size) * cs
-		Draw.text_cells(self, c + Vector2(-tsize.x * 0.5, 100.0), l.cells, l.size.y, cs, col, 0.0, i, true)
-	else:   # después, la predicción como un dadito debajo (verde si acertó, rojo si falló), para no olvidar qué se pidió
-		var m := 40.0
-		var top_left := c + Vector2(-m * 0.5, 96.0)
-		draw_rect(Rect2(top_left, Vector2(m, m)), Color(col, 0.28))
-		draw_rect(Rect2(top_left, Vector2(m, m)), col, false, 2.0)
-		_pips(top_left, Vector2(m, 0), Vector2(0, m), picks[i], col)
+## Lo que se dibuja encima de los dados 3D: las flechas de elegir, el número pedido y la predicción como un dadito (verde si acertó, rojo si falló).
+func _draw_overlay(ci: CanvasItem) -> void:
+	var panel := _panel_rect()
+	_draw_face(ci, Vector2(panel.position.x + 36.0, panel.position.y + 24.0))
+	_draw_throws(ci, Vector2(panel.end.x - 140.0, panel.position.y + 30.0))
+	for i in DICE:
+		var c := _slot_center(i)
+		var picking := phase == Phase.PICK
+		var is_revealed := _is_revealed(i)
+		var hit := is_revealed and rolls[i] == picks[i]
+		if picking:
+			var arrow := Color(1.0, 0.85, 0.3) if i == selected else Color(0.6, 0.55, 0.72)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-18, -66), c + Vector2(18, -66), c + Vector2(0, -86)]), arrow)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-18, 70), c + Vector2(18, 70), c + Vector2(0, 90)]), arrow)
+		var col := Color(0.9, 0.85, 1.0)
+		if is_revealed:
+			col = Color(0.6, 1.0, 0.7) if hit else Color(1.0, 0.6, 0.6)
+		if picking or phase == Phase.IDLE:   # mientras se elige, el número de la cara pedida
+			var l: Dictionary = VFont.layout([str(picks[i])])
+			var cs := 4.0
+			var tsize := Vector2(l.size) * cs
+			Draw.text_cells(ci, c + Vector2(-tsize.x * 0.5, 102.0), l.cells, l.size.y, cs, col, 0.0, i, true)
+		else:   # después, la predicción como un dadito debajo, para no olvidar qué se pidió
+			var m := 40.0
+			var top_left := c + Vector2(-m * 0.5, 96.0)
+			ci.draw_rect(Rect2(top_left, Vector2(m, m)), Color(col, 0.28))
+			ci.draw_rect(Rect2(top_left, Vector2(m, m)), col, false, 2.0)
+			_pips(ci, top_left, Vector2(m, 0), Vector2(0, m), picks[i], col)
 
 
 ## ¿El dado `i` ya muestra su resultado? (los ocultos ruedan; al volver a tirar, los retenidos siguen a la vista)
@@ -665,31 +656,33 @@ func _is_revealed(i: int) -> bool:
 	return phase == Phase.REVEAL or phase == Phase.HOLD or phase == Phase.RESULT or phase == Phase.DONE or (phase == Phase.ROLLING and reroll_round)
 
 
-## Los puntos de una cara: `origin` es una esquina de la cara y `u`, `v` sus dos ejes (hacia el otro lado).
-func _pips(origin: Vector2, u: Vector2, v: Vector2, value: int, color: Color) -> void:
+## Los puntos de una cara: `origin` es una esquina de la cara y `u`, `v` sus dos ejes.
+func _pips(ci: CanvasItem, origin: Vector2, u: Vector2, v: Vector2, value: int, color: Color) -> void:
 	for pip in PIPS[clampi(value, 1, 6)]:
 		var pc: Vector2 = origin + u * float(pip[0]) + v * float(pip[1])
 		var pu := u * 0.15
 		var pv := v * 0.15
-		draw_colored_polygon(PackedVector2Array([pc - pu - pv, pc + pu - pv, pc + pu + pv, pc - pu + pv]), color)
-		draw_colored_polygon(PackedVector2Array([pc - pu * 0.5 - pv * 0.5, pc + pu * 0.5 - pv * 0.5, pc + pu * 0.5 - pv * 0.1, pc - pu * 0.5 - pv * 0.1]), color.lightened(0.35))
+		ci.draw_colored_polygon(PackedVector2Array([pc - pu - pv, pc + pu - pv, pc + pu + pv, pc - pu + pv]), color)
 
 
-## Un polígono achicado hacia su centro (el relieve de cada cara).
-func _inset(pts: Array, k: float) -> PackedVector2Array:
-	var mid := Vector2.ZERO
-	for p in pts:
-		mid += p
-	mid /= float(pts.size())
-	var out := PackedVector2Array()
-	for p in pts:
-		out.append(mid + (p - mid) * k)
-	return out
+## La capa que se dibuja encima de los dados 3D.
+class _Overlay extends Control:
+	var game
+
+	func _init() -> void:
+		name = "encima"
+		set_anchors_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		if game != null and game.visible:
+			game._draw_overlay(self)
 
 
 ## Espiral de carga: cubitos que van girando en espiral y se apagan; se ve mientras la torre se genera y desaparece cuando está lista.
 class _Spiral extends Control:
 	var owner_game
+	var only_at_end := false   # sólo se ve cuando ya terminaron las tiradas y la torre todavía no está lista
 	var _t := 0.0
 
 	func _init() -> void:
@@ -697,7 +690,7 @@ class _Spiral extends Control:
 
 	func _process(delta: float) -> void:
 		_t += delta
-		visible = owner_game != null and not owner_game.tower_ready
+		visible = owner_game != null and not owner_game.tower_ready and (not only_at_end or owner_game.phase == owner_game.Phase.RESULT or owner_game.phase == owner_game.Phase.DONE)
 		queue_redraw()
 
 	func _draw() -> void:
@@ -731,33 +724,36 @@ class _Showcase extends Control:
 	var preview
 	var cosmetic_label: Control
 	var _card := Rect2()
+	var center: CenterContainer
+	var _has_cosmetic := false
+	var col: VBoxContainer
 
 	func _init() -> void:
 		name = "recompensas"
 		visible = false
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		var center := CenterContainer.new()
-		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		center.offset_left = -SHIFT * 2.0   # (centrado sobre el panel de los dados, que se corre a la izquierda)
-		center.offset_top = 90
-		center.offset_bottom = -110
+		center = CenterContainer.new()
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(center)
-		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 14)
+		col = VBoxContainer.new()
+		col.add_theme_constant_override("separation", 8)
 		col.alignment = BoxContainer.ALIGNMENT_CENTER
 		center.add_child(col)
-		title = UI.label(col, "", 7, Draw.GOLD)
+		var line := HBoxContainer.new()   # el título y los premios en una sola línea, chica, sobre la mesa
+		line.alignment = BoxContainer.ALIGNMENT_CENTER
+		line.add_theme_constant_override("separation", 40)
+		col.add_child(line)
+		title = UI.label(line, "", 4, Draw.GOLD)
 		title.name = "titulo"
 		row = HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 46)
-		col.add_child(row)
-		clarity = ClarityCounter.new(6.0, Color(1.0, 0.97, 0.8))
+		row.add_theme_constant_override("separation", 34)
+		line.add_child(row)
+		clarity = ClarityCounter.new(3.5, Color(1.0, 0.97, 0.8))
 		clarity.name = "claridad"
 		row.add_child(clarity)
-		luz = LuzCounter.new(6.0)
+		luz = LuzCounter.new(3.5)
 		luz.name = "luz"
 		row.add_child(luz)
 		cosmetic_box = VBoxContainer.new()
@@ -765,17 +761,20 @@ class _Showcase extends Control:
 		cosmetic_box.add_theme_constant_override("separation", 6)
 		col.add_child(cosmetic_box)
 		preview = CosmeticsScreen._Preview.new()
-		preview.custom_minimum_size = Vector2(250, 270)
+		preview.custom_minimum_size = Vector2(190, 200)
 		preview.spin = true
 		preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		cosmetic_box.add_child(preview)
-		cosmetic_label = UI.label(cosmetic_box, "", 3.5, Color(1.0, 0.9, 0.5), true, 700)
+		cosmetic_label = UI.label(cosmetic_box, "", 3.0, Color(1.0, 0.9, 0.5), true, 1000)
 		cosmetic_label.name = "cosmetico"
 
-	func _draw() -> void:
-		var panel := Rect2(Vector2(size.x * 0.5 - SHIFT - 420.0, 126.0), Vector2(840.0, size.y - 126.0 - 206.0))
-		draw_rect(panel, Color(0.04, 0.025, 0.08, 1.0))
-		Draw.card(self, panel, 6.0, 0, 0.1, 778, false, -1.0)
+	## Sin cosmético: una tira abajo de la mesa; con cosmético: ocupa el centro de la mesa (lleva el muñeco).
+	func layout() -> void:
+		var panel: Rect2 = get_parent()._panel_rect()
+		var area := panel if _has_cosmetic else Rect2(panel.position.x, panel.end.y - 92.0, panel.size.x, 84.0)
+		center.position = area.position
+		center.size = area.size
+		queue_redraw()
 
 	func hide_prize() -> void:
 		visible = false
@@ -803,4 +802,6 @@ class _Showcase extends Control:
 			else:
 				outfit = str(info.get("cosmetic_id", outfit))
 			preview.show_model(Profile.character(), hat, outfit)
+		_has_cosmetic = cname != ""
+		layout()
 		visible = true

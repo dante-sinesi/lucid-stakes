@@ -46,6 +46,7 @@ func _init() -> void:
 	test_settings()
 	test_graphics()
 	test_controls()
+	test_music_default()
 	await test_tabs()
 	await test_ui_scale()
 	await test_reading_mode()
@@ -150,6 +151,10 @@ func test_screen() -> void:
 
 
 func test_menus_follow_language() -> void:
+	var P := preload("res://scripts/profile.gd")
+	P.path = "user://test_profile.json"   # (el perfil de prueba: con el tutorial ya hecho, si no el juego arranca en el tutorial)
+	P._loaded_from = ""
+	P.mark_tutorial_done()
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.quit_game_override = true
 	root.add_child(main)
@@ -215,13 +220,17 @@ func test_controls() -> void:
 	check(Controls.key_of("mover_adelante") == KEY_W and (Settings.get_value("bindings") as Dictionary).is_empty(), "reset_all vuelve todo a lo de fábrica")
 
 
+func test_music_default() -> void:
+	check(int(Settings.defaults().music) == 8 and int(Settings.defaults().volume) == Settings.VOLUME_STEPS and int(Settings.defaults().sfx) == Settings.VOLUME_STEPS, "la música arranca al 80 % y el resto al 100 %")
+
+
 func test_tabs() -> void:
 	var OptionsScreen = load("res://scripts/options_screen.gd")
 	var o: Control = OptionsScreen.new()
 	root.add_child(o)
 	o.visible = true
 	await process_frame
-	check(o.tab == "general" and o.pages.general.visible and not o.pages.graficos.visible and o.reset_button.visible, "arranca en General")
+	check(o.tab == "general" and o.pages.general.visible and not o.pages.graficos.visible and o.reset_button != null, "arranca en General")
 	o.tab_buttons.graficos.pressed.emit()
 	check(o.tab == "graficos" and o.pages.graficos.visible and not o.pages.general.visible, "las pestañas se alternan")
 	check(o.pages.graficos is ScrollContainer, "Gráficos se puede desplazar")

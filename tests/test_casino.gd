@@ -23,11 +23,17 @@ func rich_run(stage := 1, claridad := 1000) -> RefCounted:
 
 
 func _init() -> void:
+	var old_base: int = Roulette.base_price   # (estas pruebas razonan con la ficha de los primeros balances: 50 y +4 por etapa; el balance actual se elige aparte)
+	var old_step: int = Roulette.price_step
+	Roulette.base_price = 50
+	Roulette.price_step = 4
 	test_items()
 	test_run_state()
 	test_roulette_rules()
 	test_roulette_resolve()
 	test_roulette_statistics()
+	Roulette.base_price = old_base
+	Roulette.price_step = old_step
 	print("tests del casino terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -40,11 +46,11 @@ func test_items() -> void:
 		ids[it.id] = true
 		ok = ok and (it.type == Items.Type.CLARITY and it.has("mult") or it.has("value"))
 	check(ok, "cada premio tiene id unico, nombre, descripcion, peso y valor (o multiplicador)")
-	check(Items.by_tier(Items.Tier.EPICO).size() == 4 and Items.by_tier(Items.Tier.RARO).size() == 9, "4 premios epicos y 9 raros (6 boosts, el Totem, la Vida extra y el Teletransporte)")
+	check(Items.by_tier(Items.Tier.EPICO).size() == 11 and Items.by_tier(Items.Tier.RARO).size() == 23, "11 premios epicos y 23 raros (el catálogo creció con los boosts de ganancia y los del casino)")
 	var epic_boosts := true
 	for it in Items.by_tier(Items.Tier.EPICO):
-		epic_boosts = epic_boosts and it.type == Items.Type.BOOST
-	check(epic_boosts, "los premios epicos son todos boosts")
+		epic_boosts = epic_boosts and (it.type == Items.Type.BOOST or it.type == Items.Type.CLARITY)
+	check(epic_boosts, "los premios epicos son boosts o bolsas grandes de claridad")
 	check(Items.get_item("aire_extra").name == "Aire extra" and Items.get_item("no_existe").is_empty(), "get_item busca por id")
 	# Los conversores: uno por tipo de bloque (el Resorte convierte en catapulta)
 	var cat := Items.get_item("conv_catapulta")

@@ -207,7 +207,7 @@ func test_roulette_layout() -> void:
 	check(one_column and xs[0] >= wr.end.x, "las apuestas estan en una columna a la derecha de la rueda")
 	var bg = screen.get_child(0)
 	check(bg is ColorRect and bg.size.is_equal_approx(vp) and bg.color.a >= 0.85 and bg.color.v < 0.1, "el fondo es un oscurecido liso que cubre toda la pantalla (sin dibujos)")
-	check(screen.spin_button.global_position.x >= wr.end.x and screen.spin_button.global_position.y > ys[ys.size() - 1], "GIRAR esta debajo de las apuestas, en la misma columna")
+	check(not screen.spin_button.is_inside_tree() and screen.pad_hints != null and screen.pad_hints.items.size() >= 6, "GIRAR ya no es un botón en pantalla: está en la botonera de abajo (Enter o A)")
 	check(not sc.hud_layer.visible, "con la ruleta abierta no se ve la interfaz del casino detras")
 	sc.close_roulette()
 	check(sc.hud_layer.visible, "al cerrar la ruleta vuelve la interfaz del casino")

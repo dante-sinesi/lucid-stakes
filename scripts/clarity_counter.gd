@@ -3,6 +3,7 @@ extends HBoxContainer
 
 const ClarityIcon := preload("res://scripts/clarity_icon.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
+const NumberFormat := preload("res://scripts/number_format.gd")
 
 var icon
 var label
@@ -14,7 +15,7 @@ var value := 0:
 	set(v):
 		value = v
 		if label != null:
-			label.text = str(v)
+			label.text = NumberFormat.fmt(v)
 
 
 func _draw() -> void:

@@ -104,7 +104,7 @@ func _ready() -> void:
 	if FileAccess.file_exists(path):
 		open_library(path)
 	else:
-		path_label.text = "(no hay biblioteca: abrí un archivo .jsonl o .rooms)"
+		path_label.text = "(no hay biblioteca: abre un archivo .jsonl o .rooms)"
 		_set_status("No se encontró " + path)
 		refresh_all()
 
@@ -527,7 +527,7 @@ func _on_list_selected(i: int) -> void:
 
 func select_room(id: String) -> bool:
 	if model.dirty and model.has_current() and model.original_id != id and model.current.id != id:
-		_set_status("Hay cambios sin guardar: guardá o descartá antes de abrir otra sala.")
+		_set_status("Hay cambios sin guardar: guarda o descarta antes de abrir otra sala.")
 		_select_in_list()
 		return false
 	if not model.open(id):
@@ -581,7 +581,7 @@ func _refresh_info() -> void:
 	if info == null:
 		return
 	if not model.has_current():
-		info.text = "[i]Elegí una sala de la lista o creá una nueva.[/i]"
+		info.text = "[i]Elige una sala de la lista o crea una nueva.[/i]"
 		return
 	var r := model.current
 	var o: Dictionary = r.opt
@@ -847,9 +847,9 @@ func click_cell(c: Vector3i) -> void:
 				if y >= 1 and RoomLib.block_char(model.current, cell, y) != "":
 					move_src = {"cell": cell, "y": y}
 					_refresh_view()
-					_set_status("Ahora elegí la columna adonde va el bloque (Esc cancela).")
+					_set_status("Ahora elige la columna adonde va el bloque (Esc cancela).")
 				else:
-					_set_status("Elegí primero el bloque que querés mover.")
+					_set_status("Elige primero el bloque que quieres mover.")
 			else:
 				var src := move_src
 				move_src = {}
@@ -867,7 +867,7 @@ func set_tool(name: String) -> void:
 		if TOOLS[i][0] == name and tool_opt != null:
 			tool_opt.select(i)
 	_refresh_view()
-	var hints := {"select": "Clic en un bloque para seleccionarlo (y marcar sus variantes).", "add": "Clic en la cara de un bloque (o del piso): se agrega un bloque pegado a esa cara, donde quieras.", "delete": "Clic en un bloque para borrarlo.", "type": "Clic en un bloque: cambia al tipo elegido.", "move": "Clic en el bloque que querés mover y después en la columna destino.", "add_side": "Clic en la cara de un bloque: se agrega un bloque pegado a esa cara (puede quedar en el aire si se sostiene de sus vecinos).", "delete_gap": "Clic en un bloque para borrarlo; los de arriba quedan donde están si se sostienen solos."}
+	var hints := {"select": "Clic en un bloque para seleccionarlo (y marcar sus variantes).", "add": "Clic en la cara de un bloque (o del piso): se agrega un bloque pegado a esa cara, donde quieras.", "delete": "Clic en un bloque para borrarlo.", "type": "Clic en un bloque: cambia al tipo elegido.", "move": "Clic en el bloque que quieres mover y después en la columna destino.", "add_side": "Clic en la cara de un bloque: se agrega un bloque pegado a esa cara (puede quedar en el aire si se sostiene de sus vecinos).", "delete_gap": "Clic en un bloque para borrarlo; los de arriba quedan donde están si se sostienen solos."}
 	_set_status(str(hints.get(name, "")))
 
 
@@ -966,13 +966,13 @@ func do_delete() -> void:
 
 func do_new() -> void:
 	if model.dirty:
-		_set_status("Hay cambios sin guardar: guardá o descartá antes de crear otra sala.")
+		_set_status("Hay cambios sin guardar: guarda o descarta antes de crear otra sala.")
 		return
 	var shape: String = RoomLib.SHAPES[new_shape.selected]
 	if model.new_room(shape, int(new_h.value)):
 		sel = {}
 		_frame_camera()
-		_set_status("Sala nueva vacía de %s y %d pisos: agregá bloques." % [shape, int(new_h.value)])
+		_set_status("Sala nueva vacía de %s y %d pisos: agrega bloques." % [shape, int(new_h.value)])
 		set_tool("add")
 		refresh_all()
 	else:
@@ -1028,7 +1028,7 @@ func do_check_variants() -> void:
 	if not model.has_current():
 		return
 	if model.current.slots.is_empty():
-		_set_status("Marcá primero qué otros tipos puede tener un bloque (seleccionalo y tildá).")
+		_set_status("Marca primero qué otros tipos puede tener un bloque (seleccionalo y tilda).")
 		return
 	var res := model.check_variants()
 	var ok := 0
@@ -1043,7 +1043,7 @@ func do_create_variants() -> void:
 	if not model.has_current():
 		return
 	if model.dirty:
-		_set_status("Guardá la sala antes de crear sus variantes.")
+		_set_status("Guarda la sala antes de crear sus variantes.")
 		return
 	var n := model.create_variants()
 	_set_status("Se crearon %d salas nuevas." % n)

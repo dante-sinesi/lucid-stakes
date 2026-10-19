@@ -4,6 +4,7 @@ extends Button
 ## El tamaño se calcula a partir del texto, con margen de sobra: el texto nunca toca el borde.
 
 const VFont := preload("res://scripts/voxel_font.gd")
+const Settings := preload("res://scripts/settings.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Loc := preload("res://scripts/loc.gd")
 const Sfx := preload("res://scripts/sfx.gd")
@@ -29,6 +30,10 @@ var min_cells_w := 0              # ancho mínimo en cubitos de texto
 var animated := true:             # flota y brilla siempre (los botones chicos sólo reaccionan al mouse)
 	set(v):
 		animated = v
+		_update_processing()
+var force_focus := false:   # se dibuja como apuntado aunque no tenga el foco del teclado (la tarjeta elegida de los escenarios, por ejemplo)
+	set(v):
+		force_focus = v
 		_update_processing()
 var _t := 0.0
 
@@ -58,7 +63,7 @@ func _hover_sound() -> void:
 
 
 func _update_processing() -> void:
-	set_process(animated or is_hovered() or has_focus())
+	set_process(animated or is_hovered() or has_focus() or force_focus)
 	queue_redraw()
 
 
@@ -102,9 +107,26 @@ func _state() -> int:
 		return 1
 	if is_pressed() and is_hovered():
 		return 2
-	if is_hovered() or has_focus():
+	if is_hovered() or has_focus() or force_focus:
 		return 1
 	return 0
+
+
+## El foco: dos flechitas de cubitos doradas a los costados del botón que se mecen hacia él; el marco blanco que titila es opcional (Opciones > General > Marco del foco).
+func _draw_focus(center: Vector2, body_size: Vector2) -> void:
+	var t := Time.get_ticks_msec() / 1000.0
+	var sway := (sin(t * 7.0) * 0.5 + 0.5) * 7.0
+	var cs := 6.0
+	var col := Color(1.0, 0.86, 0.3).lerp(Color(1.0, 0.97, 0.7), 0.5 + 0.5 * sin(t * 7.0))
+	var half := body_size * 0.5
+	for side in [-1.0, 1.0]:
+		var x0: float = side * (half.x + 14.0 - sway)
+		for k in [Vector2(0, -2), Vector2(1, -1), Vector2(2, 0), Vector2(1, 1), Vector2(0, 2)]:
+			var pos := Vector2(x0 - side * k.x * cs - cs * 0.5, k.y * cs - cs * 0.5)
+			Draw.cube(self, pos, cs, col, true)
+	if bool(Settings.get_value("focus_frame")):
+		var pulse := 0.55 + 0.45 * sin(t * 9.0)
+		draw_rect(Rect2(-center - Vector2(7, 7), body_size + Vector2(14, 14)), Color(1.0, 1.0, 0.92, pulse), false, 4.0)
 
 
 func _draw() -> void:
@@ -130,6 +152,8 @@ func _draw() -> void:
 	var gold := primary or selected or (toggle_mode and button_pressed)
 	var shine := fmod(_t * 0.35, 1.6) if (animated or hover) else -1.0
 	Draw.card(self, Rect2(-center, body_size), fc, st, k, seed_value, gold, shine if shine <= 1.0 else -1.0)
+	if force_focus or (has_focus() and not disabled):   # el botón apuntado con el teclado o el mando
+		_draw_focus(center, body_size)
 	var l: Dictionary = VFont.layout(text.replace("\r", "").split("\n"), 1)
 	var text_size := Vector2(l.size) * cube
 	var origin := -text_size * 0.5

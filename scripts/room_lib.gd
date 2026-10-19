@@ -25,7 +25,9 @@ const MAX_H := 20
 const SHAPES: Array = ["3x3", "3x5", "3x8", "L", "U"]
 ## n común, h pesado, i hielo, c agrietado (arenisca), b bomba, k catapulta (trampolín), t trampa, s pinchos.
 const KIND_OF_CHAR := {"n": K.NORMAL, "h": K.HEAVY, "i": K.ICE, "c": K.CRACKED, "b": K.BOMB, "k": K.CATAPULT, "t": K.TRAP, "s": K.SPIKES}
-const BOMB_FUSE := 6   # lo que le queda de cuenta a una bomba al empezar la sala
+const BOMB_FUSE := 6   # lo que le queda de cuenta a una bomba al empezar la sala (si la sala no trae `fuse`; las salas con bomba se afinan: ver tune_fuse)
+const BOMB_PROBE_FUSE := 60   # cuenta con la que se busca el camino más corto antes de afinarla
+const BOMB_SPARE := 1   # cuántos movimientos de más se le dejan a la cuenta sobre lo mínimo que hace falta
 const CHAR_OF_KIND := {K.NORMAL: "n", K.HEAVY: "h", K.ICE: "i", K.CRACKED: "c", K.BOMB: "b", K.CATAPULT: "k", K.TRAP: "t", K.SPIKES: "s"}
 const DIR_CHARS := {Vector3i(1, 0, 0): "E", Vector3i(-1, 0, 0): "W", Vector3i(0, 0, 1): "S", Vector3i(0, 0, -1): "N"}
 const MODE_CHARS := {TowerLogic.Mode.MOVE: "m", TowerLogic.Mode.GRAB: "g", TowerLogic.Mode.HANG: "h"}
@@ -250,7 +252,7 @@ static func build_state(room: Dictionary):
 		for i in ks.length():
 			if ks[i] != GAP:
 				var kd := int(KIND_OF_CHAR.get(ks[i], K.NORMAL))
-				t.add_block(Vector3i(c.x, i + 1, c.y), false, kd, BOMB_FUSE if kd == K.BOMB else 0)
+				t.add_block(Vector3i(c.x, i + 1, c.y), false, kd, int(room.get("fuse", BOMB_FUSE)) if kd == K.BOMB else 0)
 	t.player = Vector3i(entry.x, 1, entry.y)
 	t.goal_y = h + 1
 	t.goal_ids = {goal_id: true}
@@ -342,6 +344,63 @@ static func difficulty(opt: Dictionary) -> float:
 	return clampf(float(opt.get("grabs", 0)) / moves, 0.0, 1.0)
 
 
+static func has_bomb(room: Dictionary) -> bool:
+	for c in room.cols:
+		if String(room.cols[c]).contains("b"):
+			return true
+	return false
+
+
+## Cuántos movimientos cuenta (como máximo) una bomba a lo largo del camino con la cuenta `fuse`: lo que gastó antes de desactivarse o hasta el final.
+static func bomb_ticks(room: Dictionary, path: Array, fuse: int) -> int:
+	var r := copy_room(room)
+	r["fuse"] = fuse
+	var t = build_state(r)
+	var last := {}
+	for id in t.bomb_timer:
+		last[id] = fuse
+	for a in path:
+		t.try_action(a.dir, a.mode)
+		for id in last:
+			if t.bomb_timer.has(id):
+				last[id] = t.bomb_timer[id]
+		if t.lost:
+			break
+	var most := 0
+	for id in last:
+		most = maxi(most, fuse - int(last[id]))
+	return most
+
+
+## La sala con la cuenta de sus bombas afinada: lo mínimo que hace falta para llegar (camino más corto con una cuenta holgada) más BOMB_SPARE. {} si no se resuelve.
+## (Una bomba cuenta sólo mientras el jugador está en su zona, ver TowerLogic.in_bomb_zone: sin afinar, la cuenta fija de antes ya no tiene sentido.)
+static func tune_fuse(room: Dictionary, cap := 600000, max_ms := 15000) -> Dictionary:
+	var probe := copy_room(room)
+	probe["fuse"] = BOMB_PROBE_FUSE
+	var t = build_state(probe)
+	var res: Dictionary = Solver.solve(t, int(room.h) + 1, {"max_states": cap, "goal_ids": t.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": max_ms})
+	if res.status != "solved":
+		return {}
+	# la cuenta mínima con la que la sala todavía se resuelve (por cualquier camino; más cuenta, más caminos: se busca por bisección) más BOMB_SPARE: así la bomba aprieta de verdad
+	var hi := bomb_ticks(probe, res.path, BOMB_PROBE_FUSE) + 1
+	var lo := 1
+	while lo < hi:
+		var mid := (lo + hi) / 2
+		var p2 := copy_room(room)
+		p2["fuse"] = mid
+		var t2 = build_state(p2)
+		var r2: Dictionary = Solver.solve(t2, int(room.h) + 1, {"max_states": cap, "goal_ids": t2.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": max_ms})
+		if r2.status == "solved":
+			hi = mid
+		elif r2.status == "unsolvable":
+			lo = mid + 1
+		else:
+			return {}
+	var out := copy_room(room)
+	out["fuse"] = hi + BOMB_SPARE
+	return out
+
+
 ## Completa y deja coherente la sala con el resultado de una evaluación (camino, métricas, hashes).
 static func apply_result(room: Dictionary, path: Array, proof: String, lower: int, states: int) -> void:
 	path = simplify_path(room, path)
@@ -399,6 +458,10 @@ const SPECIAL_CHARS := ["i", "c", "b", "k", "t", "s"]
 
 ## Resuelve la sala con el solucionador exacto (camino más corto, y entre los más cortos el de menos agarres), comprueba que no se resuelva caminando y que pida mover bloques. La sala con el resultado, o {}.
 static func exact_room(room: Dictionary, cap := 600000, max_ms := 15000) -> Dictionary:
+	if has_bomb(room):
+		room = tune_fuse(room, cap, max_ms)
+		if room.is_empty():
+			return {}
 	var t = build_state(room)
 	var res: Dictionary = Solver.solve(t.clone(), int(room.h) + 1, {"max_states": cap, "goal_ids": t.goal_ids, "admissible": true, "prefer_plain": true, "max_ms": max_ms})
 	if res.status != "solved":
@@ -857,9 +920,12 @@ static func to_dict(room: Dictionary) -> Dictionary:
 	var slots := {}
 	for k in room.slots:
 		slots[k] = room.slots[k]
-	return {"format": FORMAT, "rules": room.rules, "id": room.id, "family": room.family, "pattern": room.pattern, "shape": room.shape, "h": room.h, "cells": cells,
+	var out := {"format": FORMAT, "rules": room.rules, "id": room.id, "family": room.family, "pattern": room.pattern, "shape": room.shape, "h": room.h, "cells": cells,
 		"entry": [room.entry.x, room.entry.y], "exit": [room.exit.x, room.exit.y], "cols": cols, "path": path_string(room.path), "opt": room.opt,
 		"origin": room.origin, "parent": room.parent, "variant_of": room.variant_of, "slots": slots, "variants": room.variants, "status": room.status, "note": room.note, "stamp": room.stamp}
+	if room.has("fuse"):
+		out["fuse"] = int(room.fuse)
+	return out
 
 
 ## Vuelve a armar la sala desde un Dictionary leído de JSON. {} si no es una sala válida.
@@ -890,6 +956,8 @@ static func from_dict(d: Dictionary) -> Dictionary:
 	room.status = str(d.get("status", "nuevo"))
 	room.note = str(d.get("note", ""))
 	room.stamp = int(d.get("stamp", 0))
+	if d.has("fuse"):
+		room["fuse"] = int(d.fuse)
 	room.rules = int(d.get("rules", 0))
 	room.id = str(d.get("id", ""))
 	room.family = str(d.get("family", ""))

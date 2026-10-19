@@ -161,13 +161,13 @@ func test_totem() -> void:
 	var run := RunState.new()
 	run.stage = 5
 	var base := run.restart_cost()
-	check(base > 0 and run.restart_cost(true) == base, "sin Tótem reintentar cuesta lo de siempre (también después de morir)")
+	check(base > 0 and run.restart_cost(true) == 0, "reintentar por voluntad cuesta claridad, pero después de morir no (el costo ya es la vida)")
 	run.consumables.assign(["totem", "freno"])
 	check(run.restart_cost() == base, "con Tótem, reintentar por voluntad (sin morir) cuesta igual")
 	check(run.restart_cost(true) == 0 and run.can_afford_restart(true), "con Tótem, reintentar después de morir es gratis")
 	run.note_retry(true)
 	check(run.consumables == ["freno"] and run.retries == 1, "el Tótem se gasta al reintentar gratis")
-	check(run.restart_cost(true) > 0, "y sin él vuelve a costar")
+	check(run.restart_cost(true) == 0, "y sin él, después de morir sigue sin costar claridad (el costo es la vida)")
 	# después de morir el Tótem tiene prioridad (cubre también la vida) y el seguro queda para otro reintento
 	run.consumables.assign(["totem"])
 	run.insurance = true

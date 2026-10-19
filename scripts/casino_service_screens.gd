@@ -3,10 +3,14 @@ extends RefCounted
 ## Todas se abren como los juegos (casino_scene._open_screen): `setup(run, rng, quick)`, señal `closed` al salir y `resolved` cuando algo cambió
 ## en el run (hay que guardar).
 
+const NumberFormat := preload("res://scripts/number_format.gd")
 const Services := preload("res://scripts/casino_services.gd")
+const Showcase := preload("res://scripts/showcase.gd")
 const Items := preload("res://scripts/items.gd")
 const ItemSlot := preload("res://scripts/item_slot.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Loc := preload("res://scripts/loc.gd")
@@ -21,13 +25,16 @@ static func make(id: String) -> Control:
 	match id:
 		"taller": return TallerScreen.new()
 		"caja": return CajaScreen.new()
+		"tienda": return TiendaScreen.new()
 	return SeguroScreen.new()
 
 
 ## Lo común: fondo, contador de claridad, Salir, título y una columna central.
 class Base extends Control:
+	var hints
 	signal resolved
 	signal closed
+	signal open_shop   ## se pidió ir a la tienda (las estaciones tienen un botón; la tienda no)
 
 	var run
 	var rng: RandomNumberGenerator
@@ -67,10 +74,21 @@ class Base extends Control:
 		var gap := Control.new()
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(gap)
+		if service_id != "tienda":
+			var shop_button := UI.button("Tienda", false, 3.0, 20, false)
+			shop_button.name = "tienda"
+			shop_button.pressed.connect(func(): open_shop.emit())
+			top.add_child(shop_button)
 		exit_button = UI.button("Salir", false, 3.0, 16, false)
 		exit_button.name = "salir"
 		exit_button.pressed.connect(func(): request_close())
 		top.add_child(exit_button)
+		var replaced: Array = [exit_button]
+		var shop_node := top.get_node_or_null("tienda")
+		if shop_node != null:
+			replaced.append(shop_node)
+		hints = PadHints.attach(self, [], replaced)
+		_set_hints([])
 		var center := CenterContainer.new()
 		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		center.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -83,6 +101,19 @@ class Base extends Control:
 		UI.label(col, str(Services.INFO[service_id].desc), 2.5, Color(0.8, 0.76, 0.92), true, 900)
 
 	func _build_body() -> void:
+		pass
+
+	## La botonera: lo propio de cada servicio, la tienda (LB o Q, salvo en la tienda misma) y salir.
+	func _set_hints(extra: Array) -> void:
+		var items: Array = extra.duplicate()
+		if service_id != "tienda":
+			items.append({"name": "LB", "key": "Q", "text": Loc.t("Tienda"), "keycode": KEY_Q, "call": func(): open_shop.emit()})
+		items.append({"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": func(): request_close()})
+		if hints != null:
+			hints.set_items(items)
+
+	## Mover la selección de los casilleros con las flechas (cada servicio con casilleros lo implementa).
+	func step_selection(_dir: int) -> void:
 		pass
 
 	func _refresh() -> void:
@@ -103,9 +134,18 @@ class Base extends Control:
 		closed.emit()
 
 	func _unhandled_input(event: InputEvent) -> void:
-		if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-			request_close()
-			get_viewport().set_input_as_handled()
+		if not visible or not (event is InputEventKey) or not event.pressed or event.echo:
+			return
+		match event.keycode:
+			KEY_ESCAPE:
+				request_close()
+				get_viewport().set_input_as_handled()
+			KEY_LEFT, KEY_UP:
+				step_selection(-1)
+				get_viewport().set_input_as_handled()
+			KEY_RIGHT, KEY_DOWN:
+				step_selection(1)
+				get_viewport().set_input_as_handled()
 
 
 ## Salón: vender o cambiar un boost o consumible.
@@ -142,6 +182,7 @@ class TallerScreen extends Base:
 		col.add_child(row)
 		sell_button = button(row, Loc.t("Vender"), "vender", func(): sell(), true, 40)
 		swap_button = button(row, Loc.t("Cambiar"), "cambiar", func(): swap(), false, 40)
+		hints.replaced.append_array(PadHints.hide_buttons([sell_button, swap_button]))   # (la botonera de abajo los reemplaza)
 		message = UI.label(col, "", 2.5, Color(0.9, 0.86, 1.0), true, 900)
 		message.custom_minimum_size = Vector2(900, 40)
 		message.vcenter = true
@@ -154,6 +195,7 @@ class TallerScreen extends Base:
 			slot.item_id = str(list[i])
 			slot.interactive = true
 			slot.pressed.connect(select.bind(kind, i))
+			slot.selected = (kind == sel_kind and i == sel_index)
 			row.add_child(slot)
 			slots["%s:%d" % [kind, i]] = slot
 		if list.is_empty():
@@ -163,6 +205,15 @@ class TallerScreen extends Base:
 		sel_kind = kind
 		sel_index = index
 		_refresh()
+
+	func step_selection(dir: int) -> void:
+		var keys: Array = slots.keys()
+		if keys.is_empty():
+			return
+		var i := keys.find("%s:%d" % [sel_kind, sel_index])
+		var nk: String = str(keys[0] if i < 0 else keys[posmod(i + dir, keys.size())])
+		var parts := nk.split(":")
+		select(parts[0], int(parts[1]))
 
 	func _selected_id() -> String:
 		var list: Array = run.boosts if sel_kind == "boost" else run.consumables
@@ -197,11 +248,12 @@ class TallerScreen extends Base:
 		var id := _selected_id()
 		if id == "":
 			sel_index = -1
-			info.text = Loc.t("Tocá un ítem para venderlo o cambiarlo.")
+			info.text = Loc.t("Toca un ítem para venderlo o cambiarlo.")
 			sell_button.disabled = true
 			swap_button.disabled = true
 			sell_button.set_label(Loc.t("Vender"))
 			swap_button.set_label(Loc.t("Cambiar"))
+			_update_taller_hints()
 			return
 		var it := Items.get_item(id)
 		info.text = "%s: %s" % [Loc.t(str(it.name)), Loc.t(str(it.desc))]
@@ -209,6 +261,104 @@ class TallerScreen extends Base:
 		swap_button.set_label(Loc.f("Cambiar (−%d)", [Services.swap_price(run)]))
 		sell_button.disabled = false
 		swap_button.disabled = Services.swap_options(run, sel_kind, sel_index).is_empty() or not run.can_afford(Services.swap_price(run))
+		_update_taller_hints()
+
+	func _update_taller_hints() -> void:
+		_set_hints([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir")},
+				{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": sell_button.text, "dim": sell_button.disabled, "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): if not sell_button.disabled: sell()},
+				{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": swap_button.text, "dim": swap_button.disabled, "keycode": KEY_SPACE, "call": func(): if not swap_button.disabled: swap()}])
+
+
+## La tienda: tres premios de la visita (uno épico, uno raro y uno común), a la venta a precio fijo. Caro pero seguro.
+class TiendaScreen extends Base:
+	var offers_row: HBoxContainer
+	var info: Control
+	var buy_button: Button
+	var sel := ""   # id de la oferta elegida
+	var slots := {}
+
+	func _init() -> void:
+		service_id = "tienda"
+
+	func _build_body() -> void:
+		offers_row = HBoxContainer.new()
+		offers_row.add_theme_constant_override("separation", 26)
+		offers_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.add_child(offers_row)
+		info = UI.label(col, "", 2.5, Draw.MARBLE, true, 900)
+		info.custom_minimum_size = Vector2(900, 70)
+		info.vcenter = true
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.add_child(row)
+		buy_button = button(row, Loc.t("Comprar"), "comprar", func(): buy(), true, 44)
+		hints.replaced.append_array(PadHints.hide_buttons([buy_button]))
+		message = UI.label(col, "", 2.5, Color(0.9, 0.86, 1.0), true, 900)
+		message.custom_minimum_size = Vector2(900, 40)
+		message.vcenter = true
+
+	func select(id: String) -> void:
+		sel = id
+		_refresh()
+
+	func step_selection(dir: int) -> void:
+		var ids: Array = slots.keys()
+		if ids.is_empty():
+			return
+		var i := ids.find(sel)
+		select(str(ids[0] if i < 0 else ids[posmod(i + dir, ids.size())]))
+
+	func buy() -> void:
+		var res: Dictionary = Showcase.buy(run, sel)
+		if res.ok:
+			Sfx.play("coin")
+			say(Loc.f("Compraste %s (−%d de claridad).", [Loc.t(str(Items.get_item(sel).name)), int(res.price)]), GOOD)
+			sel = ""
+			resolved.emit()
+		else:
+			say(Loc.t(str(res.error)), BAD)
+		_refresh()
+
+	func _refresh() -> void:
+		super._refresh()
+		slots.clear()
+		for ch in offers_row.get_children():
+			ch.queue_free()
+			offers_row.remove_child(ch)
+		var offers := Showcase.shop_offers(run)
+		for it in offers:
+			var box := VBoxContainer.new()
+			box.add_theme_constant_override("separation", 6)
+			var slot := ItemSlot.new()
+			slot.item_id = str(it.id)
+			slot.interactive = true
+			slot.pressed.connect(select.bind(str(it.id)))
+			slot.selected = (str(it.id) == sel)
+			slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			box.add_child(slot)
+			slots[str(it.id)] = slot
+			var price := UI.label(box, NumberFormat.fmt(Showcase.shop_price(run, it)), 3, UI.GOLD if run.can_afford(Showcase.shop_price(run, it)) else BAD, false)
+			price.name = "precio_" + str(it.id)
+			offers_row.add_child(box)
+		if offers.is_empty():
+			UI.label(offers_row, Loc.t("Ya no queda nada en la vitrina de la tienda."), 2.5, Color(0.6, 0.55, 0.7))
+		if sel == "" or Items.get_item(sel).is_empty() or not Showcase.shop_offers(run).any(func(o): return o.id == sel):
+			sel = ""
+			info.text = Loc.t("Toca un premio para ver qué hace.")
+			buy_button.disabled = true
+			buy_button.set_label(Loc.t("Comprar"))
+			_update_tienda_hints()
+			return
+		var item := Items.get_item(sel)
+		var p := Showcase.shop_price(run, item)
+		info.text = "%s: %s" % [Loc.t(str(item.name)), Loc.t(str(item.desc))]
+		buy_button.set_label(Loc.f("Comprar (−%d)", [p]))
+		buy_button.disabled = not run.can_afford(p)
+		_update_tienda_hints()
+
+	func _update_tienda_hints() -> void:
+		_set_hints([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir")},
+				{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": buy_button.text, "dim": buy_button.disabled, "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): if not buy_button.disabled: buy()}])
 
 
 ## Casino: guardar claridad con interés para el casino siguiente.
@@ -228,11 +378,12 @@ class CajaScreen extends Base:
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 16)
 		col.add_child(row)
-		deposit_buttons["cuarto"] = button(row, Loc.t("Guardar ¼"), "guardar_cuarto", func(): deposit(int(run.claridad / 4)), false, 34)
-		deposit_buttons["mitad"] = button(row, Loc.t("Guardar ½"), "guardar_mitad", func(): deposit(int(run.claridad / 2)), false, 34)
+		deposit_buttons["cuarto"] = button(row, Loc.t("Guardar 1/4"), "guardar_cuarto", func(): deposit(int(run.claridad / 4)), false, 34)
+		deposit_buttons["mitad"] = button(row, Loc.t("Guardar 1/2"), "guardar_mitad", func(): deposit(int(run.claridad / 2)), false, 34)
 		deposit_buttons["todo"] = button(row, Loc.t("Guardar todo"), "guardar_todo", func(): deposit(run.claridad), false, 40)
 		withdraw_button = button(col, Loc.t("Retirar (sin interés)"), "retirar", func(): withdraw(), false, 60)
 		withdraw_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		hints.replaced.append_array(PadHints.hide_buttons([deposit_buttons.cuarto, deposit_buttons.mitad, deposit_buttons.todo, withdraw_button]))
 		message = UI.label(col, "", 2.5, Color(0.9, 0.86, 1.0), true, 900)
 		message.custom_minimum_size = Vector2(900, 40)
 		message.vcenter = true
@@ -258,13 +409,17 @@ class CajaScreen extends Base:
 	func _refresh() -> void:
 		super._refresh()
 		if run.vault > 0:
-			vault_label.text = Loc.f("Guardado: %d. En el próximo casino cobrás %d (+%d %%).", [run.vault, Services.vault_payout(run), int(round(Services.VAULT_INTEREST * 100.0))])
+			vault_label.text = Loc.f("Guardado: %d. En el próximo casino cobras %d (+%d %%).", [run.vault, Services.vault_payout(run), int(round(Services.VAULT_INTEREST * 100.0))])
 		else:
 			vault_label.text = Loc.f("No hay nada guardado. Cada casino que pasa rinde un %d %% de interés.", [int(round(Services.VAULT_INTEREST * 100.0))])
 		deposit_buttons.cuarto.disabled = run.claridad < 4
 		deposit_buttons.mitad.disabled = run.claridad < 2
 		deposit_buttons.todo.disabled = run.claridad < 1
 		withdraw_button.disabled = run.vault <= 0
+		_set_hints([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": deposit_buttons.cuarto.text, "dim": deposit_buttons.cuarto.disabled, "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): deposit(int(run.claridad / 4))},
+				{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": deposit_buttons.mitad.text, "dim": deposit_buttons.mitad.disabled, "keycode": KEY_SPACE, "call": func(): deposit(int(run.claridad / 2))},
+				{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": deposit_buttons.todo.text, "dim": deposit_buttons.todo.disabled, "keycode": KEY_C, "call": func(): deposit(run.claridad)},
+				{"name": "RB", "key": "E", "text": withdraw_button.text, "dim": withdraw_button.disabled, "keycode": KEY_E, "call": func(): withdraw()}])
 
 
 ## Gran casino: seguro para el primer reintento de la próxima torre.
@@ -281,6 +436,7 @@ class SeguroScreen extends Base:
 		status_label.vcenter = true
 		buy_button = button(col, "", "contratar", func(): buy(), true, 60)
 		buy_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		hints.replaced.append_array(PadHints.hide_buttons([buy_button]))
 		message = UI.label(col, "", 2.5, Color(0.9, 0.86, 1.0), true, 900)
 		message.custom_minimum_size = Vector2(900, 40)
 		message.vcenter = true
@@ -299,8 +455,9 @@ class SeguroScreen extends Base:
 		super._refresh()
 		var price := Services.insurance_price(run)
 		if run.insurance:
-			status_label.text = Loc.t("Ya tenés seguro: el primer reintento de la próxima torre sale gratis.")
+			status_label.text = Loc.t("Ya tienes seguro: el primer reintento de la próxima torre sale gratis.")
 		else:
-			status_label.text = Loc.f("El primer reintento de la próxima torre costaría %d. Con el seguro, nada.", [Services.first_retry_cost(run)])
+			status_label.text = Loc.t("El primer reintento de la próxima torre costaría una vida. Con el seguro, nada.")
 		buy_button.set_label(Loc.f("Contratar (−%d)", [price]))
 		buy_button.disabled = run.insurance or not run.can_afford(price)
+		_set_hints([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": buy_button.text, "dim": buy_button.disabled, "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): if not buy_button.disabled: buy()}])

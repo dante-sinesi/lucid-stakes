@@ -11,6 +11,7 @@ const Scenarios := preload("res://scripts/scenarios.gd")
 const Trials := preload("res://scripts/trials.gd")
 const Cosmetics := preload("res://scripts/cosmetics.gd")
 const Characters := preload("res://scripts/characters.gd")
+const Demo := preload("res://scripts/demo.gd")
 const VERSION := 2
 
 ## Ruta del archivo (las pruebas la cambian para no tocar el perfil real).
@@ -21,7 +22,7 @@ static var _loaded_from := ""
 
 static func default_data() -> Dictionary:
 	return {"version": VERSION, "luz": 0, "luz_total": 0, "best_stage": 0, "runs": 0, "victories": 0, "trials_cleared": 0, "abilities": {}, "cosmetics": {},
-			"hat": "", "outfit": "", "characters": {"dante": true, "gaby": true}, "character": "dante", "blocks_seen": {}, "tutorial_done": false}
+			"hat": "", "outfit": "", "characters": {"gato": true, "perro": true, "dante": true, "gaby": true}, "character": "gato", "blocks_seen": {}, "tutorial_done": false}
 
 
 ## Carga el perfil (una vez por ruta). Si no hay archivo o está dañado, uno vacío.
@@ -39,10 +40,31 @@ static func load_profile() -> Dictionary:
 					if json.data.has(k):
 						data[k] = json.data[k]
 				_migrate_cosmetics(json.data)
-	for c in Characters.ALL:   # los personajes "de inicio" (Dante y Gaby) se tienen siempre
+	for c in Characters.ALL:   # los personajes "de inicio" (el gatito, el perrito, Dante y Gaby) se tienen siempre
 		if c.unlock == "inicio":
 			data.characters[c.id] = true
+	_apply_demo()
 	return data
+
+
+## La demo: los 4 personajes, 2 gorros y 2 prendas; el resto no se tiene (ni se puede ganar).
+static func _apply_demo() -> void:
+	if not Demo.on():
+		return
+	for id in data.characters.keys():
+		if not Demo.character_allowed(str(id)):
+			data.characters.erase(id)
+	for id in data.cosmetics.keys():
+		if not Demo.cosmetic_allowed(str(id)):
+			data.cosmetics.erase(id)
+	for id in Demo.HATS + Demo.OUTFITS:
+		data.cosmetics[id] = true
+	if not Demo.character_allowed(str(data.character)):
+		data.character = Characters.DEFAULT
+	if not Demo.cosmetic_allowed(str(data.hat)):
+		data.hat = ""
+	if not Demo.cosmetic_allowed(str(data.outfit)):
+		data.outfit = ""
 
 
 ## Cuando los cosméticos eran colores del cubo: se pasan a la ropa equivalente (lo ya ganado no se pierde) y el aspecto elegido se pone
@@ -75,6 +97,7 @@ static func save() -> void:
 static func reset() -> void:
 	data = default_data()
 	_loaded_from = path
+	_apply_demo()
 	save()
 
 
@@ -200,7 +223,7 @@ static func owned_cosmetics() -> Array[String]:
 
 
 static func has_cosmetic(id: String) -> bool:
-	return id == "" or load_profile().cosmetics.has(id)
+	return id == "" or (Demo.cosmetic_allowed(id) and load_profile().cosmetics.has(id))
 
 
 ## Da un cosmético. Devuelve true si es nuevo.
@@ -249,12 +272,12 @@ static func owned_characters() -> Array[String]:
 
 
 static func has_character(id: String) -> bool:
-	return load_profile().characters.has(id)
+	return Demo.character_allowed(id) and load_profile().characters.has(id)
 
 
 ## Desbloquea un personaje. Devuelve true si es nuevo.
 static func unlock_character(id: String) -> bool:
-	if Characters.get_character(id).id != id or has_character(id):
+	if Characters.get_character(id).id != id or has_character(id) or not Demo.character_allowed(id):
 		return false
 	load_profile().characters[id] = true
 	save()
@@ -275,9 +298,9 @@ static func character() -> String:
 	return id if has_character(id) else Characters.DEFAULT
 
 
-## Se superó una prueba: desbloquea al perrito. Devuelve los personajes nuevos.
+## Se superó una prueba (el perrito ya no se gana así: se tiene desde el principio). Devuelve los personajes nuevos.
 static func on_trial_cleared() -> Array[String]:
-	return _unlocked(["perro"])
+	return _unlocked([])
 
 
 ## Se ganó una habilidad: la de la prueba del Hielo total desbloquea al pingüino.
@@ -285,11 +308,9 @@ static func on_ability(ability_id: String) -> Array[String]:
 	return _unlocked(["pinguino"] if ability_id == "garras_de_hielo" else [])
 
 
-## Se llegó a una etapa: la 2 desbloquea al gatito y la 6 al conejito.
+## Se llegó a una etapa: la 6 desbloquea al conejito (el gatito ya se tiene desde el principio).
 static func on_stage_reached(stage: int) -> Array[String]:
 	var ids: Array = []
-	if stage >= 2:
-		ids.append("gato")
 	if stage >= 6:
 		ids.append("conejo")
 	return _unlocked(ids)

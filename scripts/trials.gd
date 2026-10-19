@@ -21,17 +21,17 @@ const FOG_ABOVE := 3        # pisos que se ven por encima del jugador con niebla
 const DARK_RADIUS := 4.5    # distancia (en celdas) hasta la que se ven los bloques en la oscuridad
 
 const CATALOG := {
-	"niebla": {"name": "Niebla", "desc": "Sólo ves unos pocos pisos por encima de vos.", "fog": true},
-	"oscuridad": {"name": "Oscuridad", "desc": "Sólo ves los bloques que tenés cerca.", "dark": true},
+	"niebla": {"name": "Niebla", "desc": "Solo ves unos pocos pisos por encima de ti.", "fog": true},
+	"oscuridad": {"name": "Oscuridad", "desc": "Solo ves los bloques que tienes cerca.", "dark": true},
 	"prisa": {"name": "Prisa", "desc": "La fila de abajo cae mucho más rápido.", "pace": "fast"},
 	"sin_ayudas": {"name": "Sin ayudas", "desc": "No se pueden usar consumibles.", "no_items": true},
-	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caés, se termina el run.", "no_retry": true},
+	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caes, se termina el run.", "no_retry": true},
 	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true},
 	"hielo_total": {"name": "Hielo total", "desc": "La torre está llena de hielo.",
 			"bias": {"kinds": {K.ICE: 1.6}, "plat_ice": 0.35, "cap_bonus": 3}},
 	"quebradizo": {"name": "Quebradizo", "desc": "Casi todo se rompe al pisarlo o no se mueve.",
 			"bias": {"kinds": {K.CRACKED: 1.2, K.HEAVY: 0.8}, "cap_bonus": 3}},
-	"meteoritos": {"name": "Lluvia de meteoritos", "desc": "Cada vez que te movés cae un meteorito y destruye un bloque (se marca antes). Nunca te cierra el camino.", "meteors": true},
+	"meteoritos": {"name": "Lluvia de meteoritos", "desc": "Cada vez que te mueves cae un meteorito y destruye un bloque (se marca antes). Nunca te cierra el camino.", "meteors": true},
 	"polvorin": {"name": "Polvorín", "desc": "La torre está llena de bombas.",
 			"bias": {"kinds": {K.BOMB: 1.2}, "cap_bonus": 2}},
 }

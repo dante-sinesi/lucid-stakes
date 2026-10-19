@@ -37,12 +37,16 @@ signal left
 signal roulette_opened
 signal changed   ## el run cambió (se jugó una tirada): hay que guardar
 signal story_message(text: String)   ## en el modo historia (tutorial): algo que el tabernero tiene para decir
+signal toll_talk   ## se llegó a la puerta de salida (o se habló con Farolín): el juego muestra su diálogo con las salidas (toll_dialog)
+signal redo_tower   ## se eligió rehacer la torre: se pierde una vida y se vuelve a subir la misma
+signal gave_up   ## se eligió abandonar (sin vidas y sin pagar): se termina el run
 signal keeper_talk(lines: Array)   ## se habló con el tabernero: lo que dice (el juego lo muestra en el cuadro de diálogo)
 
 const STEP_TIME := 0.14
+const FAROLIN_SCALE := 2.6   # (Farolín mide 0,55: así queda un poco más alto que el personaje)
 const PITCH := -35.264
 const PITCH_MIN := -86.0
-const PITCH_MAX := -10.0
+const PITCH_MAX := 80.0   # (positivo = mirando desde abajo del horizonte, como en el editor)
 const MOUSE_SENS := 0.28       # grados por píxel (igual que en la torre)
 const ARROW_SPEED := 110.0     # grados por segundo al girar con las flechas
 const ZOOM_FACTOR := 1.1
@@ -75,11 +79,18 @@ var lives_hud
 var item_tip: Control
 var overlay: CanvasLayer
 var screen
+var _toast_tween: Tween
 var _walk_tween: Tween
 var _cam_tween: Tween
 var story := false            # modo historia (tutorial): la ruleta no se abre y no se ve la interfaz de juego
 var input_locked := false     # mientras habla el tabernero no se camina
 var portals: Array[MeshInstance3D] = []   # los portales de las paredes
+const Farolin := preload("res://scripts/farolin.gd")
+const Demo := preload("res://scripts/demo.gd")
+const Items := preload("res://scripts/items.gd")
+const Showcase := preload("res://scripts/showcase.gd")
+var toll_base := 0            # el precio de Farolín en la puerta de salida (0: no cobra; tutorial, entrenamiento y pruebas); lo que se paga sale de acá con los descuentos (toll_now)
+var _farolin: Node3D
 var _arrow: Node3D            # flecha que marca la puerta de salida
 var _t := 0.0
 var quick := false            # pruebas: sin animaciones
@@ -91,6 +102,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	run = run_state
 	rng = random
 	lay = Room.layout(run.stage, int(run.scenario().get("casino_tier", -1)))
+	lay["farolin_on"] = toll_base > 0   # (Farolín ocupa su celda sólo si el casino cobra)
 	cell = lay.entry
 	if not story:
 		CasinoTheme.apply_ui(int(lay.tier))   # los botones y textos se limpian según el nivel de la sala (se restablece al salir)
@@ -98,6 +110,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	if not story:
 		vault_paid = Services.enter(run)   # expira el seguro sin usar y se paga la caja fuerte del casino anterior
 		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
+		Showcase.enter(run, rng)   # la vitrina de premios de esta visita (showcase.gd)
 	_build_room()
 	_build_portals()
 	_build_player()
@@ -105,10 +118,11 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	_build_hud()
 	if story:
 		hud_layer.visible = false
+	facing = Vector2i(1, 0)   # (al llegar mira hacia adentro de la sala, como si saliera del portal de la pared oeste)
 	_place_player()
 	_vault_paid = vault_paid
 	if vault_paid > 0:
-		_flash(Loc.f("Caja fuerte: cobrás %d de claridad (con interés).", [vault_paid]))
+		_flash(Loc.f("Caja fuerte: cobras %d de claridad (con interés).", [vault_paid]))
 	_refresh_hud()
 
 
@@ -179,6 +193,78 @@ func _build_portals() -> void:
 			mi.rotation_degrees.y = 90.0
 		walls[side].append(mi)
 		portals.append(mi)
+	_build_farolin()
+	_update_toll_ui()
+
+
+## Farolín, junto a la puerta de salida (en su celda, libre de muebles y mirando a la cámara): cobra el precio de la torre que sigue. El portal queda apagado hasta que se le paga.
+func toll_now() -> int:
+	return run.toll_after_discounts(toll_base)
+
+
+func _build_farolin() -> void:
+	if toll_base <= 0:
+		return
+	_farolin = Farolin.build()
+	_farolin.scale = Vector3.ONE * FAROLIN_SCALE
+	_farolin.position = Room.world_of_cell(lay.farolin, lay)
+	_farolin.rotation_degrees.y = yaw_target
+	add_child(_farolin)
+
+
+## Lo que dice Farolín al llegar a la puerta y las salidas que ofrece (ver Farolin.toll_dialog).
+func toll_dialog() -> Dictionary:
+	return Farolin.toll_dialog(toll_now(), run.claridad, run.can_revive(), run.lives > 0)
+
+
+## ¿La celda de Farolín está dentro de la sala, libre de muebles y máquinas, y se llega a la puerta de salida caminando?
+func farolin_cell_free() -> bool:
+	if not lay.has("farolin") or not Room.in_room(lay.farolin, lay):
+		return false
+	var f: Vector2i = lay.farolin
+	if f == lay.exit or f == lay.entry or f == lay.dealer or lay.table.has_point(f) or lay.machines.has(f) or lay.obstacles.has(f) or (lay.has("station") and f == lay.station.cell):
+		return false
+	for ct in lay.card_tables:
+		if ct.has_point(f):
+			return false
+	var reach := Room.reachable(lay.entry, lay)
+	return reach.has(lay.exit)
+
+
+## Se llegó a la puerta (o se habló con Farolín): el juego abre el diálogo.
+func ask_toll() -> void:
+	toll_talk.emit()
+
+
+## Se eligió pagar: se cobra, vale una sola vez el soborno, se suma el interés y se pasa a la torre que sigue. false si no alcanza.
+func pay_toll() -> bool:
+	var price := toll_now()
+	if run.claridad < price:
+		return false
+	if price > 0:
+		run.spend(price)
+		run.toll_bribe = false   # (el soborno vale para una sola vez)
+		var interest: int = run.apply_interest()
+		if interest > 0:
+			_flash(Loc.f("Interés: +%d de claridad", [interest]))
+		_refresh_hud()
+	leaving = true
+	_update_toll_ui()
+	left.emit()
+	return true
+
+
+## El portal de salida se prende sólo al pagarle a Farolín; el precio se ve arriba a la izquierda (en rojo si falta).
+func _update_toll_ui() -> void:
+	var price := toll_now()
+	if hud_panel != null:
+		hud_panel.set_toll(price, run.claridad < price)
+	if not portals.is_empty():
+		var mat := portals[0].material_override as ShaderMaterial
+		if mat != null:
+			mat.set_shader_parameter("lit", 1.0 if (toll_base <= 0 or leaving) else 0.0)   # el portal se prende al pagarle a Farolín, no antes
+	if _farolin != null:
+		_farolin.set_mood("contento" if run.claridad >= price else "triste")
 
 
 func _build_player() -> void:
@@ -232,7 +318,7 @@ func _build_hud() -> void:
 	layer.add_child(hud_panel)
 	lives_hud = hud_panel.lives
 	clarity_counter = hud_panel.clarity
-	hud_panel.set_toll(RunState.toll_for(run.stage + 1))   # lo que va a cobrar el duende del portal de la próxima torre
+	_update_toll_ui()   # lo que cobra Farolín de la puerta de salida
 	item_tip = _label(layer, 2, Color(0.95, 0.93, 0.88))
 	item_tip.wrap_px = 460
 	item_tip.plate_alpha = 0.85
@@ -244,6 +330,7 @@ func _build_hud() -> void:
 	left_bar.tip = item_tip
 	left_bar.setup(run, ItemBar.Kind.CONSUMABLE, false)
 	left_bar.discarded.connect(_on_item_discarded)
+	left_bar.slot_pressed.connect(use_consumable_slot)
 	right_bar = ItemBar.new()
 	layer.add_child(right_bar)
 	right_bar.edge = 1
@@ -277,6 +364,57 @@ func _place_player() -> void:
 	player_node.rotation.y = atan2(facing.x, facing.y)
 
 
+## Usa un consumible dentro del casino: sólo los que sirven acá (Vida extra y Soborno; los demás son de la torre).
+func use_consumable_slot(slot: int) -> void:
+	if busy or leaving or input_locked or screen != null or story or slot >= run.consumables.size():
+		return
+	var id: String = run.consumables[slot]
+	if not Items.CASINO_USABLE.has(id):
+		_flash(Loc.t("Ese consumible sólo se usa en la torre"))
+		return
+	if run.item_blocked(id):
+		_flash(Loc.t("No funciona en este escenario"))
+		return
+	if id == "vida_extra":
+		if not run.add_life():
+			_flash(Loc.f("Ya tienes las %d vidas", [run.max_lives()]))
+			return
+		run.use_consumable(id)
+		_flash(Loc.t("¡Una vida más!"))
+	elif id == "ficha_gratis":
+		if run.free_chip:
+			_flash(Loc.t("Ya tienes una ficha gratis lista"))
+			return
+		run.free_chip = true
+		run.use_consumable(id)
+		_flash(Loc.t("Tu próxima apuesta no cuesta la ficha"))
+	elif id == "rayos_x":
+		if run.xray:
+			_flash(Loc.t("Ya tienes los rayos X listos"))
+			return
+		run.xray = true
+		run.use_consumable(id)
+		_flash(Loc.t("En tu próxima mano de blackjack ves la carta tapada"))
+	elif id == "doble_o_nada":
+		var visit = run.casino_visit
+		if not (visit is Dictionary) or visit.is_empty() or bool(visit.get("double", false)):
+			_flash(Loc.t("No se puede usar ahora"))
+			return
+		run.casino_visit["double"] = true
+		run.use_consumable(id)
+		_flash(Loc.t("Lo que ganes en esta visita vale el doble"))
+	elif id == "soborno":
+		if toll_base <= 0 or run.toll_bribe:
+			_flash(Loc.t("Farolín no cobra, o ya lo sobornaste"))
+			return
+		run.toll_bribe = true
+		run.use_consumable(id)
+		_flash(Loc.f("Farolín te cobra un 30 %% menos: %d", [toll_now()]))
+	Sfx.play("item")
+	_refresh_hud()
+	changed.emit()
+
+
 ## Se tiró un ítem con clic derecho en una barra: se actualiza el HUD y se avisa para guardar.
 func _on_item_discarded(_kind: int, id: String) -> void:
 	_flash(Loc.f("Tiraste %s.", [Loc.t(str(preload("res://scripts/items.gd").get_item(id).get("name", id)))]))
@@ -293,12 +431,16 @@ func _refresh_hud() -> void:
 		right_bar.refresh()
 	hud.text = "Casino"
 	clarity_counter.value = run.claridad
+	_update_toll_ui()
 
 
 func _flash(msg: String) -> void:
 	toast.text = msg
 	toast.modulate.a = 1.0
-	create_tween().tween_property(toast, "modulate:a", 0.0, 3.0).set_delay(1.5)
+	if _toast_tween != null:   # (un solo desvanecer a la vez: si no, los viejos pisan la transparencia del aviso nuevo)
+		_toast_tween.kill()
+	_toast_tween = create_tween()
+	_toast_tween.tween_property(toast, "modulate:a", 0.0, 3.0).set_delay(1.5)
 
 
 ## Intenta dar un paso hacia `dir` (en celdas). Devuelve qué pasó: "moved", "blocked", "roulette", "soon" o "exit".
@@ -309,8 +451,12 @@ func step(dir: Vector2i) -> String:
 	player_node.rotation.y = atan2(dir.x, dir.y)
 	var n := cell + dir
 	if not Room.in_room(n, lay):
-		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida
+		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida: Farolín cobra (si no cobra, se pasa directo)
+			if toll_now() > 0:
+				ask_toll()
+				return "blocked"
 			leaving = true
+			_update_toll_ui()
 			left.emit()
 			return "exit"
 		return "blocked"
@@ -348,6 +494,9 @@ func _on_arrived() -> void:
 
 ## Chocar contra lo que no se camina: la mesa de la ruleta se abre; el resto avisa.
 func _bump(n: Vector2i) -> String:
+	if toll_base > 0 and lay.get("farolin_on", false) and n == lay.farolin:   # Farolín: se habla con él (el peaje)
+		ask_toll()
+		return "farolin"
 	if n == lay.dealer:   # el tabernero: se habla con él (en el tutorial todavía no hay nada de qué hablar)
 		if story:
 			story_message.emit(Story.BLOCKED_TABLE)
@@ -387,7 +536,7 @@ func interact() -> String:
 	if busy or leaving or input_locked:
 		return "blocked"
 	var n := cell + facing
-	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell):
+	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell) or (toll_base > 0 and n == lay.farolin):
 		return _bump(n)
 	for ct in lay.card_tables:
 		if ct.has_point(n):
@@ -415,6 +564,9 @@ func open_roulette() -> void:
 
 
 func open_slots() -> void:
+	if Demo.on():   # la demo: las tragamonedas son del juego completo
+		_flash(Demo.casino_text())
+		return
 	_open_screen(SlotsScreen.new())
 
 
@@ -424,6 +576,9 @@ func open_service() -> void:
 
 
 func open_blackjack() -> void:
+	if Demo.on():   # la demo: el blackjack es del juego completo
+		_flash(Demo.casino_text())
+		return
 	_open_screen(BlackjackScreen.new())
 
 
@@ -441,6 +596,10 @@ func _open_screen(new_screen: Control) -> void:
 	screen.setup(run, rng, quick)
 	screen.closed.connect(close_roulette)
 	screen.resolved.connect(func(): changed.emit())
+	if screen.has_signal("open_shop"):   # las estaciones de servicio tienen un botón para pasar a la tienda
+		screen.open_shop.connect(func():
+			close_roulette()
+			_open_screen(ServiceScreens.make("tienda")))
 	hud_layer.visible = false   # el juego ocupa toda la pantalla: la interfaz del casino no se ve detras
 
 
@@ -528,7 +687,7 @@ func show_exit_arrow(on: bool) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if screen == null and pivot != null:   # las flechas giran (izquierda y derecha) e inclinan (arriba y abajo) la cámara, como en la torre
+	if screen == null and pivot != null and not input_locked:   # (mientras hay una decisión o habla alguien las flechas eligen, no giran la cámara) las flechas giran (izquierda y derecha) e inclinan (arriba y abajo) la cámara, como en la torre
 		var ax := int(Controls.held("camara_derecha")) - int(Controls.held("camara_izquierda"))
 		var ay := int(Controls.held("camara_abajo")) - int(Controls.held("camara_arriba"))
 		if ax != 0 or ay != 0:
@@ -564,6 +723,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		"mover_derecha": step(_dir_for_screen(1, -1))
 		"mover_atras": step(_dir_for_screen(-1, -1))
 		"mover_izquierda": step(_dir_for_screen(-1, 1))
+		"consumible_1": use_consumable_slot(0)
+		"consumible_2": use_consumable_slot(1)
+		"consumible_3": use_consumable_slot(2)
+		"consumible_4": use_consumable_slot(3)
 		_:
 			if event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 				interact()

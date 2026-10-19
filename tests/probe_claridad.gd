@@ -1,5 +1,5 @@
 extends SceneTree
-## Cuánta claridad junta el camino óptimo de una torre generada (para fijar el peaje del duende).
+## Cuánta claridad junta el camino óptimo de una torre generada (para fijar el peaje de Farolín).
 const Rooms := preload("res://scripts/rooms.gd")
 const Gen := preload("res://scripts/tower_gen.gd")
 const Scenarios := preload("res://scripts/scenarios.gd")

@@ -3,6 +3,8 @@ extends Control
 ## Avisa con señales; main.gd decide qué hacer.
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const SwirlBG := preload("res://scripts/swirl_bg.gd")
@@ -10,8 +12,9 @@ const MetaScreen := preload("res://scripts/meta_screen.gd")
 const ScenarioScreen := preload("res://scripts/scenario_screen.gd")
 const CosmeticsScreen := preload("res://scripts/cosmetics_screen.gd")
 const OptionsScreen := preload("res://scripts/options_screen.gd")
-const BlockGuideScreen := preload("res://scripts/block_guide_screen.gd")
 const Loc := preload("res://scripts/loc.gd")
+const Demo := preload("res://scripts/demo.gd")
+const VoxelLabel := preload("res://scripts/voxel_label.gd")
 
 signal new_game(scenario_id: String)
 signal continue_game
@@ -23,10 +26,12 @@ var buttons := {}
 var credits: Control
 var licenses: Control
 var scenarios: Control   # selector de escenario (al tocar Nueva partida)
+var soon_label: Control   # el aviso de "Disponible en la versión completa"
+var _soon_tween: Tween
 var cosmetics: Control   # pantalla de cosméticos
 var meta: Control   # pantalla del Despertar (meta-progresión)
 var options: Control   # pantalla de opciones
-var guide: Control   # guía de bloques
+var main_hints
 var credits_button: Button
 var main_center: CenterContainer
 var column: VBoxContainer
@@ -54,9 +59,8 @@ func _init() -> void:
 	_button("continuar", Loc.t("Continuar"), true, func(): continue_game.emit())
 	buttons["continuar"].visible = false
 	_button("nueva", Loc.t("Nueva partida"), false, func(): show_panel("escenarios"))
-	_button("despertar", Loc.t("Habilidades"), false, func(): show_panel("despertar"))
+	_button("despertar", Loc.t("Habilidades"), false, _open_abilities)
 	_button("cosmeticos", Loc.t("Personaje"), false, func(): show_panel("cosmeticos"))
-	_button("guia", Loc.t("Guía de bloques"), false, func(): show_panel("guia"))
 	_button("opciones", Loc.t("Opciones"), false, func(): show_panel("opciones"))
 	_button("salir", Loc.t("Salir"), false, func(): quit_game.emit())
 	credits = UI.make_credits_panel(func(): show_panel("principal"), func(): show_panel("licencias"))
@@ -77,9 +81,6 @@ func _init() -> void:
 	meta = MetaScreen.new()
 	meta.back.connect(func(): show_panel("principal"))
 	add_child(meta)
-	guide = BlockGuideScreen.new()
-	guide.back.connect(func(): show_panel("principal"))
-	add_child(guide)
 	options = OptionsScreen.new()
 	options.back.connect(func(): show_panel("principal"))
 	options.language_changed.connect(func(): language_changed.emit())
@@ -94,6 +95,37 @@ func _init() -> void:
 	credits_button.pressed.connect(func(): show_panel("creditos"))
 	add_child(credits_button)
 	buttons["creditos"] = credits_button
+	main_hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
+			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Créditos"), "keycode": KEY_C, "call": func(): show_panel("creditos"), "when": func(): return main_center.visible}], [credits_button])
+
+
+## Habilidades persistentes: en la demo el botón sólo avisa que es del juego completo.
+func _open_abilities() -> void:
+	if Demo.on():
+		soon_message(Demo.full_text())
+		return
+	show_panel("despertar")
+
+
+## Un aviso corto abajo en el medio del menú (se desvanece solo).
+func soon_message(text: String) -> void:
+	if soon_label == null:
+		soon_label = VoxelLabel.new()
+		soon_label.cube = 3.0
+		soon_label.color = Color(1.0, 0.85, 0.4)
+		soon_label.align = VoxelLabel.Align.CENTER
+		soon_label.plate_alpha = 0.6
+		soon_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		soon_label.name = "aviso"
+		add_child(soon_label)
+	soon_label.text = text
+	soon_label.y_offset = 640.0
+	soon_label.modulate.a = 1.0
+	if _soon_tween != null:
+		_soon_tween.kill()
+	_soon_tween = create_tween()
+	_soon_tween.tween_interval(1.6)
+	_soon_tween.tween_property(soon_label, "modulate:a", 0.0, 0.8)
 
 
 func _button(id: String, text: String, primary: bool, action: Callable) -> void:
@@ -113,9 +145,11 @@ func set_continue(stage_saved: int) -> void:
 	buttons["continuar"].primary = stage_saved > 0
 
 
-## Muestra una sola pantalla: "principal", "escenarios", "despertar", "cosmeticos", "guia", "opciones", "creditos" o "licencias".
+## Muestra una sola pantalla: "principal", "escenarios", "despertar", "cosmeticos", "opciones", "creditos" o "licencias".
 func show_panel(which: String) -> void:
 	main_center.visible = which == "principal"
+	if main_hints != null:
+		main_hints.visible = which == "principal"
 	credits.visible = which == "creditos"
 	licenses.visible = which == "licencias"
 	scenarios.visible = which == "escenarios"
@@ -127,13 +161,9 @@ func show_panel(which: String) -> void:
 	options.visible = which == "opciones"
 	if which == "opciones":
 		options.refresh()
-	guide.visible = which == "guia"
-	if which == "guia":
-		guide.refresh()
 	meta.visible = which == "despertar"
 	if which == "despertar":
 		meta.refresh()
-	credits_button.visible = which == "principal"
 	var panel: Control = main_center
 	match which:
 		"principal":
@@ -143,22 +173,19 @@ func show_panel(which: String) -> void:
 			scenarios.focus_default()
 		"cosmeticos":
 			panel = cosmetics
-			cosmetics.back_button.grab_focus()
+			cosmetics.focus_default()
 		"opciones":
 			panel = options
 			options.focus_default()
-		"guia":
-			panel = guide
-			guide.focus_default()
 		"despertar":
 			panel = meta
-			meta.back_button.grab_focus()
+			meta.focus_default()
 		"creditos":
 			panel = credits
-			credits.find_child("volver_creditos", true, false).grab_focus()
+			pass
 		"licencias":
 			panel = licenses
-			licenses.find_child("volver_licencias", true, false).grab_focus()
+			pass
 	MenuAnim.stagger(MenuAnim.buttons_in(panel), 0.05, 0.28, 0.05)
 
 

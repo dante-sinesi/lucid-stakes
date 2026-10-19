@@ -3,13 +3,6 @@ extends RefCounted
 
 const TABLE := {
 	"Licencias": "Licenses",
-	"Diseño y desarrollo: (agregar nombre)
-Arte, música y sonido: (agregar)
-
-Gracias por jugar.": "Design and development: (add name)
-Art, music and sound: (add)
-
-Thanks for playing.",
 	"General": "General",
 	"Gráficos": "Graphics",
 	"Sonido": "Sound",
@@ -43,13 +36,13 @@ Thanks for playing.",
 	"Acción": "Action",
 	"Teclado": "Keyboard",
 	"Mando": "Gamepad",
-	"Apretá una tecla...": "Press a key...",
-	"Apretá un botón...": "Press a button...",
+	"Aprieta una tecla...": "Press a key...",
+	"Aprieta un botón...": "Press a button...",
 	"Ya la usaba «%s»: se intercambiaron.": "«%s» was already using it: they were swapped.",
 	# dados
-	"Elegí qué cara va a salir en cada dado. Tenés 3 tiradas: los que acierten quedan retenidos.": "Pick which face will come up on each die. You get 3 throws: the dice that hit are held.",
-	"Verdes retenidos. Tirá los demás: te quedan %d tiradas.": "Green dice held. Throw the rest: %d throws left.",
-	"Verdes retenidos. Tirá los demás: última tirada.": "Green dice held. Throw the rest: last throw.",
+	"Elige qué cara va a salir en cada dado. Tienes 3 tiradas: los que acierten quedan retenidos.": "Pick which face will come up on each die. You get 3 throws: the dice that hit are held.",
+	"Verdes retenidos. Tira los demás: te quedan %d tiradas.": "Green dice held. Throw the rest: %d throws left.",
+	"Verdes retenidos. Tira los demás: última tirada.": "Green dice held. Throw the rest: last throw.",
 	"Se acabaron las tiradas. ¡Gracias por jugar!": "No throws left. Thanks for playing!",
 	# acciones
 	"Movimiento": "Movement",
@@ -92,4 +85,7 @@ Thanks for playing.",
 	"derecha": "right",
 	"arriba": "up",
 	"abajo": "down",
+	"Datos de juego": "Game data",
+	"Abrir la carpeta": "Open the folder",
+	"Tus datos quedan sólo en tu compu. Para ayudar, mandanos telemetria.jsonl.": "Your data stays on your computer. To help, send us telemetria.jsonl.",
 }

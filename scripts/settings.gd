@@ -9,6 +9,7 @@ const VDraw := preload("res://scripts/voxel_draw.gd")
 ## Resoluciones de ventana que se ofrecen (se filtran por el tamaño de la pantalla del jugador).
 const RESOLUTIONS: Array[Vector2i] = [Vector2i(854, 480), Vector2i(960, 540), Vector2i(1024, 576), Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
 const VOLUME_STEPS := 10
+const MUSIC_DEFAULT := 8   # la música arranca al 80 %
 ## Tamaños de interfaz que se ofrecen (porcentaje; 100 es el de siempre). Escala todo lo 2D: menús, HUD y pantallas de juego.
 const UI_SCALES: Array[int] = [80, 90, 100, 110, 125]
 
@@ -35,10 +36,13 @@ static func defaults() -> Dictionary:
 		"reading_mode": false,    # modo de lectura: letras más claras y con contorno (ver voxel_draw.gd)
 		"high_contrast": false,   # alto contraste: cartas oscuras de borde claro y la escena con más contraste y color
 		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
+		"focus_frame": false,     # marco blanco que titila alrededor del botón apuntado (ayuda con el mando; por defecto sólo las flechitas doradas)
 		"compass": true,          # rosa de los vientos (la que indica a qué eje va cada tecla)
 		"volume": VOLUME_STEPS,   # en pasos de 0 a VOLUME_STEPS
-		"music": VOLUME_STEPS,    # música (se multiplica por el volumen general)
+		"music": MUSIC_DEFAULT,   # música (se multiplica por el volumen general); por defecto al 80 %
 		"sfx": VOLUME_STEPS,      # efectos de sonido
+		"input_device": "auto",   # qué ayudas se muestran: "auto" (el último dispositivo que se tocó), "keyboard" o "pad"
+		"pad_style": "auto",      # los botones del mando que se dibujan: "auto" (según el mando conectado), "xbox" o "playstation"
 		"bindings": {},           # controles que el jugador cambió (ver controls.gd)
 		"graphics": {},           # gráficos que el jugador cambió (ver graphics.gd)
 	}
@@ -67,11 +71,16 @@ static func _sanitize() -> void:
 	data.reading_mode = data.reading_mode is bool and data.reading_mode
 	data.high_contrast = data.high_contrast is bool and data.high_contrast
 	data.compass = not (data.compass is bool) or data.compass
+	data.focus_frame = data.focus_frame is bool and data.focus_frame
 	var us := int(data.ui_scale)
 	data.ui_scale = us if UI_SCALES.has(us) else 100
 	data.volume = clampi(int(data.volume), 0, VOLUME_STEPS)
 	data.music = clampi(int(data.music), 0, VOLUME_STEPS)
 	data.sfx = clampi(int(data.sfx), 0, VOLUME_STEPS)
+	if not ["auto", "keyboard", "pad"].has(str(data.input_device)):
+		data.input_device = "auto"
+	if not ["auto", "xbox", "playstation"].has(str(data.pad_style)):
+		data.pad_style = "auto"
 	if not data.bindings is Dictionary:
 		data.bindings = {}
 	if not data.graphics is Dictionary:

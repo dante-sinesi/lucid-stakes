@@ -2,12 +2,12 @@ extends RefCounted
 ## Inglés: {frase en español: traducción}. Ver loc.gd.
 
 ## La tabla completa es la suma de varios archivos, uno por área, para que cada uno se pueda revisar por separado.
-const PARTS: Array[Script] = [preload("res://scripts/loc_en_data.gd"), preload("res://scripts/loc_en_story.gd"), preload("res://scripts/loc_en_ui.gd"), preload("res://scripts/loc_en_options.gd"), preload("res://scripts/loc_en_casino.gd")]
+const PARTS: Array[Script] = [preload("res://scripts/loc_en_data.gd"), preload("res://scripts/loc_en_story.gd"), preload("res://scripts/loc_en_ui.gd"), preload("res://scripts/loc_en_options.gd"), preload("res://scripts/loc_en_casino.gd"), preload("res://scripts/loc_en_mando.gd"), preload("res://scripts/loc_en_dialogos.gd")]
 static var TABLE: Dictionary = _build()
 
 const MENUS := {
 	# --- menú principal ---
-	"Escapá de la pesadilla, una torre a la vez": "Escape the nightmare, one tower at a time",
+	"Escapa de la pesadilla, una torre a la vez": "Escape the nightmare, one tower at a time",
 	"Continuar": "Continue",
 	"Continuar (etapa %d)": "Continue (stage %d)",
 	"Nueva partida": "New game",
@@ -23,7 +23,7 @@ const MENUS := {
 	"Reintentar la torre (−%d)": "Retry the tower (−%d)",
 	"Reintentar (no en esta prueba)": "Retry (not in this trial)",
 	"Volver al menú principal": "Back to main menu",
-	"Abandonar el run": "Abandon the run",
+	"Abandonar partida": "Abandon game",
 	"Salir del juego": "Quit game",
 	# --- opciones ---
 	"Idioma": "Language",

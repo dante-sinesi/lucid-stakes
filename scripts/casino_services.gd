@@ -13,9 +13,10 @@ const Loc := preload("res://scripts/loc.gd")
 
 const BY_TIER: Array[String] = ["", "taller", "caja", "seguro"]
 const INFO := {
-	"taller": {"name": "Taller", "desc": "Vendé un boost o un consumible por claridad, o cambialo por otro del mismo nivel."},
-	"caja": {"name": "Caja fuerte", "desc": "Guardá claridad y cobrala con interés en el próximo casino. Mientras tanto no podés usarla."},
-	"seguro": {"name": "Seguro", "desc": "Pagá ahora y el primer reintento de la próxima torre sale gratis."},
+	"taller": {"name": "Taller", "desc": "Vende un boost o un consumible por claridad, o cámbialo por otro del mismo nivel."},
+	"caja": {"name": "Caja fuerte", "desc": "Guarda claridad y cobrala con interés en el próximo casino. Mientras tanto no puedes usarla."},
+	"seguro": {"name": "Seguro", "desc": "Paga ahora y el primer reintento de la próxima torre sale gratis."},
+	"tienda": {"name": "Tienda", "desc": "Tres premios de esta visita, a la venta: caro, pero seguro (sin tirar la ruleta)."},
 }
 const SELL_FRACTION := 0.4      # el taller paga esta fracción del valor del ítem
 const SWAP_FRACTION := 0.3      # cambiar un ítem cuesta esta fracción de la ficha
@@ -73,7 +74,7 @@ static func sell(run, kind: String, index: int) -> Dictionary:
 	var after: Array = list.duplicate()
 	after.remove_at(index)
 	if not _fits(run, after if kind == "boost" else run.boosts, after if kind != "boost" else run.consumables):
-		return {"ok": false, "error": Loc.t("Si lo vendés, lo demás no entraría en las barras")}
+		return {"ok": false, "error": Loc.t("Si lo vendes, lo demás no entraría en las barras")}
 	var price := sell_price(run, id)
 	list.remove_at(index)
 	run.gain(price)
@@ -111,7 +112,7 @@ static func swap(run, kind: String, index: int, rng: RandomNumberGenerator) -> D
 	var after: Array = list.duplicate()
 	after[index] = pick.id
 	if not _fits(run, after if kind == "boost" else run.boosts, after if kind != "boost" else run.consumables):
-		return {"ok": false, "error": Loc.t("Si lo cambiás, lo demás no entraría en las barras")}
+		return {"ok": false, "error": Loc.t("Si lo cambias, lo demás no entraría en las barras")}
 	run.spend(price)
 	var old := str(list[index])
 	list[index] = pick.id
@@ -125,7 +126,7 @@ static func deposit(run, amount: int) -> Dictionary:
 	if amount <= 0:
 		return {"ok": false, "error": Loc.t("No hay nada para guardar")}
 	if not run.can_afford(amount):
-		return {"ok": false, "error": Loc.t("No tenés tanta claridad")}
+		return {"ok": false, "error": Loc.t("No tienes tanta claridad")}
 	run.spend(amount)
 	run.vault += amount
 	run.vault_stage = run.stage
@@ -159,7 +160,7 @@ static func insurance_price(run) -> int:
 ## Contrata el seguro. {ok, error}.
 static func buy_insurance(run) -> Dictionary:
 	if run.insurance:
-		return {"ok": false, "error": Loc.t("Ya tenés seguro para la próxima torre")}
+		return {"ok": false, "error": Loc.t("Ya tienes seguro para la próxima torre")}
 	var price := insurance_price(run)
 	if not run.can_afford(price):
 		return {"ok": false, "error": Loc.f("No alcanza la claridad (el seguro cuesta %d)", [price])}

@@ -1,9 +1,11 @@
 extends Control
 ## Pantalla de derrota de una torre: el fondo se va tiñendo de oscuro de a poco, aparece el motivo ("Caíste al vacío") y dos botones:
-## Reintentar (con su costo en claridad) y Salir al menú principal. Si no alcanza la claridad para reintentar, el botón pasa a "Terminar el run".
+## Reintentar (con su costo en claridad) y Salir al menú principal. Si no alcanza la claridad para reintentar, el botón pasa a "Terminar la partida".
 ## `retry` y `menu` avisan a main.gd; la tecla R sigue valiendo como atajo (ver Main.request_restart).
 
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const Loc := preload("res://scripts/loc.gd")
 
@@ -18,6 +20,7 @@ var dim: ColorRect
 var box: VBoxContainer
 var title_label
 var hint_label
+var hints
 var retry_button
 var menu_button
 var fast := false          # pruebas: sin animación
@@ -56,6 +59,7 @@ func _init() -> void:
 	menu_button.name = "salir_al_menu"
 	menu_button.pressed.connect(func(): menu.emit())
 	box.add_child(menu_button)
+	hints = PadHints.attach(self, [], [retry_button, menu_button])
 
 
 ## Muestra la derrota. `reason`: lo que pasó (ya traducido). `cost`: lo que cuesta reintentar; `free`: el reintento no cuesta (tutorial);
@@ -65,19 +69,24 @@ func show_loss(reason: String, cost: int, can_afford := true, free := false) -> 
 	if free:
 		retry_button.set_label(Loc.t("Reintentar"))
 		hint_label.text = ""
+	elif cost == 0:
+		retry_button.set_label(Loc.t("Reintentar"))
+		hint_label.text = ""
 	elif can_afford:
 		retry_button.set_label(Loc.f("Reintentar (−%d de claridad)", [cost]))
 		hint_label.text = ""
 	else:
-		retry_button.set_label(Loc.t("Terminar el run"))
+		retry_button.set_label(Loc.t("Terminar la partida"))
 		hint_label.text = Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost])
+	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": retry_button.text, "call": func(): retry.emit()},
+			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Salir al menú principal"), "keycode": KEY_SPACE, "call": func(): menu.emit()}])
 	visible = true
 	if _tween != null:
 		_tween.kill()
 	if fast:
 		dim.color.a = DIM_ALPHA
 		box.modulate.a = 1.0
-		retry_button.grab_focus()
+		pass
 		return
 	dim.color.a = 0.0
 	box.modulate.a = 0.0
@@ -85,7 +94,7 @@ func show_loss(reason: String, cost: int, can_afford := true, free := false) -> 
 	_tween.tween_interval(SHOW_DELAY)
 	_tween.tween_property(dim, "color:a", DIM_ALPHA, DIM_TIME).set_trans(Tween.TRANS_SINE)
 	_tween.parallel().tween_property(box, "modulate:a", 1.0, 0.7).set_delay(0.5)
-	_tween.tween_callback(func(): retry_button.grab_focus())
+	_tween.tween_callback(func(): pass)
 
 
 func hide_screen() -> void:

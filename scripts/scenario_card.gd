@@ -23,6 +23,15 @@ var affordable := true:
 		if enter_button != null:
 			enter_button.disabled = not v
 		queue_redraw()
+var locked_soon := false
+var is_current := false:   # la tarjeta elegida (con las flechas): su botón de entrar se ve apuntado, como el foco de cualquier botón
+	set(v):
+		is_current = v
+		if enter_button != null:
+			enter_button.force_focus = v
+		if info_button != null:
+			info_button.force_focus = false
+		queue_redraw()
 var _t := 0.0
 
 
@@ -55,6 +64,21 @@ func setup(s: Dictionary, can_afford: bool) -> void:
 	add_child(enter_button)
 	enter_button.position = Vector2((SIZE.x - enter_button.custom_minimum_size.x) * 0.5, SIZE.y - enter_button.custom_minimum_size.y - 26)
 	affordable = can_afford
+	for b in [info_button, enter_button]:   # (se elige con las flechas y se entra con Enter o A: los botones no toman el foco, pero se pueden tocar)
+		b.focus_mode = Control.FOCUS_NONE
+
+
+## "Próximamente" (la demo): el botón de entrada no se puede usar y lo dice.
+func lock_soon() -> void:
+	locked_soon = true
+	affordable = false
+	enter_button.disabled = true
+	enter_button.cost = 0
+	enter_button.cube = 2.2   # (el texto es más largo que "Jugar": se achica para que entre en la tarjeta)
+	enter_button.min_cells_w = 30
+	enter_button.set_label(preload("res://scripts/demo.gd").soon_text())
+	enter_button.primary = false
+	enter_button.position.x = (SIZE.x - maxf(enter_button.custom_minimum_size.x, enter_button.size.x)) * 0.5
 
 
 func _process(delta: float) -> void:

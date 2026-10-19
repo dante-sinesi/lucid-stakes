@@ -43,7 +43,7 @@ func test_selection() -> void:
 	var m := make()
 	var s = m[0]
 	check(s.bet == Roulette.Bet.PLENO and s.selected.is_empty() and not s.can_spin(), "al abrir: pleno elegido, sin fichas, no se puede girar")
-	check(s.spin_button.disabled and s.result_label.text.contains("Tocá 1 casilla"), "la pantalla pide elegir la casilla que falta")
+	check(s.spin_button.disabled and s.result_label.text.contains("Toca 1 casilla"), "la pantalla pide elegir la casilla que falta")
 	s.toggle_pocket(5)
 	check(s.selected == [5] and s.can_spin() and not s.spin_button.disabled and s.result_label.text.contains("GIRAR"), "con una ficha el pleno ya se puede girar")
 	check(s.wheel.covered == [5], "la rueda dibuja la ficha en la casilla elegida")
@@ -65,13 +65,13 @@ func test_selection() -> void:
 	check(s.prizes_window.visible, "el boton Premios abre la ventana")
 	var rows: Array = PrizesWindow.rows_for(Roulette.Bet.PLENO)
 	var names := rows.map(func(r): return r.name)
-	check(names.has("Segundo aliento") and rows.size() == 4, "el pleno muestra sus 4 premios epicos")
+	check(names.has("Segundo aliento") and rows.size() == Items.by_tier(Items.Tier.EPICO).size(), "sin vitrina el pleno muestra todos los premios épicos del catálogo")
 	var total := 0.0
 	for r in rows:
 		total += r.prob
 	check(is_equal_approx(total, Roulette.probability(Roulette.Bet.PLENO)), "las probabilidades de los premios suman la de acertar la apuesta (1/13)")
 	check(PrizesWindow.percent_text(1.0 / 52.0) == "1,9 %", "la probabilidad se muestra con coma: 1,9 %")
-	check(s.prizes_window.list.get_child_count() == 4 and s.prizes_window.tabs[Roulette.Bet.PLENO].button_pressed, "la ventana lista una fila por premio y marca la apuesta")
+	check(s.prizes_window.list.get_child_count() == rows.size() and s.prizes_window.tabs[Roulette.Bet.PLENO].button_pressed, "la ventana lista una fila por premio y marca la apuesta")
 	s.prizes_window.show_bet(Roulette.Bet.RANGO)
 	var rango_names := PrizesWindow.rows_for(Roulette.Bet.RANGO).map(func(r): return r.name)
 	check(rango_names.has("Bolsa de luz") and s.prizes_window.list.get_child_count() == rango_names.size(), "el rango muestra premios basicos, con Bolsa de luz")
@@ -95,9 +95,10 @@ func test_spin() -> void:
 	var res: Dictionary = await s.spin()
 	check(res.ok and res.won and res.pocket == 7, "el giro devuelve el resultado")
 	check(s.state == Screen.State.RESULT and s.wheel.result == 7, "terminado el giro, la rueda marca la casilla ganadora")
-	check(run.claridad == 250 and run.boosts.size() == 1, "se cobro la ficha y se guardo el boost epico")
+	var ficha: int = Roulette.run_price(run)   # (la ficha de la etapa 1)
+	check(run.claridad == 300 - ficha and run.boosts.size() == 1, "se cobro la ficha y se guardo el boost epico")
 	check(s.result_label.text.contains("Cayó el 7") and s.result_label.text.contains("Ganaste"), "el mensaje cuenta que gano y que")
-	check(s.claridad_counter.value == 250 and s.price_counter.value == 50, "se actualizan la claridad y el precio de la ficha en pantalla")
+	check(s.claridad_counter.value == 300 - ficha and s.price_counter.value == ficha, "se actualizan la claridad y el precio de la ficha en pantalla")
 	s.queue_free()
 
 	# perder
@@ -107,7 +108,7 @@ func test_spin() -> void:
 	s.forced_pocket = 3
 	s.toggle_pocket(9)
 	res = await s.spin()
-	check(not res.won and run.claridad == 250 and s.result_label.text.contains("Perdiste"), "perder: se pierde la ficha y el mensaje lo dice")
+	check(not res.won and run.claridad == 300 - Roulette.run_price(run) and s.result_label.text.contains("Perdiste"), "perder: se pierde la ficha y el mensaje lo dice")
 
 	# cae la casa
 	s.forced_pocket = 0

@@ -37,12 +37,47 @@ static func t(text: String) -> String:
 ## Texto con datos: traduce el patrón y le pone los valores (`Loc.f("Etapa %d/%d", [n, total])`). El resultado se recuerda como ya
 ## traducido para que la etiqueta que lo muestre no lo anote como faltante.
 static func f(pattern: String, args: Array) -> String:
-	var out := t(pattern) % args
+	var pat := t(pattern)
+	var big := false
+	for a in args:
+		if (typeof(a) == TYPE_INT or typeof(a) == TYPE_FLOAT) and absf(float(a)) >= 10000.0:
+			big = true
+	if big:   # los números grandes se abrevian ("12,3 mil", "1,23 M"): el %d de un valor de 10 mil o más pasa a texto (ver number_format.gd)
+		var pair := _abbreviate(pat, args)
+		pat = pair[0]
+		args = pair[1]
+	var out := pat % args
 	if lang != "es":
 		if _outputs.size() > 4000:
 			_outputs.clear()
 		_outputs[out] = true
 	return out
+
+
+## Cambia cada %d cuyo valor es de 10 mil o más por un %s con el número abreviado. Devuelve [patrón, valores].
+static func _abbreviate(pat: String, args: Array) -> Array:
+	var fmt: GDScript = load("res://scripts/number_format.gd")
+	var rx := RegEx.new()
+	rx.compile("%[-+ 0#]*[0-9]*(?:\\.[0-9]+)?[a-zA-Z%]")
+	var out := ""
+	var last := 0
+	var i := 0
+	var new_args := args.duplicate()
+	for m in rx.search_all(pat):
+		var spec := m.get_string()
+		out += pat.substr(last, m.get_start() - last)
+		last = m.get_end()
+		if spec == "%%":
+			out += spec
+			continue
+		if spec.ends_with("d") and i < args.size() and (typeof(args[i]) == TYPE_INT or typeof(args[i]) == TYPE_FLOAT) and absf(float(args[i])) >= 10000.0:
+			out += "%s"
+			new_args[i] = fmt.fmt(args[i])
+		else:
+			out += spec
+		i += 1
+	out += pat.substr(last)
+	return [out, new_args]
 
 
 ## Une textos ya traducidos con un separador (varias líneas en una sola etiqueta).

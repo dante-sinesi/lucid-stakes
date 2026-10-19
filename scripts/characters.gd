@@ -7,14 +7,15 @@ extends RefCounted
 ## Con `ghost` las partes se arman con el material de la silueta (se ve a través de lo que tapa al personaje).
 
 const Cosmetics := preload("res://scripts/cosmetics.gd")
+const ModelLib := preload("res://scripts/model_lib.gd")
 const Loc := preload("res://scripts/loc.gd")
 const SILHOUETTE_SHADER := preload("res://shaders/silhouette.gdshader")
 const SILHOUETTE_ALPHA := 0.55
 
-const DEFAULT := "dante"
+const DEFAULT := "gato"
 
 ## unlock: cómo se consigue. "inicio" = desde el principio; "prueba" = superar cualquier prueba; "etapa4" / "etapa10" = llegar a esa etapa;
-## "hielo" = superar la prueba del Hielo total. Dante y Gaby son los personajes del juego y se tienen desde el principio; los animalitos se desbloquean.
+## "hielo" = superar la prueba del Hielo total. Dante, Gaby, el gatito (el predeterminado) y el perrito se tienen desde el principio; el conejito y el pingüino se desbloquean.
 ## `kind` "humano" = personaje con pelo, ropa y manos (ver _build_human); sin `kind`, un animalito.
 const ALL: Array[Dictionary] = [
 	{"id": "dante", "name": "Dante", "unlock": "inicio", "how": "Desde el principio.", "kind": "humano", "style": "corto",
@@ -25,13 +26,13 @@ const ALL: Array[Dictionary] = [
 		"skin": Color(0.96, 0.79, 0.66), "hair": Color(0.50, 0.22, 0.12), "shirt": Color(0.58, 0.32, 0.74), "shirt_dark": Color(0.40, 0.20, 0.55),
 		"pants": Color(0.24, 0.26, 0.34), "shoes": Color(0.95, 0.95, 0.97), "accent": Color(1.0, 0.55, 0.65),
 		"fur": Color(0.96, 0.79, 0.66), "light": Color(0.98, 0.88, 0.80), "dark": Color(0.50, 0.22, 0.12)},
-	{"id": "gato", "name": "Gatito", "unlock": "etapa4", "how": "Llegá a la etapa 4.",
+	{"id": "gato", "name": "Gatito", "unlock": "inicio", "how": "Desde el principio.",
 		"fur": Color(0.96, 0.62, 0.28), "light": Color(0.99, 0.95, 0.88), "dark": Color(0.55, 0.3, 0.12)},
-	{"id": "perro", "name": "Perrito", "unlock": "prueba", "how": "Superá tu primera prueba.",
+	{"id": "perro", "name": "Perrito", "unlock": "inicio", "how": "Desde el principio.",
 		"fur": Color(0.84, 0.62, 0.4), "light": Color(0.97, 0.9, 0.78), "dark": Color(0.4, 0.24, 0.12)},
-	{"id": "conejo", "name": "Conejito", "unlock": "etapa10", "how": "Llegá a la etapa 10.",
+	{"id": "conejo", "name": "Conejito", "unlock": "etapa10", "how": "Llega a la etapa 10.",
 		"fur": Color(0.94, 0.93, 0.96), "light": Color(1.0, 1.0, 1.0), "dark": Color(0.62, 0.6, 0.68)},
-	{"id": "pinguino", "name": "Pingüino", "unlock": "hielo", "how": "Superá la prueba del Hielo total.",
+	{"id": "pinguino", "name": "Pingüino", "unlock": "hielo", "how": "Supera la prueba del Hielo total.",
 		"fur": Color(0.14, 0.18, 0.32), "light": Color(0.97, 0.97, 1.0), "dark": Color(0.06, 0.08, 0.16)},
 ]
 
@@ -40,11 +41,34 @@ static func get_character(id: String) -> Dictionary:
 	for c in ALL:
 		if c.id == id:
 			return c
+	for c in ALL:   # (un id raro cae en el personaje predeterminado)
+		if c.id == DEFAULT:
+			return c
 	return ALL[0]
 
 
 ## Arma el personaje `id` con el gorro y la prenda dados ("" = ninguno). Devuelve el Node3D raíz (origen en los pies).
 static func build(id: String, hat := "", outfit := "", ghost := false) -> Node3D:
+	var rec := ModelLib.character(id)   # (si el editor de modelos guardó un diseño para este personaje, se usa ese)
+	if not rec.is_empty():
+		var root := ModelLib.build_node(rec, "personaje", func(c: Color): return ghost_material(c) if ghost else null)
+		_dress(root, hat, outfit, ghost)
+		return root
+	return build_from_code(id, hat, outfit, ghost)
+
+
+## El gorro y la prenda sobre un personaje ya armado.
+static func _dress(root: Node3D, hat: String, outfit: String, ghost: bool) -> void:
+	var hat_node := Cosmetics.build_hat(hat, ghost)
+	if hat_node != null:
+		root.add_child(hat_node)
+	var outfit_node := Cosmetics.build_outfit(outfit, ghost)
+	if outfit_node != null:
+		root.add_child(outfit_node)
+
+
+## El diseño de siempre, armado con cajas en código (el que se pasa al editor con model_import.gd).
+static func build_from_code(id: String, hat := "", outfit := "", ghost := false) -> Node3D:
 	var ch := get_character(id)
 	if str(ch.get("kind", "")) == "humano":
 		return _build_human(ch, hat, outfit, ghost)

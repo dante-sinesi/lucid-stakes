@@ -28,7 +28,7 @@ func _init() -> void:
 func test_font() -> void:
 	# Todas las letras, digitos y signos que usa el juego tienen glifo.
 	var missing := ""
-	var all_text: String = UI.TITLE + UI.SUBTITLE + _story_text() + "Ruleta de la Luz Claridad Ficha: GIRAR Salir del casino ¡Cayó el 0! ¿Cuánto arriesgás? 1234567890 ×·«»%+-*/()[]=<>_|'\".,;:!?"
+	var all_text: String = UI.TITLE + UI.SUBTITLE + _story_text() + "Ruleta de la Luz Claridad Ficha: GIRAR Salir del casino ¡Cayó el 0! ¿Cuánto arriesgas? 1234567890 ×·«»%+-*/()[]=<>_|'\".,;:!?"
 	for it in preload("res://scripts/items.gd").ALL:
 		all_text += it.name + it.desc
 	for line in preload("res://scripts/story.gd").GREETINGS:

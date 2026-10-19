@@ -1,5 +1,5 @@
 extends RefCounted
-## Música de fondo sintetizada por código: tres pistas en bucle (menú, torre y casino). Se arman la primera vez que se piden, de a un
+## Música de fondo: cuatro pistas en bucle (menú, torre, casino y pruebas). Las del juego son Las Cuatro Estaciones de Vivaldi (dominio público; ver herramientas/musica/): Primavera en el menú, Verano en las torres, Otoño en los casinos e Invierno en las pruebas, en res://audio/music/*.ogg. Si falta el archivo, se sintetiza una pista simple por código. Se arman la primera vez que se piden, de a un
 ## compás por cuadro (así el juego no se traba) y quedan guardadas; al cambiar de pista hay un fundido. `Music.play("torre")`.
 ## Para reemplazar una pista por una real: un .ogg en res://audio/music/<pista>.ogg (o .wav) y se usa en su lugar.
 
@@ -7,7 +7,7 @@ const Synth := preload("res://scripts/synth.gd")
 const AudioHub := preload("res://scripts/audio_hub.gd")
 const W := Synth.Wave
 
-const TRACKS: Array[String] = ["menu", "torre", "casino"]
+const TRACKS: Array[String] = ["menu", "torre", "casino", "pruebas"]
 const FILE_DIR := "res://audio/music/"
 
 static var _cache := {}
@@ -100,7 +100,7 @@ static func _begin(track: String) -> Dictionary:
 	var bars: Array = [[57, MIN], [57, MIN], [53, MAJ], [53, MAJ], [48, MAJ], [48, MAJ], [55, MAJ], [55, MAJ]]
 	var seed_value := 0
 	match track:
-		"torre":
+		"torre", "pruebas":
 			bpm = 108.0
 			bars = [[57, MIN], [57, MIN], [53, MAJ], [55, MAJ], [57, MIN], [57, MIN], [53, MAJ], [52, MAJ]]
 			seed_value = 21
@@ -117,7 +117,7 @@ static func _begin(track: String) -> Dictionary:
 ## Escribe el compás `b` de la pista en el buffer.
 static func _bar(track: String, ctx: Dictionary, b: int) -> void:
 	match track:
-		"torre":
+		"torre", "pruebas":
 			_bar_torre(ctx, b)
 		"casino":
 			_bar_casino(ctx, b)

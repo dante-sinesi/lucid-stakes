@@ -54,7 +54,7 @@ func test_icons() -> void:
 	check(colors_ok, "los iconos usan solo las letras o, a, b y w (el brillo y el color secundario tienen valor por defecto)")
 	var distinct := {}
 	for id in Icons.ICONS:
-		distinct[str(Icons.ICONS[id].rows)] = true
+		distinct[str(Icons.ICONS[id].rows) + str(Icons.ICONS[id].get("a", "")) + str(Icons.ICONS[id].get("b", ""))] = true   # (dos premios pueden compartir el dibujo con otros colores)
 	check(distinct.size() == Icons.ICONS.size(), "no hay dos iconos iguales")
 
 

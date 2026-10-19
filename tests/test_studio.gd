@@ -48,7 +48,7 @@ func test_ui() -> void:
 	root.add_child(studio)
 	await _frames(3)
 	check(studio.list != null and studio.info != null and studio.cam != null, "se arma la interfaz")
-	check(studio.model.rooms.is_empty() and studio.info.text.find("Elegí") != -1, "sin biblioteca invita a elegir una sala")
+	check(studio.model.rooms.is_empty() and studio.info.text.find("Elige") != -1, "sin biblioteca invita a elegir una sala")
 	var n: int = studio.open_library(dir + "/lib.jsonl")
 	await _frames(3)
 	check(n >= 15 and studio.list.item_count == n, "la lista muestra todas las salas (%d de %d)" % [studio.list.item_count, n])

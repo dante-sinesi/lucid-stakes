@@ -5,6 +5,7 @@ extends Control
 ## Uso: crear, add_child, setup(run, rng). Emite `spun(result)` al terminar cada giro y `closed` al salir.
 
 const Roulette := preload("res://scripts/roulette.gd")
+const Showcase := preload("res://scripts/showcase.gd")
 const Items := preload("res://scripts/items.gd")
 const Wheel := preload("res://scripts/roulette_wheel.gd")
 const UI := preload("res://scripts/menu_ui.gd")
@@ -17,6 +18,9 @@ const Loc := preload("res://scripts/loc.gd")
 const RuleUI := preload("res://scripts/casino_rule_ui.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const ResultOverlay := preload("res://scripts/result_overlay.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
+const Controls := preload("res://scripts/controls.gd")
 
 signal spun(result: Dictionary)
 signal resolved   ## la tirada ya se cobró y pagó (antes de la animación): hay que guardar
@@ -43,6 +47,7 @@ var price_counter          # [ícono] precio de la ficha
 var bet_buttons := {}
 var spin_button: Button
 var prizes_button: Button
+var rotate_button: Button
 var exit_button: Button
 var prizes_window
 var result_label: Control
@@ -51,6 +56,9 @@ var overlay                 # el cartel de "¡Ganaste!" / "¡Perdiste!"
 var _spin_tween: Tween
 var _spin_time := 0.0
 var _tick_t := 0.0
+var pad_hints
+var _retired: Array = []
+var pad_cursor := 1        # la casilla que marca el mando (se mueve con la cruceta; X pone o saca la ficha)
 var shown_claridad := 0     # claridad que se muestra mientras gira (la tirada ya está cobrada, pero no se spoilea el resultado)
 
 
@@ -92,6 +100,11 @@ func _build() -> void:
 	prizes_button.name = "premios"
 	prizes_button.pressed.connect(open_prizes)
 	top.add_child(prizes_button)
+	rotate_button = UI.button("Rotar vitrina", false, 3.0, 36)
+	rotate_button.name = "rotar"
+	rotate_button.pressed.connect(rotate_showcase)
+	top.add_child(rotate_button)
+	top.move_child(rotate_button, prizes_button.get_index())
 	exit_button = UI.button("Salir", false, 3.0, 16, false)
 	exit_button.name = "salir"
 	exit_button.pressed.connect(func(): closed.emit())
@@ -142,6 +155,8 @@ func _build() -> void:
 	col.add_child(spin_button)
 
 	prizes_window = PrizesWindow.new()
+	prizes_window.run = run
+	prizes_window.rotate_cb = rotate_showcase
 	add_child(prizes_window)
 	flash_rect = ColorRect.new()
 	flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -150,10 +165,26 @@ func _build() -> void:
 	add_child(flash_rect)
 	overlay = ResultOverlay.new()
 	add_child(overlay)
+	pad_hints = PadHints.new()   # la ayuda de los botones del mando (sólo se ve cuando se juega con mando)
+	pad_hints.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	pad_hints.offset_top = -52.0
+	pad_hints.offset_bottom = -8.0
+	add_child(pad_hints)
+	PadHints.focus_none(self)   # con el mando se juega apretando botones, no moviéndose por la pantalla
+	pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Girar"), "call": func(): spin()},
+			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Poner ficha"), "call": func(): toggle_pocket(pad_cursor)},
+			{"name": "DPAD", "key": "← | →", "text": Loc.t("Casilla")},
+			{"name": "LB|RB", "key": "Q | E", "text": Loc.t("Tipo de apuesta")},
+			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Premios"), "call": open_prizes},
+			{"name": "LT", "key": "Shift", "text": Loc.t("Rotar vitrina"), "call": rotate_showcase},
+			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": func(): closed.emit()}])
+	_retired = PadHints.retire([spin_button, prizes_button, rotate_button, exit_button])   # la botonera de abajo los reemplaza
 	shown_claridad = run.claridad
 
 
 func _process(delta: float) -> void:
+	if wheel != null:
+		wheel.cursor_pocket = pad_cursor if state != State.SPINNING and not prizes_window.visible else -1
 	if wheel != null and not fast and state != State.SPINNING and not prizes_window.visible:
 		wheel.rotation_angle += delta * IDLE_SPIN
 	if state == State.SPINNING and not fast:   # tic tic tic: la bolilla pasa por las casillas, cada vez más despacio
@@ -163,6 +194,21 @@ func _process(delta: float) -> void:
 		if _tick_t >= interval:
 			_tick_t = 0.0
 			Sfx.play("tick", 0.9 + randf() * 0.2)
+
+
+## Rota la vitrina (se sortean otros premios de la visita): cuesta una ficha, y una más por cada rotación que ya se hizo en esta visita.
+func rotate_showcase() -> void:
+	if state == State.SPINNING or run.showcase.is_empty():
+		return
+	if not Showcase.rotate(run, rng):
+		result_label.text = Loc.f("Rotar la vitrina cuesta %d de claridad", [Showcase.rotate_cost(run)])
+		return
+	shown_claridad = run.claridad
+	resolved.emit()
+	_refresh()
+	result_label.text = Loc.t("La vitrina cambió: mira los premios")
+	if not prizes_window.visible:
+		prizes_window.open_for(bet)
 
 
 func open_prizes() -> void:
@@ -277,8 +323,51 @@ func _show_overlay(res: Dictionary) -> void:
 	overlay.show_result(res.won, delta, item_id, item_name, RuleUI.notes(res))
 
 
+## Con el mando: A gira, X pone o saca la ficha de la casilla marcada, la cruceta (o el stick) mueve la marca, LB y RB cambian el tipo de apuesta, Y abre los premios, LT rota la vitrina y B sale.
+func _pad_key(code: int) -> bool:
+	if overlay.showing:
+		return false
+	var n := Roulette.POCKETS - 1   # las casillas 1 a 12 (la 0 es de la casa)
+	match code:
+		KEY_ENTER, KEY_KP_ENTER:
+			if state == State.SPINNING:
+				skip_spin()
+			elif can_spin():
+				spin()
+			else:
+				spin()   # (muestra por qué no se puede: "elige N casillas")
+			return true
+		KEY_SPACE:
+			toggle_pocket(pad_cursor)
+			return true
+		KEY_LEFT, KEY_UP:
+			pad_cursor = posmod(pad_cursor - 2, n) + 1
+			return true
+		KEY_RIGHT, KEY_DOWN:
+			pad_cursor = posmod(pad_cursor, n) + 1
+			return true
+		KEY_Q, KEY_E:
+			var ids: Array = Roulette.BETS.keys()
+			var i := ids.find(bet)
+			select_bet(ids[posmod(i + (1 if code == KEY_E else -1), ids.size())])
+			return true
+		KEY_C:
+			open_prizes()
+			return true
+		KEY_SHIFT:
+			rotate_showcase()
+			return true
+		KEY_ESCAPE:
+			closed.emit()
+			return true
+	return false
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or prizes_window.visible or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	if _pad_key(event.keycode):
+		get_viewport().set_input_as_handled()
 		return
 	if not event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		return
@@ -370,6 +459,9 @@ func _refresh() -> void:
 	var need: int = Roulette.BETS[bet].count - selected.size()
 	spin_button.disabled = not can_spin()
 	prizes_button.disabled = state == State.SPINNING
+	rotate_button.visible = not run.showcase.is_empty()
+	rotate_button.text = Loc.f("Rotar vitrina (%d)", [Showcase.rotate_cost(run)])
+	rotate_button.disabled = state == State.SPINNING or not run.can_afford(Showcase.rotate_cost(run))
 	if state == State.RESULT:
 		return   # queda el mensaje del resultado hasta que se toque otra casilla o apuesta
 	result_label.color = Color(0.9, 0.86, 1.0)
@@ -377,8 +469,12 @@ func _refresh() -> void:
 	if state == State.SPINNING:
 		result_label.text = ""
 	elif need > 0:
-		result_label.text = Loc.f("Tocá %d casilla%s en la rueda", [need, "" if need == 1 else "s"])
+		result_label.text = Loc.f("Toca %d casilla%s en la rueda", [need, "" if need == 1 else "s"])
 	elif not run.can_afford(price):
 		result_label.text = "No alcanza la claridad para la ficha"
 	else:
-		result_label.text = "Listo: apretá GIRAR"
+		result_label.text = "Listo: aprieta GIRAR"
+
+
+func _exit_tree() -> void:
+	PadHints.free_retired(_retired)

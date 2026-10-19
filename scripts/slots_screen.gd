@@ -16,6 +16,9 @@ const CasinoTheme := preload("res://scripts/casino_theme.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const ResultOverlay := preload("res://scripts/result_overlay.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
+const Controls := preload("res://scripts/controls.gd")
 
 signal resolved
 signal closed
@@ -29,6 +32,9 @@ var rng: RandomNumberGenerator
 var game
 var fast := false
 var ui_state := UiState.IDLE
+var pad_hints
+var _retired: Array = []
+var _hint_key := ""
 var holds: Array[bool] = [false, false, false]
 
 var reel_nodes: Array = []
@@ -165,6 +171,11 @@ func _build() -> void:
 	add_child(flash_rect)
 	overlay = ResultOverlay.new()
 	add_child(overlay)
+	pad_hints = PadHints.new()   # la ayuda de los botones del mando (sólo se ve cuando se juega con mando)
+	col.add_child(pad_hints)   # (debajo de las tarjetas, en la misma columna)
+	_retired = PadHints.retire([spin_button, respin_button, collect_button, prizes_button, exit_button])   # la botonera de abajo los reemplaza
+	pad_hints.set_items([])
+	PadHints.focus_none(self)   # con el mando se juega apretando botones, no moviéndose por la pantalla
 
 
 ## La tabla de pagos: cada símbolo con lo que paga por dos y por tres iguales.
@@ -207,7 +218,33 @@ static func _fmt(x: float) -> String:
 	return str(int(x)) if is_equal_approx(x, round(x)) else ("%.1f" % x).replace(".", ",")
 
 
+## La botonera que vale ahora (se rearma sólo cuando cambia el estado). Es lo único que hay para jugar: con mando muestra sus botones y con teclado las teclas.
+func _update_hints() -> void:
+	if pad_hints == null:
+		return
+	var key := "%d%s%s" % [ui_state, str(prizes_panel.visible), str(game.can_respin())]
+	if key == _hint_key:
+		return
+	_hint_key = key
+	if prizes_panel.visible:
+		pad_hints.set_items([{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "call": func(): prizes_panel.visible = false}])
+		return
+	match ui_state:
+		UiState.SPINNING:
+			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Saltear"), "call": skip_spin}])
+		UiState.HOLD:
+			pad_hints.set_items([{"name": "DPAD", "key": "← | ↑ | →", "text": Loc.t("Retener")},
+					{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Volver a girar"), "dim": not game.can_respin(), "call": respin},
+					{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Cobrar"), "call": collect},
+					{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": request_close}])
+		_:
+			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Girar"), "call": spin},
+					{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Premios"), "call": func(): prizes_panel.visible = true},
+					{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": request_close}])
+
+
 func _process(delta: float) -> void:
+	_update_hints()
 	if ui_state != UiState.SPINNING or fast:
 		return
 	_spin_t += delta
@@ -380,8 +417,8 @@ func _show_result(res: Dictionary) -> void:
 
 func _describe_now(p: Dictionary) -> String:
 	if p.kind == "none":
-		return Loc.t("Retené los rodillos que quieras y volvé a girar, o cobrá.")
-	return Loc.f("Ahora pagaría %d de claridad. Retené los que quieras y volvé a girar, o cobrá.", [int(round(float(p.mult) * Roulette.run_price(run) * game.stake))])
+		return Loc.t("Retén los rodillos que quieras y vuelve a girar, o cobra.")
+	return Loc.f("Ahora pagaría %d de claridad. Retén los que quieras y vuelve a girar, o cobra.", [int(round(float(p.mult) * Roulette.run_price(run) * game.stake))])
 
 
 func _say(text: String, color: Color) -> void:
@@ -441,11 +478,51 @@ func request_close() -> void:
 	closed.emit()
 
 
+## Con el mando: A gira (o vuelve a girar, o saltea la animación), X cobra, Y abre los premios, la cruceta retiene los carretes 1, 2 y 3 (izquierda, arriba y derecha) y B sale.
+func _pad_key(code: int) -> bool:
+	if prizes_panel.visible:
+		return false
+	match code:
+		KEY_ENTER, KEY_KP_ENTER:
+			if overlay.showing:
+				return false
+			if ui_state == UiState.SPINNING:
+				skip_spin()
+			elif ui_state == UiState.HOLD:
+				respin()
+			else:
+				spin()
+			return true
+		KEY_SPACE:
+			if overlay.showing:
+				return false
+			if ui_state == UiState.HOLD:
+				collect()
+			return true
+		KEY_C:
+			if ui_state == UiState.IDLE or ui_state == UiState.DONE:
+				prizes_panel.visible = true
+			return true
+		KEY_LEFT:
+			toggle_hold(0)
+			return true
+		KEY_UP:
+			toggle_hold(1)
+			return true
+		KEY_RIGHT:
+			toggle_hold(2)
+			return true
+	return false
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	if overlay.showing and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
 		return   # (el cartel de resultado lo maneja él: Espacio lo saltea)
+	if _pad_key(event.keycode):
+		get_viewport().set_input_as_handled()
+		return
 	if ui_state == UiState.SPINNING and event.keycode == KEY_SPACE:   # sólo se puede saltear la animación (retener es parte del juego)
 		skip_spin()
 		get_viewport().set_input_as_handled()
@@ -559,3 +636,7 @@ class _Icon extends Control:
 
 	func _draw() -> void:
 		Icons.draw(self, ["cubo", "hielo", "bomba", "sol", "corona"][symbol], size * 0.5, 54.0)
+
+
+func _exit_tree() -> void:
+	PadHints.free_retired(_retired)

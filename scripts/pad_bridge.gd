@@ -14,15 +14,32 @@ var nav_mode: Callable = func() -> bool: return false
 var _down := {}
 
 
+func _ready() -> void:
+	# Godot ya mueve el foco de los menús con la cruceta y el stick (acciones ui_*); como acá se traducen a flechas, se quita eso para que cada movimiento cuente una sola vez
+	# (si no, el foco avanza de a dos botones).
+	for action in InputMap.get_actions():
+		if not str(action).begins_with("ui_"):
+			continue
+		for ev in InputMap.action_get_events(action):
+			if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+				InputMap.action_erase_event(action, ev)
+	Controls.set_pad_detected(not Input.get_connected_joypads().is_empty())   # (con un mando conectado, las ayudas muestran sus botones desde el principio)
+	Input.joy_connection_changed.connect(func(_id: int, connected: bool): Controls.set_pad_detected(connected or not Input.get_connected_joypads().is_empty()))
+
+
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
+		var mark := "%d:%s" % [int(event.keycode), str(event.pressed)]
+		if _pending.get(mark, 0) > 0:   # (es una tecla que armó este mismo puente a partir del mando: no cuenta como teclado)
+			_pending[mark] -= 1
+			return
 		if event.pressed and not event.echo:
-			Controls.using_pad = false
+			Controls.set_pad_detected(false)
 		return
 	if Controls.capturing:
 		return
 	if event is InputEventJoypadButton:
-		Controls.using_pad = true
+		Controls.set_pad_detected(true)
 		_press(_name_of({"button": event.button_index}), {"button": event.button_index}, event.pressed)
 	elif event is InputEventJoypadMotion:
 		var v: float = event.axis_value
@@ -32,7 +49,7 @@ func _input(event: InputEvent) -> void:
 			var active: bool = _down.has(k)
 			var mag: float = v * sgn
 			if not active and mag >= PRESS_AT:
-				Controls.using_pad = true
+				Controls.set_pad_detected(true)
 				_press(k, p, true)
 			elif active and mag < RELEASE_AT:
 				_press(k, p, false)
@@ -86,9 +103,15 @@ static func _arrow_for(p: Dictionary) -> int:
 	return KEY_DOWN if int(p.sign) > 0 else KEY_UP
 
 
+## Las teclas que el puente inyectó y todavía no llegaron a `_input` (el motor las entrega un poco después): {"código:apretada": cuántas}. Así no se confunden con el teclado de verdad.
+static var _pending := {}
+
+
 static func _send(code: int, pressed: bool) -> void:
 	var e := InputEventKey.new()
 	e.keycode = code as Key
 	e.physical_keycode = code as Key
 	e.pressed = pressed
+	var mark := "%d:%s" % [code, str(pressed)]
+	_pending[mark] = int(_pending.get(mark, 0)) + 1
 	Input.parse_input_event(e)

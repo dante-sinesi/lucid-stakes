@@ -2,8 +2,11 @@ extends Control
 ## Pantalla de fin de run: si escapaste (pasaste las 27 etapas) o si el run terminó antes, con el resumen (etapa alcanzada, torres,
 ## claridad, reintentos, movimientos y los boosts que tenías) y dos botones: Nueva partida y Menú principal.
 
+const NumberFormat := preload("res://scripts/number_format.gd")
 const Stages := preload("res://scripts/stages.gd")
 const UI := preload("res://scripts/menu_ui.gd")
+const PadHints := preload("res://scripts/pad_hints.gd")
+const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const MenuAnim := preload("res://scripts/menu_anim.gd")
 const Draw := preload("res://scripts/voxel_draw.gd")
 const SwirlBG := preload("res://scripts/swirl_bg.gd")
@@ -77,6 +80,8 @@ func _init() -> void:
 	menu_button.name = "menu"
 	menu_button.pressed.connect(func(): to_menu.emit())
 	btns.add_child(menu_button)
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Nueva partida"), "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): new_game.emit()},
+			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Menú principal"), "keycode": KEY_SPACE, "call": func(): to_menu.emit()}], [new_button, menu_button])
 
 
 ## Filas del resumen: [[etiqueta, número, con_icono_de_claridad]].
@@ -84,7 +89,7 @@ static func summary_rows(run, victory: bool) -> Array:
 	return [
 		["Etapa alcanzada", "%d / %d" % [FINAL_STAGE if victory else run.max_stage, FINAL_STAGE], false],
 		["Torres superadas", str(run.towers_cleared), false],
-		["Claridad juntada", str(run.claridad_earned), true],
+		["Claridad juntada", NumberFormat.fmt(run.claridad_earned), true],
 		["Gastada en la ruleta", str(run.casino_spent), true],
 		["Ganada en la ruleta", str(run.casino_won), true],
 		["Reintentos", str(run.retries), false],
@@ -99,7 +104,7 @@ func show_summary(run, victory: bool, reason := "", luz := -1, luz_total := 0, n
 	luz_row.visible = luz >= 0
 	luz_gain.value = maxi(luz, 0)
 	luz_total_counter.value = luz_total
-	title.text = "¡Escapaste de la pesadilla!" if victory else "Fin del run"
+	title.text = "¡Escapaste de la pesadilla!" if victory else "Fin de la partida"
 	title.color = UI.GOLD if victory else Color(0.85, 0.6, 1.0)
 	reason_label.text = reason if reason != "" else (Loc.f("Pasaste las %d etapas.", [FINAL_STAGE]) if victory else "")
 	for ch in stats_box.get_children():
@@ -133,7 +138,6 @@ func show_summary(run, victory: bool, reason := "", luz := -1, luz_total := 0, n
 		slot.custom_minimum_size = Vector2(54, 54)
 		items_row.add_child(slot)
 	visible = true
-	new_button.grab_focus()
 	# Entrada: el título cae con un golpe, las filas aparecen una a una y sus números cuentan hacia arriba.
 	MenuAnim.pop_in(title, 1.5, 0.4)
 	MenuAnim.stagger(stats_box.get_children(), 0.12, 0.3, 0.35)

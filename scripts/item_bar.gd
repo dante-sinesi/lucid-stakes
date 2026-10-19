@@ -95,7 +95,7 @@ func ask_discard(idx: int) -> void:
 	if tip != null:
 		tip.visible = false
 	_prompt = _DiscardPrompt.new()
-	_prompt.setup(Loc.f("¿Tirar %s? No recuperás nada.", [Loc.t(str(it.get("name", "")))]) if err == "" else Loc.t(err), err == "")
+	_prompt.setup(Loc.f("¿Tirar %s? No recuperas nada.", [Loc.t(str(it.get("name", "")))]) if err == "" else Loc.t(err), err == "")
 	_prompt.answered.connect(func(yes: bool):
 		_prompt.queue_free()
 		_prompt = null

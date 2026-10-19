@@ -48,8 +48,9 @@ func _init() -> void:
 
 ## Todo premio del catálogo (menos las bolsas de claridad) tiene su efecto conectado.
 func test_catalogue() -> void:
-	var boosts := ["segundo_aliento", "madrugada", "luz_propia", "mano_de_oro", "pies_de_luz", "paso_firme", "reflejos", "racha_larga", "aire_extra", "ojo_de_hielo", "ahorro", "bolsillo_hondo", "mente_abierta"]
-	var consumables := ["freno", "desarmar", "ancla_chica", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta", "escudo", "doble_salto", "totem", "teletransporte", "vida_extra"]
+	var boosts := ["segundo_aliento", "madrugada", "luz_propia", "mano_de_oro", "pies_de_luz", "paso_firme", "reflejos", "racha_larga", "aire_extra", "ojo_de_hielo", "ahorro", "bolsillo_hondo", "mente_abierta",
+			"cosecha_doble", "racha_imparable", "midas", "cosecha", "pies_de_oro", "buen_ojo", "escalador", "empuje_rentable", "interes", "descuento_duende", "bolsillo_de_luz", "mano_23", "mesa_caliente", "blackjack_de_oro", "ficha_barata", "casilla_de_regalo", "red_de_seguridad", "giro_de_cortesia", "llave_de_la_vitrina"]   # (los de ganancia y los del casino se prueban en test_boosts_ganancia.gd y test_casino_items.gd)
+	var consumables := ["freno", "desarmar", "ancla_chica", "conv_roca", "conv_hielo", "conv_agrietado", "conv_trampa", "conv_pinchos", "conv_pesado", "conv_bomba", "conv_catapulta", "escudo", "doble_salto", "totem", "teletransporte", "vida_extra", "lluvia_de_luz", "soborno", "pocion_de_cosecha", "iman_de_luz", "baraja_de_racha", "reloj_de_arena", "doble_o_nada", "ficha_gratis", "rayos_x"]
 	var ok := true
 	for it in Items.ALL:
 		if it.type == Items.Type.BOOST:

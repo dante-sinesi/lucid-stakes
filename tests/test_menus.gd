@@ -23,6 +23,13 @@ func _init() -> void:
 
 
 func make_main(test := false) -> Node:
+	var P := preload("res://scripts/profile.gd")
+	P.path = "user://test_profile.json"   # (el perfil de prueba: con el tutorial ya hecho, si no el juego arranca en el tutorial)
+	P._loaded_from = ""
+	P.mark_tutorial_done()
+	var SaveG := preload("res://scripts/save_game.gd")
+	SaveG.path = "user://test_save.json"   # (que una partida guardada por otra prueba no cambie cómo arranca el menú)
+	SaveG.delete()
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.test_mode = test
 	main.quit_game_override = true  # no cerrar el proceso de pruebas
@@ -40,7 +47,7 @@ func test_start() -> void:
 	check(keys.has("nueva") and keys.has("salir") and not keys.has("ayuda") and not keys.has("tutorial"), "el menu tiene Nueva partida y Salir; ya no Como jugar ni Tutorial suelto (el tutorial es una tarjeta de Nueva partida)")
 	# Créditos: botón abajo a la izquierda con el aviso y la licencia MIT de Godot
 	var cb: Control = main.main_menu.buttons["creditos"]
-	check(cb.visible and cb.anchor_top == 1.0 and cb.anchor_left == 0.0, "el boton de creditos esta abajo a la izquierda")
+	check(not cb.visible and main.main_menu.main_hints != null and main.main_menu.main_hints.visible, "los creditos se abren desde la botonera de abajo (Y o C), sin boton")
 	cb.pressed.emit()
 	check(main.main_menu.credits.visible and not cb.visible and not main.main_menu.column.get_parent().visible, "Creditos abre la ventana y esconde el menu")
 	var ctext: String = main.main_menu.credits.find_child("texto_creditos", true, false).text
@@ -51,7 +58,7 @@ func test_start() -> void:
 	main.main_menu.licenses.find_child("volver_licencias", true, false).pressed.emit()
 	check(main.main_menu.credits.visible and not main.main_menu.licenses.visible, "Volver de las licencias vuelve a los creditos")
 	main.main_menu.credits.find_child("volver_creditos", true, false).pressed.emit()
-	check(not main.main_menu.credits.visible and cb.visible and main.main_menu.column.get_parent().visible, "Volver cierra los creditos")
+	check(not main.main_menu.credits.visible and main.main_menu.main_hints.visible and main.main_menu.column.get_parent().visible, "Volver cierra los creditos")
 	# Entrar al juego: etapa 1 con torre de 25 pisos
 	main._cancel_jobs()   # (sin partida guardada el menu ya viene generando la etapa 1 con el largo normal: se descarta)
 	main.tower_rows = 4  # torre chica para que el test sea rapido
@@ -59,6 +66,10 @@ func test_start() -> void:
 	main.main_menu.buttons["nueva"].pressed.emit()   # abre el selector de escenario
 	check(main.main_menu.scenarios.visible and not main.main_menu.main_center.visible and main.in_menu, "Nueva partida abre el selector de escenario")
 	main.main_menu.scenarios.play_buttons["pesadilla"].pressed.emit()   # el gratuito
+	if main.confirm_box.visible:   # (había una partida guardada: pide confirmar que se pierde)
+		main.confirm_box._open_t = -10.0
+		main.confirm_box._answer(true)
+		await process_frame
 	check(not main.in_menu and not main.main_menu.visible and main.hud_layer.visible and main.stage_number == 1, "Nueva partida arranca en la etapa 1 con el HUD")
 	while main.generating or main.logic == null:
 		await process_frame

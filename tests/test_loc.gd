@@ -82,8 +82,6 @@ func test_catalog() -> void:
 		need(b.name, "bloque de la guía")
 		need(b.desc, "descripción del bloque " + b.id)
 		need(b.say, "lo que dice el tabernero del bloque " + b.id)
-	need("Por descubrir", "guía de bloques")
-	need("Guía de bloques", "guía de bloques")
 	for l in Story.dice_intro():
 		need(l if typeof(l) == TYPE_STRING else l.text, "dados del tabernero")
 	for l in Tutorial.lessons():
@@ -147,7 +145,7 @@ func test_screens() -> void:
 	for r in [true, false]:
 		var run := RunState.new()
 		main.run_end.show_summary(run, r, "", 12, 30, ["Garras de hielo"])
-	main.pause_menu.set_restart_cost(20, false)
+	main.pause_menu.set_restart(2, false, false, false)
 	main.pause_menu.open()
 	main.pause_menu.show_options(true)
 	main.dialogue.show_lines(Story.intro(), Story.SPEAKER, true)
@@ -238,7 +236,7 @@ func test_in_game() -> void:
 		await process_frame
 	main.leave_casino()
 	await process_frame
-	main.end_run(false, Loc.t("Abandonaste el run."))
+	main.end_run(false, Loc.t("Abandonaste la partida."))
 	await process_frame
 	main.open_main_menu()
 	main.start_tutorial()

@@ -3,6 +3,7 @@ extends Node3D
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Gen := preload("res://scripts/tower_gen.gd")
+const Abort := preload("res://scripts/gen_abort.gd")
 const STEP_TIME := 0.14
 const FALL_TIME := 0.08
 const PATH_STEP_TIME := 0.07  # segundos por celda cuando el recorrido tiene varias (salto, hielo, caída)
@@ -19,6 +20,12 @@ const Ideas := preload("res://scripts/ideas.gd")
 const Rooms := preload("res://scripts/rooms.gd")
 const Stages := preload("res://scripts/stages.gd")
 const BlockGuide := preload("res://scripts/block_guide.gd")
+const Farolin := preload("res://scripts/farolin.gd")
+const TrialBanner := preload("res://scripts/trial_banner.gd")
+const Telemetry := preload("res://scripts/telemetry.gd")
+const Demo := preload("res://scripts/demo.gd")
+const TowerBank := preload("res://scripts/tower_bank.gd")
+const DemoEndScreen := preload("res://scripts/demo_end_screen.gd")
 const KeyHint := preload("res://scripts/key_hint.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino_rules.gd")
@@ -27,6 +34,7 @@ const PadBridge := preload("res://scripts/pad_bridge.gd")
 const CasinoScene := preload("res://scripts/casino_scene.gd")
 const MainMenu := preload("res://scripts/main_menu.gd")
 const PauseMenu := preload("res://scripts/pause_menu.gd")
+const ConfirmBox := preload("res://scripts/confirm_box.gd")
 const Settings := preload("res://scripts/settings.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const Music := preload("res://scripts/music.gd")
@@ -64,8 +72,9 @@ const PITCH_NORMAL := -35.264   # ángulo isométrico
 const SIZE_NORMAL := 17.0
 const SIZE_MIN := 6.0
 const SIZE_MAX := 36.0
+const GOAL_TOP_LIFT := 0.52   # a qué altura (desde el centro del cubo de salida) va la losa de ondas de su cara de arriba
 const PITCH_MIN := -86.0
-const PITCH_MAX := -10.0
+const PITCH_MAX := 80.0     # (positivo = mirando desde abajo del horizonte, como en el editor)
 const TOP_VIEW_PITCH := -52.0    # desde este ángulo (mirando desde arriba) se ocultan las capas que tapan al personaje
 const MOUSE_SENS := 0.28         # grados por píxel
 const ZOOM_FACTOR := 1.1
@@ -101,10 +110,9 @@ var max_height := 0        # altura máxima alcanzada en este intento (no baja s
 var block_nodes := {}
 var player_node: Node3D
 var goal_nodes: Array[Node3D] = []
-var toll_in_tests := false   # las pruebas no cobran el peaje del duende salvo que se pida
+var toll_in_tests := false   # las pruebas no cobran el peaje de Farolín salvo que se pida
 var goal_mat: ShaderMaterial   # el material del portal de salida (apagado hasta que alcance para el peaje)
 const PORTAL_SHADER := preload("res://shaders/portal.gdshader")
-const Goblin := preload("res://scripts/goblin.gd")
 var pivot: Node3D
 var cam: Camera3D
 var yaw_target := 45.0
@@ -116,9 +124,10 @@ var hud: Control              # texto de depuración (semilla, contadores...): s
 var debug_hud := false
 var stage_label: Control     # "Etapa 5/27" y el piso en que estás
 var hud_panel               # la ventana de la partida: corazones, etapa, claridad y racha
-var streak_label: Control    # multiplicador de la racha (sólo con racha)
 var banner: Control
 var toast: Control
+var _gain_tween: Tween     # el desvanecer del cartel de ganancia (uno solo a la vez)
+var _toast_tween: Tween    # y el del aviso
 var gain_label: Control
 var _mesh_corrupt: SphereMesh
 var _goal_mesh: BoxMesh
@@ -143,12 +152,13 @@ var tower_rows := TOWER_ROWS
 var in_menu := false
 var main_menu
 var pause_menu
+var confirm_box   # cuadro de confirmación (abandonar la partida, empezar otra sobre una sin terminar)
 var menu_layer: CanvasLayer
 var env: Environment
 var training := false       # tutorial: lecciones sueltas, sin casino ni claridad en juego, y reintento gratis
 var trial := {}              # prueba (etapa especial) de la torre actual: {} si es una etapa común (ver trials.gd)
 var run_new_abilities: Array[String] = []   # habilidades persistentes ganadas en este run (se muestran al terminar)
-var trial_label: Control    # "* Prueba: Niebla" arriba al centro
+var trial_banner: Control   # el cartel de la prueba (abajo, letras grandes sin fondo): ver trial_banner.gd
 var _trial_msg := ""         # resultado de la prueba superada (se muestra al llegar al portal)
 var _gen_failures := 0
 var lost_screen              # pantalla de derrota: Reintentar o Salir al menú
@@ -163,7 +173,7 @@ var casino_balance := true   # al salir del casino se ve el balance (las pruebas
 var balance_layer: CanvasLayer   # donde vive el balance mientras se ve
 var _tick_t := 0.0           # tic-tac de las bombas a la vista
 var _tick_tock := false
-var _trial_banner := ""      # texto del anuncio de la prueba (para borrarlo solo si sigue siendo ese)
+var farolin_reacts := true   # Farolín dice una frase después de cada decisión del peaje (las pruebas la apagan)
 var tutorial_forced := false   # primera vez: el tutorial no se puede dejar (la pausa no vuelve al menú principal)
 var tutorial_index := -1    # lección del tutorial en curso (-1 = no se está en el tutorial)
 var lab_active := false     # modo dev: el laboratorio de estaciones (lab.gd)
@@ -177,12 +187,18 @@ var _model: Node3D          # el animalito (y su copia de silueta): se vuelve a 
 var _ghost: Node3D
 var _sun: DirectionalLight3D
 var dialogue                 # cuadro de diálogo del tabernero (historia y consejos del tutorial)
+const TUTORIAL_MIN_MOVED := 2   # la torre final del tutorial obliga a mover al menos dos bloques distintos
+const TUTORIAL_TOLL := 25   # lo que cuesta el peaje de práctica del final del tutorial
+var _outro_phase := 0       # el cierre del tutorial: 0 el tabernero habla, 1 se camina hasta Farolín, 2 Farolín contesta y se termina
 var story_kind := ""         # "intro" o "outro" mientras se está en una sala de historia del tutorial
 var tutorial_label: Control # cartel con la lección
 var _pending_action := ""     # la acción de movimiento que se está resolviendo (para dorar su tecla en el tutorial si sale bien)
 var block_discovery := true   # al llegar a la fila de un bloque nuevo, el tabernero lo explica (las pruebas lo apagan)
 var _dice_intro_pending := false   # tutorial: al abrirse los dados, el tabernero explica el juego
 var _dice_talk := false
+var _leaving_casino := false   # se le pagó a Farolín y se está yendo del casino: si se cierra el juego ahora, se continúa en la pantalla de carga (no hay que volver a pagar)
+var _loading_dice_done := false   # ya se jugaron los dados de esta pantalla de carga (no se vuelven a ofrecer al continuar)
+var _toll_options: Array = []   # las salidas que ofrece Farolín en la puerta (ver Farolin.toll_dialog)
 var _keeper_talk := false   # el tabernero del casino está hablando (cuadro de diálogo)
 var key_hint                # las teclas de la lección arriba al centro: grises hasta que se aprietan (ver key_hint.gd)
 var perk_label: Control
@@ -194,6 +210,7 @@ var clarity_counter       # [ícono] claridad (la del run más la juntada en est
 var dev_console           # consola del modo dev (sólo en compilaciones de desarrollo; null en las release)
 var console_open := false
 var run_end             # pantalla de fin de run
+var demo_end            # pantalla de fin de la demo (demo_end_screen.gd)
 var run_over := false
 var action_log: Array[String] = []   # acciones del intento actual ("dx,dz,modo"): se imprime al perder, para poder reproducir un caso
 var attempt_dirty := false  # el intento actual de la torre ya empezó (hubo un movimiento o se usó un consumible)
@@ -202,14 +219,24 @@ var right_bar             # barra de boosts (derecha)
 var item_tip: Control     # descripción del ítem bajo el mouse
 var epoch := 0              # sube al volver al menú: las generaciones en curso se descartan
 var _jobs: Array = []       # hilos de generación: la torre de la etapa actual y la de la siguiente (se genera mientras se juega)
+var _attempt_t0 := 0   # cuándo empezó el intento actual de la torre (para la telemetría)
+var _zombies: Array[Thread] = []   # hilos de generación cancelados que todavía no terminaron (ver _cancel_jobs)
 
 
 func _ready() -> void:
+	if Demo.on():   # la demo tiene su propia carpeta de guardado (no pisa la del juego completo) y su título
+		DirAccess.make_dir_recursive_absolute(Demo.save_dir())
+		SaveGame.path = Demo.save_dir() + "/save.json"
+		Profile.path = Demo.save_dir() + "/profile.json"
+		Profile._loaded_from = ""
+		if DisplayServer.get_name() != "headless":
+			DisplayServer.window_set_title(Demo.TITLE)
 	# Las pruebas (y las capturas hechas con GAME_SANDBOX=1) no tocan la partida, el perfil ni los ajustes reales del jugador.
 	if test_mode or DisplayServer.get_name() == "headless" or OS.get_environment("GAME_SANDBOX") == "1":
 		SaveGame.path = "user://test_save.json"
 		Profile.path = "user://test_profile.json"
 		Settings.path = "user://test_settings.json"
+		Telemetry.path = "user://test_telemetria.jsonl"
 		Profile._loaded_from = ""
 		Settings._loaded = false
 	if test_mode:
@@ -221,7 +248,8 @@ func _ready() -> void:
 	_register_globals()
 	var pad_bridge := PadBridge.new()   # el mando se traduce a las teclas de cada acción
 	pad_bridge.nav_mode = func() -> bool:
-		return in_menu or get_tree().paused or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible)
+		return in_menu or get_tree().paused or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible) or (dialogue != null and dialogue.is_active()) or (confirm_box != null and confirm_box.is_open())
+	pad_bridge.process_mode = Node.PROCESS_MODE_ALWAYS   # (el mando tiene que seguir andando con el juego en pausa: si no, el menú de pausa no responde)
 	add_child(pad_bridge)
 	add_to_group("graphics")
 	_set_depth_mode(depth_mode)
@@ -286,6 +314,7 @@ func _build_hud() -> void:
 	add_child(story_layer)
 	dialogue = DialogueBox.new()
 	dialogue.finished.connect(_on_dialogue_finished)
+	dialogue.chosen.connect(_on_dialogue_chosen)
 	story_layer.add_child(dialogue)
 	var dice_layer := CanvasLayer.new()   # la pantalla de carga con los dados va por encima del juego
 	dice_layer.layer = 25
@@ -311,13 +340,11 @@ func _build_hud() -> void:
 	lives_hud = hud_panel.lives
 	stage_label = hud_panel.stage_label
 	clarity_counter = hud_panel.clarity
-	streak_label = hud_panel.streak_label
-	trial_label = _label(layer, 3, Color(1.0, 0.85, 0.35))
-	trial_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	trial_label.align = VoxelLabel.Align.CENTER
-	trial_label.y_offset = 12.0
-	trial_label.plate_alpha = 0.6
-	trial_label.visible = false
+	var banner_layer := CanvasLayer.new()   # el cartel de la prueba va por encima de los menús: al pausar se ve entero
+	banner_layer.layer = 105
+	add_child(banner_layer)
+	trial_banner = TrialBanner.new()
+	banner_layer.add_child(trial_banner)
 	# Texto de depuración: oculto salvo que se prenda con F2 (sólo existe en compilaciones de desarrollo).
 	hud = _label(layer, 2, Color(0.95, 0.93, 0.88))
 	hud.localize = false   # (texto de depuración: siempre en español)
@@ -394,6 +421,27 @@ func _label(parent: Node, cube: float, color: Color) -> Control:
 	return l
 
 
+## La música de la torre de una etapa: el Invierno de Vivaldi en las pruebas y el Verano en las torres comunes.
+func _tower_music(stage: int) -> String:
+	return "pruebas" if not training and run != null and not run.trial_at(stage).is_empty() else "torre"
+
+
+## Cuántos bloques distintos hay que mover (empujar o tirar) para seguir un camino (lo que pesa en la dificultad de una torre).
+static func moved_blocks(tower, path: Array) -> int:
+	var lg = tower.clone()
+	var moved := {}
+	for a in path:
+		var before := {}
+		if a.mode == TowerLogic.Mode.GRAB:
+			before = lg.positions.duplicate()
+		lg.try_action(a.dir, a.mode)
+		if a.mode == TowerLogic.Mode.GRAB:
+			for id in lg.positions:
+				if before.get(id, lg.positions[id]) != lg.positions[id]:
+					moved[id] = true
+	return moved.size()
+
+
 func new_tower(s: int) -> void:
 	if generating:
 		return
@@ -406,6 +454,11 @@ func new_tower(s: int) -> void:
 	if job.is_empty():
 		job = _start_job(stage_number, s)
 	var res: Dictionary = await _await_job(job)
+	var extra_tries := 0
+	while tutorial_index >= 0 and my_epoch == epoch and res.ok and moved_blocks(res.logic, res.path) < TUTORIAL_MIN_MOVED and extra_tries < 30:
+		extra_tries += 1   # la torre del tutorial tiene que obligar a mover al menos dos bloques: si ésta se pasa sin tocar nada, se prueba otra
+		job = _start_job(stage_number, s + extra_tries * 7919)
+		res = await _await_job(job)
 	if my_epoch != epoch:  # se volvió al menú mientras se generaba
 		generating = false
 		return
@@ -413,7 +466,7 @@ func new_tower(s: int) -> void:
 		generating = false
 		_gen_failures += 1
 		if _gen_failures > 5:
-			banner.text = "No se pudo generar la torre.\nVolvé al menú (Esc) y probá de nuevo."
+			banner.text = "No se pudo generar la torre.\nVuelve al menú (Esc) y prueba de nuevo."
 			return
 		banner.text = "Generando otra torre..."
 		await get_tree().create_timer(0.3).timeout
@@ -435,6 +488,7 @@ func new_tower(s: int) -> void:
 	run.tower_retries = 0
 	restart()
 	generating = false
+	_loading_dice_done = false
 	save_game()
 	_prefetch_next_stage()
 	_announce_trial()
@@ -474,6 +528,13 @@ func _gen_thread_count() -> int:
 
 
 func _start_job(stage: int, s: int) -> Dictionary:
+	_join_zombies()
+	if custom_tower.is_empty() and not idea_mode and not training and TowerBank.active() and run != null:   # la demo: la torre sale del banco (ya generada y verificada), al instante
+		var banked := TowerBank.pick(str(run.scenario_id), stage, s)
+		if not banked.is_empty():
+			var bjob := {"stage": stage, "bank": banked, "token": [false], "box": {"res": banked}, "t0": Time.get_ticks_msec(), "done": false, "no_dice": false}
+			_jobs.append(bjob)
+			return bjob
 	var tr: Dictionary = run.trial_at(stage) if not training else {}
 	var prof := Gen.profile_for_stage(stage, tr, run.scenario())
 	var token := [false]
@@ -484,13 +545,15 @@ func _start_job(stage: int, s: int) -> Dictionary:
 		var th := Thread.new()
 		th.start(_generate_worker.bind(k, s, prof, tower_rows if tower_rows != TOWER_ROWS else RunState.rows_for(stage), token, box, mutex, custom_tower, idea_mode))
 		threads.append(th)
-	var job := {"stage": stage, "thread": threads[0], "threads": threads, "token": token, "box": box, "t0": Time.get_ticks_msec(), "done": false, "no_dice": not custom_tower.is_empty() or idea_mode}   # (una torre de prueba armada con una idea no pasa por los dados)
+	var job := {"stage": stage, "thread": threads[0], "threads": threads, "token": token, "box": box, "t0": Time.get_ticks_msec(), "done": false, "no_dice": not custom_tower.is_empty() or idea_mode or _loading_dice_done}   # (una torre de prueba armada con una idea no pasa por los dados)
 	_jobs.append(job)
 	return job
 
 
 ## ¿Algún hilo del trabajo sigue generando? (Los trabajos de prueba traen un solo hilo en `thread`.)
 func _job_alive(job: Dictionary) -> bool:
+	if job.has("bank"):
+		return false
 	if job.has("threads"):
 		for th in job.threads:
 			if th.is_alive():
@@ -501,6 +564,8 @@ func _job_alive(job: Dictionary) -> bool:
 
 ## Espera a que terminen todos los hilos y devuelve la torre (o {"ok": false} si ninguna semilla salió).
 func _job_join(job: Dictionary) -> Dictionary:
+	if job.has("bank"):
+		return job.bank
 	if job.has("threads"):
 		for th in job.threads:
 			if th.is_started():
@@ -544,6 +609,7 @@ func _await_job(job: Dictionary) -> Dictionary:
 ## Premio de un tiro de los dados de la pantalla de carga: claridad (con tope por partida), Luz y, con los 5 aciertos, un cosmético.
 ## Completa `info` con lo que de verdad se dio (`granted`, `cosmetic_name`) para que el minijuego lo muestre.
 func _on_dice_prize(info: Dictionary) -> void:
+	_loading_dice_done = true   # el premio ya está dado (el cosmético y la Luz van al perfil): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
 	var granted := 0
 	var want := int(info.get("claridad", 0))
 	if want > 0 and run != null:
@@ -568,6 +634,7 @@ func _on_dice_prize(info: Dictionary) -> void:
 			info["cosmetic_rarity"] = c.rarity
 			info["cosmetic_id"] = c.id
 			info["cosmetic_slot"] = c.slot
+	save_game()
 
 
 ## Mientras se juega la etapa actual se generan las siguientes en otros hilos (cada torre es nueva: nada pregenerado). La torre sólo depende de la etapa, el escenario y la
@@ -586,21 +653,55 @@ func _prefetch_next_stage() -> void:
 			return
 	for k in range(1, PREFETCH_AHEAD + 1):
 		var st := stage_number + k
-		if st > FINAL_STAGE:
+		if st > FINAL_STAGE or (Demo.on() and st > Demo.LAST_STAGE):   # (la demo termina en el casino de la última etapa: no se genera nada más)
 			return
 		if _find_job(st).is_empty():
 			_start_job(st, randi() % 100000)
 			return
 
 
+## Cancela todos los trabajos de generación SIN esperarlos: se les avisa (bandera global y testigo propio) y sus hilos quedan en `_zombies` hasta que terminen
+## solos (en milisegundos: todo lo que tarda mira la bandera). Antes se esperaba a que terminaran en el mismo cuadro, y con una torre alta eso colgaba el juego
+## decenas de segundos al abandonar el run. La bandera se baja cuando ya no queda ningún hilo vivo.
 func _cancel_jobs() -> void:
 	Gen.cancel = true
+	Abort.flag = true
 	for job in _jobs:
-		if not job.done:
-			job.done = true
-			_job_join(job)
+		job.done = true
+		if job.has("token"):
+			job.token[0] = true
+		if job.has("threads"):
+			for th in job.threads:
+				if th.is_started():
+					_zombies.append(th)
+		elif job.has("thread") and job.thread.is_started():
+			_zombies.append(job.thread)
 	_jobs.clear()
+	_reap_zombies()
+
+
+## Junta los hilos cancelados que ya terminaron; con el último baja la bandera de cancelación.
+func _reap_zombies() -> void:
+	var left: Array[Thread] = []
+	for th in _zombies:
+		if th.is_started() and th.is_alive():
+			left.append(th)
+		elif th.is_started():
+			th.wait_to_finish()
+	_zombies = left
+	if _zombies.is_empty():
+		Gen.cancel = false
+		Abort.flag = false
+
+
+## Espera a los hilos cancelados (lo hace antes de empezar otra generación: ya tuvieron tiempo de terminar mientras se veía otra pantalla).
+func _join_zombies() -> void:
+	for th in _zombies:
+		if th.is_started():
+			th.wait_to_finish()
+	_zombies.clear()
 	Gen.cancel = false
+	Abort.flag = false
 
 
 ## Vuelve a la torre generada tal como empezó.
@@ -608,7 +709,7 @@ func restart() -> void:
 	cancel_targeting()
 	if lost_screen != null:
 		lost_screen.hide_screen()
-	Music.play("torre")
+	Music.play(_tower_music(stage_number))
 	if anim_tween:
 		anim_tween.kill()
 	busy = false
@@ -634,7 +735,7 @@ func restart() -> void:
 	if trial.get("no_streak", false):
 		perks.append("sin_racha")
 	logic.apply_perks(perks)
-	logic.toll = 0 if training or lab_active or (test_mode and not toll_in_tests) else RunState.toll_for(stage_number)   # el duende del portal cobra para encenderlo
+	logic.toll = 0   # (Farolín ya no cobra en la torre: está en la puerta de salida del casino, ver casino_scene.gd)
 	logic.wallet = run.claridad
 	logic.shield = run.consumables.has("escudo")   # Escudo: protege de la próxima bomba que explote
 	logic.meteors = false
@@ -663,10 +764,12 @@ func restart() -> void:
 	_build_lab_signs()
 	banner.text = ""
 	_refresh()
+	_attempt_t0 = Time.get_ticks_msec()
+	_play_trial_banner()
 	call_deferred("_check_discoveries")   # (las filas de abajo de la torre ya están a la altura del jugador)
 
 
-## Descubrimiento de bloques: al llegar a la fila de un tipo de bloque que todavía no conocés, el juego frena y el tabernero lo explica (queda en la guía).
+## Descubrimiento de bloques: al llegar a la fila de un tipo de bloque que todavía no conocés, el juego frena y el tabernero lo explica (queda anotado en el perfil).
 func _check_discoveries() -> void:
 	if not block_discovery or training or lab_active or casino != null or in_menu or logic == null or generating or logic.won or logic.lost or dialogue.is_active():
 		return
@@ -786,6 +889,7 @@ func _make_block(c: Vector3i) -> MeshInstance3D:
 	m.position = _w(c)
 	m.set_meta("kind", kind)
 	m.set_meta("model_kind", model_kind)
+	m.set_meta("variant", BlockModels.variant_for(id, seed_value, model_kind))   # (qué diseño del tipo de bloque le toca: estable en esta torre)
 	m.set_meta("base", base)
 	m.set_meta("purity", 1.0 if logic.purified.has(id) else 0.0)  # 0 = corrupto, 1 = purificado
 	m.set_meta("warn", false)
@@ -816,7 +920,66 @@ func _model_for(node: MeshInstance3D, id: int) -> ArrayMesh:
 	var state := BlockModels.State.PURE if float(node.get_meta("purity")) >= 0.5 else BlockModels.State.CORRUPT
 	if kind == TowerLogic.Kind.BOMB:  # una bomba purificada es una bomba desactivada
 		state = BlockModels.State.CORRUPT if logic.bomb_timer.has(id) else BlockModels.State.DEFUSED
-	return BlockModels.mesh_for(model_kind, state)
+	return BlockModels.mesh_for(model_kind, state, int(node.get_meta("variant", 0)))
+
+
+const BOMB_ZONE_TINT := Color(1.0, 0.55, 0.5)   # tinte de los bloques que están dentro de la zona de una bomba
+const BOMB_ZONE_PULSE := 0.45   # velocidad del titilar de la zona (ciclos por segundo: lento)
+var _zone_mat: StandardMaterial3D = null
+var _zone_mesh: BoxMesh = null
+var _zone_t := 0.0
+
+
+## La zona de una bomba con cuenta: bloques rojos transparentes en el aire de su zona (hijos de la bomba: la siguen cuando se mueve), que titilan despacio hasta casi desaparecer. Se sacan al desactivarse.
+func _update_bomb_zone(node: MeshInstance3D, active: bool, bomb_pos: Vector3i) -> void:
+	var zone: MultiMeshInstance3D = node.get_node_or_null("zone")
+	if not active:
+		if zone != null:
+			node.remove_child(zone)
+			zone.queue_free()
+		return
+	var air: Array[Vector3i] = []   # las celdas libres de la zona (donde no hay bloque)
+	for dx in range(-2, 3):
+		for dy in range(-2, 3):
+			for dz in range(-2, 3):
+				var d := Vector3i(dx, dy, dz)
+				if d != Vector3i.ZERO and dx * dx + dy * dy + dz * dz <= TowerLogic.BOMB_RADIUS2 and not logic.blocks.has(bomb_pos + d):
+					air.append(d)
+	var sig := str(air)
+	if zone != null and zone.get_meta("sig", "") == sig:
+		return
+	if _zone_mesh == null:
+		_zone_mesh = BoxMesh.new()
+		_zone_mesh.size = Vector3(0.94, 0.94, 0.94)
+		_zone_mat = StandardMaterial3D.new()
+		_zone_mat.albedo_color = Color(1.0, 0.1, 0.06, 0.1)
+		_zone_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_zone_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_zone_mat.disable_receive_shadows = true
+		_zone_mesh.material = _zone_mat
+	if zone == null:
+		zone = MultiMeshInstance3D.new()
+		zone.name = "zone"
+		zone.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = _zone_mesh
+		zone.multimesh = mm
+		node.add_child(zone)
+	zone.set_meta("sig", sig)
+	var multi: MultiMesh = zone.multimesh
+	multi.instance_count = air.size()
+	for k in air.size():
+		multi.set_instance_transform(k, Transform3D(Basis(), Vector3(air[k])))
+
+
+## El titilar de las zonas de las bombas: de casi transparente a un rojo suave, lento.
+func _pulse_bomb_zones(delta: float) -> void:
+	if _zone_mat == null:
+		return
+	_zone_t += delta
+	var k := 0.5 - 0.5 * cos(_zone_t * TAU * BOMB_ZONE_PULSE)   # 0..1
+	_zone_mat.albedo_color.a = lerpf(0.0, 0.13, k) + 0.02   # nunca del todo invisible: se ve un poco
 
 
 ## Aspecto de un bloque: su modelo (corrupto o purificado), el tinte, y el brillo (aviso de caída, bomba, purificado).
@@ -829,7 +992,10 @@ func _style_block(node: MeshInstance3D, id: int) -> void:
 		node.mesh = model
 	# Los bloques normales purificados toman el color de su altura; el resto ya trae sus colores en el modelo.
 	var normal_pure: bool = pure and kind == TowerLogic.Kind.NORMAL and not logic.fixed.has(logic.positions[id])
-	mat.set_shader_parameter("tint", node.get_meta("base") if normal_pure else _stage_tint())
+	var tint: Color = node.get_meta("base") if normal_pure else _stage_tint()
+	if node.get_meta("in_zone", false):   # dentro de la zona de una bomba con cuenta: rojizo
+		tint = tint * BOMB_ZONE_TINT
+	mat.set_shader_parameter("tint", tint)
 	var glow := Color.BLACK
 	var energy := 0.0
 	if kind == TowerLogic.Kind.BOMB and logic.bomb_timer.has(id):
@@ -861,6 +1027,54 @@ func _make_fx() -> CPUParticles3D:
 	p.position = Vector3(0, 0.5, 0)
 	p.emitting = false
 	return p
+
+
+## El cubo de salida: un cubo claro y luminoso con bordes dorados y, en la cara de arriba, las ondas del portal (como las puertas del casino).
+func _make_goal_cube() -> Node3D:
+	var g := Node3D.new()
+	g.name = "goal"
+	var body := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3.ONE * 1.015
+	body.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.97, 0.86)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.93, 0.7)
+	mat.emission_energy_multiplier = 0.9
+	mat.roughness = 0.4
+	body.material_override = mat
+	g.add_child(body)
+	for axis in 3:   # los 12 bordes dorados
+		for a in [-0.5, 0.5]:
+			for b in [-0.5, 0.5]:
+				var bar := MeshInstance3D.new()
+				var m := BoxMesh.new()
+				var size := Vector3.ONE * 0.075
+				size[axis] = 1.07
+				m.size = size
+				bar.mesh = m
+				bar.material_override = _goal_mat
+				var p := Vector3.ZERO
+				p[(axis + 1) % 3] = a
+				p[(axis + 2) % 3] = b
+				bar.position = p
+				g.add_child(bar)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.86, 0.86)
+	var top := MeshInstance3D.new()
+	top.mesh = quad
+	top.material_override = goal_mat
+	top.rotation_degrees.x = -90.0
+	top.position = Vector3(0, GOAL_TOP_LIFT, 0)
+	g.add_child(top)
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.9, 0.6)
+	light.omni_range = 3.2
+	light.light_energy = 0.6
+	light.position = Vector3(0, 0.9, 0)
+	g.add_child(light)
+	return g
 
 
 func _build_fx_assets() -> void:
@@ -913,11 +1127,29 @@ func _play_purify(node: MeshInstance3D, id: int) -> void:
 	get_tree().create_timer(1.2).timeout.connect(b.queue_free)
 
 
-func _flash_gain(text: String) -> void:
+func _flash_gain(text: String, gain := 0) -> void:
+	var w := gain_weight(gain)
+	gain_label.cube = 3.0 + 3.0 * w   # (una ganancia grande se ve más grande, dura más y suena más fuerte)
+	gain_label.color = Color(1.0, 0.93, 0.5).lerp(Color(1.0, 0.62, 0.2), w)
 	gain_label.text = text
 	gain_label.modulate.a = 1.0
-	juice.pop(gain_label)
-	create_tween().tween_property(gain_label, "modulate:a", 0.0, 1.8)
+	juice.pop(gain_label, 1.35 + 0.6 * w)
+	if w > 0.4:
+		juice.add_shake(0.1 + 0.35 * w)
+	if gain >= 1000:
+		Sfx.play("item", 0.9 + 0.5 * w, -4.0)
+	if _gain_tween != null:   # (un solo desvanecer a la vez: si quedaban los de las ganancias anteriores pisaban la transparencia y el cartel no volvía a verse)
+		_gain_tween.kill()
+	_gain_tween = create_tween()
+	_gain_tween.tween_interval(0.3 + 1.2 * w)
+	_gain_tween.tween_property(gain_label, "modulate:a", 0.0, 1.8 + 1.0 * w)
+
+
+## Qué tan "pesada" es una ganancia de claridad, de 0 (10 o menos) a 1 (10 millones o más), en escala logarítmica.
+static func gain_weight(gain: int) -> float:
+	if gain <= 10:
+		return 0.0
+	return clampf((log(float(gain)) / log(10.0) - 1.0) / 6.0, 0.0, 1.0)
 
 
 ## Texto que se muestra sobre un tipo de bloque: sólo la bomba lleva su cuenta (se actualiza en _refresh).
@@ -930,34 +1162,17 @@ func _build_goal() -> void:
 		return   # el laboratorio no tiene meta
 	if logic.goal_y >= 1000:
 		return   # las lecciones sin meta (cámara, tirar) no tienen portal: no se camina a ningún lado, así que tampoco hay rayo
-	# La baldosa va sobre el bloque meta (ver _refresh) y lo sigue si se lo mueve. Encima, el portal (ondas, dos paños cruzados) y el duende que lo enciende por un peaje.
-	var portal := Node3D.new()
-	goal_mat = ShaderMaterial.new()
+	# La baldosa va sobre el bloque meta (ver _refresh) y lo sigue si se lo mueve. Encima, el portal (ondas, dos paños cruzados) y Farolín que lo enciende por un peaje.
+	goal_mat = ShaderMaterial.new()   # las ondas de los portales del casino, claras y doradas: van en la cara de arriba del cubo de salida (ver _make_goal_cube)
 	goal_mat.shader = PORTAL_SHADER
-	goal_mat.set_shader_parameter("col_a", Color(0.55, 0.38, 0.05))
-	goal_mat.set_shader_parameter("col_b", Color(1.0, 0.8, 0.2))
-	goal_mat.set_shader_parameter("col_c", Color(1.0, 0.97, 0.7))
-	goal_mat.set_shader_parameter("cells", Vector2(6.0, 12.0))
-	for yaw in [0.0, 90.0]:
-		var quad := QuadMesh.new()
-		quad.size = Vector2(1.3, 2.0)
-		var mi := MeshInstance3D.new()
-		mi.mesh = quad
-		mi.material_override = goal_mat
-		mi.rotation_degrees.y = yaw
-		portal.add_child(mi)
-	portal.position = _w(logic.goal_cell) + Vector3(0, 1.5, 0)
-	add_child(portal)
-	goal_nodes.append(portal)
-	var gob := Goblin.build()
-	gob.position = _w(logic.goal_cell) + Vector3(0.32, 0.5, 0.32)
-	gob.rotation_degrees.y = 45.0
-	add_child(gob)
-	goal_nodes.append(gob)
+	goal_mat.set_shader_parameter("col_a", Color(0.95, 0.78, 0.3))
+	goal_mat.set_shader_parameter("col_b", Color(1.0, 0.93, 0.6))
+	goal_mat.set_shader_parameter("col_c", Color(1.0, 1.0, 0.92))
+	goal_mat.set_shader_parameter("cells", Vector2(5.0, 5.0))
 	_update_goal_light()
 
 
-## El portal se enciende cuando alcanza para pagarle al duende.
+## El portal se enciende cuando alcanza para pagarle a Farolín.
 func _update_goal_light() -> void:
 	if goal_mat != null and logic != null:
 		goal_mat.set_shader_parameter("lit", 1.0 if logic.can_pay_toll() else 0.0)
@@ -976,6 +1191,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if in_menu:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ESCAPE or Controls.hit(event, "pausa")):
+		if dialogue != null and dialogue.is_choosing():
+			dialogue.cancel_choice()   # Esc cierra la decisión de Farolín sin elegir (se sigue en el casino)
+			return
 		if not targeting.is_empty():
 			cancel_targeting()   # Esc primero cancela la elección de un bloque
 			return
@@ -1054,7 +1272,7 @@ func _rig_center() -> Vector3:
 	var t := clampf((SIZE_NORMAL - cam_zoom) / (SIZE_NORMAL - SIZE_MIN), 0.0, 1.0)
 	var focus := center.lerp(_w(logic.player), t)
 	if tutorial_index >= 0:   # en el tutorial el cuadro del tabernero tapa abajo: la torre se sube un poco en la pantalla
-		focus.y -= 1.4
+		focus.y -= 3.0
 	return focus
 
 
@@ -1186,6 +1404,8 @@ func _set_depth_mode(mode: int) -> void:
 
 ## Cada cuadro: dónde está el personaje respecto de la cámara (referencia de las ayudas de profundidad).
 func _process(delta: float) -> void:
+	if not _zombies.is_empty():
+		_reap_zombies()
 	_prefetch_t += delta
 	if _prefetch_t >= 1.0:   # una vez por segundo se ve si hay que adelantar otra torre
 		_prefetch_t = 0.0
@@ -1194,6 +1414,7 @@ func _process(delta: float) -> void:
 	_update_target_box()
 	juice.process(delta)
 	_bomb_ticking(delta)
+	_pulse_bomb_zones(delta)
 	_arrow_camera(delta)
 	if cam == null or player_node == null:
 		return
@@ -1283,8 +1504,8 @@ func _action_sound(mode: int, was_y: int) -> void:
 		Sfx.play("crumble")
 	elif logic.moves_to_collapse == logic.collapse_every and logic.moves_made > 0 and logic.floor_y > 0:
 		Sfx.play("rumble")   # la fila de abajo acaba de caer
-	elif mode == TowerLogic.Mode.GRAB:
-		Sfx.play("pull" if logic.trail.size() > 1 else "push")
+	elif mode == TowerLogic.Mode.GRAB and logic.last_grab != "":   # (Shift sin nada que mover es un paso común: suena a paso)
+		Sfx.play("pull" if logic.last_grab == "pull" else "push")
 	elif mode == TowerLogic.Mode.HANG or logic.hang_dir != Vector3i.ZERO:
 		Sfx.play("hang")
 	elif logic.trail.size() > 3 and logic.player.y > was_y + 1:
@@ -1371,7 +1592,7 @@ func _animate() -> void:
 			_play_purify(pn, id)
 	if logic.last_gain > 0:
 		var mult: float = logic.streak_mult(logic.streak)
-		_flash_gain(Loc.f("+%d claridad", [logic.last_gain]) + (Loc.f("   racha ×%.1f", [mult]) if logic.streak >= 2 else ""))
+		_flash_gain(Loc.f("+%d claridad", [logic.last_gain]) + (Loc.f("   racha ×%.1f", [mult]) if logic.streak >= 2 else "") + (Loc.f("   cosecha ×%.1f", [logic.harvest_mult()]) if logic.harvest_mult() > 1.0 else ""), logic.last_gain)
 	_refresh()
 	anim_tween = create_tween().set_parallel(true)
 	_moved_blocks.clear()
@@ -1516,16 +1737,17 @@ func _tween_to(node: Node3D, target: Vector3) -> void:
 
 ## Al empezar una prueba se anuncia su regla unos segundos.
 func _announce_trial() -> void:
-	if trial.is_empty() or training or logic == null:
+	_play_trial_banner()
+
+
+## El cartel de la prueba al empezar (o rehacer) la torre: grande abajo, se queda unos segundos y se desvanece lento. Sin prueba, no hay cartel.
+func _play_trial_banner() -> void:
+	if trial_banner == null:
 		return
-	_trial_banner = Loc.f("PRUEBA: %s\n%s", [Loc.t(trial.name), Loc.t(trial.desc)])
-	banner.text = _trial_banner
-	if quick_portal or test_mode:
+	if trial.is_empty() or training or lab_active or tutorial_index >= 0 or logic == null or in_menu or casino != null:
+		trial_banner.clear()
 		return
-	var idx := epoch
-	await get_tree().create_timer(3.0).timeout
-	if idx == epoch and logic != null and not logic.won and not logic.lost and banner.text == _trial_banner:
-		banner.text = ""
+	trial_banner.play(Loc.t(trial.name), Loc.t(trial.desc))
 
 
 func _on_anim_done() -> void:
@@ -1536,21 +1758,23 @@ func _on_anim_done() -> void:
 		juice.settle(bn)
 	_moved_blocks.clear()
 	if logic.lost:
+		_log_tower("muerta")
 		juice.add_shake(0.5)
 		juice.flash(Color(0.8, 0.1, 0.15), 0.4, 0.6)
 		juice.tumble()
 	elif logic.won:
+		_log_tower("ganada")
 		juice.gold_burst(player_node.position)
 		juice.flash(Color(1.0, 0.9, 0.5), 0.35, 0.7)
 		juice.zoom_punch(0.05)
 	_check_discoveries()
-	if logic.toll_blocked and not logic.won and not training:   # el duende no enciende el portal hasta que le pagues
-		_flash(Loc.f("El duende pide %d de claridad para encender el portal: te faltan %d.", [logic.toll, logic.toll - logic.wallet - logic.claridad]))
+	if logic.toll_blocked and not logic.won and not training:   # Farolín no enciende el portal hasta que le pagues
+		_flash(Loc.f("Farolín pide %d de claridad para encender el portal: te faltan %d.", [logic.toll, logic.toll - logic.wallet - logic.claridad]))
 	if logic.won:
 		if training:
 			if tutorial_index >= 0 and tutorial_locked():   # llegaste, pero te faltan las teclas de la lección: no se pasa
 				logic.won = false
-				_flash(Loc.t("Todavía te faltan teclas: probá todas las de arriba."))
+				_flash(Loc.t("Todavía te faltan teclas: prueba todas las de arriba."))
 				await get_tree().create_timer(1.2).timeout
 				if tutorial_index >= 0 and logic != null:
 					restart()   # (las teclas ya doradas se quedan así)
@@ -1590,7 +1814,10 @@ func _flash(msg: String) -> void:
 	toast.text = msg
 	toast.modulate.a = 1.0
 	juice.pop(toast, 1.2)
-	create_tween().tween_property(toast, "modulate:a", 0.0, 1.4)
+	if _toast_tween != null:
+		_toast_tween.kill()
+	_toast_tween = create_tween()
+	_toast_tween.tween_property(toast, "modulate:a", 0.0, 1.4)
 
 
 func _refresh() -> void:
@@ -1601,30 +1828,21 @@ func _refresh() -> void:
 	var state := "colgado" if logic.hang_dir != Vector3i.ZERO else "de pie"
 	var prof_text := ("ENTRENAMIENTO   " if training else "") + "Etapa %d/%d (ritmo %s)" % [stage_number, FINAL_STAGE, PACE_NAMES.get(profile.get("pace", "normal"), "normal")]
 	if lab_active:
-		trial_label.visible = false
 		stage_label.text = "LABORATORIO\n%d. %s" % [lab_station + 1, Lab.STATIONS[lab_station].name]
-		streak_label.visible = false
 		hud.text = "LABORATORIO   estación %d/%d: %s" % [lab_station + 1, Lab.count(), Lab.STATIONS[lab_station].id]
 	elif tutorial_index >= 0:
-		trial_label.visible = false
 		stage_label.text = Loc.f("Tutorial\nLección %d/%d", [tutorial_index + 1, Tutorial.count()])
-		streak_label.visible = false
 		hud.text = "TUTORIAL   Lección %d/%d: %s" % [tutorial_index + 1, Tutorial.count(), Tutorial.lessons()[tutorial_index].title]
 	else:
-		stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, FINAL_STAGE, " *" if not trial.is_empty() else ""])
-		trial_label.visible = not trial.is_empty()   # (la próxima prueba ya no se muestra: la cuenta el tabernero)
-		if not trial.is_empty():
-			trial_label.text = Loc.f("* Prueba: %s\n%s", [Loc.t(trial.name), Loc.t(trial.desc)])
-			trial_label.color = Color(1.0, 0.85, 0.35)
-		streak_label.visible = logic.streak >= 2
-		if streak_label.visible:
-			streak_label.text = Loc.f("Racha ×%.1f", [logic.streak_mult(logic.streak)])
+		stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, Demo.shown_final(FINAL_STAGE), " *" if not trial.is_empty() else ""])
 		hud.text = prof_text + "\nCaída de la fila base en %d (cada %d)    Altura %d/%d    Movimientos %d    %s\nRacha %d (×%.1f)    Mejor racha %d    Purificados %d    Semilla %d" % [
 		logic.moves_to_collapse, logic.collapse_every, logic.player.y, logic.goal_y, logic.moves_made, state,
 		logic.streak, logic.streak_mult(logic.streak), logic.best_streak, logic.purified_count, seed_value]
 	var total: int = run.claridad + logic.claridad
 	_update_goal_light()
-	hud_panel.set_toll(logic.toll if not training and not lab_active and tutorial_index < 0 else 0, not logic.can_pay_toll())
+	var show_toll: bool = not training and not lab_active and tutorial_index < 0 and not (test_mode and not toll_in_tests)   # (lo que cobrará Farolín de la puerta del casino: se ve durante toda la torre, en rojo si con lo que traés y lo que juntaste todavía no alcanza)
+	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
+	hud_panel.set_toll(next_toll, run.claridad + logic.claridad < next_toll)
 	if total > clarity_counter.value:
 		juice.pop(clarity_counter, 1.25)
 	clarity_counter.value = total
@@ -1632,13 +1850,23 @@ func _refresh() -> void:
 	# Aviso: la fila base tiembla durante los últimos movimientos antes de caer (ver _style_block).
 	var warn: bool = logic.collapse_every < 1000 and logic.moves_to_collapse <= TREMBLE_MOVES
 	max_height = maxi(max_height, logic.player.y)
+	var bomb_cells: Array[Vector3i] = []   # las bombas con cuenta: lo que está en su zona se tiñe de rojo
+	for bid in logic.bomb_timer:
+		bomb_cells.append(logic.positions[bid])
 	for id in block_nodes:
 		var node: MeshInstance3D = block_nodes[id]
 		var pos: Vector3i = logic.positions[id]
+		var zoned := false
+		for bc in bomb_cells:
+			if TowerLogic.in_bomb_zone(bc, pos):
+				zoned = true
+				break
+		node.set_meta("in_zone", zoned)
 		var cur_kind: int = logic.kind_at(pos)
 		if node.get_meta("kind") != cur_kind:  # un consumible cambió el tipo (hielo a roca, catapulta de bolsillo)
 			node.set_meta("kind", cur_kind)
 			node.set_meta("model_kind", BlockModels.CORE if logic.fixed.has(pos) else cur_kind)
+			node.set_meta("variant", BlockModels.variant_for(id, seed_value, int(node.get_meta("model_kind"))))
 		# Mirando desde arriba se ocultan las capas que están por encima del nivel del personaje (son las que tapan).
 		node.visible = _node_visible(pos)
 		node.set_meta("warn", warn and pos.y == logic.floor_y)
@@ -1647,29 +1875,21 @@ func _refresh() -> void:
 			var lab: Label3D = node.get_node("tag")
 			if logic.bomb_timer.has(id):
 				lab.text = str(logic.bomb_timer[id])
-				# Cuenta activa (roja) cuando el jugador está en su fila; congelada (gris) si no.
-				lab.modulate = Color(1.0, 0.25, 0.2) if pos.y == logic.player.y else Color(0.75, 0.75, 0.75)
+				# Cuenta activa (roja) cuando el jugador está en su zona; congelada (gris) si no.
+				lab.modulate = Color(1.0, 0.25, 0.2) if TowerLogic.in_bomb_zone(pos, logic.player) else Color(0.75, 0.75, 0.75)
 			else:
 				lab.text = "✓"  # desactivada por purificación
 				lab.modulate = Color(0.5, 1.0, 0.55)
+			_update_bomb_zone(node, logic.bomb_timer.has(id), pos)
+		elif node.has_node("zone"):   # (un consumible la convirtió en otra cosa)
+			_update_bomb_zone(node, false, pos)
 		# Meta: el bloque-portal (goal_block) lleva la baldosa dorada y el haz de luz, que lo siguen si se lo mueve.
 		# Sin bloque-portal (torres de prueba) cualquier bloque de la capa superior vale y lleva baldosa.
 		var is_top: bool = (id == logic.goal_block) if logic.goal_block >= 0 else (pos.y == logic.goal_y - 1 and not logic.fixed.has(pos))
-		var tile: Node = node.get_node_or_null("goal")
-		if is_top and tile == null:
-			var gt := MeshInstance3D.new()
-			gt.name = "goal"
-			gt.mesh = _goal_mesh
-			gt.material_override = _goal_mat
-			gt.position = Vector3(0, 0.49, 0)
-			node.add_child(gt)
-			tile = gt
-		if is_top and logic.goal_block >= 0 and not goal_nodes.is_empty():
-			goal_nodes[0].position = _w(pos) + Vector3(0, 1.5, 0)
-			goal_nodes[0].visible = node.visible  # el portal se ve sólo cuando se ve su bloque
-			if goal_nodes.size() > 1:
-				goal_nodes[1].position = _w(pos) + Vector3(0.32, 0.5, 0.32)
-				goal_nodes[1].visible = node.visible
+		var tile: Node3D = node.get_node_or_null("goal")   # la meta es un cubo especial (luminoso, claro, con bordes dorados y las ondas del portal arriba): hijo del bloque, lo sigue si se lo mueve
+		if is_top and tile == null and goal_mat != null:
+			tile = _make_goal_cube()
+			node.add_child(tile)
 		if tile != null:
 			tile.visible = is_top
 		# Partículas: sólo en los bloques con la cara de arriba libre y cerca del jugador.
@@ -1691,7 +1911,7 @@ func _bank_claridad() -> void:
 	var gained := int(round(logic.claridad * float(trial.get("mult", 1.0))))
 	run.claridad_earned += gained
 	run.gain(gained)
-	if logic.toll > 0:   # el duende cobra por encender el portal
+	if logic.toll > 0:   # Farolín cobra por encender el portal
 		run.claridad = maxi(run.claridad - logic.toll, 0)
 	_trial_msg = ""
 	if not trial.is_empty() and not training:
@@ -1722,17 +1942,23 @@ func _character_msg(ids: Array) -> String:
 func enter_casino(restoring := false) -> void:
 	if casino != null:
 		return
+	if trial_banner != null:
+		trial_banner.clear()
 	Music.play("casino")
 	if not restoring:
 		_bank_claridad()
+	if not training and not lab_active and tutorial_index < 0:
+		Telemetry.log_event("casino", {"stage": stage_number, "claridad_in": run.claridad, "lives": run.lives, "boosts": run.boosts.size()})
 	casino = CasinoScene.new()
 	casino.position = Vector3(500, 0, 0)  # lejos de la torre: la cámara ortogonal del casino no ve nada de ella
 	add_child(casino)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
+	casino.toll_base = 0 if training or lab_active or tutorial_index >= 0 or (test_mode and not toll_in_tests) else RunState.toll_for(run.stage)   # Farolín de la puerta de salida cobra la torre que se acaba de superar
 	casino.setup(run, rng)
 	_apply_casino_light()
 	casino.left.connect(leave_casino)
+	casino.toll_talk.connect(_on_toll_talk)
 	casino.changed.connect(save_game)
 	casino.keeper_talk.connect(_on_keeper_talk)
 	hud_layer.visible = false
@@ -1750,10 +1976,82 @@ func _on_keeper_talk(lines: Array) -> void:
 	dialogue.show_lines(lines, Story.SPEAKER, true)
 
 
+## Farolín en la puerta de salida: el cuadro de diálogo con sus salidas (pagar, rehacer la torre o, sin vidas, abandonar). Mientras tanto no se camina.
+## Termina el tutorial (después del peaje de práctica): se marca como hecho y se vuelve al menú.
+func _finish_tutorial() -> void:
+	tutorial_forced = false
+	Profile.mark_tutorial_done()
+	open_main_menu()
+
+
+func _on_toll_talk() -> void:
+	if casino == null or dialogue.is_active():
+		return
+	var d: Dictionary = Farolin.practice_dialog(casino.toll_now()) if story_kind == "outro" else casino.toll_dialog()
+	_toll_options = d.options
+	casino.input_locked = true
+	dialogue.show_choice(d.text, d.options, Farolin.SPEAKER)
+
+
+## Se eligió una salida del diálogo (-1: se cerró con Esc y se sigue en el casino).
+func _on_dialogue_chosen(index: int) -> void:
+	if casino == null:
+		return
+	casino.input_locked = false
+	if index < 0 or index >= _toll_options.size():
+		if index < 0 and not _toll_options.is_empty():
+			Telemetry.log_event("peaje", {"stage": stage_number, "price": casino.toll_now(), "claridad": run.claridad, "choice": "cancelar"})
+		return
+	var id := str(_toll_options[index].id)
+	_toll_options = []
+	if story_kind == "outro":   # el peaje de práctica: Farolín contesta y se termina el tutorial (no se cobra nada de verdad)
+		_outro_phase = 2
+		casino.input_locked = true
+		dialogue.show_lines([Farolin.reaction(Farolin.PAY)], Farolin.SPEAKER, true, true)
+		return
+	Telemetry.log_event("peaje", {"stage": stage_number, "price": casino.toll_now(), "claridad": run.claridad, "choice": id})
+	if farolin_reacts and not test_mode:   # Farolín contesta antes de que pase lo que se eligió
+		casino.input_locked = true
+		dialogue.show_lines([Farolin.reaction(id)], Farolin.SPEAKER, true, true)
+		await dialogue.finished
+		if casino == null:
+			return
+		casino.input_locked = false
+	match id:
+		Farolin.PAY:
+			casino.pay_toll()
+		Farolin.REDO:
+			_on_pay_failed()
+		Farolin.GIVE_UP:
+			end_run(false, Loc.t("Dejaste que la luz se apagara."))
+
+
+## Se eligió rehacer la torre: se pierde una vida y se vuelve a subir la misma (la claridad juntada se conserva).
+func _on_pay_failed() -> void:
+	if casino == null:
+		return
+	if not run.can_revive():
+		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
+		return
+	run.note_retry(true)
+	Music.play(_tower_music(stage_number))
+	casino.queue_free()
+	casino = null
+	if cam != null:
+		cam.make_current()
+	hud_layer.visible = true
+	restart()
+	_flash(Loc.t("Perdiste una vida: vuelves a subir la torre"))
+	save_game()
+
+
 ## El portal del casino lleva a la torre de la etapa siguiente. Antes se ve el balance del casino (mientras la torre se genera).
 func leave_casino() -> void:
 	if casino == null or balance_layer != null:
 		return
+	_leaving_casino = true   # (desde acá el guardado es el de la pantalla de carga de la torre que sigue)
+	_loading_dice_done = false
+	save_game()
 	if casino_balance and CasinoRules.active(run):
 		balance_layer = CanvasLayer.new()
 		balance_layer.layer = 50
@@ -1777,7 +2075,11 @@ func _close_balance() -> void:
 func _leave_casino_now() -> void:
 	if casino == null:
 		return
-	Music.play("torre")
+	if Demo.is_last_casino(stage_number) and not training:   # el casino que cierra la demo: se le pagó a Farolín, se terminó
+		_leaving_casino = false
+		end_run(true, "")
+		return
+	Music.play(_tower_music(mini(stage_number + 1, FINAL_STAGE)))
 	casino.queue_free()
 	casino = null
 	if cam != null:
@@ -1785,6 +2087,7 @@ func _leave_casino_now() -> void:
 	hud_layer.visible = true
 	stage_number = mini(stage_number + 1, FINAL_STAGE)
 	run.stage = stage_number
+	_leaving_casino = false
 	new_tower(randi() % 100000)
 
 
@@ -1796,7 +2099,7 @@ func _build_menus() -> void:
 	menu_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(menu_layer)
 	main_menu = MainMenu.new()
-	main_menu.new_game.connect(start_game)
+	main_menu.new_game.connect(_on_new_game)
 	main_menu.continue_game.connect(continue_game)
 	main_menu.start_tutorial.connect(start_tutorial)
 	main_menu.quit_game.connect(quit_game)
@@ -1807,19 +2110,25 @@ func _build_menus() -> void:
 	pause_menu.restart_tower.connect(func():
 		resume_game()
 		request_restart())
-	pause_menu.abandon_run.connect(func():
-		resume_game()
-		end_run(false, "Abandonaste el run."))
+	pause_menu.abandon_run.connect(_ask_abandon)
 	pause_menu.to_main_menu.connect(open_main_menu)
 	pause_menu.quit_game.connect(quit_game)
 	pause_menu.language_changed.connect(_on_language_changed)
 	menu_layer.add_child(pause_menu)
+	confirm_box = ConfirmBox.new()
+	menu_layer.add_child(confirm_box)
 	run_end = RunEndScreen.new()
 	run_end.new_game.connect(func():   # "Nueva partida" del fin de run: se elige el escenario otra vez
 		open_main_menu()
 		main_menu.show_panel("escenarios"))
 	run_end.to_menu.connect(open_main_menu)
 	menu_layer.add_child(run_end)
+	demo_end = DemoEndScreen.new()
+	demo_end.new_game.connect(func():
+		open_main_menu()
+		main_menu.show_panel("escenarios"))
+	demo_end.to_menu.connect(open_main_menu)
+	menu_layer.add_child(demo_end)
 	main_menu.visible = false
 
 
@@ -1839,7 +2148,7 @@ func _rebuild_menus() -> void:
 		main_menu.visible = true
 		main_menu.show_panel("opciones")
 	elif was_paused:
-		pause_menu.set_restart_cost(run.restart_cost(), training)
+		pause_menu.set_restart(run.lives, training or lab_active, run.insurance, casino != null)
 		pause_menu.open()
 		pause_menu.show_options(true)
 		if trial.get("no_retry", false):
@@ -1850,6 +2159,8 @@ func _rebuild_menus() -> void:
 func open_main_menu() -> void:
 	_close_balance()
 	lab_active = false
+	if trial_banner != null:
+		trial_banner.clear()
 	_clear_lab_signs()
 	if lost_screen != null:
 		lost_screen.hide_screen()
@@ -1871,6 +2182,7 @@ func open_main_menu() -> void:
 	_set_training(false)
 	run_over = false
 	run_end.visible = false
+	demo_end.visible = false
 	in_menu = true
 	hud_layer.visible = false
 	main_menu.set_continue(SaveGame.peek_stage())
@@ -1882,6 +2194,37 @@ func open_main_menu() -> void:
 
 
 ## "Nueva partida": run nuevo desde la etapa 1 en el escenario elegido (se paga su entrada con Luz; si no alcanza, se juega La Pesadilla).
+## El resumen de una partida (de la guardada o de la que está en marcha) para los cuadros de confirmación.
+func _progress_text(r: Dictionary, stage: int) -> String:
+	var scn := Scenarios.get_scenario(str(r.get("scenario_id", Scenarios.FREE)))
+	return Loc.f("%s: etapa %d de %d, %d torres superadas, %d de claridad y %d vidas.", [Loc.t(str(scn.get("name", ""))), stage, Demo.shown_final(FINAL_STAGE), int(r.get("towers_cleared", 0)), int(r.get("claridad", 0)), int(r.get("lives", 0))])
+
+
+## "Abandonar partida" de la pausa: primero se pregunta; si se confirma, termina la partida (con el resumen).
+func _ask_abandon() -> void:
+	confirm_box.ask(Loc.t("¿Abandonar la partida?"), Loc.f("Vas a terminar la partida en curso y se perderá este progreso. %s", [_progress_text(run.to_dict(), stage_number)]),
+			Loc.t("Sí, abandonar"), Loc.t("Seguir jugando"))
+	var yes: bool = await confirm_box.chosen
+	if not yes or run_over:
+		return
+	resume_game()
+	end_run(false, Loc.t("Abandonaste la partida."))
+
+
+## Elegir un escenario nuevo: si hay una partida sin terminar, antes hay que confirmar que se pierde.
+func _on_new_game(scenario_id: String) -> void:
+	var saved := SaveGame.read()
+	if saved.is_empty():
+		start_game(scenario_id)
+		return
+	confirm_box.ask(Loc.t("¿Empezar una partida nueva?"), Loc.f("Tienes una partida sin terminar. %s Si empiezas otra, esa partida se perderá.", [_progress_text(saved.run, int(saved.stage))]),
+			Loc.t("Sí, empezar de nuevo"), Loc.t("Volver"))
+	var yes: bool = await confirm_box.chosen
+	if yes:
+		SaveGame.delete()
+		start_game(scenario_id)
+
+
 func start_game(scenario_id := Scenarios.FREE) -> void:
 	if not Profile.pay_entry(scenario_id):
 		scenario_id = Scenarios.FREE
@@ -1898,6 +2241,7 @@ func start_game(scenario_id := Scenarios.FREE) -> void:
 	_set_training(false)
 	run_over = false
 	run_end.visible = false
+	demo_end.visible = false
 	stage_number = 1
 	run.stage = 1
 	hud_layer.visible = true
@@ -1909,7 +2253,10 @@ func pause_game() -> void:
 		return
 	get_tree().paused = true
 	pause_menu.set_tutorial_lock(tutorial_forced)
-	pause_menu.set_restart_cost(run.restart_cost(), training)
+	pause_menu.make_room_for_banner(trial_banner != null and trial_banner.active)   # (al pausar el cartel de la prueba se ve entero: el menú sube para no taparlo)
+	if trial_banner != null:
+		trial_banner.pin()
+	pause_menu.set_restart(run.lives, training or lab_active, run.insurance, casino != null)
 	pause_menu.open()
 	if trial.get("no_retry", false):
 		pause_menu.buttons["reiniciar"].disabled = true   # (la prueba "Todo o nada" no tiene reintentos)
@@ -1918,13 +2265,23 @@ func pause_game() -> void:
 
 func resume_game() -> void:
 	pause_menu.close()
+	pause_menu.make_room_for_banner(false)
+	if trial_banner != null:
+		trial_banner.release()
 	get_tree().paused = false
+
+
+## Al sacar la escena (cerrar el juego, pruebas) no se dejan hilos de generación sueltos.
+func _exit_tree() -> void:
+	_cancel_jobs()
+	_join_zombies()
 
 
 func quit_game() -> void:
 	save_game()
 	epoch += 1
 	_cancel_jobs()
+	_join_zombies()   # (al cerrar sí se espera: los hilos cortan en milisegundos)
 	if not quit_game_override:
 		get_tree().quit()
 
@@ -1971,26 +2328,42 @@ func request_restart() -> void:
 	if dead and not run.can_revive():
 		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
 		return
-	var cost := run.restart_cost(dead)
-	if not run.can_afford(cost):
-		end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost]))
+	if not dead:   # por voluntad (desde la pausa o con R): cuesta una vida, no claridad
+		if not run.pay_voluntary_retry():
+			_flash(Loc.t("No te quedan vidas para reintentar la torre"))
+			return
+		restart()
+		_flash(Loc.t("Reintento: −1 vida"))
 		return
-	var free_by: String = "totem" if (cost == 0 and dead and not run.insurance) else "seguro"
+	var cost := run.restart_cost(dead)
+	var free_by: String = "totem" if (dead and run.consumables.has("totem") and not run.item_blocked("totem")) else "vida"
 	run.spend(cost)
 	run.note_retry(dead)
 	restart()
-	_flash(Loc.f("Reintento: −%d de claridad", [cost]) if cost > 0 else (Loc.t("Reintento gratis: el Tótem te dio otra vida") if free_by == "totem" else Loc.t("Reintento gratis: el seguro lo cubre")))
+	_flash(Loc.t("Reintento gratis: el Tótem te dio otra vida") if free_by == "totem" else Loc.t("Reintento: perdiste una vida"))
+
+
+## Anota cómo terminó el intento de la torre (telemetría local: ver telemetry.gd). No se anota en el tutorial, el entrenamiento ni el laboratorio.
+func _log_tower(outcome: String) -> void:
+	if training or lab_active or tutorial_index >= 0 or logic == null or run == null:
+		return
+	Telemetry.log_event("torre", {"stage": stage_number, "outcome": outcome, "seconds": int((Time.get_ticks_msec() - _attempt_t0) / 1000), "moves": logic.moves_made,
+			"claridad": logic.claridad, "retries": run.tower_retries, "lives": run.lives, "cause": logic.lost_reason if outcome == "muerta" else ""})
 
 
 ## Termina el run y muestra el resumen.
 func end_run(victory: bool, reason := "") -> void:
 	if run_over:
 		return
+	if not training:
+		Telemetry.log_event("run_fin", {"victory": victory, "stage": run.max_stage, "towers": run.towers_cleared, "trials": run.trials_cleared, "earned": run.claridad_earned, "lives": run.lives})
 	if lost_screen != null:
 		lost_screen.hide_screen()
 	Music.play("menu")
 	Sfx.play("win" if victory else "lose")
 	run_over = true
+	if trial_banner != null:
+		trial_banner.clear()
 	epoch += 1
 	_close_balance()
 	_cancel_jobs()
@@ -2007,7 +2380,7 @@ func end_run(victory: bool, reason := "") -> void:
 	in_menu = true
 	SaveGame.delete()   # el run terminó: no hay nada que continuar
 	var luz := Profile.record_run(run, victory)   # la Luz y las estadísticas pasan al perfil
-	if victory and not training:   # escapar da una habilidad persistente del escenario (o Luz si ya las tenés todas)
+	if victory and not training and not Demo.on():   # escapar da una habilidad persistente del escenario (o Luz si ya las tenés todas; en la demo no hay habilidades)
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
 		var award := Profile.award_scenario_ability(run.scenario_id, rng)
@@ -2018,6 +2391,9 @@ func end_run(victory: bool, reason := "") -> void:
 			if not chars.is_empty():
 				reason = Loc.join([reason, _character_msg(chars)]) if reason != "" else _character_msg(chars)
 		luz += int(award.luz)
+	if Demo.on() and not training:
+		demo_end.show_summary(run, victory)
+		return
 	run_end.show_summary(run, victory, reason, luz, Profile.luz(), run_new_abilities.duplicate())
 
 
@@ -2072,6 +2448,10 @@ func _open_story_room(stage: int, lines: Array, kind: String) -> void:
 	casino = CasinoScene.new()
 	casino.position = Vector3(500, 0, 0)   # lejos de la torre, como el casino normal
 	casino.story = true
+	if kind == "outro":   # en el salón de piedra Farolín espera junto a la puerta: se le paga un peaje de práctica
+		casino.toll_base = TUTORIAL_TOLL
+		_outro_phase = 0
+		casino.toll_talk.connect(_on_toll_talk)
 	add_child(casino)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -2092,10 +2472,16 @@ func _on_dialogue_finished() -> void:
 	if story_kind == "intro" and casino != null:   # terminó de contar la historia: ahora hay que ir a la puerta de atrás
 		casino.input_locked = false
 		casino.show_exit_arrow(true)
-	elif story_kind == "outro":   # terminó el cierre: el tutorial se acabó
-		tutorial_forced = false
-		Profile.mark_tutorial_done()
-		open_main_menu()
+	elif story_kind == "outro":
+		match _outro_phase:
+			0:   # terminó de hablar el tabernero: ahora a pagarle a Farolín (el tabernero presta la claridad)
+				_outro_phase = 1
+				run.claridad = maxi(run.claridad, casino.toll_now())
+				casino.input_locked = false
+				casino.show_exit_arrow(true)
+				casino._refresh_hud()
+			2:   # Farolín contestó: el tutorial se acabó
+				_finish_tutorial()
 	elif _dice_talk:   # terminó de explicar los dados: se puede jugar
 		_dice_talk = false
 		dice.paused = false
@@ -2266,7 +2652,7 @@ func use_consumable_slot(slot: int) -> void:
 			_refresh()
 			save_game()
 		else:
-			_flash(Loc.f("Ya tenés las %d vidas", [run.max_lives()]))
+			_flash(Loc.f("Ya tienes las %d vidas", [run.max_lives()]))
 		return
 	if Items.needs_target(id):
 		_begin_targeting(id, slot)
@@ -2312,7 +2698,7 @@ func _begin_targeting(id: String, slot: int) -> void:
 		_target_box.material_override = mat
 		_target_box.visible = false
 		add_child(_target_box)
-	_flash(Loc.t("Elegí un bloque (clic). Esc cancela."))
+	_flash(Loc.t("Elige un bloque (clic). Esc cancela."))
 
 
 func cancel_targeting() -> void:
@@ -2428,7 +2814,7 @@ func dev_goto_end() -> String:
 	if casino != null:
 		return "Ya estás en el casino"
 	if generating:
-		return "Esperá: se está generando la torre"
+		return "Espera: se está generando la torre"
 	if logic.won or logic.lost:
 		return "La torre ya terminó (R para reintentarla)"
 	var cell: Vector3i = logic.goal_cell
@@ -2478,7 +2864,7 @@ func dev_lab(arg: String) -> String:
 	if arg != "":
 		index = Lab.index_of(arg)
 		if index < 0:
-			return "No hay una estación %s (mirá la lista con: labs)" % arg
+			return "No hay una estación %s (mira la lista con: labs)" % arg
 	if not lab_active:
 		_cancel_jobs()
 		if casino != null:
@@ -2609,11 +2995,11 @@ func dev_collapse(on: bool) -> String:
 ## Comando goto_casino: abre directamente el casino de la etapa `stage` (como si acabaras de pasar esa torre).
 func dev_goto_casino(stage: int) -> String:
 	if in_menu or logic == null:
-		return "Empezá una partida primero (Nueva partida)"
+		return "Empieza una partida primero (Nueva partida)"
 	if training:
 		return "En el tutorial no hay casino"
 	if generating:
-		return "Esperá: se está generando la torre"
+		return "Espera: se está generando la torre"
 	_cancel_jobs()
 	if casino != null:
 		casino.queue_free()
@@ -2633,7 +3019,7 @@ func dev_goto_casino(stage: int) -> String:
 ## desde el menú principal y desde el juego.
 func dev_tower(stage: int, scenario_id := "", seed := -1) -> String:
 	if generating:
-		return "Esperá: se está generando la torre"
+		return "Espera: se está generando la torre"
 	var sc := scenario_id.to_lower() if scenario_id != "" else Scenarios.FREE
 	var known := false
 	var ids: Array[String] = []
@@ -2667,6 +3053,7 @@ func dev_tower(stage: int, scenario_id := "", seed := -1) -> String:
 	_set_training(false)
 	run_over = false
 	run_end.visible = false
+	demo_end.visible = false
 	stage_number = stage
 	run.stage = stage
 	run.max_stage = stage
@@ -2741,7 +3128,7 @@ func dev_set_claridad(n: int) -> String:
 func dev_give(id: String) -> String:
 	var item := Items.get_item(id)
 	if item.is_empty() or item.type == Items.Type.CLARITY:
-		return "Ítem desconocido: %s (mirá los ids con: items)" % id
+		return "Ítem desconocido: %s (mira los ids con: items)" % id
 	if not run.take(item):
 		return "No hay lugar para %s" % item.name
 	if lab_active and item.type == Items.Type.BOOST:
@@ -2768,7 +3155,18 @@ func _notification(what: int) -> void:
 		save_game()
 
 
+## ¿Se está entre el casino y la torre que sigue (peaje pagado, torre generándose o dados en pantalla)?
+func _loading_state() -> bool:
+	if training or lab_active or tutorial_index >= 0 or run == null or run_over or in_menu:
+		return false
+	return _leaving_casino or (generating and casino == null)
+
+
 func save_game() -> void:
+	if _loading_state():   # pagado el peaje (o generando la torre): se guarda "cargando la torre" para no repetir el casino ni los dados
+		var next_stage := mini(stage_number + 1, FINAL_STAGE) if casino != null else stage_number
+		SaveGame.write({"run": run.to_dict(), "stage": next_stage, "seed": seed_value, "phase": "loading", "dice_done": _loading_dice_done})
+		return
 	if not _run_active():
 		return
 	var data := {"run": run.to_dict(), "stage": stage_number, "seed": seed_value}
@@ -2797,12 +3195,19 @@ func continue_game() -> void:
 	_set_training(false)
 	run_over = false
 	run_end.visible = false
+	demo_end.visible = false
 	stage_number = int(data.stage)
 	seed_value = int(data.get("seed", 1))
 	hud_layer.visible = true
 	if data.phase == "casino":
 		run.stage = stage_number
 		enter_casino(true)
+		return
+	if data.phase == "loading":   # había pagado el peaje: sigue la carga de la torre (y los dados sólo si no los había jugado)
+		run.stage = stage_number
+		_loading_dice_done = bool(data.get("dice_done", false))
+		Music.play(_tower_music(stage_number))
+		new_tower(seed_value)
 		return
 	stage_start = TowerLogic.from_dict(data.tower)
 	solution = Meteors.decode(data.get("solution", []))
