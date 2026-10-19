@@ -24,6 +24,7 @@ MOVIMIENTOS = {
     'invierno': ('pruebas', ['winter/winter-score.mid', 'winter/winter-score-1.mid', 'winter/winter-score-2.mid']),
 }
 PAUSA = 2.5   # segundos de silencio entre movimientos
+VELOCIDAD = 1.0   # 1 = el tempo del MIDI; 0,8 = un 20 % más lento (sólo estira el tiempo, la afinación no cambia)
 
 
 def hz(m):
@@ -95,6 +96,9 @@ def eco(x, delay=0.19, fb=0.30, mezcla=0.30):
 def render_movimiento(path):
     m = leer(path)
     notas = m['notas']
+    for n in notas:
+        n['t'] /= VELOCIDAD
+        n['d'] /= VELOCIDAD
     total = max(n['t'] + n['d'] for n in notas) + 1.5
     nombres = {i: nm.strip().lower() for i, nm in enumerate(m['pistas'])}
     capas = {k: np.zeros(int(total * SR) + 1) for k in VOCES}
@@ -118,8 +122,17 @@ def a_wav(path, x):
 
 
 def main():
-    juego = sys.argv[1] if len(sys.argv) > 1 else 'audio/music'
-    previa = sys.argv[2] if len(sys.argv) > 2 else 'audio_prueba'
+    global VELOCIDAD
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    opciones = [a for a in sys.argv[1:] if a.startswith('--')]
+    solo_previa = '--solo-previa' in opciones
+    sufijo = ''
+    for o in opciones:
+        if o.startswith('--tempo='):
+            VELOCIDAD = float(o.split('=')[1])
+            sufijo = '_tempo%d' % round(VELOCIDAD * 100)
+    juego = args[0] if len(args) > 0 else 'audio/music'
+    previa = args[1] if len(args) > 1 else 'audio_prueba'
     os.makedirs(juego, exist_ok=True)
     os.makedirs(previa, exist_ok=True)
     for estacion, (pista, archivos) in MOVIMIENTOS.items():
@@ -137,8 +150,9 @@ def main():
         wav = os.path.join(previa, 'tmp_%s.wav' % estacion)
         a_wav(wav, todo)
         nombre_mp3 = {'primavera': '1_primavera', 'verano': '2_verano', 'otono': '3_otono', 'invierno': '4_invierno'}[estacion]
-        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-b:a', '192k', os.path.join(previa, nombre_mp3 + '_completa.mp3')], check=True)
-        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-c:a', 'libvorbis', '-q:a', '3', os.path.join(juego, pista + '.ogg')], check=True)
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-b:a', '192k', os.path.join(previa, nombre_mp3 + sufijo + '_completa.mp3')], check=True)
+        if not solo_previa:
+            subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-c:a', 'libvorbis', '-q:a', '3', os.path.join(juego, pista + '.ogg')], check=True)
         os.remove(wav)
         print('%s -> %s.ogg  (%.1f min)' % (estacion, pista, len(todo) / SR / 60))
 
