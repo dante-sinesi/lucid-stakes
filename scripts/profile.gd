@@ -327,8 +327,12 @@ static func _unlocked(ids: Array) -> Array[String]:
 # --- fin de run ------------------------------------------------------------------------------------------------------
 
 ## Luz que da un run: 3 por cada torre superada, 12 por cada prueba y 100 por escapar; el escenario la multiplica.
+const LUZ_FAIL_SHARE := 0.2   # fracción de la Luz del avance que se conserva al perder o abandonar
+
+
 static func luz_for_run(run, victory: bool) -> int:
-	var base: int = run.towers_cleared * 5 + run.trials_cleared * 20 + (100 if victory else 0)   # (son 15 torres y 5 pruebas)
+	var progress: int = run.towers_cleared * 5 + run.trials_cleared * 20   # (son 15 torres y 5 pruebas)
+	var base := float(progress + 100) if victory else float(progress) * LUZ_FAIL_SHARE   # lo que importa es escapar: si el run no termina en victoria, sólo se conserva una parte de lo avanzado
 	return int(round(base * float(run.scenario().get("luz_mult", 1.0))))
 
 

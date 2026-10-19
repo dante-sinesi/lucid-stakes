@@ -79,19 +79,19 @@ func test_profile() -> void:
 	run.towers_cleared = 10
 	run.trials_cleared = 3
 	run.max_stage = 11
-	check(Profile.luz_for_run(run, false) == 10 * 5 + 3 * 20 and Profile.luz_for_run(run, true) == 110 + 100, "Luz: 5 por torre, 20 por prueba, 100 por escapar")
+	check(Profile.luz_for_run(run, false) == int(round(110 * 0.2)) and Profile.luz_for_run(run, true) == 110 + 100, "Luz: 5 por torre y 20 por prueba (sólo el 20 % si no se escapa), más 100 por escapar")
 	run.scenario_id = "glaciar"
-	check(Profile.luz_for_run(run, false) == int(round(110 * 1.5)), "el escenario multiplica la Luz")
+	check(Profile.luz_for_run(run, false) == int(round(110 * 0.2 * 1.5)) and Profile.luz_for_run(run, true) == int(round(210 * 1.5)), "el escenario multiplica la Luz")
 	run.scenario_id = "pesadilla"
 	var gained := Profile.record_run(run, false)
-	check(gained == 110 and Profile.luz() == 110 and Profile.data.runs == 1 and Profile.data.best_stage == 11 and Profile.data.trials_cleared == 3, "record_run suma Luz y estadisticas")
-	check(Profile.can_enter("glaciar") and Profile.pay_entry("glaciar") and Profile.luz() == 110 - 15, "con Luz se paga la entrada")
+	check(gained == 22 and Profile.luz() == 22 and Profile.data.runs == 1 and Profile.data.best_stage == 11 and Profile.data.trials_cleared == 3, "record_run suma Luz y estadisticas")
+	check(Profile.can_enter("glaciar") and Profile.pay_entry("glaciar") and Profile.luz() == 22 - 15, "con Luz se paga la entrada")
 	# Se guarda y se carga
 	Profile.grant_ability("pies_ligeros")
 	Profile.data = {}
 	Profile._loaded_from = ""
 	Profile.load_profile()
-	check(Profile.luz() == 95 and Profile.has_ability("pies_ligeros") and int(Profile.data.runs) == 1, "el perfil se guarda y se carga")
+	check(Profile.luz() == 22 - 15 and Profile.has_ability("pies_ligeros") and int(Profile.data.runs) == 1, "el perfil se guarda y se carga")
 	# Archivo roto: se ignora
 	var f := FileAccess.open(Profile.path, FileAccess.WRITE)
 	f.store_string("esto no es json {{{")
@@ -221,10 +221,11 @@ func test_flow() -> void:
 		all_in_pool = all_in_pool and pool.has(main.run.trial_schedule[st])
 	check(all_in_pool, "las pruebas del sorteo salen del conjunto del escenario")
 	# Al terminar el run la Luz se multiplica por el escenario y queda anotada
-	main.run.towers_cleared = 4
+	main.run.towers_cleared = 40   # (sin victoria sólo se conserva el 20 % del avance)
 	var before := Profile.luz()
+	var expected := int(round(40 * 5 * 0.2 * 1.8))
 	main.end_run(false, "x")
-	check(Profile.luz() == before + int(round(20 * 1.8)) and main.run_end.luz_row.visible and main.run_end.luz_gain.value == int(round(20 * 1.8)) and main.run_end.luz_total_counter.value == Profile.luz(), "el fin del run da Luz (multiplicada) y la muestra con el sol")
+	check(Profile.luz() == before + expected and main.run_end.luz_row.visible and main.run_end.luz_gain.value == expected and main.run_end.luz_total_counter.value == Profile.luz(), "el fin del run da Luz (multiplicada) y la muestra con el sol")
 	check(not all_text(main.run_end).contains("Luz"), "la pantalla de fin de run no nombra la Luz con texto")
 	# El escenario viaja en el guardado
 	var run2 := RunState.new()

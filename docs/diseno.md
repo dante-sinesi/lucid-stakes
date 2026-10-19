@@ -691,3 +691,9 @@ Decisiones de Dante tomadas al planificar la demo (`docs/plan_demo.md`, `docs/de
 
 ## 51. Premios de los dados pendientes hasta superar una torre (2026-10-19)
 La Luz y los cosméticos que dan los dados quedan **pendientes en el run** (`run.dice_pending`, se guarda con la partida) y pasan al perfil recién al superar la torre (`main._claim_dice_rewards`, al entrar al casino), al terminar el tutorial o al terminar un run en el que se superó alguna torre. Así no se pueden sacar empezando una partida, tirando los dados y cerrando. La claridad de los dados ya iba al run (con tope por partida). Además, pagar el peaje guarda ya la carga de la torre siguiente (`phase: "loading"`, con la marca de que los dados se jugaron): cerrar el juego después de pagar no obliga a repetir el casino ni los dados.
+
+## 52. La Luz premia escapar (2026-10-19)
+- **Fórmula** (`Profile.luz_for_run`): avance = 5 por torre superada + 20 por prueba superada. Con victoria (escapar de la pesadilla): (avance + 100) × el multiplicador del escenario. Sin victoria (perder o abandonar): sólo `LUZ_FAIL_SHARE` = 20 % del avance × el multiplicador. Un run completo de la Pesadilla da 275 Luz; morir en la etapa 8 con 2 pruebas, 16.
+- **Por qué:** antes un run corto (etapa 6, 2 pruebas) daba 70 Luz (25 % de un run completo) y pagaba varias entradas a escenarios (15 a 35 Luz): la entrada no significaba nada y escapar valía poco más que llegar cerca.
+- **Los dados ya no dan Luz** (`PRIZES` con `luz: 0`; el plumbing sigue por si se retoma): dan claridad y, con 4 o 5 aciertos, cosméticos.
+- Es un primer ajuste: después se analiza con el bot cuántos runs completos hacen falta para desbloquear todo.

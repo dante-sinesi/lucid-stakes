@@ -136,7 +136,7 @@ func test_menu() -> void:
 	cs.set_tab("personajes")
 	cs.tiles["conejo"].hovered.emit()
 	check(str(cs.info_label.text).contains("versión completa"), "idem con un personaje bloqueado")
-	cs.set_tab("prendas")
+	cs.set_tab("ropa")
 	check(cs.tiles["remera"].owned and cs.tiles["capa"].owned and not cs.tiles["armadura"].owned, "prendas: remera y capa; el resto con ?")
 	main._cancel_jobs()
 	main.queue_free()

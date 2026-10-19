@@ -49,9 +49,9 @@ const PRIZES := {
 	0: {"claridad": 0, "luz": 0, "cosmetic": {}},
 	1: {"claridad": 0, "luz": 0, "cosmetic": {}},
 	2: {"claridad": 8, "luz": 0, "cosmetic": {}},
-	3: {"claridad": 25, "luz": 1, "cosmetic": {}},
-	4: {"claridad": 80, "luz": 2, "cosmetic": {"comun": 0.85, "raro": 0.15}, "cosmetic_chance": 0.15},
-	5: {"claridad": 150, "luz": 5, "cosmetic": {"raro": 0.7, "epico": 0.3}, "cosmetic_chance": 1.0},
+	3: {"claridad": 25, "luz": 0, "cosmetic": {}},
+	4: {"claridad": 80, "luz": 0, "cosmetic": {"comun": 0.85, "raro": 0.15}, "cosmetic_chance": 0.15},
+	5: {"claridad": 150, "luz": 0, "cosmetic": {"raro": 0.7, "epico": 0.3}, "cosmetic_chance": 1.0},
 }
 
 ## Lo que dice el tabernero según los aciertos.
@@ -60,7 +60,7 @@ const LINES := {
 	1: ["Uno. Algo es algo.", "Uno solo, pero cuenta.", "Un acierto: se nota que sabes."],
 	2: ["¡Dos! Vas bien.", "Dos aciertos. Eso ya es puntería.", "Dos de cinco, nada mal."],
 	3: ["¡Tres! Eso es suerte de la buena.", "Tres aciertos, soñador. Me estás asustando.", "¡Tres! La casa empieza a sudar."],
-	4: ["¡CUATRO! Esto no pasa seguido.", "Cuatro... ¡y una luz de regalo!", "¿Cuatro? Estás tocado por la claridad."],
+	4: ["¡CUATRO! Esto no pasa seguido.", "Cuatro... ¡y un cosmético de regalo, tal vez!", "¿Cuatro? Estás tocado por la claridad."],
 	5: ["¡LOS CINCO! No lo puedo creer...", "Cinco de cinco. Esto va a quedar en la historia de la taberna.", "¡¡Cinco!! Aquí tienes, te lo ganaste."],
 }
 
