@@ -187,6 +187,7 @@ var _model: Node3D          # el animalito (y su copia de silueta): se vuelve a 
 var _ghost: Node3D
 var _sun: DirectionalLight3D
 var dialogue                 # cuadro de diálogo del tabernero (historia y consejos del tutorial)
+const TUTORIAL_MIN_MOVED := 2   # la torre final del tutorial obliga a mover al menos dos bloques distintos
 const TUTORIAL_TOLL := 25   # lo que cuesta el peaje de práctica del final del tutorial
 var _outro_phase := 0       # el cierre del tutorial: 0 el tabernero habla, 1 se camina hasta Farolín, 2 Farolín contesta y se termina
 var story_kind := ""         # "intro" o "outro" mientras se está en una sala de historia del tutorial
@@ -423,6 +424,22 @@ func _tower_music(stage: int) -> String:
 	return "pruebas" if not training and run != null and not run.trial_at(stage).is_empty() else "torre"
 
 
+## Cuántos bloques distintos hay que mover (empujar o tirar) para seguir un camino (lo que pesa en la dificultad de una torre).
+static func moved_blocks(tower, path: Array) -> int:
+	var lg = tower.clone()
+	var moved := {}
+	for a in path:
+		var before := {}
+		if a.mode == TowerLogic.Mode.GRAB:
+			before = lg.positions.duplicate()
+		lg.try_action(a.dir, a.mode)
+		if a.mode == TowerLogic.Mode.GRAB:
+			for id in lg.positions:
+				if before.get(id, lg.positions[id]) != lg.positions[id]:
+					moved[id] = true
+	return moved.size()
+
+
 func new_tower(s: int) -> void:
 	if generating:
 		return
@@ -435,6 +452,11 @@ func new_tower(s: int) -> void:
 	if job.is_empty():
 		job = _start_job(stage_number, s)
 	var res: Dictionary = await _await_job(job)
+	var extra_tries := 0
+	while tutorial_index >= 0 and my_epoch == epoch and res.ok and moved_blocks(res.logic, res.path) < TUTORIAL_MIN_MOVED and extra_tries < 30:
+		extra_tries += 1   # la torre del tutorial tiene que obligar a mover al menos dos bloques: si ésta se pasa sin tocar nada, se prueba otra
+		job = _start_job(stage_number, s + extra_tries * 7919)
+		res = await _await_job(job)
 	if my_epoch != epoch:  # se volvió al menú mientras se generaba
 		generating = false
 		return

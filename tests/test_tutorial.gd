@@ -191,6 +191,7 @@ func test_flow() -> void:
 	await main.start_tutorial(Tutorial.count() - 1, true)
 	check(main.tutorial_index == Tutorial.count() - 1 and main.logic != null and main.logic.goal_y == 5 and main.tower_rows == main.TOWER_ROWS, "la ultima leccion es una torre generada chica")
 	check(main.dialogue.is_active() and not main.dice.visible, "el tabernero cuenta el lore de la torre cuando ya cerro la pantalla de los dados")
+	check(main.moved_blocks(main.stage_start, main.solution) >= main.TUTORIAL_MIN_MOVED, "la torre final del tutorial obliga a mover al menos dos bloques (%d)" % main.moved_blocks(main.stage_start, main.solution))
 	# Despues de la ultima se vuelve al menu
 	main.logic.won = true
 	await main._on_anim_done()
