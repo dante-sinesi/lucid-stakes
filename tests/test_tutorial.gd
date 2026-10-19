@@ -199,6 +199,10 @@ func test_flow() -> void:
 	main.dialogue.skip_all()
 	check(main.story_kind == "outro" and main.casino != null and not main.casino.input_locked, "al terminar de hablar se camina hasta Farolín (peaje de práctica)")
 	main.casino.ask_toll()
+	var wait := 0
+	while not main.dialogue.options_visible() and wait < 600:   # (el texto se escribe letra por letra)
+		await process_frame
+		wait += 1
 	main.dialogue.confirm_choice()
 	await process_frame
 	main.dialogue.skip_all()
