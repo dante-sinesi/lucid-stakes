@@ -493,6 +493,13 @@ func _process(delta: float) -> void:
 	dice3d.update(self, delta)
 	if showcase.visible:
 		showcase.layout()
+	var hide_dice: bool = showcase.visible and showcase._has_cosmetic   # con un cosmético nuevo el muñeco ocupa el centro: los dados se apartan
+	for n in dice3d.dice + dice3d.shadows:
+		n.visible = not hide_dice
+	if hide_dice:
+		for n in dice3d.locks:
+			n.visible = false
+	overlay_layer.visible = not hide_dice
 	overlay_layer.queue_redraw()
 	queue_redraw()
 
@@ -760,15 +767,6 @@ class _Showcase extends Control:
 		cosmetic_box.add_child(preview)
 		cosmetic_label = UI.label(cosmetic_box, "", 3.0, Color(1.0, 0.9, 0.5), true, 1000)
 		cosmetic_label.name = "cosmetico"
-
-	## Una tarjeta oscura y translúcida sólo alrededor de lo que se muestra: los dados siguen a la vista.
-	func _draw() -> void:
-		if col == null or not col.visible:
-			return
-		var csize := col.get_combined_minimum_size()
-		var r := Rect2(center.position + (center.size - csize) * 0.5, csize).grow(18.0)
-		draw_rect(r, Color(0.04, 0.025, 0.08, 0.8))
-		Draw.card(self, r, 4.0, 0, 0.1, 778, false, -1.0)
 
 	## Sin cosmético: una tira abajo de la mesa; con cosmético: ocupa el centro de la mesa (lleva el muñeco).
 	func layout() -> void:
