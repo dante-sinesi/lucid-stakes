@@ -1245,7 +1245,7 @@ func _rig_center() -> Vector3:
 	var t := clampf((SIZE_NORMAL - cam_zoom) / (SIZE_NORMAL - SIZE_MIN), 0.0, 1.0)
 	var focus := center.lerp(_w(logic.player), t)
 	if tutorial_index >= 0:   # en el tutorial el cuadro del tabernero tapa abajo: la torre se sube un poco en la pantalla
-		focus.y -= 1.4
+		focus.y -= 3.0
 	return focus
 
 
