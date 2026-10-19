@@ -345,7 +345,7 @@ func reset_tab() -> void:
 			Graphics.reset()
 		"sonido":
 			for key in ["volume", "music", "sfx"]:
-				Settings.set_value(key, Settings.VOLUME_STEPS)
+				Settings.set_value(key, Settings.MUSIC_DEFAULT if key == "music" else Settings.VOLUME_STEPS)
 		"controles":
 			Settings.set_value("input_device", "auto")
 			Settings.set_value("pad_style", "auto")

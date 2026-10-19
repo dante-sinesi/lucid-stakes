@@ -23,6 +23,10 @@ func _init() -> void:
 
 
 func make_main(test := false) -> Node:
+	var P := preload("res://scripts/profile.gd")
+	P.path = "user://test_profile.json"   # (el perfil de prueba: con el tutorial ya hecho, si no el juego arranca en el tutorial)
+	P._loaded_from = ""
+	P.mark_tutorial_done()
 	var SaveG := preload("res://scripts/save_game.gd")
 	SaveG.path = "user://test_save.json"   # (que una partida guardada por otra prueba no cambie cómo arranca el menú)
 	SaveG.delete()

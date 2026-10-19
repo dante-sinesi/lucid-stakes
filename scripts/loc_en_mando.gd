@@ -39,4 +39,5 @@ const TABLE := {
 	"El primer reintento de la próxima torre costaría una vida. Con el seguro, nada.": "The first retry of the next tower would cost a life. With insurance, nothing.",
 	"Dado": "Die",
 	"Número": "Number",
+	"Generando la torre...": "Generating the tower...",
 }

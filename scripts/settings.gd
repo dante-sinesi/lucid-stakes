@@ -9,6 +9,7 @@ const VDraw := preload("res://scripts/voxel_draw.gd")
 ## Resoluciones de ventana que se ofrecen (se filtran por el tamaño de la pantalla del jugador).
 const RESOLUTIONS: Array[Vector2i] = [Vector2i(854, 480), Vector2i(960, 540), Vector2i(1024, 576), Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
 const VOLUME_STEPS := 10
+const MUSIC_DEFAULT := 8   # la música arranca al 80 %
 ## Tamaños de interfaz que se ofrecen (porcentaje; 100 es el de siempre). Escala todo lo 2D: menús, HUD y pantallas de juego.
 const UI_SCALES: Array[int] = [80, 90, 100, 110, 125]
 
@@ -37,7 +38,7 @@ static func defaults() -> Dictionary:
 		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
 		"compass": true,          # rosa de los vientos (la que indica a qué eje va cada tecla)
 		"volume": VOLUME_STEPS,   # en pasos de 0 a VOLUME_STEPS
-		"music": VOLUME_STEPS,    # música (se multiplica por el volumen general)
+		"music": MUSIC_DEFAULT,   # música (se multiplica por el volumen general); por defecto al 80 %
 		"sfx": VOLUME_STEPS,      # efectos de sonido
 		"input_device": "auto",   # qué ayudas se muestran: "auto" (el último dispositivo que se tocó), "keyboard" o "pad"
 		"pad_style": "auto",      # los botones del mando que se dibujan: "auto" (según el mando conectado), "xbox" o "playstation"

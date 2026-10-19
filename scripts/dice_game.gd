@@ -38,7 +38,7 @@ const REVEAL_STEP := 0.6     # segundos entre un dado y el siguiente
 const RESULT_TIME := 1.6     # cuánto se queda el resultado antes del próximo tiro
 const DIE := 30.0            # lado de un dado, en píxeles
 const SLOT := 150.0          # separación entre dados
-const SHIFT := 110.0         # el juego se corre a la izquierda para dejar lugar al botón "Empezar" a la derecha
+const SHIFT := 0.0           # (antes el juego se corría a la izquierda para dejar lugar al botón "Empezar": ahora ocupa todo el ancho y se sigue con Espacio o Enter)
 
 enum Phase { IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE }   # HOLD: los dados acertados quedan retenidos y se espera la próxima tirada de los que fallaron
 
@@ -97,6 +97,7 @@ var paused := false              # el tabernero está hablando encima: los dados
 var tower_ready := false       # la torre ya se generó: se puede empezar
 var auto_start := false        # pruebas: apenas la torre está lista se cierra solo (sin esperar el botón)
 var start_button: Button
+var loading_spiral
 var prize_info := {}
 var _t := 0.0
 var _phase_t := 0.0
@@ -167,6 +168,10 @@ func _init() -> void:
 	start_button.disabled = true
 	start_button.pressed.connect(request_close)
 	start_box.add_child(start_button)
+	start_box.modulate.a = 0.0   # (ya no se ve: se sigue con Espacio o Enter; el botón queda como estado para las pruebas)
+	start_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	start_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	start_button.focus_mode = Control.FOCUS_NONE
 	hints = PadHints.attach(self, [], [throw_button])   # la botonera de abajo reemplaza a Tirar (Empezar se queda: es también el indicador de que la torre se está generando)
 	hints.offset_left = -SHIFT * 2.0
 	var spiral := _Spiral.new()
@@ -178,6 +183,16 @@ func _init() -> void:
 	spiral.offset_bottom = 22
 	spiral.owner_game = self
 	start_button.add_child(spiral)
+	loading_spiral = _Spiral.new()   # el indicador de carga que se ve: abajo en el centro, sobre la botonera
+	loading_spiral.name = "espiral_visible"
+	loading_spiral.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	loading_spiral.offset_left = -22
+	loading_spiral.offset_right = 22
+	loading_spiral.offset_top = -108
+	loading_spiral.offset_bottom = -64
+	loading_spiral.owner_game = self
+	loading_spiral.only_at_end = true
+	add_child(loading_spiral)
 
 
 func is_open() -> bool:
@@ -415,7 +430,7 @@ func _update_hints() -> void:
 		Phase.HOLD:
 			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Tirar de nuevo"), "dim": not can_throw(), "call": throw_dice}])
 		Phase.RESULT, Phase.DONE:
-			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Empezar"), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Empezar") if tower_ready else Loc.t("Generando la torre..."), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
 		_:
 			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Saltear")}])
 
@@ -423,7 +438,7 @@ func _update_hints() -> void:
 func _update_button() -> void:
 	throw_button.set_label(Loc.t("Tirar de nuevo") if phase == Phase.HOLD else Loc.t("Tirar"))
 	throw_button.disabled = not can_throw()
-	throw_button.visible = phase != Phase.DONE and phase != Phase.RESULT
+	throw_button.visible = false   # (la botonera de abajo lo reemplaza)
 	start_button.visible = phase == Phase.RESULT or phase == Phase.DONE   # "Empezar" aparece cuando se terminaron las tiradas
 	_update_hints()
 
@@ -504,10 +519,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if paused or not visible or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	var go: bool = event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
-	if go and (phase == Phase.ROLLING or phase == Phase.REVEAL):   # Espacio durante la animación: se saltea; si era la última tirada y la torre está lista, se entra
+	if go and (phase == Phase.ROLLING or phase == Phase.REVEAL):   # Espacio durante la animación: se saltea (se ven los resultados; para entrar a la torre hay que apretar otra vez)
 		skip_animation()
-		if phase == Phase.RESULT and tower_ready:
-			request_close()
 		get_viewport().set_input_as_handled()
 		return
 	if go and (phase == Phase.RESULT or phase == Phase.DONE) and tower_ready:   # terminadas las tiradas, Espacio entra a la torre
@@ -719,6 +732,7 @@ func _inset(pts: Array, k: float) -> PackedVector2Array:
 ## Espiral de carga: cubitos que van girando en espiral y se apagan; se ve mientras la torre se genera y desaparece cuando está lista.
 class _Spiral extends Control:
 	var owner_game
+	var only_at_end := false   # sólo se ve cuando ya terminaron las tiradas y la torre todavía no está lista
 	var _t := 0.0
 
 	func _init() -> void:
@@ -726,7 +740,7 @@ class _Spiral extends Control:
 
 	func _process(delta: float) -> void:
 		_t += delta
-		visible = owner_game != null and not owner_game.tower_ready
+		visible = owner_game != null and not owner_game.tower_ready and (not only_at_end or owner_game.phase == owner_game.Phase.RESULT or owner_game.phase == owner_game.Phase.DONE)
 		queue_redraw()
 
 	func _draw() -> void:

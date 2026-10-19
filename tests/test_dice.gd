@@ -586,7 +586,9 @@ func test_hold() -> void:
 	g.rolls = [6, 6, 6, 6, 6]
 	g.set_ready(true)
 	g._unhandled_input(sp)
-	check(shut.size() == 1 and not g.visible, "Espacio en la animación de la última tirada la saltea y entra a la torre")
+	check(g.phase == DiceGame.Phase.RESULT and g.visible and shut.size() == 0, "Espacio en la animación de la última tirada la saltea y muestra los resultados (no entra a la torre)")
+	g._unhandled_input(sp)
+	check(shut.size() == 1 and not g.visible, "con los resultados a la vista, otro Espacio entra a la torre")
 	# la última tirada sin la torre lista: se saltea y se espera
 	g.open(rng)
 	g.picks = [1, 2, 3, 4, 5]
