@@ -115,3 +115,17 @@ La tanda de una hora con el generador normal en modo hielo (368 salas) salió ma
 
 ### Piel de los bloques del Glaciar (2026-10-19)
 Sólo cambia el diseño, no el bloque: en el Glaciar el **pesado se ve como hielo duro** (azul más oscuro, vetas claras y cristales en las esquinas: se camufla entre el hielo pero se lee como muro) y el **agrietado como nieve** (blanca azulada con grietas grises). `BlockModels.skin` ("" o "glaciar"; cada piel tiene su propia memoria de modelos), el escenario la pide con `"skin": "glaciar"` y `main.restart()` la pone; el Estudio la usa en las salas con piso de hielo. Prueba: `tests/test_piel.gd`.
+
+### Seis ideas nuevas con 25 prototipos cada una (2026-10-19)
+Para romper la monotonía de la meseta con topes se prototiparon seis ideas distintas (`scripts/glaciar_gen.gd`, `tests/probe_glaciar_ideas.gd`; 25 salas distintas entre sí por idea, elegidas entre cientos que cumplen lo que cada una promete, todas con prueba exacta). Archivos en `bibliotecas/glaciar_prototipo/ideas/` (uno por idea y `ideas_glaciar.rooms` con las 150):
+
+| Idea | Qué pide | Cómo se ve |
+|---|---|---|
+| Patinaje | resbalar de tope en tope por una pista angosta | el piso sólo existe bajo la pista: salirse es caer al vacío |
+| Billar de precisión | dejar un bloque de hielo parado junto al pilar | el pilar tiene un solo lado libre; el acertijo es la trayectoria del bloque |
+| Escalada glaciar | trepar una pared de hielo | columnas cada vez más altas con repisas de hielo duro |
+| Tobogán | tirarse al canal, resbalar por abajo y volver a subir | una meseta cortada por un canal con rampa del otro lado |
+| Puente de nieve | cruzar un puente elevado | senderos de nieve, hielo y topes con huecos debajo |
+| Embudo | salir de un pozo | terrazas que bajan hacia un pozo en el medio |
+
+Límites que se vieron: las caídas dentro de la sala son gratis (el piso de hielo está abajo), así que sólo el patinaje tiene vacío mortal; el tobogán casi nunca obliga a tirarse (el solucionador prefiere armar escalones con bloques de hielo); colgarse aparece poco en la escalada.
