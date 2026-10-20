@@ -28,6 +28,7 @@ static func default_config() -> Dictionary:
 		"spend": 0.8,            # fracción de lo que sobra (después de apartar el precio de Farolín) que se juega en el casino
 		"max_rotations": 3,      # cuántas veces rota la vitrina buscando un premio de la lista
 		"play_blind": true,      # si no hay nada de la lista en la vitrina y no se puede rotar: juega igual una apuesta común
+		"mistakes": 0,           # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario común); cada titubeo del bot cuenta como uno
 		"free_plays": 0,         # jugadas gratis por visita (el diseño de las monedas; el juego todavía no las tiene)
 		"max_casino_actions": 60,
 	}
@@ -41,6 +42,15 @@ static func _hesitate(lg) -> void:
 	lg.last_grab = ""
 	lg._after_action()
 	lg._after_action()
+
+
+## La sala (por posición en la lista) donde está parado el jugador.
+static func _room_of(rooms: Array, y: int) -> int:
+	var idx := 0
+	for i in rooms.size():
+		if int(rooms[i].ey) <= y:
+			idx = i
+	return idx
 
 
 ## Sube una torre una vez. {won, died, claridad (la que juntó en este intento), moves, used (consumibles gastados)}.
@@ -60,6 +70,9 @@ static func play_tower(entry: Dictionary, run, rng: RandomNumberGenerator, cfg: 
 		died_at = rng.randi_range(int(n * 0.2), n - 1)
 	var hes_p: float = float(cfg.hesitate) / skill
 	var used := 0
+	var rooms: Array = entry.get("rooms", [])   # (las salas de la torre: Sin piedad cuenta los falsos por sala)
+	var allowed := int(cfg.get("mistakes", 0)) if not rooms.is_empty() else 0
+	var false_counts := {}
 	for i in n:
 		if i == died_at:
 			return {"won": false, "died": true, "claridad": int(lg.claridad * 0.4), "moves": i, "used": used}
@@ -80,6 +93,11 @@ static func play_tower(entry: Dictionary, run, rng: RandomNumberGenerator, cfg: 
 					break
 		if rng.randf() < hes_p:
 			_hesitate(lg)
+			if allowed > 0:   # (en Sin piedad cada titubeo es un movimiento en falso de la sala donde está: al pasar el límite se pierde la torre)
+				var room := _room_of(rooms, lg.player.y)
+				false_counts[room] = int(false_counts.get(room, 0)) + 1
+				if int(false_counts[room]) > allowed:
+					return {"won": false, "died": true, "false_death": true, "claridad": int(lg.claridad * 0.4), "moves": i, "used": used}
 		if lg.lost:
 			return {"won": false, "died": true, "claridad": int(lg.claridad * 0.4), "moves": i, "used": used}
 		var r: Dictionary = lg.try_action(path[i].dir, path[i].mode)
@@ -197,6 +215,8 @@ static func run_one(bank: Dictionary, rng: RandomNumberGenerator, cfg: Dictionar
 		while not cleared:
 			rec.attempts += 1
 			var res := play_tower(entry, run, rng, cfg)
+			if res.get("false_death", false):
+				rec["false_deaths"] = int(rec.get("false_deaths", 0)) + 1
 			if res.died:
 				run.gain(int(res.claridad))
 				if not run.can_revive():
@@ -230,7 +250,7 @@ static func run_one(bank: Dictionary, rng: RandomNumberGenerator, cfg: Dictionar
 
 ## Una línea del banco: la torre y su camino.
 static func entry_line(stage: int, seed_value: int, res: Dictionary) -> String:
-	return JSON.stringify({"stage": stage, "seed": seed_value, "tower": res.logic.to_dict(), "path": RoomLib.path_string(res.path)})
+	return JSON.stringify({"stage": stage, "seed": seed_value, "tower": res.logic.to_dict(), "path": RoomLib.path_string(res.path), "rooms": res.get("rooms", [])})
 
 
 static func load_bank(dir: String) -> Dictionary:
@@ -252,6 +272,6 @@ static func load_bank(dir: String) -> Dictionary:
 			var st := int(d.stage)
 			if not bank.has(st):
 				bank[st] = []
-			bank[st].append({"stage": st, "seed": int(d.seed), "tower": d.tower, "path": RoomLib.parse_path(str(d.path))})
+			bank[st].append({"stage": st, "seed": int(d.seed), "tower": d.tower, "path": RoomLib.parse_path(str(d.path)), "rooms": d.get("rooms", [])})
 		fa.close()
 	return bank
