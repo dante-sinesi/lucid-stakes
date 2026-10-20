@@ -25,7 +25,7 @@ const ALL: Array[Dictionary] = [
 		"pool": ["niebla", "oscuridad", "prisa", "sin_ayudas", "todo_o_nada", "sin_racha", "meteoritos"]},
 	{"id": "glaciar", "name": "Glaciar", "entry": 15, "luz_mult": 1.5,
 		"desc": "Torres cubiertas de hielo, desde la primera etapa. Leer cada resbalón es todo.",
-		"abilities": ["garras_de_hielo"],
+		"abilities": ["garras_de_hielo"], "skin": "glaciar",   # (skin: el pesado se ve como hielo duro y el agrietado como nieve)
 		"pool": ["hielo_total", "niebla", "prisa", "sin_racha", "todo_o_nada"],
 		"bias": {"kinds": {K.ICE: 0.9}, "plat_ice": 0.18, "cap_bonus": 1}},
 	{"id": "ruinas", "name": "Ruinas", "entry": 15, "luz_mult": 1.5,

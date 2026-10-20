@@ -723,6 +723,7 @@ func _join_zombies() -> void:
 
 ## Vuelve a la torre generada tal como empezó.
 func restart() -> void:
+	BlockModels.skin = str(run.scenario().get("skin", "")) if (run != null and not training and not lab_active and tutorial_index < 0) else ""   # (los bloques del escenario)
 	cancel_targeting()
 	if lost_screen != null:
 		lost_screen.hide_screen()

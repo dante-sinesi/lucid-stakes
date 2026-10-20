@@ -112,3 +112,6 @@ La tanda de una hora con el generador normal en modo hielo (368 salas) salió ma
 - **Variedad** (`scripts/glaciar_gen.gd`, `tests/probe_hielo_plano.gd`): meseta con topes, billar de hielo (topes de hielo que se empujan), pinchos en la pista, pasos agrietados, terrazas (mesetas a distintas alturas) y carriles (senderos con el piso más abajo). La familia queda en la nota y en `opt.familia`.
 - **Resultado** (9000 intentos, ~17 min, un proceso): 1.976 salas buenas con prueba exacta en `bibliotecas/glaciar_prototipo/variado.rooms`: terrazas 692, billar 388, meseta 319, agrietado 304, pinchos 290, carriles 225.
 - **Pendiente:** subir la dificultad (nada pasa el 60 %, máximo 25 pasos), más familias, probar dentro de una torre, y pasar el generador al C++ para generar en cantidad.
+
+### Piel de los bloques del Glaciar (2026-10-19)
+Sólo cambia el diseño, no el bloque: en el Glaciar el **pesado se ve como hielo duro** (azul más oscuro, vetas claras y cristales en las esquinas: se camufla entre el hielo pero se lee como muro) y el **agrietado como nieve** (blanca azulada con grietas grises). `BlockModels.skin` ("" o "glaciar"; cada piel tiene su propia memoria de modelos), el escenario la pide con `"skin": "glaciar"` y `main.restart()` la pone; el Estudio la usa en las salas con piso de hielo. Prueba: `tests/test_piel.gd`.

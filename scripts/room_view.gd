@@ -63,6 +63,7 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 		ch.queue_free()
 	if st == null:
 		return
+	BlockModels.skin = "glaciar" if str(room.get("floor", "n")) == "i" else ""   # (las salas del Glaciar se ven con sus bloques de hielo duro y nieve)
 	var top := float(room.h)
 	var start_block := Vector3i(-999, -999, -999)
 	var end_block := Vector3i(-999, -999, -999)
