@@ -435,6 +435,17 @@ func test_difficulty_filters() -> void:
 	for r in many:
 		check(int(r.opt.grabs) >= 4, "todas cumplen los empujes y tirones mínimos")
 	check(m.filtered({"min_diff": 1.1}).is_empty(), "una dificultad imposible no deja ninguna")
+	# Resbalones del camino (opt.slides)
+	for i in m.rooms.size():
+		m.rooms[i].opt["slides"] = i % 4
+	var by_slides := m.filtered({"sort": "slides"})
+	for i in range(1, by_slides.size()):
+		check(int(by_slides[i - 1].opt.slides) >= int(by_slides[i].opt.slides), "ordenadas por resbalones")
+	var slippery := m.filtered({"min_slides": 3})
+	check(slippery.size() >= 1 and slippery.size() < m.rooms.size(), "el filtro de resbalones mínimos")
+	for r in slippery:
+		check(int(r.opt.slides) >= 3, "todas cumplen los resbalones mínimos")
+	check(m.filtered({"min_slides": 99}).is_empty(), "resbalones imposibles no dejan ninguna")
 	# pasos totales, altura, tipo y combinaciones
 	var longest := 0
 	for r in m.rooms:

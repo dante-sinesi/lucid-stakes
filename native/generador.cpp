@@ -6,6 +6,7 @@
 //   - mutar: cambios chicos al azar;
 //   - cada sala se resuelve con el solucionador exacto (camino más corto, y entre los más cortos el de menos agarres), se comprueba que no se resuelva caminando, se afina la cuenta de las bombas,
 //     se cambian por comunes los especiales que no hacen falta y se mide el alcance de los empujes (reach). Sólo salen las que pasan todo.
+// Modo hielo: --types=i,h,c,s --p-ice=0.7 --min-ice=3 --min-slides=3 (sólo salas con hielo que hace falta, con pesado, agrietado y pinchos como compañeros)
 // Uso:  generador mina    --out=ARCHIVO [--seed=N] [--steps=N] [--shapes=3x3,3x5,3x8,L,U] [--hlo=5] [--hhi=20] [--part=I --parts=N] [--min-diff=0.2] [--min-reach=0.5] [--nodes=N] [--eval=N]
 //       generador auditar --in=ARCHIVO --out=ARCHIVO [--min-reach=0.5]       (salas ya hechas, una por línea: se vuelven a resolver, auditar y medir)
 // Formato de una sala (una por línea):  R|forma|h|fuse|moves|grabs|reach|especiales|camino|x,z:columna;x,z:columna...      (columna: un carácter por bloque de abajo hacia arriba; '.' es un hueco)
@@ -179,6 +180,10 @@ static Sim loadRoom(const Room &r) {
 	goalY = r.h + 1;
 	for (int k : sh.cells) blocksIn.push_back({{ckx(k), 0, ckz(k)}, NORMAL, true, false, false, 0});
 	blocksIn.push_back({{sh.nx, 0, sh.nz}, NORMAL, true, false, false, 0});
+	if (r.shape == "L" || r.shape == "U")   // el core (2x2, de arriba a abajo) en el hueco de adentro: ni el jugador ni los bloques pueden usarlo (igual que RoomLib.core_cells)
+		for (int cx = 3; cx <= 4; cx++)
+			for (int cz = 3; cz <= 4; cz++)
+				for (int y = 0; y < r.h + 2; y++) blocksIn.push_back({{cx, y, cz}, NORMAL, true, false, false, 0});
 	for (int y = 1; y < r.h; y++) blocksIn.push_back({{sh.ex, y, sh.ez}, HEAVY, false, false, false, 0});
 	blocksIn.push_back({{sh.ex, r.h, sh.ez}, NORMAL, true, true, false, 0});
 	for (auto &kv : r.cols) {
@@ -248,7 +253,7 @@ static SolveRes solveRoom(const Room &r, bool exact, bool noG, long long cap) {
 
 struct PathInfo {
 	bool ok = false;
-	int moves = 0, grabs = 0, ticks = 0;
+	int moves = 0, grabs = 0, ticks = 0, slides = 0;   // slides: resbalones del jugador + empujes que mueven un bloque de hielo
 	double reach = 0.0;
 };
 
@@ -259,6 +264,13 @@ static PathInfo replayPath(const Room &r, const string &path, int fuse) {
 	PathInfo P;
 	Sim s = loadRoom(r);
 	int maxY = 0;
+	auto iceCells = [&]() {
+		vector<int> v;
+		for (int ci : W.list)
+			if ((W.g[ci] & 7) == ICE) v.push_back(ci);
+		sort(v.begin(), v.end());
+		return v;
+	};
 	for (size_t i = 0; i + 1 < path.size(); i += 2) {
 		int m = path[i] == 'm' ? 0 : (path[i] == 'g' ? 1 : 2);
 		int di = path[i + 1] == 'E' ? 0 : (path[i + 1] == 'W' ? 1 : (path[i + 1] == 'S' ? 2 : 3));
@@ -266,8 +278,12 @@ static PathInfo replayPath(const Room &r, const string &path, int fuse) {
 			P.grabs++;
 			maxY = max(maxY, s.p.y);
 		}
+		V before = s.p;
+		vector<int> iceBefore = iceCells();
 		if (!tryAction(s, DIRS[di], m)) return P;
 		if (s.lost) return P;
+		if (m == 0 && s.hang.x == 0 && s.hang.y == 0 && s.hang.z == 0 && s.p.y == before.y && abs(s.p.x - before.x) + abs(s.p.z - before.z) >= 2) P.slides++;   // resbaló
+		if (m == 1 && !iceBefore.empty() && iceCells() != iceBefore) P.slides++;   // empujó o tiró de un bloque de hielo
 		if (underOut != nullptr && s.hang == ZERO && s.p.y >= 2) underOut->push_back({ck(s.p.x, s.p.z), s.p.y - 2});
 		if (anyBomb && fuse > 0)
 			for (int ci : W.list)
@@ -283,7 +299,7 @@ static PathInfo replayPath(const Room &r, const string &path, int fuse) {
 struct Final {
 	Room room;
 	string path;
-	int moves = 0, grabs = 0;
+	int moves = 0, grabs = 0, slides = 0;
 	double reach = 0.0;
 	string specials;
 };
@@ -336,11 +352,12 @@ static bool exactRoom(Room r, Final &out, string &why, long long cap = EXACT_CAP
 	out.path = res.path;
 	out.moves = res.moves;
 	out.grabs = pi.grabs;
+	out.slides = pi.slides;
 	out.reach = pi.reach;
 	return true;
 }
 
-static const char SPECIAL_CHARS[6] = {'i', 'c', 'b', 'k', 't', 's'};
+static string SPECIAL_CHARS = "icbkts";   // los especiales que se auditan (con --types que incluye h, también el pesado)
 
 static Room replaceKind(const Room &r, char ch, int onlyCell = -1, int onlyY = 0) {
 	Room o = r;
@@ -536,6 +553,7 @@ struct Cfg {
 	double minDiff = 0.2, minReach = 0.5;
 	int nodes = 300000, evalN = 14, topK = 24, keep = 8;
 	double pType = 0.3, pMutate = 0.12, pSeed = 0.1;
+	int minIce = 0, minSlides = 0;   // sólo se escriben salas con al menos tantos bloques de hielo y tantos resbalones/empujes de hielo en el camino
 	unsigned long long seed = 1;
 };
 
@@ -549,7 +567,9 @@ static ofstream OUTF;
 static void emit(const Cfg &cfg, Cell &cell, const Final &f, const char *source) {
 	if (diffOf(f) < cfg.minDiff && f.specials.empty()) return;
 	if (f.reach < cfg.minReach) return;
-	OUTF << line(f) << "|" << source << "\n";
+	if (cfg.minIce > 0 && countKind(f.room, 'i') < cfg.minIce) return;
+	if (f.slides < cfg.minSlides) return;
+	OUTF << line(f) << "|" << source << "|" << f.slides << "\n";
 	OUTF.flush();
 	cell.outputs++;
 	statOut++;
@@ -650,20 +670,23 @@ static void excavateStep(const Cfg &cfg, Cell &cell, const Elite &par) {
 	}
 }
 
-static const char TYPE_POOL[6] = {'i', 'c', 'b', 'k', 't', 's'};
+static string TYPE_POOL = "icbkts";   // los especiales que puede insertar el paso de tipos (--types)
+static double P_ICE = 0.0;   // si es mayor que 0, esa fracción de las veces el paso de tipos inserta hielo (--p-ice)
 
 // Cambia unos bloques por un especial; la sala sólo se queda si ese especial HACE FALTA (sale de la auditoría con ese tipo).
 static void typeStep(const Cfg &cfg, Cell &cell, const Elite &par, map<char, long long> &kindCount) {
-	char want = TYPE_POOL[rnd(0, 5)];
+	int np = (int)TYPE_POOL.size();
+	char want = TYPE_POOL[(size_t)rnd(0, np - 1)];
 	// se prefiere el tipo del que menos salas salieron
 	long long best = 1LL << 60;
 	for (int t = 0; t < 3; t++) {
-		char c = TYPE_POOL[rnd(0, 5)];
+		char c = TYPE_POOL[(size_t)rnd(0, np - 1)];
 		if (kindCount[c] < best) {
 			best = kindCount[c];
 			want = c;
 		}
 	}
+	if (P_ICE > 0.0 && TYPE_POOL.find('i') != string::npos && rnd01() < P_ICE) want = 'i';
 	Room r = par.f.room;
 	vector<pair<int, int>> blocks;   // (celda, piso) de los comunes
 	for (auto &kv : r.cols)
@@ -679,7 +702,7 @@ static void typeStep(const Cfg &cfg, Cell &cell, const Elite &par, map<char, lon
 		auto it = r.cols.find(u.first);
 		if (it != r.cols.end() && u.second >= 0 && u.second < (int)it->second.size() && it->second[(size_t)u.second] == 'n') guided.push_back(u);
 	}
-	int n = rnd(1, 3);
+	int n = rnd(1, P_ICE > 0.0 && want == 'i' ? 5 : 3);
 	for (int i = 0; i < n; i++) {
 		pair<int, int> b = (!guided.empty() && rnd01() < 0.8) ? guided[rnd(0, (int)guided.size() - 1)] : blocks[rnd(0, (int)blocks.size() - 1)];
 		r.cols[b.first][(size_t)b.second] = want;
@@ -919,6 +942,20 @@ int main(int argc, char **argv) {
 		else if (k == "p-type") cfg.pType = atof(v.c_str());
 		else if (k == "p-mutate") cfg.pMutate = atof(v.c_str());
 		else if (k == "p-seed") cfg.pSeed = atof(v.c_str());
+		else if (k == "min-ice") cfg.minIce = atoi(v.c_str());
+		else if (k == "min-slides") cfg.minSlides = atoi(v.c_str());
+		else if (k == "p-ice") P_ICE = atof(v.c_str());
+		else if (k == "types") {   // --types=i,h,c,s : qué especiales puede insertar (y auditar) el paso de tipos
+			string pool;
+			for (char c : v)
+				if (string("icbkths").find(c) != string::npos && pool.find(c) == string::npos) pool += c;
+			if (!pool.empty()) {
+				TYPE_POOL = pool;
+				SPECIAL_CHARS = pool;
+				for (char c : string("icbkts"))
+					if (SPECIAL_CHARS.find(c) == string::npos) SPECIAL_CHARS += c;   // (lo que ya se audita siempre se sigue auditando)
+			}
+		}
 	}
 	RNG.seed(cfg.seed * 7919ULL + (unsigned long long)cfg.part * 104729ULL + 1ULL);
 	if (mode == "mina") return mina(cfg);

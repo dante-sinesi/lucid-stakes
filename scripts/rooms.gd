@@ -59,7 +59,6 @@ const IDEAS := {
 }
 ## Las ideas propias de cada escenario (se pueden usar desde la primera etapa: son su identidad). Los escenarios que no están acá usan todas, con la escalera de bloques.
 const SCENARIO_IDEAS := {
-	"glaciar": ["hielo_freno", "hielo_pista", "hielo_billar"],
 }
 
 
@@ -780,7 +779,7 @@ static func _lib_candidate(st: Dictionary, ey: int, room: Dictionary, sym: Array
 			continue
 		if not _addable(st, m, ey):
 			return {}
-		floors[m] = K.NORMAL
+		floors[m] = int(K.NORMAL)
 	var goal := _lib_map(room.exit, entry, sym, spot)
 	var blocks: Array = [{"c": Vector3i(goal.x, ey + h - 1, goal.y), "kind": K.NORMAL, "fixed": true, "timer": 0}]
 	if not _free(st, goal, ey, ey + h - 1):

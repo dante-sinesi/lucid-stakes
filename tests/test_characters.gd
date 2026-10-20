@@ -47,7 +47,7 @@ func _init() -> void:
 
 
 func test_models() -> void:
-	check(Characters.ALL.size() == 6 and Characters.get_character("nope").id == "gato" and Characters.DEFAULT == "gato", "hay seis personajes (Dante y Gaby y cuatro animalitos) y un id raro cae en el gatito")
+	check(Characters.ALL.size() == 5 and Characters.get_character("nope").id == "gato" and Characters.DEFAULT == "gato", "hay cinco personajes (Dante y Gaby y tres animalitos) y un id raro cae en el gatito")
 	var seen := {}
 	for c in Characters.ALL:
 		var m := Characters.build(c.id)
@@ -96,13 +96,13 @@ func test_unlocks() -> void:
 	check(not Profile.select_character("conejo") and Profile.character() == "gato", "no se puede elegir uno bloqueado")
 	check(Profile.on_stage_reached(1).is_empty() and Profile.on_stage_reached(2).is_empty() and Profile.on_stage_reached(3).is_empty(), "el gatito ya no se gana por etapa (se tiene desde el principio)")
 	check(Profile.on_stage_reached(5).is_empty() and Profile.on_stage_reached(6) == ["conejo"] and Profile.on_stage_reached(8).is_empty(), "llegar a la etapa 6 desbloquea al conejito (una sola vez)")
-	check(Profile.on_ability("niebla").is_empty() and Profile.on_ability("garras_de_hielo") == ["pinguino"], "la habilidad del Hielo total desbloquea al pinguino")
+	check(Profile.on_ability("niebla").is_empty(), "ninguna habilidad desbloquea personajes")
 	check(Profile.on_trial_cleared().is_empty(), "superar una prueba ya no desbloquea nada (el perrito se tiene desde el principio)")
-	check(Profile.owned_characters().size() == 6, "ya estan los seis")
-	check(Profile.select_character("pinguino") and Profile.character() == "pinguino", "se elige uno desbloqueado")
+	check(Profile.owned_characters().size() == 5, "ya estan los cinco")
+	check(Profile.select_character("conejo") and Profile.character() == "conejo", "se elige uno desbloqueado")
 	Profile.data = {}
 	Profile._loaded_from = ""
-	check(Profile.character() == "pinguino" and Profile.has_character("conejo"), "se guarda en el perfil")
+	check(Profile.character() == "conejo" and Profile.has_character("conejo"), "se guarda en el perfil")
 	check(not Profile.unlock_character("dragon"), "un personaje que no existe no se desbloquea")
 	Profile.reset()
 

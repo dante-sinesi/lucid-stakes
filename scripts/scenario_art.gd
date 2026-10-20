@@ -8,9 +8,6 @@ const ART := {
 	"pesadilla": {
 		"pal": {"a": Color(0.40, 0.17, 0.62), "d": Color(0.80, 0.55, 1.0), "c": Color(0.12, 0.04, 0.2), "b": Color(0.28, 0.1, 0.45)},
 		"rows": ["aaaaaaaaa", "adddddddb", "ad.aaaabb", "adacccabb", "adacc.abb", "adaaaaabb", "ad.aaaabb", "abbbbbbbb", ".b.b.b.b."]},
-	"glaciar": {
-		"pal": {"w": Color(1, 1, 1), "c": Color(0.62, 0.88, 1.0), "d": Color(0.3, 0.6, 0.95)},
-		"rows": ["....w....", ".w..c..w.", "..w.c.w..", "...wcw...", "wcccdcccw", "...wcw...", "..w.c.w..", ".w..c..w.", "....w...."]},
 	"ruinas": {
 		"pal": {"t": Color(0.95, 0.82, 0.58), "s": Color(0.78, 0.62, 0.40), "k": Color(0.22, 0.14, 0.08), "d": Color(0.55, 0.42, 0.26)},
 		"rows": ["ttttttttt", "tsssssssd", "tsskssssd", "tssskkssd", "tssssksdd", "tsskkssdd", "tskksssdd", "tsssssddd", "ddddddddd"]},
@@ -28,7 +25,7 @@ const ART := {
 ## Color de fondo de la tarjeta de cada escenario.
 const THEME := {
 	"tutorial": Color(0.12, 0.26, 0.22),
-	"pesadilla": Color(0.14, 0.07, 0.24), "glaciar": Color(0.10, 0.20, 0.32), "ruinas": Color(0.28, 0.20, 0.12),
+	"pesadilla": Color(0.14, 0.07, 0.24), "ruinas": Color(0.28, 0.20, 0.12),
 	"polvorin": Color(0.30, 0.10, 0.08), "relojeria": Color(0.18, 0.14, 0.26), "gran_casino": Color(0.30, 0.26, 0.38),
 }
 

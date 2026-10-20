@@ -195,23 +195,20 @@ func test_commands() -> void:
 	DevCommands.execute("perk reflejos", main)
 	check(not main.logic.perks.has("reflejos") and main.logic.bomb_timer[near] == 3, "el mismo comando lo saca")
 	# habilidades persistentes
-	check(DevCommands.execute("ability", main).contains("garras_de_hielo") and DevCommands.execute("ability nope", main).contains("Habilidades:"), "ability sin id (o con uno malo) lista las habilidades")
+	check(DevCommands.execute("ability", main).contains("ojos_de_gato") and DevCommands.execute("ability nope", main).contains("Habilidades:"), "ability sin id (o con uno malo) lista las habilidades")
 	var claridad_before: int = main.run.claridad
-	check(DevCommands.execute("ability garras_de_hielo", main).contains("activada") and main.logic.perks.has("garras_de_hielo"), "ability prende una habilidad con perk de la torre")
+	check(DevCommands.execute("ability ojos_de_gato", main).contains("activada") and main.logic.perks.has("pies_de_luz"), "ability prende una habilidad con perk de la torre")
 	check(DevCommands.execute("ability mente_despejada", main).contains("activada") and main.run.claridad == claridad_before + 25, "y una de las que cambian el run (Mente despejada: +25 de claridad)")
-	check(DevCommands.execute("ability", main).contains("[x] garras_de_hielo"), "la lista marca las prendidas")
+	check(DevCommands.execute("ability", main).contains("[x] ojos_de_gato"), "la lista marca las prendidas")
 	DevCommands.execute("ability mente_despejada", main)
-	DevCommands.execute("ability garras_de_hielo", main)
-	check(main.run.claridad == claridad_before and not main.logic.perks.has("garras_de_hielo"), "apagarlas lo deshace")
-	DevCommands.execute("ability bolsillo_sonador", main)
-	check(main.run.consumable_capacity() == 4 + 6 + 1, "Bolsillo de soñador suma un casillero de consumibles")
-	DevCommands.execute("ability bolsillo_sonador", main)
+	DevCommands.execute("ability ojos_de_gato", main)
+	check(main.run.claridad == claridad_before and not main.logic.perks.has("pies_de_luz"), "apagarlas lo deshace")
 	# las habilidades del perfil real no valen en el laboratorio
 	Profile.path = "user://test_profile.json"
 	Profile.reset()
-	Profile.grant_ability("garras_de_hielo")
+	Profile.grant_ability("ojos_de_gato")
 	main.restart()
-	check(not main.logic.perks.has("garras_de_hielo"), "las habilidades del perfil real no valen en el laboratorio")
+	check(not main.logic.perks.has("pies_de_luz"), "las habilidades del perfil real no valen en el laboratorio")
 	Profile.reset()
 	# consumibles: se dan con give y se usan con las teclas
 	check(DevCommands.execute("give freno", main).contains("Recibiste") and main.run.consumables == ["freno"], "give da un consumible")

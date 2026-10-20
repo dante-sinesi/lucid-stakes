@@ -33,12 +33,14 @@ static func reach_cells(room: Dictionary) -> Array:
 			out.append(v)
 	note.call(t.player)
 	for id in t.positions:
-		note.call(t.positions[id])
+		if not t.fixed.has(t.positions[id]):   # (los fijos —el piso y el core de la sala— no se mueven)
+			note.call(t.positions[id])
 	for a in room.path:
 		t.try_action(a.dir, a.mode)
 		note.call(t.player)
 		for id in t.positions:
-			note.call(t.positions[id])
+			if not t.fixed.has(t.positions[id]):
+				note.call(t.positions[id])
 	_mutex.lock()
 	_reach_cache[room.id] = out
 	_mutex.unlock()

@@ -26,3 +26,6 @@ Formato de línea: `R|forma|h|mecha|pasos|agarres|reach|especiales|camino|x,z:co
 ## Pruebas
 
 `tests/test_generador.gd`: el generador es determinista, todo lo que saca pasa las reglas del juego, la auditoría nativa coincide con la de GDScript y el cierre escribe una biblioteca legible.
+
+## Modo hielo
+El paso de tipos acepta: `--types=i,h,c,s` (qué especiales inserta y audita: hielo, pesado, agrietado, pinchos; por defecto `icbkts` como siempre), `--p-ice=0.7` (la fracción de veces que inserta hielo), `--min-ice=N` (sólo se escriben salas con al menos N bloques de hielo) y `--min-slides=N` (con al menos N resbalones o empujes de hielo en el camino). Cada línea trae al final `|slides`. El cierre (`room_from_line`) vuelve a medir con las reglas del juego y guarda `opt.slides` y `opt.ice_moved` (`RoomLib.path_stats`); el Estudio ordena y filtra por resbalones. Prueba: `tests/test_generador.gd` (`test_ice`). Con el modo apagado, el generador produce exactamente lo de antes.

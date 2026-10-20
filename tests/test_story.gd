@@ -154,6 +154,10 @@ func test_intro_flow() -> void:
 	main.casino.facing = Vector2i(0, -1)
 	check(main.casino.step(Vector2i(0, -1)) == "blocked" and main.casino.screen == null and main.dialogue.is_active() and not main.dialogue.blocking, "chocar contra la mesa no abre la ruleta: el tabernero avisa")
 	check(str(main.dialogue.lines[0]) == Story.BLOCKED_TABLE, "...con la frase del tabernero")
+	var t0 := Time.get_ticks_msec()
+	while main.dialogue.is_active() and Time.get_ticks_msec() - t0 < 6000:   # (el aviso se va solo: antes se quedaba tapando la pantalla y no se podía seguir)
+		await process_frame
+	check(not main.dialogue.is_active() and not main.casino.input_locked, "el aviso del tabernero se va solo y se puede seguir caminando")
 	# la puerta de atras empieza las lecciones
 	main.casino.cell = main.casino.lay.exit
 	main.casino.step(Vector2i(0, -1))

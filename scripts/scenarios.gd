@@ -11,6 +11,9 @@ const K := TowerLogic.Kind
 
 const FREE := "pesadilla"
 
+## Los escenarios que se pueden elegir hoy en el selector (el tutorial, La Pesadilla y Sin piedad); el resto está definido pero se muestra como "Próximamente" hasta que se les arme su contenido.
+const AVAILABLE: Array[String] = ["tutorial", "pesadilla", "sin_piedad"]
+
 ## El tutorial no es un escenario (no hay run): es la primera tarjeta del selector de "Nueva partida". Gratis, no da Luz ni habilidades.
 const TUTORIAL := {"id": "tutorial", "name": "Tutorial", "entry": 0, "luz_mult": 1.0, "pool": [],
 		"desc": "Aprende a escapar con el tabernero: te cuenta la historia de la pesadilla y te enseña, torre por torre, todo lo que hace falta."}
@@ -20,11 +23,11 @@ const ALL: Array[Dictionary] = [
 		"desc": "El juego de siempre: torres de bloques corruptos que se aclaran etapa a etapa. Gratis.",
 		"abilities": ["mente_despejada", "ojos_de_gato", "racha_firme"],
 		"pool": ["niebla", "oscuridad", "prisa", "sin_ayudas", "todo_o_nada", "sin_racha", "meteoritos"]},
-	{"id": "glaciar", "name": "Glaciar", "entry": 15, "luz_mult": 1.5,
-		"desc": "Torres cubiertas de hielo, desde la primera etapa. Leer cada resbalón es todo.",
-		"abilities": ["garras_de_hielo"],
-		"pool": ["hielo_total", "niebla", "prisa", "sin_racha", "todo_o_nada"],
-		"bias": {"kinds": {K.ICE: 0.9}, "plat_ice": 0.18, "cap_bonus": 1}},
+	{"id": "sin_piedad", "name": "Sin piedad", "entry": 25, "luz_mult": 2.0,
+		"desc": "Cada sala sólo permite 2 movimientos en falso: uno que te deja más lejos de la salida de la sala. Al tercero pierdes una vida. No se puede deshacer.",
+		"abilities": ["margen_de_error"],
+		"pool": ["niebla", "oscuridad", "prisa", "sin_ayudas", "sin_racha", "meteoritos"],
+		"mistakes": 2, "no_undo": true},
 	{"id": "ruinas", "name": "Ruinas", "entry": 15, "luz_mult": 1.5,
 		"desc": "Dominan los bloques agrietados y los pesados: casi nada se puede pisar dos veces.",
 		"abilities": ["fuerza_bruta"],
@@ -51,6 +54,11 @@ const ALL: Array[Dictionary] = [
 		"pool": ["niebla", "oscuridad", "prisa", "sin_ayudas", "todo_o_nada", "sin_racha", "meteoritos"],
 		"diff_offset": 0.15, "casino_tier": 3, "price_mult": 0.8},
 ]
+
+
+## ¿Se puede jugar este escenario desde el selector? (los demás dicen "Próximamente")
+static func playable(id: String) -> bool:
+	return AVAILABLE.has(id)
 
 
 static func get_scenario(id: String) -> Dictionary:

@@ -85,6 +85,12 @@ func refresh() -> void:
 	reset_size()
 
 
+## Marca un casillero como el elegido para usar (-1: ninguno).
+func set_pick(idx: int) -> void:
+	for i in slots.size():
+		slots[i].selected = i == idx and idx >= 0
+
+
 ## Clic derecho en un casillero: pregunta si se tira (no se recupera claridad) y, si se confirma, lo saca.
 func ask_discard(idx: int) -> void:
 	if run == null or _prompt != null or idx >= items().size():

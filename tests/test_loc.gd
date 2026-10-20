@@ -152,7 +152,7 @@ func test_screens() -> void:
 		main.main_menu.meta.show_info(a.id)
 	for r in [true, false]:
 		var run := RunState.new()
-		main.run_end.show_summary(run, r, "", 12, 30, ["Garras de hielo"])
+		main.run_end.show_summary(run, r, "", 12, 30, ["Margen de error"])
 	main.pause_menu.set_restart(2, false, false)
 	main.pause_menu.open()
 	main.pause_menu.show_options(true)

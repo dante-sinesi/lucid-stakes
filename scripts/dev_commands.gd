@@ -17,7 +17,7 @@ extends RefCounted
 ##   labs                       lista las estaciones
 ##   spawn <tipo> [cuenta]      (laboratorio) pone un bloque delante del personaje: normal, hielo, bomba [cuenta], catapulta, agrietado, pesado, trampa, pinchos, fijo
 ##   perk <id>                  (laboratorio) activa o saca un boost sin gastar casillero (por ejemplo: perk reflejos); reinicia la estación
-##   ability [id]               (laboratorio) prende o apaga una habilidad persistente (ability garras_de_hielo); sin id las lista
+##   ability [id]               (laboratorio) prende o apaga una habilidad persistente (ability ojos_de_gato); sin id las lista
 ##   give <id>                  (laboratorio) los consumibles se usan con las teclas 1-4; los boosts se aplican enseguida
 ##   collapse on|off            (laboratorio) enciende o apaga la caída de la fila de abajo
 
@@ -50,7 +50,7 @@ static func execute(line: String, game) -> String:
 			return help_text()
 		"tower", "torre":
 			if parts.size() < 2 or not parts[1].is_valid_int() or int(parts[1]) < 1 or int(parts[1]) > 15:
-				return "Uso: tower <etapa 1-15> [escenario] [semilla]   (por ejemplo: tower 7 glaciar 1234)"
+				return "Uso: tower <etapa 1-15> [escenario] [semilla]   (por ejemplo: tower 7 sin_piedad 1234)"
 			var seed := -1
 			if parts.size() > 3:
 				if not parts[3].is_valid_int():

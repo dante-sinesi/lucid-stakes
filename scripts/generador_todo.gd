@@ -119,7 +119,8 @@ func _process(_dt: float) -> void:
 
 func _close() -> void:
 	var lib := dir.path_join("salas.rooms")
-	var res := GenMain.run(dir.path_join("trabajo"), "", lib if FileAccess.file_exists(lib) else "res://data/salas.rooms", lib, min_reach, 1, native, false)
+	var base := "res://data/salas.rooms"
+	var res := GenMain.run(dir.path_join("trabajo"), "", lib if FileAccess.file_exists(lib) else base, lib, min_reach, 1, native, false)
 	var f := FileAccess.open(dir.path_join("resumen.txt"), FileAccess.WRITE)
 	f.store_string(res.text)
 	f.close()

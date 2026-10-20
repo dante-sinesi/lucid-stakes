@@ -22,9 +22,6 @@ const ART := {
 	"racha_firme": {   # una llama
 		"pal": {"o": Color(1.0, 0.45, 0.1), "y": Color(1.0, 0.8, 0.2), "w": Color(1.0, 1.0, 0.8)},
 		"rows": ["....o....", "...oo....", "..ooyo...", "..oyyoo..", ".ooyyyoo.", ".oyywyyo.", ".oyywwyo.", "..oyyyo..", "...ooo..."]},
-	"garras_de_hielo": {   # tres garras de hielo
-		"pal": {"w": Color(1, 1, 1), "c": Color(0.55, 0.85, 1.0), "b": Color(0.25, 0.5, 0.85)},
-		"rows": ["w...w...w", "c...c...c", "c...c...c", "cc..cc..c", "cc..cc.cc", "bbbbbbbbb", "bbbbbbbbb", ".bbbbbbb.", "..bbbbb.."]},
 	"fuerza_bruta": {   # un bloque de hierro y una flecha que lo empuja
 		"pal": {"g": Color(0.45, 0.5, 0.62), "h": Color(0.82, 0.87, 0.96), "a": Color(1.0, 0.6, 0.15)},
 		"rows": [".........", "..ggggg..", ".gghhhgg.", "agghhhhgg", "aaghhhhgg", "agghhhhgg", ".gghhhgg.", "..ggggg..", "........."]},
@@ -34,6 +31,9 @@ const ART := {
 	"corazon_extra": {   # un corazón con una cruz dorada: una vida de más
 		"pal": {"r": Color(0.92, 0.16, 0.27), "h": Color(1.0, 0.62, 0.68), "d": Color(0.62, 0.06, 0.16), "y": Color(1.0, 0.88, 0.3)},
 		"rows": ["..rr.rr..", ".rhrrrrr.", "rhrrryrrr", "rrrryyyrr", "rrrrryrrr", ".rrrrrrd.", "..rrrrd..", "...rdd...", "....d...."]},
+	"margen_de_error": {   # una diana: un poco de margen alrededor del centro
+		"pal": {"r": Color(0.85, 0.2, 0.2), "w": Color(0.96, 0.96, 1.0), "y": Color(1.0, 0.85, 0.2)},
+		"rows": ["..rrrrr..", ".rwwwwwr.", "rwwrrrwwr", "rwrwwwrwr", "rwrwywrwr", "rwrwwwrwr", "rwwrrrwwr", ".rwwwwwr.", "..rrrrr.."]},
 	"mecha_larga": {   # una bomba con la mecha larga
 		"pal": {"g": Color(0.22, 0.22, 0.26), "h": Color(0.5, 0.5, 0.56), "f": Color(0.6, 0.35, 0.12), "y": Color(1.0, 0.85, 0.2), "o": Color(1.0, 0.45, 0.1)},
 		"rows": [".....y..y", "......o..", ".....f...", "....f....", "..ggggg..", ".gghgggg.", ".ghgggggg", ".ggggggg.", "..ggggg.."]},

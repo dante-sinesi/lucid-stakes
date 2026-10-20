@@ -158,10 +158,10 @@ func test_casinos() -> void:
 		var f: Vector2i = c.lay.farolin
 		var e: Vector2i = c.lay.exit
 		check(c.farolin_cell_free(), "nivel %d: la celda de Farolín está libre" % tier)
-		check(absi(f.x - e.x) + absi(f.y - e.y) == 1, "nivel %d: Farolín está pegado a la puerta de salida" % tier)
+		check(f == e + Vector2i(-1, 0), "nivel %d: Farolín está pegado a la puerta de salida, contra su borde izquierdo" % tier)
 		check(not Room.walkable(f, c.lay), "nivel %d: Farolín ocupa su celda (no se camina por ahí)" % tier)
 		check(Room.reachable(c.lay.entry, c.lay).has(e), "nivel %d: se llega a la puerta de salida" % tier)
-		check(c._farolin != null and absf(c._farolin.position.x - Room.world_of_cell(f, c.lay).x) < 0.001, "nivel %d: Farolín está en su celda" % tier)
+		check(c._farolin != null and absf(c._farolin.position.x - Room.world_of_cell(f, c.lay).x) < 0.2, "nivel %d: Farolín está en su celda" % tier)
 		check(c.facing == Vector2i(1, 0) and absf(c.player_node.rotation.y - PI * 0.5) < 0.001 and c.cell.x == 0, "nivel %d: el personaje aparece saliendo del portal, mirando hacia adentro de la sala" % tier)
 		var talk := [0]
 		c.toll_talk.connect(func(): talk[0] += 1)

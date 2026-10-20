@@ -15,6 +15,7 @@ const Graphics := preload("res://scripts/graphics.gd")
 const LivesHud := preload("res://scripts/lives_hud.gd")
 const TREMBLE_MOVES := 3   # la fila de abajo tiembla durante los últimos movimientos antes de caer
 const HudPanel := preload("res://scripts/hud_panel.gd")
+const FalseMoves := preload("res://scripts/false_moves.gd")
 const Meteors := preload("res://scripts/meteors.gd")
 const Ideas := preload("res://scripts/ideas.gd")
 const Rooms := preload("res://scripts/rooms.gd")
@@ -45,6 +46,7 @@ const Loc := preload("res://scripts/loc.gd")
 const Items := preload("res://scripts/items.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ItemBar := preload("res://scripts/item_bar.gd")
+const ConsumablePick := preload("res://scripts/consumable_pick.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Compass := preload("res://scripts/compass.gd")
 const Juice := preload("res://scripts/juice.gd")
@@ -123,6 +125,9 @@ var profile := {}
 var hud: Control              # texto de depuración (semilla, contadores...): sólo se ve con F2 en las compilaciones de desarrollo
 var debug_hud := false
 var stage_label: Control     # "Etapa 5/27" y el piso en que estás
+var false_moves := FalseMoves.new()   # Sin piedad: los movimientos en falso de cada sala (ver false_moves.gd)
+var room_segments: Array = []        # las salas de la torre actual: [{idea, twist, h, ey}] (de la generación)
+var _mistake_fail_pending := false   # se acabaron los falsos mientras se animaba: se pierde al terminar
 var hud_panel               # la ventana de la partida: corazones, etapa, claridad y racha
 var banner: Control
 var toast: Control
@@ -215,6 +220,7 @@ var run_over := false
 var action_log: Array[String] = []   # acciones del intento actual ("dx,dz,modo"): se imprime al perder, para poder reproducir un caso
 var attempt_dirty := false  # el intento actual de la torre ya empezó (hubo un movimiento o se usó un consumible)
 var left_bar              # barra de consumibles (izquierda)
+var consumable_pick := ConsumablePick.new()   # elegir y usar consumibles con el mando (mantener RT y arriba o abajo)
 var right_bar             # barra de boosts (derecha)
 var item_tip: Control     # descripción del ítem bajo el mouse
 var epoch := 0              # sube al volver al menú: las generaciones en curso se descartan
@@ -224,6 +230,8 @@ var _zombies: Array[Thread] = []   # hilos de generación cancelados que todaví
 
 
 func _ready() -> void:
+	false_moves.mistake.connect(_on_mistake)
+	false_moves.exhausted.connect(_on_mistakes_exhausted)
 	if Demo.on():   # la demo tiene su propia carpeta de guardado (no pisa la del juego completo) y su título
 		DirAccess.make_dir_recursive_absolute(Demo.save_dir())
 		SaveGame.path = Demo.save_dir() + "/save.json"
@@ -477,6 +485,7 @@ func new_tower(s: int) -> void:
 	seed_value = res.seed_used
 	stage_start = res.logic
 	solution = res.path
+	room_segments = res.get("rooms", [])
 	print("torre %d (etapa %d): filas %s, N=%d, %d ms" % [seed_value, stage_number, res.rows, res.collapse_every, res.ms])
 	run.stage = stage_number
 	run.max_stage = maxi(run.max_stage, stage_number)
@@ -783,6 +792,7 @@ func restart() -> void:
 	_refresh()
 	_attempt_t0 = Time.get_ticks_msec()
 	_play_trial_banner()
+	_setup_false_moves()
 	call_deferred("_check_discoveries")   # (las filas de abajo de la torre ya están a la altura del jugador)
 
 
@@ -1218,6 +1228,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if casino != null:  # en el casino manda su propia escena
 		return
+	if run != null and left_bar != null:
+		var pick: Dictionary = consumable_pick.process(event, run.consumables.size())
+		if pick.taken:
+			left_bar.set_pick(consumable_pick.marked())
+			if pick.use >= 0:
+				use_consumable_slot(int(pick.use))
+			return
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
 		if not targeting.is_empty() and event is InputEventMouseButton:
 			_targeting_click(event)
@@ -1506,6 +1523,8 @@ func _apply(dir: Vector3i, mode: int, release := false) -> void:
 	_action_sound(mode, was_y)
 	_check_defused(bombs_before)
 	_animate()
+	if false_moves.active:
+		false_moves.after_move(logic)
 
 
 ## El sonido de la acción que se acaba de hacer: pisada, empujar, tirar, trepar, colgarse, resbalar... o lo que pasó (caída, pinchos, bomba).
@@ -1769,6 +1788,10 @@ func _play_trial_banner() -> void:
 
 func _on_anim_done() -> void:
 	busy = false
+	if _mistake_fail_pending and logic != null and not logic.won and not logic.lost:   # se acabaron los movimientos en falso de la sala: se pierde una vida
+		_mistake_fail_pending = false
+		logic.lost = true
+		logic.lost_reason = "Tercer movimiento en falso"
 	_check_tutorial_marker()
 	juice.land(_fell)
 	for bn in _moved_blocks:
@@ -1959,6 +1982,7 @@ func _character_msg(ids: Array) -> String:
 func enter_casino(restoring := false) -> void:
 	if casino != null:
 		return
+	false_moves.disable()
 	if not restoring:
 		_claim_dice_rewards()   # (superaste la torre: lo que dieron los dados es tuyo)
 	if trial_banner != null:
@@ -2293,6 +2317,7 @@ func resume_game() -> void:
 
 ## Al sacar la escena (cerrar el juego, pruebas) no se dejan hilos de generación sueltos.
 func _exit_tree() -> void:
+	false_moves.shutdown()
 	_cancel_jobs()
 	_join_zombies()
 
@@ -2318,6 +2343,9 @@ func _finish_game() -> void:
 ## Reintentar la torre cuesta claridad (gratis en el entrenamiento). Si no te alcanza, el run termina.
 ## Deshace el último movimiento (también el de bloques): vuelve el estado de la torre —con la cuenta de la caída y lo que se juntó— y la vista.
 func undo_move() -> void:
+	if run != null and bool(run.scenario().get("no_undo", false)) and not training and logic != null and not logic.won and not logic.lost:
+		_flash(Loc.t("En este escenario no se puede deshacer"))
+		return
 	if in_menu or logic == null or generating or busy or casino != null or undo_stack.is_empty() or logic.won or logic.lost or dialogue.is_active():
 		return
 	logic = undo_stack.pop_back()
@@ -2333,6 +2361,47 @@ func undo_move() -> void:
 	banner.text = ""
 	_refresh()
 	_flash(Loc.t("Movimiento deshecho"))
+
+
+## Sin piedad: arma el medidor de movimientos en falso de esta torre (o lo apaga).
+func _setup_false_moves() -> void:
+	_mistake_fail_pending = false
+	var allowed := 0
+	if run != null and not training and not lab_active and tutorial_index < 0 and logic != null:
+		allowed = int(run.scenario().get("mistakes", 0))
+		if allowed > 0 and Profile.has_ability("margen_de_error"):
+			allowed += 1
+	if allowed > 0 and not room_segments.is_empty():
+		false_moves.setup(room_segments, allowed, logic.goal_y)
+		false_moves.measure(logic)
+		hud_panel.set_mistakes(allowed, allowed)
+	else:
+		false_moves.disable()
+		hud_panel.set_mistakes(0, 0)
+
+
+## Un movimiento en falso (la medición llega unos instantes después del movimiento).
+func _on_mistake(count: int, allowed: int, room: int, dead_end: bool) -> void:
+	if logic == null or logic.won or logic.lost or in_menu or casino != null:
+		return
+	if room != false_moves.room_of(logic.player.y):   # (ya cambió de sala: se anota, pero no se avisa)
+		return
+	hud_panel.set_mistakes(false_moves.left(room), allowed)
+	if count <= allowed:
+		Sfx.play("miss")
+		juice.flash(Color(0.8, 0.1, 0.15), 0.18, 0.4)
+		_flash(Loc.f("¡Sin salida! Movimiento en falso %d de %d", [count, allowed]) if dead_end else Loc.f("¡Movimiento en falso! %d de %d", [count, allowed]))
+
+
+func _on_mistakes_exhausted(_room: int) -> void:
+	if logic == null or logic.won or logic.lost or in_menu or casino != null:
+		return
+	hud_panel.set_mistakes(0, false_moves.allowed)
+	if busy:
+		_mistake_fail_pending = true
+	else:
+		_mistake_fail_pending = true
+		_on_anim_done()
 
 
 func request_restart() -> void:
@@ -2479,10 +2548,23 @@ func _open_story_room(stage: int, lines: Array, kind: String) -> void:
 	rng.randomize()
 	casino.setup(run, rng)
 	casino.input_locked = true   # no se camina mientras habla
-	casino.story_message.connect(func(t): dialogue.show_lines([t], Story.SPEAKER, false))
+	casino.story_message.connect(_on_story_message)
 	casino.left.connect(_on_story_left)
 	_apply_casino_light()
 	dialogue.show_lines(lines, Story.SPEAKER, true)
+
+
+var _story_msg_id := 0
+
+
+## Un aviso del tabernero en la historia (por ejemplo, que todavía no se apuesta): se escribe solo y se va a los pocos segundos (si no, quedaba el cuadro tapando la pantalla y no se podía seguir).
+func _on_story_message(t: String) -> void:
+	dialogue.show_lines([t], Story.SPEAKER, false)
+	_story_msg_id += 1
+	var id := _story_msg_id
+	await get_tree().create_timer(3.0).timeout
+	if id == _story_msg_id and dialogue != null and dialogue.is_active() and not dialogue.blocking:
+		dialogue.hide_box()
 
 
 func _on_dialogue_finished() -> void:
@@ -3200,6 +3282,7 @@ func save_game() -> void:
 		data["dirty"] = attempt_dirty
 		data["dead"] = logic != null and logic.lost   # murió y todavía no reintentó: al continuar cuenta como reintento después de morir (gasta una vida)
 		data["solution"] = Meteors.encode(solution)
+		data["rooms"] = room_segments
 	SaveGame.write(data)
 
 
@@ -3233,6 +3316,7 @@ func continue_game() -> void:
 		return
 	stage_start = TowerLogic.from_dict(data.tower)
 	solution = Meteors.decode(data.get("solution", []))
+	room_segments = data.get("rooms", [])
 	trial = run.trial_at(stage_number)
 	profile = Gen.profile_for_stage(stage_number, trial, run.scenario())
 	if data.get("dirty", false) and trial.get("no_retry", false):

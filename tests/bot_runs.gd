@@ -25,6 +25,9 @@ func _init() -> void:
 	cfg.spend = float(_env("SPEND", "0.8"))
 	cfg.free_plays = int(_env("FREE", "0"))
 	cfg.max_rotations = int(_env("ROT", "3"))
+	cfg.mistakes = int(_env("MISTAKES", "0"))   # Sin piedad: falsos permitidos por sala (0 = el escenario común)
+	if OS.get_environment("HES") != "":
+		cfg.hesitate = float(OS.get_environment("HES"))   # probabilidad de titubear (= movimiento en falso) en cada paso para habilidad 1,0
 	# parámetros de balance que se pueden cambiar por variable de entorno (para probar curvas)
 	var tuned := []
 	for pair in [["WALL_GROWTH", "wall_growth"], ["WALL_MARGIN", "wall_margin"], ["PRE_FROM", "pre_wall_from"], ["PRE_TO", "pre_wall_to"], ["INCOME_BASE", "income_base"], ["INCOME_SLOPE", "income_slope"], ["INCOME_CEIL", "income_ceil"], ["HILL_POWER", "hill_power"]]:
@@ -62,6 +65,8 @@ func _init() -> void:
 	var reach := PackedFloat32Array()
 	reach.resize(Bot.FINAL_STAGE + 2)
 	var lives := 0.0
+	var false_deaths := 0
+	var attempts_total := 0
 	var per := {}   # etapa -> {n, income, toll, before, attempts, boosts, first_ok}
 	var builds := {}
 	var t0 := Time.get_ticks_msec()
@@ -83,6 +88,8 @@ func _init() -> void:
 			p.attempts += float(rec.attempts)
 			p.boosts += float(rec.boosts)
 			p.first_ok += 1.0 if int(rec.attempts) == 1 else 0.0
+			false_deaths += int(rec.get("false_deaths", 0))
+			attempts_total += int(rec.attempts)
 		for b in res.build:
 			builds[b] = int(builds.get(b, 0)) + 1
 		if out != null:
@@ -90,6 +97,8 @@ func _init() -> void:
 	if out != null:
 		out.close()
 	print("RUNS %d (habilidad %.2f, torres en el banco: %d) en %.0f s: gana %.1f %% · vidas perdidas %.2f" % [runs, cfg.skill, have, (Time.get_ticks_msec() - t0) / 1000.0, 100.0 * wins / runs, lives / runs])
+	if cfg.mistakes > 0:
+		print("SIN PIEDAD (%d falsos por sala, titubeo %.3f): %d de %d intentos de torre se perdieron por falsos (%.1f %%)" % [cfg.mistakes, cfg.hesitate, false_deaths, attempts_total, 100.0 * false_deaths / maxi(attempts_total, 1)])
 	var line := "pasan la etapa:"
 	for s in [1, 3, 5, 7, 8, 9, 10, 12, 14, 15]:
 		line += " %d:%3.0f%%" % [s, 100.0 * reach[s] / runs]

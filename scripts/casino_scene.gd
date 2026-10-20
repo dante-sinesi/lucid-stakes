@@ -19,6 +19,7 @@ const Compass := preload("res://scripts/compass.gd")
 const Roulette := preload("res://scripts/roulette.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ItemBar := preload("res://scripts/item_bar.gd")
+const ConsumablePick := preload("res://scripts/consumable_pick.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
@@ -74,6 +75,7 @@ var hud_panel                  # la ventana de la partida: corazones y claridad
 var toast: Control
 var hud_layer: CanvasLayer
 var left_bar
+var consumable_pick := ConsumablePick.new()   # elegir y usar consumibles con el mando (mantener RT y arriba o abajo)
 var right_bar
 var clarity_counter
 var lives_hud
@@ -208,7 +210,7 @@ func _build_farolin() -> void:
 		return
 	_farolin = Farolin.build()
 	_farolin.scale = Vector3.ONE * FAROLIN_SCALE
-	_farolin.position = Room.world_of_cell(lay.farolin, lay)
+	_farolin.position = Room.world_of_cell(lay.farolin, lay) + Vector3(-0.08, 0.0, 0.28)   # (un poco hacia adentro de la sala: pegado a la pared no entra el farol)
 	_farolin.rotation_degrees.y = yaw_target
 	add_child(_farolin)
 
@@ -714,6 +716,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				zoom_view(ZOOM_FACTOR)
 		elif event is InputEventMouseMotion and (event.button_mask & (MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT | MOUSE_BUTTON_MASK_MIDDLE)) != 0:
 			orbit_view(event.relative)
+	if not input_locked and screen == null and run != null and left_bar != null:
+		var pick: Dictionary = consumable_pick.process(event, run.consumables.size())
+		if pick.taken:
+			left_bar.set_pick(consumable_pick.marked())
+			if pick.use >= 0:
+				use_consumable_slot(int(pick.use))
+			return
 	if input_locked or not (event is InputEventKey) or not event.pressed or event.echo or screen != null:
 		return
 	match Controls.action_of(event):

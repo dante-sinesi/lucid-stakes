@@ -20,8 +20,6 @@ const VARIANTS := 4   # diseños automáticos por tipo de bloque (el 0 es el de 
 const VOXEL := 0.96 / N  # el cubo del juego mide 0.96
 
 static var _cache := {}
-
-
 ## Cantidad de variantes de diseño de un tipo de bloque: las automáticas (VARIANTS: la 0 es el diseño de siempre y las otras son variaciones del
 ## mismo tipo) o más si el editor de modelos (model_editor.gd, data/modelos/) guardó otras. Cada bloque de la torre usa una según su identidad (variant_for).
 static func variant_count(kind: int) -> int:

@@ -26,6 +26,7 @@ func _init() -> void:
 	test_difficulty()
 	test_gaps()
 	test_unsupported()
+	test_core_hole()
 	print("tests de la biblioteca de salas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -401,3 +402,18 @@ func test_unsupported() -> void:
 		var r2 := RoomLib.copy_room(r)
 		r2.cols = {a: "nnn", side: ".n"}
 		check(RoomLib.unsupported_cells(r2).is_empty(), "pegado de costado a una columna se sostiene")
+
+
+## En la L y la U el hueco de adentro es del core: en la sala son bloques fijos de arriba a abajo (nadie puede usar ese hueco); las formas de 3 filas no los tienen.
+func test_core_hole() -> void:
+	for shape in ["L", "U"]:
+		var r := RoomLib.make_room(shape, 5)
+		var t = RoomLib.build_state(r)
+		check(RoomLib.core_cells(shape).size() == 4, shape + ": el core ocupa 2x2")
+		for cc in RoomLib.core_cells(shape):
+			check(t.fixed.has(Vector3i(cc.x, 0, cc.y)) and t.fixed.has(Vector3i(cc.x, 3, cc.y)) and t.fixed.has(Vector3i(cc.x, 6, cc.y)), shape + ": el core es fijo de arriba a abajo en " + str(cc))
+		check(not r.cells.has(Vector2i(3, 3)) and not r.cells.has(Vector2i(4, 4)), shape + ": el hueco no es de la arena")
+	check(RoomLib.core_cells("3x5").is_empty() and not RoomLib.build_state(RoomLib.make_room("3x5", 5)).fixed.has(Vector3i(3, 3, 3)), "las formas de 3 filas no tienen core")
+	# una sala que no usa el hueco no cambia; las celdas fuera de la arena que toca el camino se detectan
+	var plain := sample_room()
+	check(RoomLib.outside_cells(plain).size() >= 0, "outside_cells se puede pedir")

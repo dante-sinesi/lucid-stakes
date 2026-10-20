@@ -132,6 +132,8 @@ func _enter_current() -> void:
 
 
 func _info_current() -> void:
+	if cards.has(current_id()) and cards[current_id()].locked_soon:
+		return
 	show_info(current_id())
 
 
@@ -180,15 +182,16 @@ func refresh() -> void:
 		card.name = "tarjeta_" + s.id
 		cards_box.add_child(card)
 		card.setup(s, Profile.can_enter(s.id))
-		if not Demo.scenario_allowed(str(s.id)):   # la demo: los demás escenarios dicen "Próximamente" y no se puede entrar
+		if not Scenarios.playable(str(s.id)) or not Demo.scenario_allowed(str(s.id)):   # los escenarios sin armar (y, en la demo, los que no incluye) dicen "Próximamente" y no se pueden entrar ni abrir
 			card.lock_soon()
 		card.info_pressed.connect(show_info)
 		card.enter_pressed.connect(func(id): chosen.emit(id))
 		cards[s.id] = card
 		play_buttons[s.id] = card.enter_button
 	info_panel.visible = false
-	sel_index = 0
+	sel_index = maxi(_ids().find(Scenarios.FREE), 0)   # al abrir apunta a La Pesadilla (no al tutorial)
 	scroll.scroll_horizontal = 0
+	move_selection(0)
 
 
 func focus_default() -> void:
@@ -246,6 +249,10 @@ static func rule_lines(s: Dictionary) -> Array[String]:
 		out.append("El casino es de lujo desde la primera etapa.")
 	if float(s.get("diff_offset", 0.0)) > 0.0:
 		out.append("Las torres son más difíciles.")
+	if int(s.get("mistakes", 0)) > 0:
+		out.append(Loc.f("Cada sala permite sólo %d movimientos en falso; al siguiente pierdes una vida.", [int(s.mistakes)]))
+	if bool(s.get("no_undo", false)):
+		out.append("No se puede deshacer.")
 	if bool(s.get("permadeath", false)):
 		out.append("Una sola vida: si mueres, se termina.")
 	if bool(s.get("no_totem", false)) or bool(s.get("no_extra_life", false)):
@@ -257,6 +264,8 @@ static func rule_lines(s: Dictionary) -> Array[String]:
 
 ## Abre la información completa de un escenario (el "?" de su tarjeta).
 func show_info(id: String) -> void:
+	if cards.has(id) and cards[id].locked_soon:   # los "Próximamente" no tienen detalles
+		return
 	var s := Scenarios.get_scenario(id)
 	for ch in info_box.get_children():
 		info_box.remove_child(ch)

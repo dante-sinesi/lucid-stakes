@@ -24,6 +24,7 @@ func _init() -> void:
 		quit(0)
 		return
 	test_mine()
+	test_ice()
 	test_audit()
 	test_final()
 	print("tests del generador terminados, fallos: ", fails)
@@ -74,6 +75,39 @@ func test_mine() -> void:
 			check(plain.status == "unsolvable", "no se resuelve caminando (la comprobó GDScript)")
 	check(good == la.size(), "todas las salas del generador pasan las reglas del juego (%d de %d)" % [good, la.size()])
 	check(ids.size() >= good - 1, "casi no hay repetidas (%d distintas de %d)" % [ids.size(), good])
+
+
+## El modo hielo: --types=i,h,c,s --p-ice --min-ice --min-slides. Sólo salen salas con hielo que hace falta y con resbalones en el camino, y las métricas
+## (slides, ice_moved) que guarda el cierre las mide GDScript con las reglas del juego y coinciden con las del generador.
+func test_ice() -> void:
+	var dir := OS.get_user_data_dir().path_join("test_generador")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var a := dir.path_join("hielo_a.txt")
+	var b := dir.path_join("hielo_b.txt")
+	for p in [a, b]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(p)
+	var args := ["--steps=40", "--shapes=3x3,3x5", "--hlo=5", "--hhi=6", "--seed=5", "--types=i,h,c,s", "--p-ice=1", "--p-type=0.9", "--min-ice=1", "--min-slides=1", "--nodes=60000", "--eval=8"]
+	_run(["mina", "--out=" + a] + args)
+	_run(["mina", "--out=" + b] + args)
+	var la := _lines(a)
+	check(la.size() >= 3 and la == _lines(b), "el modo hielo saca salas y es determinista (%d)" % la.size())
+	var ok := 0
+	for l in la:
+		var r := Main.room_from_line(l, 0.5, 1)
+		if r.is_empty():
+			continue
+		ok += 1
+		var native_slides := int(str(l).split("|")[11])
+		check(int(r.opt.get("slides", 0)) >= 1 and int(r.opt.get("ice_moved", 0)) >= 0, "la sala trae resbalones medidos por el juego")
+		check(int(r.opt.slides) == native_slides, "los resbalones del generador coinciden con los del juego (%d y %d)" % [native_slides, int(r.opt.slides)])
+		var has_ice := false
+		for c in r.cols.values():
+			has_ice = has_ice or str(c).contains("i")
+		check(has_ice, "la sala tiene hielo")
+		for ch in str(r.opt.get("specials", "")):
+			check(ch in ["i", "h", "c", "s"], "los compañeros del hielo son sólo pesado, agrietado y pinchos")
+	check(ok == la.size(), "todas pasan las reglas del juego (%d de %d)" % [ok, la.size()])
 
 
 func test_audit() -> void:

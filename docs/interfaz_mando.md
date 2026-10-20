@@ -23,3 +23,6 @@ Todo lo que ve el jugador va en español neutro (tuteo, sin voseo). Las traducci
 
 ## Foco ordenado
 En Opciones (`options_screen.gd`, `_link_focus`) y en la pantalla de personaje (`cosmetics_screen.gd`) el foco se mueve por filas: izquierda y derecha dentro de la fila, arriba y abajo de fila en fila, sin saltos; las listas con desplazamiento acompañan al foco (`follow_focus`). Pruebas: `test_opciones_foco.gd`, `test_cosmeticos_foco.gd`.
+
+## Elegir consumibles con el mando
+Mantener RT (acción "Usar el consumible elegido", la G en el teclado) y apretar arriba o abajo (stick o cruceta; W o S en el teclado) cambia el casillero elegido, que se ve con un marco que titila. Tocar RT sin mover nada usa el casillero elegido (el primero al empezar); si se movió la elección, al soltar no se usa nada: se elige y después se toca. Funciona en la torre y en el casino (`scripts/consumable_pick.gd`, `tests/test_consumable_pick.gd`). Los números 1 a 4 del teclado siguen usando su casillero directo. Elegir con LT + flechas no se hizo porque LT ya es "empujar o tirar".
