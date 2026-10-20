@@ -146,17 +146,17 @@ func test_tower() -> void:
 	var main := make_main()
 	await wait_tower(main)
 	main.open_main_menu()
-	check(DevCommands.execute("tower", main).contains("Uso") and DevCommands.execute("tower 0", main).contains("Uso") and DevCommands.execute("tower 16", main).contains("Uso") and DevCommands.execute("tower 3 glaciar x", main).contains("semilla"), "sin etapa, con una etapa inválida o una semilla rara explica cómo se usa")
+	check(DevCommands.execute("tower", main).contains("Uso") and DevCommands.execute("tower 0", main).contains("Uso") and DevCommands.execute("tower 16", main).contains("Uso") and DevCommands.execute("tower 3 sin_piedad x", main).contains("semilla"), "sin etapa, con una etapa inválida o una semilla rara explica cómo se usa")
 	check(DevCommands.execute("tower 3 nadie", main).contains("desconocido") and main.in_menu, "un escenario que no existe se avisa y no cambia nada")
 	check(DevCommands.execute("help", main).contains("tower"), "help lista tower")
-	var msg := DevCommands.execute("tower 4 glaciar 4242", main)
-	check(msg.contains("etapa 4") and msg.contains("glaciar") and msg.contains("4242") and not main.in_menu and main.run.scenario_id == "glaciar" and main.stage_number == 4 and main.run.stage == 4, "desde el menú principal arranca una partida en esa etapa y escenario")
+	var msg := DevCommands.execute("tower 4 sin_piedad 4242", main)
+	check(msg.contains("etapa 4") and msg.contains("sin_piedad") and msg.contains("4242") and not main.in_menu and main.run.scenario_id == "sin_piedad" and main.stage_number == 4 and main.run.stage == 4, "desde el menú principal arranca una partida en esa etapa y escenario")
 	check(Profile.luz() == 0 or Profile.luz() == int(Profile.luz()), "no se paga la entrada")
 	while main.generating:
 		await process_frame
 	check((main.seed_value - 4242) % 100003 == 0 and main.logic != null and main.hud_layer.visible, "con la semilla pedida y la torre generada")
 	var blocks_a: Dictionary = main.stage_start.blocks.duplicate()
-	DevCommands.execute("tower 4 glaciar 4242", main)
+	DevCommands.execute("tower 4 sin_piedad 4242", main)
 	while main.generating:
 		await process_frame
 	check(main.stage_start.blocks == blocks_a, "la misma semilla da la misma torre")
@@ -268,9 +268,9 @@ func test_set_luz() -> void:
 	# funciona en el menu y actualiza lo que se esta viendo
 	main.open_main_menu()
 	main.main_menu.show_panel("escenarios")
-	check(main.main_menu.scenarios.luz_counter.value == 0 and main.main_menu.scenarios.play_buttons["glaciar"].disabled, "sin Luz el Glaciar esta bloqueado")
+	check(main.main_menu.scenarios.luz_counter.value == 0 and main.main_menu.scenarios.play_buttons["sin_piedad"].disabled, "sin Luz Sin piedad esta bloqueado")
 	DevCommands.execute("set_luz 40", main)
-	check(main.main_menu.scenarios.luz_counter.value == 40 and not main.main_menu.scenarios.play_buttons["glaciar"].disabled and not main.main_menu.scenarios.play_buttons["polvorin"].disabled, "el selector de escenarios se actualiza al instante")
+	check(main.main_menu.scenarios.luz_counter.value == 40 and not main.main_menu.scenarios.play_buttons["sin_piedad"].disabled, "el selector de escenarios se actualiza al instante")
 	main.main_menu.show_panel("despertar")
 	DevCommands.execute("set_luz 7", main)
 	check(main.main_menu.meta.luz_counter.value == 7, "la pantalla de habilidades tambien")

@@ -13,7 +13,7 @@ El juego arma sus torres con las salas de la biblioteca (las que salen del miner
   arma el piso, el pilar de salida y las columnas (bloque por bloque, con huecos y bombas con su cuenta) y la pasa por el mismo `_commit` que cualquier sala: el camino que ya trae la sala tiene que llegar,
   nada se puede caer, y el recorrido de toda la torre hasta ahí tiene que seguir andando (el core y lo ya armado pueden hacer fallar una simetría: se prueba otra o otra sala).
   Si ninguna entra, se usa una idea de las de siempre (muro, hielo, taller…), y los respiros siguen siendo los de siempre.
-- Los escenarios con ideas propias (Glaciar) no usan la biblioteca. `SIN_BIBLIOTECA=1` la apaga (para comparar); `opts.library=false` también.
+- Los escenarios con ideas propias no usan la biblioteca. `SIN_BIBLIOTECA=1` la apaga (para comparar); `opts.library=false` también.
 
 ## Probar
 

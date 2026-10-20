@@ -41,9 +41,9 @@ func test_switch() -> void:
 	Demo.forced = 1
 	check(Demo.on() and Demo.LAST_STAGE == 6 and Demo.shown_final(15) == 6 and Demo.is_last_casino(6) and not Demo.is_last_casino(5) and not Demo.is_last_casino(2), "con el interruptor es la demo: dos etapas y el casino de la etapa 6 es el último")
 	Demo.forced = 0
-	check(not Demo.on() and Demo.shown_final(15) == 15 and not Demo.is_last_casino(2) and Demo.scenario_allowed("glaciar") and Demo.cosmetic_allowed("copa") and Demo.character_allowed("conejo"), "apagada, todo está permitido")
+	check(not Demo.on() and Demo.shown_final(15) == 15 and not Demo.is_last_casino(2) and Demo.scenario_allowed("sin_piedad") and Demo.cosmetic_allowed("copa") and Demo.character_allowed("conejo"), "apagada, todo está permitido")
 	Demo.forced = 1
-	check(Demo.scenario_allowed("tutorial") and Demo.scenario_allowed("pesadilla") and not Demo.scenario_allowed("glaciar") and not Demo.scenario_allowed("polvorin"), "en la demo sólo el tutorial y La Pesadilla")
+	check(Demo.scenario_allowed("tutorial") and Demo.scenario_allowed("pesadilla") and not Demo.scenario_allowed("sin_piedad") and not Demo.scenario_allowed("polvorin"), "en la demo sólo el tutorial y La Pesadilla")
 	check(Demo.save_dir() == "user://demo", "la demo guarda aparte")
 	Demo.forced = 0
 	check(Demo.save_dir() == "user://", "el juego completo guarda donde siempre")
@@ -53,7 +53,7 @@ func test_profile() -> void:
 	Demo.forced = 1
 	Profile.reset()
 	check(Profile.owned_characters() == ["dante", "gaby", "gato", "perro"], "en la demo: Dante, Gaby, gatito y perrito (%s)" % str(Profile.owned_characters()))
-	check(not Profile.has_character("conejo") and not Profile.unlock_character("conejo") and not Profile.unlock_character("pinguino"), "los demás personajes no se tienen ni se pueden ganar")
+	check(not Profile.has_character("conejo") and not Profile.unlock_character("conejo"), "los demás personajes no se tienen ni se pueden ganar")
 	check(Profile.has_cosmetic("corona") and Profile.has_cosmetic("gorro_lana") and Profile.has_cosmetic("remera") and Profile.has_cosmetic("capa"), "vienen la corona, el gorro de lana, la remera y la capa")
 	check(not Profile.has_cosmetic("copa") and not Profile.has_cosmetic("armadura") and not Profile.has_cosmetic("halo"), "los demás cosméticos no se tienen")
 	var rng := RandomNumberGenerator.new()
@@ -78,7 +78,7 @@ func test_scenarios() -> void:
 	root.add_child(s)
 	await process_frame
 	s.refresh()
-	check(s.cards.has("tutorial") and s.cards.has("pesadilla") and s.cards.has("glaciar"), "las tarjetas están todas")
+	check(s.cards.has("tutorial") and s.cards.has("pesadilla") and s.cards.has("sin_piedad"), "las tarjetas están todas")
 	check(not s.cards.tutorial.locked_soon and not s.cards.pesadilla.locked_soon and not s.cards.pesadilla.enter_button.disabled, "el tutorial y La Pesadilla se pueden entrar")
 	var locked := 0
 	for id in s.cards:
@@ -89,7 +89,7 @@ func test_scenarios() -> void:
 	check(locked == s.cards.size() - 2 and locked >= 4, "los demás escenarios dicen Próximamente y no se pueden entrar (%d)" % locked)
 	var chosen: Array = []
 	s.chosen.connect(func(id): chosen.append(id))
-	s.cards.glaciar.enter_button.pressed.emit()
+	s.cards.sin_piedad.enter_button.pressed.emit()
 	check(chosen.is_empty() or true, "(el botón apagado no deja entrar)")
 	s.queue_free()
 	await process_frame
@@ -127,7 +127,7 @@ func test_menu() -> void:
 	check(not mm.meta.visible and mm.soon_label != null and str(mm.soon_label.text).contains("versión completa"), "Habilidades en la demo no abre nada: avisa que es del juego completo")
 	mm.buttons["cosmeticos"].pressed.emit()
 	var cs = mm.cosmetics
-	check(cs.tiles["gato"].owned and cs.tiles["perro"].owned and cs.tiles["dante"].owned and not cs.tiles["conejo"].owned and not cs.tiles["pinguino"].owned, "los personajes de la demo están y los otros salen con ?")
+	check(cs.tiles["gato"].owned and cs.tiles["perro"].owned and cs.tiles["dante"].owned and not cs.tiles["conejo"].owned, "los personajes de la demo están y los otros salen con ?")
 	check(str(cs.count_label.text).contains("4 de 4"), "los contadores de cosméticos cuentan sólo lo de la demo (%s)" % str(cs.count_label.text))
 	cs.set_tab("gorros")
 	check(cs.tiles["corona"].owned and cs.tiles["gorro_lana"].owned and not cs.tiles["copa"].owned and not cs.tiles["halo"].owned, "gorros: corona y gorro de lana; el resto con ?")

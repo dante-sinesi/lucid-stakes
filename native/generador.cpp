@@ -6,7 +6,7 @@
 //   - mutar: cambios chicos al azar;
 //   - cada sala se resuelve con el solucionador exacto (camino más corto, y entre los más cortos el de menos agarres), se comprueba que no se resuelva caminando, se afina la cuenta de las bombas,
 //     se cambian por comunes los especiales que no hacen falta y se mide el alcance de los empujes (reach). Sólo salen las que pasan todo.
-// Glaciar: --types=i,h,c,s --p-ice=0.7 --min-ice=3 --min-slides=3 (sólo salas con hielo que hace falta, con pesado, agrietado y pinchos como compañeros)
+// Modo hielo: --types=i,h,c,s --p-ice=0.7 --min-ice=3 --min-slides=3 (sólo salas con hielo que hace falta, con pesado, agrietado y pinchos como compañeros)
 // Uso:  generador mina    --out=ARCHIVO [--seed=N] [--steps=N] [--shapes=3x3,3x5,3x8,L,U] [--hlo=5] [--hhi=20] [--part=I --parts=N] [--min-diff=0.2] [--min-reach=0.5] [--nodes=N] [--eval=N]
 //       generador auditar --in=ARCHIVO --out=ARCHIVO [--min-reach=0.5]       (salas ya hechas, una por línea: se vuelven a resolver, auditar y medir)
 // Formato de una sala (una por línea):  R|forma|h|fuse|moves|grabs|reach|especiales|camino|x,z:columna;x,z:columna...      (columna: un carácter por bloque de abajo hacia arriba; '.' es un hueco)
@@ -553,7 +553,7 @@ struct Cfg {
 	double minDiff = 0.2, minReach = 0.5;
 	int nodes = 300000, evalN = 14, topK = 24, keep = 8;
 	double pType = 0.3, pMutate = 0.12, pSeed = 0.1;
-	int minIce = 0, minSlides = 0;   // sólo se escriben salas con al menos tantos bloques de hielo y tantos resbalones/empujes de hielo en el camino (el escenario Glaciar)
+	int minIce = 0, minSlides = 0;   // sólo se escriben salas con al menos tantos bloques de hielo y tantos resbalones/empujes de hielo en el camino
 	unsigned long long seed = 1;
 };
 

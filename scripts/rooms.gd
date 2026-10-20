@@ -59,7 +59,6 @@ const IDEAS := {
 }
 ## Las ideas propias de cada escenario (se pueden usar desde la primera etapa: son su identidad). Los escenarios que no están acá usan todas, con la escalera de bloques.
 const SCENARIO_IDEAS := {
-	"glaciar": ["hielo_freno", "hielo_pista", "hielo_billar"],
 }
 
 
@@ -774,17 +773,13 @@ static func _lib_candidate(st: Dictionary, ey: int, room: Dictionary, sym: Array
 	for c in strip:
 		if arena.has(c):
 			return {}
-	var floor_kind := RoomLib.floor_kind(room)   # (el piso de la arena: de hielo en las salas del Glaciar; el caminito de la llegada siempre es común)
 	for m in arena.keys() + strip:
 		var below := Vector3i(m.x, ey - 1, m.y)
-		var want_kind := floor_kind if arena.has(m) else int(K.NORMAL)
-		if st.tower.blocks.has(below) or st.sim.blocks.has(below):   # (ya hay un bloque de piso, de la sala de abajo: se aprovecha, si es del tipo que la sala necesita)
-			if want_kind != K.NORMAL and int(st.sim.kind_at(below)) != want_kind:
-				return {}   # (un piso común donde la sala necesita hielo cambiaría los resbalones del camino)
+		if st.tower.blocks.has(below) or st.sim.blocks.has(below):   # (ya hay un bloque de piso, de la sala de abajo: se aprovecha)
 			continue
 		if not _addable(st, m, ey):
 			return {}
-		floors[m] = want_kind
+		floors[m] = int(K.NORMAL)
 	var goal := _lib_map(room.exit, entry, sym, spot)
 	var blocks: Array = [{"c": Vector3i(goal.x, ey + h - 1, goal.y), "kind": K.NORMAL, "fixed": true, "timer": 0}]
 	if not _free(st, goal, ey, ey + h - 1):

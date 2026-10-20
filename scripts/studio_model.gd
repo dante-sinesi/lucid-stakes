@@ -73,7 +73,7 @@ func filtered(filters: Dictionary = {}) -> Array:
 			continue
 		if int(r.opt.get("moves", 0)) < int(filters.get("min_moves", 0)):
 			continue
-		if int(r.opt.get("slides", 0)) < int(filters.get("min_slides", 0)):   # (el Glaciar: resbalones y empujes de hielo del camino)
+		if int(r.opt.get("slides", 0)) < int(filters.get("min_slides", 0)):   # (resbalones y empujes de hielo del camino)
 			continue
 		if int(r.opt.get("grabs", 0)) < int(filters.get("min_grabs", 0)) or float(r.opt.get("diff", 0.0)) < float(filters.get("min_diff", 0.0)) - 0.0001:
 			continue

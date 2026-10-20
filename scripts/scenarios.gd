@@ -11,8 +11,8 @@ const K := TowerLogic.Kind
 
 const FREE := "pesadilla"
 
-## Los escenarios que se pueden elegir hoy en el selector (el tutorial, La Pesadilla y el Glaciar); el resto está definido pero se muestra como "Próximamente" hasta que se les arme su contenido.
-const AVAILABLE: Array[String] = ["tutorial", "pesadilla", "glaciar", "sin_piedad"]
+## Los escenarios que se pueden elegir hoy en el selector (el tutorial, La Pesadilla y Sin piedad); el resto está definido pero se muestra como "Próximamente" hasta que se les arme su contenido.
+const AVAILABLE: Array[String] = ["tutorial", "pesadilla", "sin_piedad"]
 
 ## El tutorial no es un escenario (no hay run): es la primera tarjeta del selector de "Nueva partida". Gratis, no da Luz ni habilidades.
 const TUTORIAL := {"id": "tutorial", "name": "Tutorial", "entry": 0, "luz_mult": 1.0, "pool": [],
@@ -23,11 +23,6 @@ const ALL: Array[Dictionary] = [
 		"desc": "El juego de siempre: torres de bloques corruptos que se aclaran etapa a etapa. Gratis.",
 		"abilities": ["mente_despejada", "ojos_de_gato", "racha_firme"],
 		"pool": ["niebla", "oscuridad", "prisa", "sin_ayudas", "todo_o_nada", "sin_racha", "meteoritos"]},
-	{"id": "glaciar", "name": "Glaciar", "entry": 15, "luz_mult": 1.5,
-		"desc": "Torres cubiertas de hielo, desde la primera etapa. Leer cada resbalón es todo.",
-		"abilities": ["garras_de_hielo"], "skin": "glaciar",   # (skin: el pesado se ve como hielo duro y el agrietado como nieve)
-		"pool": ["hielo_total", "niebla", "prisa", "sin_racha", "todo_o_nada"],
-		"bias": {"kinds": {K.ICE: 0.9}, "plat_ice": 0.18, "cap_bonus": 1}},
 	{"id": "sin_piedad", "name": "Sin piedad", "entry": 25, "luz_mult": 2.0,
 		"desc": "Cada sala sólo permite 2 movimientos en falso: uno que te deja más lejos de la salida de la sala. Al tercero pierdes una vida. No se puede deshacer.",
 		"abilities": ["margen_de_error"],

@@ -496,7 +496,7 @@ func _act_grab(d: Vector3i) -> Dictionary:
 			# Sin piso atrás (como en Catherine): el bloque tirado viene a donde estabas y vos retrocedés al vacío, quedando colgado del bloque en el que estabas parado
 			# (que ahora tiene el bloque encima: no se puede trepar de vuelta, hay que moverse de costado por el borde).
 			if blocks.has(player + DOWN) and not blocks.has(h) and in_hang_reach(h):
-				if kind_at(player + DOWN) == Kind.ICE and not perks.has("garras_de_hielo"):
+				if kind_at(player + DOWN) == Kind.ICE:
 					return _fail("Hielo: no hay de dónde agarrarse")
 				_move_block(player - d, player)
 				_set_player(h)
@@ -536,7 +536,7 @@ func _push_row(t: Vector3i, d: Vector3i) -> Dictionary:
 func _act_hang_over(d: Vector3i) -> Dictionary:
 	var t := player + d
 	var h := t + DOWN
-	if kind_at(player + DOWN) == Kind.ICE and not perks.has("garras_de_hielo"):
+	if kind_at(player + DOWN) == Kind.ICE:
 		return _fail("Hielo: no hay de dónde agarrarse")
 	if not in_hang_reach(t) or blocks.has(t):
 		return _fail("No hay borde para colgarse")
@@ -580,14 +580,14 @@ func _act_hanging(d: Vector3i) -> Dictionary:
 	if blocks.has(h2):  # esquina hacia adentro: la pared gira hacia el jugador y se agarra de ella
 		if blocks.has(h2 + UP):
 			return _fail("No se puede avanzar por el borde")
-		if kind_at(h2) == Kind.ICE and not perks.has("garras_de_hielo"):
+		if kind_at(h2) == Kind.ICE:
 			return _fail("Hielo: no hay de dónde agarrarse")
 		hang_dir = d
 		return _ok()
 	if blocks.has(g2):  # tramo recto
 		if blocks.has(g2 + UP):
 			return _fail("No se puede avanzar por el borde")
-		if kind_at(g2) == Kind.ICE and not perks.has("garras_de_hielo"):
+		if kind_at(g2) == Kind.ICE:
 			return _fail("Hielo: no hay de dónde agarrarse")
 		_set_player(h2)
 		return _ok()

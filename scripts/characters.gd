@@ -1,5 +1,5 @@
 extends RefCounted
-## Los personajes: animalitos de voxels (gatito, perrito, conejito y pingüino). Todos juegan igual; sólo cambia el aspecto. El gatito es
+## Los personajes: animalitos de voxels (gatito, perrito, conejito). Todos juegan igual; sólo cambia el aspecto. El gatito es
 ## el de siempre; los otros se desbloquean con logros del juego (ver `unlock`). Cada uno lleva un gorro y una prenda (cosmetics.gd).
 ##
 ## `build(id, hat, outfit, ghost)` arma el modelo 3D: el origen está en los PIES, mira hacia +Z y mide unos 0,75 de alto y 0,45 de ancho
@@ -14,8 +14,8 @@ const SILHOUETTE_ALPHA := 0.55
 
 const DEFAULT := "gato"
 
-## unlock: cómo se consigue. "inicio" = desde el principio; "prueba" = superar cualquier prueba; "etapa4" / "etapa10" = llegar a esa etapa;
-## "hielo" = superar la prueba del Hielo total. Dante, Gaby, el gatito (el predeterminado) y el perrito se tienen desde el principio; el conejito y el pingüino se desbloquean.
+## unlock: cómo se consigue. "inicio" = desde el principio; "prueba" = superar cualquier prueba; "etapa4" / "etapa10" = llegar a esa etapa.
+## Dante, Gaby, el gatito (el predeterminado) y el perrito se tienen desde el principio; el conejito se desbloquea.
 ## `kind` "humano" = personaje con pelo, ropa y manos (ver _build_human); sin `kind`, un animalito.
 const ALL: Array[Dictionary] = [
 	{"id": "dante", "name": "Dante", "unlock": "inicio", "how": "Desde el principio.", "kind": "humano", "style": "corto",
@@ -32,8 +32,6 @@ const ALL: Array[Dictionary] = [
 		"fur": Color(0.84, 0.62, 0.4), "light": Color(0.97, 0.9, 0.78), "dark": Color(0.4, 0.24, 0.12)},
 	{"id": "conejo", "name": "Conejito", "unlock": "etapa10", "how": "Llega a la etapa 10.",
 		"fur": Color(0.94, 0.93, 0.96), "light": Color(1.0, 1.0, 1.0), "dark": Color(0.62, 0.6, 0.68)},
-	{"id": "pinguino", "name": "Pingüino", "unlock": "hielo", "how": "Supera la prueba del Hielo total.",
-		"fur": Color(0.14, 0.18, 0.32), "light": Color(0.97, 0.97, 1.0), "dark": Color(0.06, 0.08, 0.16)},
 ]
 
 
@@ -84,9 +82,9 @@ static func build_from_code(id: String, hat := "", outfit := "", ghost := false)
 	for side in [-1, 1]:
 		var n := "i" if side < 0 else "d"
 		var leg := _pivot(root, "pata_" + n, Vector3(side * 0.08, 0.15, 0))                       # patas: giran desde la cadera
-		_box(leg, Vector3(0.11, 0.15, 0.12), Vector3(0, -0.075, 0.01), dark if id != "pinguino" else Color(1.0, 0.6, 0.15), ghost)
+		_box(leg, Vector3(0.11, 0.15, 0.12), Vector3(0, -0.075, 0.01), dark, ghost)
 		var arm := _pivot(root, "brazo_" + n, Vector3(side * 0.2, 0.39, 0))                       # brazos: giran desde el hombro
-		_box(arm, Vector3(0.08, 0.18, 0.1), Vector3(0, -0.08, 0), fur if id != "pinguino" else dark, ghost)
+		_box(arm, Vector3(0.08, 0.18, 0.1), Vector3(0, -0.08, 0), fur, ghost)
 	_box(root, Vector3(0.05, 0.07, 0.03), Vector3(-0.1, 0.6, 0.2), eye, ghost)                  # ojos
 	_box(root, Vector3(0.05, 0.07, 0.03), Vector3(0.1, 0.6, 0.2), eye, ghost)
 	# --- lo propio de cada animal ---
@@ -109,14 +107,6 @@ static func build_from_code(id: String, hat := "", outfit := "", ghost := false)
 			_box(root, Vector3(0.14, 0.12, 0.02), Vector3(0.0, 0.3, 0.125), light, ghost)       # pecho claro
 			var tail := _pivot(root, "cola", Vector3(0, 0.22, -0.12))
 			_box(tail, Vector3(0.13, 0.13, 0.12), Vector3(0, 0.02, -0.05), light, ghost)        # colita de algodón
-		"pinguino":
-			_box(root, Vector3(0.24, 0.22, 0.03), Vector3(0, 0.56, 0.2), light, ghost)          # cara blanca
-			_box(root, Vector3(0.2, 0.2, 0.03), Vector3(0, 0.28, 0.13), light, ghost)           # panza blanca
-			_box(root, Vector3(0.12, 0.06, 0.1), Vector3(0, 0.52, 0.26), Color(1.0, 0.6, 0.15), ghost)   # pico
-			_box(root, Vector3(0.05, 0.07, 0.03), Vector3(-0.1, 0.6, 0.215), eye, ghost)        # ojos sobre la cara blanca
-			_box(root, Vector3(0.05, 0.07, 0.03), Vector3(0.1, 0.6, 0.215), eye, ghost)
-			var tail := _pivot(root, "cola", Vector3(0, 0.2, -0.12))
-			_box(tail, Vector3(0.1, 0.05, 0.1), Vector3(0, 0.0, -0.05), dark, ghost)
 		_:   # gato
 			for side in [-1, 1]:
 				_box(root, Vector3(0.11, 0.12, 0.07), Vector3(side * 0.14, 0.79, 0), fur, ghost)        # orejas en punta

@@ -435,7 +435,7 @@ func test_difficulty_filters() -> void:
 	for r in many:
 		check(int(r.opt.grabs) >= 4, "todas cumplen los empujes y tirones mínimos")
 	check(m.filtered({"min_diff": 1.1}).is_empty(), "una dificultad imposible no deja ninguna")
-	# Glaciar: resbalones del camino (opt.slides)
+	# Resbalones del camino (opt.slides)
 	for i in m.rooms.size():
 		m.rooms[i].opt["slides"] = i % 4
 	var by_slides := m.filtered({"sort": "slides"})

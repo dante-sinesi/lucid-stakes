@@ -35,8 +35,6 @@ func test_catalog() -> void:
 	check(Rooms.catalog("pesadilla", Gen.difficulty_for_stage(2)) == ["muro_simple", "hielo_freno", "hielo_pista", "hielo_billar"], "en la etapa 2 aparece el hielo")
 	check("cruce_agrietado" in Rooms.catalog("pesadilla", Gen.difficulty_for_stage(4)) and not ("pared_pinchos" in Rooms.catalog("pesadilla", Gen.difficulty_for_stage(4))), "el agrietado desde la etapa 4, los pinchos todavía no")
 	check(Rooms.catalog("pesadilla", 1.0).size() == Rooms.names().size(), "al final de la escalera la Pesadilla tiene todas las ideas")
-	var glaciar := Rooms.catalog("glaciar", 0.0)
-	check(glaciar.size() >= 3 and glaciar.all(func(n): return str(n).begins_with("hielo")), "el Glaciar tiene sus ideas de hielo desde la primera etapa")
 	check(Rooms.catalog("ruinas", 1.0).size() == Rooms.names().size(), "los escenarios sin catálogo propio usan todas las ideas")
 	for n in Rooms.names():
 		check(Rooms.IDEAS[n].twists.size() >= 2, "la idea %s tiene giros" % n)
@@ -70,7 +68,7 @@ func test_plan() -> void:
 
 
 func test_towers() -> void:
-	for spec in [["pesadilla", 25, 0.0, 1], ["pesadilla", 25, 0.3, 2], ["pesadilla", 9, 0.9, 3], ["glaciar", 25, 0.1, 4], ["glaciar", 13, 0.7, 5], ["pesadilla", 6, 0.5, 6]]:
+	for spec in [["pesadilla", 25, 0.0, 1], ["pesadilla", 25, 0.3, 2], ["pesadilla", 9, 0.9, 3], ["pesadilla", 6, 0.5, 6]]:
 		var rows: int = spec[1]
 		var res: Dictionary = Rooms.generate_stage(int(spec[3]), rows, float(spec[2]), {"pace": "normal", "scenario": spec[0]})
 		check(res.ok, "se genera una torre de %d pisos (%s, dificultad %.1f)" % [rows, spec[0], spec[2]])
@@ -82,9 +80,6 @@ func test_towers() -> void:
 		check(res.rows.size() == rows, "hay una cuenta de movimientos por piso (%d de %d)" % [res.rows.size(), rows])
 		check(lg.fixed.size() >= 4 * rows, "el core está (fijo, de arriba a abajo)")
 		check(lg.goal_block >= 0 and lg.fixed.has(lg.positions[lg.goal_block]), "el portal es un bloque fijo")
-		if spec[0] == "glaciar":
-			for r in res.rooms:
-				check(r.idea == "respiro" or str(r.idea).begins_with("hielo"), "en el Glaciar sólo hay ideas de hielo (%s)" % r.idea)
 	var a: Dictionary = Rooms.generate_stage(7, 13, 0.6, {"pace": "normal", "scenario": "pesadilla"})
 	var b: Dictionary = Rooms.generate_stage(7, 13, 0.6, {"pace": "normal", "scenario": "pesadilla"})
 	check(a.ok and b.ok and a.path == b.path, "la misma semilla da la misma torre")

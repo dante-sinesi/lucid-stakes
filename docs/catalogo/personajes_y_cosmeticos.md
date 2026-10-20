@@ -16,10 +16,6 @@ Los personajes son animalitos de voxels (todos juegan igual; sólo cambia el asp
 - se_desbloquea: etapa10
 - cómo: Llegá a la etapa 10.
 
-## pinguino - Pingüino
-- se_desbloquea: hielo
-- cómo: Superá la prueba del Hielo total.
-
 # Rarezas de los cosméticos
 
 ## comun

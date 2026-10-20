@@ -32,11 +32,6 @@ Mejoras que se conservan para siempre y valen en todos los escenarios. No se com
 - efecto_en_torre: racha_larga
 - escenarios: pesadilla
 
-## garras_de_hielo - Garras de hielo
-- descripción: Podés colgarte de los bloques de hielo.
-- efecto_en_torre: garras_de_hielo
-- escenarios: glaciar
-
 ## fuerza_bruta - Fuerza bruta
 - descripción: Podés empujar y tirar de los bloques pesados.
 - efecto_en_torre: fuerza_bruta

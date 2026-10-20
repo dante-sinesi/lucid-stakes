@@ -730,7 +730,6 @@ func _join_zombies() -> void:
 
 ## Vuelve a la torre generada tal como empezó.
 func restart() -> void:
-	BlockModels.skin = str(run.scenario().get("skin", "")) if (run != null and not training and not lab_active and tutorial_index < 0) else ""   # (los bloques del escenario)
 	cancel_targeting()
 	if lost_screen != null:
 		lost_screen.hide_screen()
@@ -2540,10 +2539,23 @@ func _open_story_room(stage: int, lines: Array, kind: String) -> void:
 	rng.randomize()
 	casino.setup(run, rng)
 	casino.input_locked = true   # no se camina mientras habla
-	casino.story_message.connect(func(t): dialogue.show_lines([t], Story.SPEAKER, false))
+	casino.story_message.connect(_on_story_message)
 	casino.left.connect(_on_story_left)
 	_apply_casino_light()
 	dialogue.show_lines(lines, Story.SPEAKER, true)
+
+
+var _story_msg_id := 0
+
+
+## Un aviso del tabernero en la historia (por ejemplo, que todavía no se apuesta): se escribe solo y se va a los pocos segundos (si no, quedaba el cuadro tapando la pantalla y no se podía seguir).
+func _on_story_message(t: String) -> void:
+	dialogue.show_lines([t], Story.SPEAKER, false)
+	_story_msg_id += 1
+	var id := _story_msg_id
+	await get_tree().create_timer(3.0).timeout
+	if id == _story_msg_id and dialogue != null and dialogue.is_active() and not dialogue.blocking:
+		dialogue.hide_box()
 
 
 func _on_dialogue_finished() -> void:

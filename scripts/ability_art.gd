@@ -22,9 +22,6 @@ const ART := {
 	"racha_firme": {   # una llama
 		"pal": {"o": Color(1.0, 0.45, 0.1), "y": Color(1.0, 0.8, 0.2), "w": Color(1.0, 1.0, 0.8)},
 		"rows": ["....o....", "...oo....", "..ooyo...", "..oyyoo..", ".ooyyyoo.", ".oyywyyo.", ".oyywwyo.", "..oyyyo..", "...ooo..."]},
-	"garras_de_hielo": {   # tres garras de hielo
-		"pal": {"w": Color(1, 1, 1), "c": Color(0.55, 0.85, 1.0), "b": Color(0.25, 0.5, 0.85)},
-		"rows": ["w...w...w", "c...c...c", "c...c...c", "cc..cc..c", "cc..cc.cc", "bbbbbbbbb", "bbbbbbbbb", ".bbbbbbb.", "..bbbbb.."]},
 	"fuerza_bruta": {   # un bloque de hierro y una flecha que lo empuja
 		"pal": {"g": Color(0.45, 0.5, 0.62), "h": Color(0.82, 0.87, 0.96), "a": Color(1.0, 0.6, 0.15)},
 		"rows": [".........", "..ggggg..", ".gghhhgg.", "agghhhhgg", "aaghhhhgg", "agghhhhgg", ".gghhhgg.", "..ggggg..", "........."]},

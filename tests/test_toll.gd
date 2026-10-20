@@ -71,7 +71,6 @@ func _scene() -> void:
 	d = c.toll_dialog()
 	check(d.options[1].id == "abandonar" and not d.options[0].enabled, "sin vidas ni claridad: sólo se puede abandonar")
 	run.lives = 3
-	check(c.farolin_cell_free(), "la celda de Farolín está libre de muebles")
 	c.queue_free()
 	await process_frame
 	run.claridad = RunState.toll_for(3) + 7

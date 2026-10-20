@@ -321,9 +321,9 @@ static func on_trial_cleared() -> Array[String]:
 	return _unlocked([])
 
 
-## Se ganó una habilidad: la de la prueba del Hielo total desbloquea al pingüino.
-static func on_ability(ability_id: String) -> Array[String]:
-	return _unlocked(["pinguino"] if ability_id == "garras_de_hielo" else [])
+## Se ganó una habilidad (ninguna desbloquea personajes por ahora).
+static func on_ability(_ability_id: String) -> Array[String]:
+	return _unlocked([])
 
 
 ## Se llegó a una etapa: la 6 desbloquea al conejito (el gatito ya se tiene desde el principio).

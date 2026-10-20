@@ -63,7 +63,6 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 		ch.queue_free()
 	if st == null:
 		return
-	BlockModels.skin = "glaciar" if str(room.get("floor", "n")) == "i" else ""   # (las salas del Glaciar se ven con sus bloques de hielo duro y nieve)
 	var top := float(room.h)
 	var start_block := Vector3i(-999, -999, -999)
 	var end_block := Vector3i(-999, -999, -999)
@@ -85,8 +84,6 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 		if fixed and c.y >= 1:
 			model_kind = BlockModels.CORE
 			tint = Color(1.7, 1.7, 1.7)
-		elif fixed and kind == TowerLogic.Kind.ICE:   # el piso de hielo (salas del Glaciar)
-			tint = Color(1.5, 1.5, 1.5)
 		elif fixed:   # el piso
 			model_kind = TowerLogic.Kind.NORMAL
 			tint = Color(0.42, 0.42, 0.52)

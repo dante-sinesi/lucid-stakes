@@ -63,29 +63,29 @@ func test_catalog() -> void:
 	check(ids.size() == Scenarios.ALL.size() and Scenarios.ALL.size() >= 6, "hay varios escenarios distintos (%d)" % Scenarios.ALL.size())
 	check(Scenarios.get_scenario("no_existe").id == "pesadilla", "un escenario desconocido cae en el gratuito")
 	# Mas dificiles pagan mas Luz
-	check(Scenarios.get_scenario("relojeria").luz_mult > Scenarios.get_scenario("glaciar").luz_mult, "los escenarios mas dificiles pagan mas Luz")
+	check(Scenarios.get_scenario("relojeria").luz_mult > Scenarios.get_scenario("ruinas").luz_mult, "los escenarios mas dificiles pagan mas Luz")
 	# Cada escenario permite ganar habilidades que le son propias
-	check(Scenarios.ability_ids(Scenarios.get_scenario("glaciar")).has("garras_de_hielo") and not Scenarios.ability_ids(Scenarios.get_scenario("pesadilla")).has("garras_de_hielo"), "las garras de hielo sólo se ganan en el Glaciar")
+	check(Scenarios.ability_ids(Scenarios.get_scenario("ruinas")).has("fuerza_bruta") and not Scenarios.ability_ids(Scenarios.get_scenario("pesadilla")).has("fuerza_bruta"), "la fuerza bruta sólo se gana en Ruinas")
 	check(Scenarios.ability_ids(Scenarios.get_scenario("ruinas")).has("fuerza_bruta") and Scenarios.ability_ids(Scenarios.get_scenario("polvorin")).has("mecha_larga"), "cada escenario tiene su habilidad exclusiva")
 
 
 func test_profile() -> void:
 	Profile.reset()
-	check(Profile.luz() == 0 and Profile.owned_abilities().is_empty() and not Profile.can_enter("glaciar") and Profile.can_enter("pesadilla"), "perfil nuevo: sin Luz, sin habilidades; el gratuito siempre se puede")
+	check(Profile.luz() == 0 and Profile.owned_abilities().is_empty() and not Profile.can_enter("ruinas") and Profile.can_enter("pesadilla"), "perfil nuevo: sin Luz, sin habilidades; el gratuito siempre se puede")
 	check(Profile.pay_entry("pesadilla") and Profile.luz() == 0, "entrar al gratuito no cuesta nada")
-	check(not Profile.pay_entry("glaciar") and Profile.luz() == 0, "sin Luz no se entra a un escenario de pago (y no se cobra)")
+	check(not Profile.pay_entry("ruinas") and Profile.luz() == 0, "sin Luz no se entra a un escenario de pago (y no se cobra)")
 	# Un run da Luz segun lo que avanzaste, multiplicada por el escenario
 	var run := RunState.new()
 	run.towers_cleared = 10
 	run.trials_cleared = 3
 	run.max_stage = 11
 	check(Profile.luz_for_run(run, false) == int(round(110 * 0.2)) and Profile.luz_for_run(run, true) == 110 + 100, "Luz: 5 por torre y 20 por prueba (sólo el 20 % si no se escapa), más 100 por escapar")
-	run.scenario_id = "glaciar"
+	run.scenario_id = "ruinas"
 	check(Profile.luz_for_run(run, false) == int(round(110 * 0.2 * 1.5)) and Profile.luz_for_run(run, true) == int(round(210 * 1.5)), "el escenario multiplica la Luz")
 	run.scenario_id = "pesadilla"
 	var gained := Profile.record_run(run, false)
 	check(gained == 22 and Profile.luz() == 22 and Profile.data.runs == 1 and Profile.data.best_stage == 11 and Profile.data.trials_cleared == 3, "record_run suma Luz y estadisticas")
-	check(Profile.can_enter("glaciar") and Profile.pay_entry("glaciar") and Profile.luz() == 22 - 15, "con Luz se paga la entrada")
+	check(Profile.can_enter("ruinas") and Profile.pay_entry("ruinas") and Profile.luz() == 22 - 15, "con Luz se paga la entrada")
 	# Se guarda y se carga
 	Profile.grant_ability("pies_ligeros")
 	Profile.data = {}
@@ -117,9 +117,9 @@ func test_award() -> void:
 	check(Profile.luz() == 0, "mientras hay habilidades por ganar no se da Luz")
 	var done := Profile.award_scenario_ability("pesadilla", rng)
 	check(done.ability == "" and done.luz == Profile.ABILITY_LUZ and Profile.luz() == Profile.ABILITY_LUZ, "cuando ya las tiene todas, da Luz (%d)" % Profile.ABILITY_LUZ)
-	var glaciar := Profile.award_scenario_ability("glaciar", rng)
-	check(glaciar.ability == "garras_de_hielo" and Profile.has_ability("garras_de_hielo"), "cada escenario da las suyas (el Glaciar, las garras de hielo)")
-	var again := Profile.award_scenario_ability("glaciar", rng)
+	var ruinas := Profile.award_scenario_ability("ruinas", rng)
+	check(ruinas.ability == "fuerza_bruta" and Profile.has_ability("fuerza_bruta"), "cada escenario da las suyas (Ruinas, la fuerza bruta)")
+	var again := Profile.award_scenario_ability("ruinas", rng)
 	check(again.ability == "" and again.luz == int(round(Profile.ABILITY_LUZ * 1.5)), "y la Luz de reemplazo escala con el escenario")
 	check(Profile.award_scenario_ability("tutorial", rng) == {"ability": "", "luz": 0}, "el tutorial no da nada")
 	check(Scenarios.scenarios_for_ability("fuerza_bruta").size() == 1 and Scenarios.scenarios_for_ability("fuerza_bruta")[0].id == "ruinas", "se sabe en qué escenario se gana cada una")
@@ -156,24 +156,6 @@ func test_abilities_effects() -> void:
 	check(not t0.try_action(Vector3i(1, 0, 0), TowerLogic.Mode.GRAB).ok, "sin Fuerza bruta no se empuja un pesado")
 	var t1 = base.call("fuerza_bruta")
 	check(t1.try_action(Vector3i(1, 0, 0), TowerLogic.Mode.GRAB).ok and t1.blocks.has(Vector3i(4, 1, 2)), "con Fuerza bruta si")
-	# Garras de hielo: colgarse del borde de un bloque de hielo
-	var h0 = base.call("")
-	h0.blocks.erase(Vector3i(0, 0, 2))
-	var ice_edge := func(perk: String) -> bool:
-		var t := TowerLogic.new()
-		t.size = Vector2i(3, 3)
-		t.goal_y = 99
-		t.collapse_every = 1000
-		t.moves_to_collapse = 1000
-		for x in 3:
-			for z in 3:
-				t.add_block(Vector3i(x, 0, z), false, K.ICE)
-		t.player = Vector3i(1, 1, 1)
-		t.apply_perks([perk] if perk != "" else [])
-		t.hang_dir = Vector3i.ZERO
-		t.player = Vector3i(1, 1, 2)
-		return t.try_action(Vector3i(0, 0, 1), TowerLogic.Mode.HANG).ok
-	check(not ice_edge.call("") and ice_edge.call("garras_de_hielo"), "Garras de hielo: se puede colgar de un borde de hielo")
 	var streak := TowerLogic.new()
 	streak.apply_perks(["sin_racha"])
 	check(streak.streak_mult(6) == 1.0, "la prueba Sin racha deja el multiplicador en 1")
@@ -202,7 +184,7 @@ func test_flow() -> void:
 	var main := make_main()
 	await wait_tower(main)
 	# Sin Luz: pedir un escenario de pago cae en La Pesadilla
-	main.start_game("glaciar")
+	main.start_game("sin_piedad")
 	check(main.run.scenario_id == "pesadilla" and Profile.luz() == 0, "sin Luz alcanza con el gratuito: no se entra al de pago")
 	await wait_tower(main)
 	check(main.run.trial_schedule.size() == 5 and main.run.next_trial_text(1) != "", "al empezar se sortean las pruebas")
@@ -259,30 +241,30 @@ func test_screens() -> void:
 	mm.buttons["nueva"].pressed.emit()
 	var sc = mm.scenarios
 	check(sc.visible and sc.play_buttons.size() == Scenarios.ALL.size() + 1 and not sc.play_buttons["pesadilla"].disabled and not sc.play_buttons["tutorial"].disabled, "el selector lista el tutorial y todos los escenarios; los gratuitos se pueden jugar")
-	check(sc.play_buttons["glaciar"].disabled and sc.luz_counter.value == 0, "sin Luz los de pago estan bloqueados")
-	Profile.data.luz = 20
+	check(sc.play_buttons["sin_piedad"].disabled and sc.luz_counter.value == 0, "sin Luz los de pago estan bloqueados")
+	Profile.data.luz = 30
 	sc.refresh()
-	check(not sc.play_buttons["glaciar"].disabled and sc.play_buttons["relojeria"].disabled and sc.luz_counter.value == 20, "con 20 de Luz se puede entrar a los que cuestan 15 o menos")
+	check(not sc.play_buttons["sin_piedad"].disabled and sc.play_buttons["relojeria"].disabled and sc.luz_counter.value == 30, "con 30 de Luz se puede entrar a los que cuestan 25 o menos")
 	# Tarjetas: una por escenario, con "?" y el boton de entrada; se desplazan en horizontal
-	var card = sc.cards["glaciar"]
+	var card = sc.cards["sin_piedad"]
 	check(sc.cards.size() == Scenarios.ALL.size() + 1 and card.info_button.text == "?" and card.info_button.position.x > card.size.x * 0.7 and card.info_button.position.y < 30.0, "cada escenario es una tarjeta con un ? arriba a la derecha")
 	check(card.enter_button.position.y > card.size.y * 0.7 and absf(card.enter_button.position.x + card.enter_button.custom_minimum_size.x * 0.5 - card.size.x * 0.5) < 2.0, "y el boton de entrada abajo al centro")
-	check(card.enter_button.cost == 15 and sc.cards["pesadilla"].enter_button.cost == 0 and sc.cards["pesadilla"].enter_button.text == "Jugar", "el boton de entrada muestra el costo (el gratuito dice Jugar)")
+	check(card.enter_button.cost == 25 and sc.cards["pesadilla"].enter_button.cost == 0 and sc.cards["pesadilla"].enter_button.text == "Jugar", "el boton de entrada muestra el costo (el gratuito dice Jugar)")
 	await process_frame
 	await process_frame
 	check(sc.current_id() == "pesadilla" and sc.cards["pesadilla"].is_current and not sc.cards["tutorial"].is_current, "al abrir apunta a La Pesadilla, no al tutorial")
-	# los escenarios sin armar dicen "Próximamente": sin logo, sin entrar y sin detalles; el Glaciar, la Pesadilla y el tutorial sí
+	# los escenarios sin armar dicen "Próximamente": sin logo, sin entrar y sin detalles; Sin piedad, la Pesadilla y el tutorial sí
 	for id in ["ruinas", "polvorin", "relojeria", "compromiso", "gran_casino"]:
 		var cd = sc.cards[id]
 		check(cd.locked_soon and cd.enter_button.disabled and cd.info_button.disabled and str(cd.enter_button.text).contains("Próximamente"), id + ": Próximamente, sin entrar y sin detalles")
 		sc.show_info(id)
 		check(not sc.info_panel.visible, id + ": no abre sus detalles")
-	for id in ["tutorial", "pesadilla", "glaciar"]:
+	for id in ["tutorial", "pesadilla", "sin_piedad"]:
 		check(not sc.cards[id].locked_soon and not sc.cards[id].info_button.disabled, id + ": se puede elegir y abrir")
 	sc.scroll.scroll_horizontal = 0
 	sc.sel_index = 0
 	await process_frame
-	check(sc.current_id() == "tutorial" and sc.cards["tutorial"].is_current and not sc.cards["glaciar"].is_current, "con las flechas se llega al tutorial")
+	check(sc.current_id() == "tutorial" and sc.cards["tutorial"].is_current and not sc.cards["sin_piedad"].is_current, "con las flechas se llega al tutorial")
 	for i in 3:
 		sc.scroll_cards(1)
 	check(sc.scroll.scroll_horizontal > 0, "al elegir los siguientes se desplazan las tarjetas hacia la derecha")
@@ -299,8 +281,8 @@ func test_screens() -> void:
 	# El "?" abre toda la informacion
 	card.info_button.pressed.emit()
 	var texts := all_text(sc.info_panel)
-	check(sc.info_panel.visible and texts.contains("Garras de hielo") and texts.contains("Hielo total") and texts.contains("hielo"), "el ? muestra las reglas, las pruebas y las habilidades del escenario")
-	check(sc.info_box.find_child("costo", true, false).value == 15 and sc.info_box.find_child("multiplicador", true, false).label.text == "x1.5", "...y el costo y lo que paga, con el sol")
+	check(sc.info_panel.visible and texts.contains("Margen de error") and texts.contains("falso"), "el ? muestra las reglas, las pruebas y las habilidades del escenario")
+	check(sc.info_box.find_child("costo", true, false).value == 25 and sc.info_box.find_child("multiplicador", true, false).label.text == "x2.0", "...y el costo y lo que paga, con el sol")
 	check(not texts.contains("Luz"), "la informacion tampoco nombra la Luz con texto")
 	sc.info_close.pressed.emit()
 	check(not sc.info_panel.visible, "se cierra con Volver")
@@ -315,16 +297,16 @@ func test_screens() -> void:
 		check(AbilityArt.ART.has(a.id) and AbilityArt.ART[a.id].rows.size() == 9, "la habilidad %s tiene su propio icono de 9 filas" % a.id)
 		for row in AbilityArt.ART[a.id].rows:
 			check(row.length() == 9, "el icono de %s tiene filas de 9 columnas" % a.id)
-	check(not meta.tiles["garras_de_hielo"].owned and not meta.tiles["fuerza_bruta"].owned, "sin la habilidad el casillero esta en gris")
-	Profile.grant_ability("garras_de_hielo")
+	check(not meta.tiles["margen_de_error"].owned and not meta.tiles["ojos_de_gato"].owned, "sin la habilidad el casillero esta en gris")
+	Profile.grant_ability("margen_de_error")
 	meta.refresh()
-	check(meta.tiles["garras_de_hielo"].owned and not meta.tiles["fuerza_bruta"].owned, "con la habilidad el casillero esta a color")
+	check(meta.tiles["margen_de_error"].owned and not meta.tiles["ojos_de_gato"].owned, "con la habilidad el casillero esta a color")
 	# Los iconos se ven distintos si se tiene la habilidad o no (gris y quieto contra color y animado)
 	var colors_owned := {}
 	var colors_gray := {}
 	var ids: Array = AbilityArt.ART.keys()
 	ids.erase("corazon")   # (el corazón de las vidas usa el mismo dibujo pero no es una habilidad)
-	check(ids.size() == Abilities.ALL.size() and AbilityArt.ART.has("corazon"), "cada habilidad tiene un icono (y las vidas su corazón)")
+	check(ids.size() == Abilities.ALL.size() + Abilities.PENDING.size() and AbilityArt.ART.has("corazon"), "cada habilidad tiene un icono (y las vidas su corazón)")
 	for id in ids:
 		for row in AbilityArt.ART[id].rows:
 			for ch in row:
@@ -343,23 +325,23 @@ func test_screens() -> void:
 	check(AbilityArt.SPIN > 0.0 and AbilityArt.SPIN < 1.0, "giran despacio")
 	check(AbilityArt.model("ojos_de_gato").size() > AbilityArt.ART.ojos_de_gato.rows.size() * 9 * 0.4, "el modelo tiene mas cubitos que celdas de la figura plana")
 	# Pasar el mouse por un icono muestra un cartel con la informacion (sin hacer clic)
-	meta.tiles["garras_de_hielo"].mouse_entered.emit()
-	check(meta.tip.visible and meta.tip.text.contains("Garras de hielo") and meta.tip.text.contains("colgarte de los bloques de hielo") and meta.tip.text.contains("Glaciar") and not meta.tip.text.contains("Luz"), "al pasar el mouse sale un cartel con el nombre, el efecto y dónde se gana")
-	meta.tiles["garras_de_hielo"].mouse_exited.emit()
+	meta.tiles["margen_de_error"].mouse_entered.emit()
+	check(meta.tip.visible and meta.tip.text.contains("Margen de error") and meta.tip.text.contains("movimiento en falso") and meta.tip.text.contains("Sin piedad") and not meta.tip.text.contains("Luz"), "al pasar el mouse sale un cartel con el nombre, el efecto y dónde se gana")
+	meta.tiles["margen_de_error"].mouse_exited.emit()
 	check(not meta.tip.visible, "y se va al sacar el mouse")
-	meta.tiles["fuerza_bruta"].mouse_entered.emit()
-	check(meta.tip.text.contains("Todavía no la tienes") and meta.tip.text.contains("Ruinas"), "el cartel dice si todavía no se tiene y dónde ganarla")
-	meta.tiles["fuerza_bruta"].mouse_exited.emit()
+	meta.tiles["ojos_de_gato"].mouse_entered.emit()
+	check(meta.tip.text.contains("Todavía no la tienes") and meta.tip.text.contains("La Pesadilla"), "el cartel dice si todavía no se tiene y dónde ganarla")
+	meta.tiles["ojos_de_gato"].mouse_exited.emit()
 	# Tocar un icono abre la descripcion: efecto, como se consiguio y en que escenarios
-	meta.tiles["garras_de_hielo"].pressed.emit()
+	meta.tiles["margen_de_error"].pressed.emit()
 	var t2 := all_text(meta.info_panel)
-	check(meta.info_panel.visible and t2.contains("Garras de hielo") and t2.contains("Ya la tienes") and t2.contains("Puedes colgarte de los bloques de hielo"), "tocar un icono muestra la habilidad que se tiene y su efecto")
-	check(t2.contains("Cómo la conseguiste") and t2.contains("Escapando de la pesadilla") and t2.contains("Glaciar") and not t2.contains("La Pesadilla"), "dice que se gana al escapar y en que escenarios (el Glaciar, no La Pesadilla)")
+	check(meta.info_panel.visible and t2.contains("Margen de error") and t2.contains("Ya la tienes") and t2.contains("movimiento en falso"), "tocar un icono muestra la habilidad que se tiene y su efecto")
+	check(t2.contains("Cómo la conseguiste") and t2.contains("Escapando de la pesadilla") and t2.contains("Sin piedad") and not t2.contains("La Pesadilla"), "dice que se gana al escapar y en que escenarios (Sin piedad, no La Pesadilla)")
 	meta.info_close.pressed.emit()
 	check(not meta.info_panel.visible, "se cierra con Volver")
-	meta.tiles["fuerza_bruta"].pressed.emit()
+	meta.tiles["ojos_de_gato"].pressed.emit()
 	var t3 := all_text(meta.info_panel)
-	check(t3.contains("Todavía no la tienes") and t3.contains("Cómo conseguirla") and t3.contains("Escapando de la pesadilla") and t3.contains("Ruinas") and t3.contains("empujar"), "la que no se tiene tambien da su descripcion y como y donde conseguirla")
+	check(t3.contains("Todavía no la tienes") and t3.contains("Cómo conseguirla") and t3.contains("Escapando de la pesadilla") and t3.contains("La Pesadilla") and t3.contains("Purificar"), "la que no se tiene tambien da su descripcion y como y donde conseguirla")
 	check(not t3.contains("Luz"), "la descripcion tampoco nombra la Luz con texto")
 	check(meta.info_panel.find_child("*", true, false) != null, "la ventana de descripcion tiene contenido")
 	# La prueba de la Pesadilla aparece en la Pesadilla (gratis)
@@ -367,7 +349,7 @@ func test_screens() -> void:
 	meta.tiles["mente_despejada"].pressed.emit()
 	check(all_text(meta.info_panel).contains("La Pesadilla") and all_text(meta.info_panel).contains("(gratis)"), "Mente despejada se gana en La Pesadilla, que es gratis")
 	meta.info_close.pressed.emit()
-	meta.tiles["pies_ligeros"].pressed.emit()   # (Relojería: un escenario de pago)
+	meta.tiles["margen_de_error"].pressed.emit()   # (Sin piedad: un escenario de pago)
 	var luz_costs := 0
 	var stack: Array = [meta.info_panel]
 	while not stack.is_empty():

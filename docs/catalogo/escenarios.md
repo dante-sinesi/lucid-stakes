@@ -16,18 +16,6 @@ Campos: `entrada` = Luz que cuesta jugarlo · `multiplicador_luz` = cuánto más
 - precio_ficha: 1.0
 - sesgo: (ninguno)
 
-## glaciar - Glaciar
-- descripción: Torres cubiertas de hielo, desde la primera etapa. Leer cada resbalón es todo.
-- entrada: 15
-- multiplicador_luz: 1.5
-- pruebas: hielo_total, niebla, prisa, sin_racha, todo_o_nada
-- habilidades: garras_de_hielo
-- ritmo: 
-- dificultad_extra: 0.0
-- casino: -1
-- precio_ficha: 1.0
-- sesgo: hielo +0.9, plataformas con hielo 0.18, tope de especiales +1
-
 ## ruinas - Ruinas
 - descripción: Dominan los bloques agrietados y los pesados: casi nada se puede pisar dos veces.
 - entrada: 15

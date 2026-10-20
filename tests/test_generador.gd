@@ -77,7 +77,7 @@ func test_mine() -> void:
 	check(ids.size() >= good - 1, "casi no hay repetidas (%d distintas de %d)" % [ids.size(), good])
 
 
-## El modo Glaciar: --types=i,h,c,s --p-ice --min-ice --min-slides. Sólo salen salas con hielo que hace falta y con resbalones en el camino, y las métricas
+## El modo hielo: --types=i,h,c,s --p-ice --min-ice --min-slides. Sólo salen salas con hielo que hace falta y con resbalones en el camino, y las métricas
 ## (slides, ice_moved) que guarda el cierre las mide GDScript con las reglas del juego y coinciden con las del generador.
 func test_ice() -> void:
 	var dir := OS.get_user_data_dir().path_join("test_generador")
@@ -91,7 +91,7 @@ func test_ice() -> void:
 	_run(["mina", "--out=" + a] + args)
 	_run(["mina", "--out=" + b] + args)
 	var la := _lines(a)
-	check(la.size() >= 3 and la == _lines(b), "el modo Glaciar saca salas y es determinista (%d)" % la.size())
+	check(la.size() >= 3 and la == _lines(b), "el modo hielo saca salas y es determinista (%d)" % la.size())
 	var ok := 0
 	for l in la:
 		var r := Main.room_from_line(l, 0.5, 1)

@@ -155,19 +155,16 @@ func test_casinos() -> void:
 		c.toll_base = 100
 		root.add_child(c)
 		c.setup(run, RandomNumberGenerator.new())
-		var f: Vector2i = c.lay.farolin
 		var e: Vector2i = c.lay.exit
-		check(c.farolin_cell_free(), "nivel %d: la celda de Farolín está libre" % tier)
-		check(absi(f.x - e.x) + absi(f.y - e.y) == 1, "nivel %d: Farolín está pegado a la puerta de salida" % tier)
-		check(not Room.walkable(f, c.lay), "nivel %d: Farolín ocupa su celda (no se camina por ahí)" % tier)
+		var door := Room.world_of_cell(e, c.lay)
 		check(Room.reachable(c.lay.entry, c.lay).has(e), "nivel %d: se llega a la puerta de salida" % tier)
-		check(c._farolin != null and absf(c._farolin.position.x - Room.world_of_cell(f, c.lay).x) < 0.001, "nivel %d: Farolín está en su celda" % tier)
+		check(c._farolin != null and absf(c._farolin.position.x - door.x) < 0.001 and c._farolin.position.z < 0.0, "nivel %d: Farolín está del otro lado de la puerta (afuera de la sala)" % tier)
+		check(Room.walkable(e + Vector2i(-1, 0), c.lay) or Room.walkable(e + Vector2i(1, 0), c.lay), "nivel %d: junto a la puerta se camina" % tier)
 		check(c.facing == Vector2i(1, 0) and absf(c.player_node.rotation.y - PI * 0.5) < 0.001 and c.cell.x == 0, "nivel %d: el personaje aparece saliendo del portal, mirando hacia adentro de la sala" % tier)
 		var talk := [0]
 		c.toll_talk.connect(func(): talk[0] += 1)
-		c.cell = f + Vector2i(0, 1) if Room.walkable(f + Vector2i(0, 1), c.lay) else f + Vector2i(-1, 0)
-		var dir: Vector2i = f - c.cell
-		check(c.step(dir) == "farolin" and talk[0] == 1, "nivel %d: caminar hacia Farolín abre su diálogo" % tier)
+		c.cell = e
+		check(c.step(Vector2i(0, -1)) == "blocked" and talk[0] == 1, "nivel %d: empujar la puerta abre el diálogo de Farolín" % tier)
 		c.queue_free()
 		await process_frame
 	# sin peaje no hay Farolín ni celda ocupada
@@ -176,6 +173,6 @@ func test_casinos() -> void:
 	c2.quick = true
 	root.add_child(c2)
 	c2.setup(run2, RandomNumberGenerator.new())
-	check(c2._farolin == null and Room.walkable(c2.lay.farolin, c2.lay), "sin peaje no hay Farolín y su celda queda libre")
+	check(c2._farolin == null, "sin peaje no hay Farolín")
 	c2.queue_free()
 	await process_frame

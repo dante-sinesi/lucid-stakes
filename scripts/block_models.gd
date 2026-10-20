@@ -20,15 +20,6 @@ const VARIANTS := 4   # diseños automáticos por tipo de bloque (el 0 es el de 
 const VOXEL := 0.96 / N  # el cubo del juego mide 0.96
 
 static var _cache := {}
-## La piel de los bloques de un escenario (sólo cambia el diseño, no el bloque): "" = la de siempre; "glaciar" = el pesado se ve como hielo duro (más oscuro) y el agrietado como nieve.
-static var skin := ""
-const SKINS: Array[String] = ["", "glaciar"]
-
-
-static func _skin_id() -> int:
-	return maxi(SKINS.find(skin), 0)
-
-
 ## Cantidad de variantes de diseño de un tipo de bloque: las automáticas (VARIANTS: la 0 es el diseño de siempre y las otras son variaciones del
 ## mismo tipo) o más si el editor de modelos (model_editor.gd, data/modelos/) guardó otras. Cada bloque de la torre usa una según su identidad (variant_for).
 static func variant_count(kind: int) -> int:
@@ -44,7 +35,7 @@ static func variant_for(id: int, salt: int, kind: int) -> int:
 
 
 static func mesh_for(kind: int, state: int, variant := 0) -> ArrayMesh:
-	var key := ((_skin_id() * 1000 + variant) * 10 + kind) * 10 + state
+	var key := (variant * 10 + kind) * 10 + state
 	if not _cache.has(key):
 		_cache[key] = _build(kind, state, variant)
 	return _cache[key]
@@ -84,40 +75,6 @@ static func _top_center(x: int, y: int, z: int) -> bool:
 
 ## Color del minibloque (x, y, z) del modelo "completo" de un tipo, o null si ahí no hay minibloque. `variant` (0 a VARIANTS - 1) cambia detalles
 ## del diseño (otro ruido, otras esquinas, otras vetas...) sin cambiar lo que el jugador tiene que leer: la cara de arriba se pisa igual.
-## Los diseños del Glaciar: el pesado es hielo duro (azul más oscuro, con vetas claras y cristales en las esquinas: se camufla entre el hielo pero se lee como muro) y el
-## agrietado es nieve (blanca azulada, con grietas grises que la atraviesan). Mismas formas y mismas esquinas que los de siempre.
-static func _skin_color(kind: int, x: int, y: int, z: int, variant := 0):
-	var edges := _edges(x, y, z)
-	var vr := variant % VARIANTS
-	var n := (_h(x, y, z, kind + variant * 131) - 0.5) * 0.08
-	if kind == 5:   # hielo duro
-		if edges == 3:
-			return Color(0.78, 0.93, 1.0)   # el cristal claro de las esquinas
-		var base := Color(0.20, 0.38, 0.62) if edges == 2 else Color(0.30, 0.52, 0.76)
-		var screws: bool = (x == 1 or x == N - 2) and (z == 1 or z == N - 2)
-		if vr == 1:
-			screws = x == 2 and z == 2
-		if _top_center(x, y, z) and screws:
-			return Color(0.86, 0.96, 1.0)   # escarcha donde estaban los tornillos
-		var pat: int = [(x + 2 * z + y) % 5, (2 * x + z + y) % 5, (x + z + 2 * y) % 5, (x + 3 * z + y) % 5][vr]
-		if pat == 0 and edges < 2 and _h(x, y, z, 31 + variant) < 0.55:
-			return Color(0.50, 0.72, 0.92)   # una veta clara
-		if _top_center(x, y, z):
-			base = base.lightened(0.07)
-		return Color(clampf(base.r + n, 0.0, 1.0), clampf(base.g + n, 0.0, 1.0), clampf(base.b + n, 0.0, 1.0))
-	# nieve (el agrietado)
-	if edges == 3:
-		return null
-	var pat2: int = [(x + 2 * z + y) % 5, (2 * x + z + y) % 5, (x + z + 2 * y) % 5, (x + 3 * z + y) % 5][vr]
-	var crack: bool = pat2 == 0 and _h(x, y, z, 21 + variant) < 0.8
-	if crack and not _top_center(x, y, z):
-		return null if _h(x, y, z, 22 + variant) < 0.35 else Color(0.52, 0.63, 0.78)
-	if crack:
-		return Color(0.58, 0.68, 0.82)
-	var v := 0.95 + n * 1.5 - (0.10 if edges == 2 else 0.0) + (0.04 if _top_center(x, y, z) else 0.0)
-	return Color(clampf(v * 0.97, 0.0, 1.0), clampf(v, 0.0, 1.0), clampf(v * 1.03, 0.0, 1.0))
-
-
 static func _full_color(kind: int, x: int, y: int, z: int, defused: bool, variant := 0):
 	var edges := _edges(x, y, z)
 	var vr := variant % VARIANTS
@@ -249,14 +206,13 @@ static func _full_color(kind: int, x: int, y: int, z: int, defused: bool, varian
 ## Los minibloques de un modelo: {Vector3i: Color}.
 static func _voxels(kind: int, state: int, variant := 0) -> Dictionary:
 	var defused := state == State.DEFUSED
-	var skinned := _skin_id() > 0 and (kind == 4 or kind == 5)   # (el pesado y el agrietado del escenario tienen su propio diseño)
-	var full: Dictionary = {} if skinned else ModelLib.block_model(kind, variant, defused)   # (si el editor guardó un diseño para esta variante, se usa ese)
+	var full: Dictionary = ModelLib.block_model(kind, variant, defused)   # (si el editor guardó un diseño para esta variante, se usa ese)
 	var out := {}
 	if full.is_empty():
 		for x in N:
 			for y in N:
 				for z in N:
-					var c = _skin_color(kind, x, y, z, variant) if skinned else _full_color(kind, x, y, z, defused, variant)
+					var c = _full_color(kind, x, y, z, defused, variant)
 					if c != null:
 						full[Vector3i(x, y, z)] = c
 	return state_view(full, kind, variant, state)

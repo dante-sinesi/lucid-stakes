@@ -89,6 +89,8 @@ func test_catalog() -> void:
 		check(t.name != "" and t.desc != "" and not t.has("ability"), "la prueba %s tiene nombre y descripcion y ya no da habilidades (se ganan por escenario)" % id)
 	var seen := {}
 	for sc in Scenarios.ALL:
+		if not Scenarios.playable(sc.id):   # (las habilidades de los escenarios que todavía no se juegan están en Abilities.PENDING)
+			continue
 		for aid in Scenarios.ability_ids(sc):
 			check(not Abilities.get_ability(aid).is_empty() and not seen.has(aid), "la habilidad %s existe y es de un solo escenario (%s)" % [aid, sc.id])
 			seen[aid] = true
@@ -142,8 +144,8 @@ func test_generator_bias() -> void:
 	check(bombs > 0, "el sesgo de bombas genera bombas aunque la dificultad sea baja (%d)" % bombs)
 	var merged := Scenarios.merge_bias({"kinds": {K.ICE: 1.0}, "cap_bonus": 1}, {"kinds": {K.ICE: 0.5, K.BOMB: 1.0}, "plat_ice": 0.2})
 	check(merged.kinds[K.ICE] == 1.5 and merged.kinds[K.BOMB] == 1.0 and merged.cap_bonus == 1 and is_equal_approx(merged.plat_ice, 0.2), "los sesgos del escenario y de la prueba se suman")
-	var prof := Gen.profile_for_stage(9, Trials.CATALOG.hielo_total, Scenarios.get_scenario("glaciar"))
-	check(prof.bias.kinds[K.ICE] > 2.0 and prof.bias.plat_ice > 0.4, "el perfil de una prueba en un escenario junta los sesgos")
+	var prof := Gen.profile_for_stage(9, Trials.CATALOG.hielo_total, Scenarios.get_scenario("pesadilla"))
+	check(prof.bias.kinds[K.ICE] > 1.5 and prof.bias.plat_ice > 0.3, "el perfil de una prueba en un escenario junta los sesgos")
 
 
 func test_in_game() -> void:
@@ -204,11 +206,11 @@ func test_in_game() -> void:
 	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
-	# Habilidades de la torre: garras de hielo, fuerza bruta
-	Profile.grant_ability("garras_de_hielo")
-	Profile.grant_ability("fuerza_bruta")
+	# Habilidades de la torre: ojos de gato, racha firme
+	Profile.grant_ability("ojos_de_gato")
+	Profile.grant_ability("racha_firme")
 	var perks := Abilities.perks_for(Profile.owned_abilities())
-	check(perks.has("garras_de_hielo") and perks.has("fuerza_bruta"), "las habilidades dan perks a la torre")
+	check(perks.has("pies_de_luz") and perks.has("racha_larga"), "las habilidades dan perks a la torre")
 	Profile.reset()
 
 
