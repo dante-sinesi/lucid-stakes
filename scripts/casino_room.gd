@@ -38,7 +38,7 @@ static func tier_of(stage: int) -> int:
 
 
 ## Distribución de la sala de una etapa: {tier, cells, entry, exit, table, dealer, machines, card_tables, obstacles, farolin,
-## heights, table_h, cam_size}. `farolin` es la celda de Farolín (junto a la puerta de salida, contra su borde derecho (x + 1); sólo ocupa lugar si el casino cobra: `farolin_on`). `obstacles` son celdas decorativas que bloquean (barriles, plantas, columnas); `heights` es la
+## heights, table_h, cam_size}. `farolin` es la celda de Farolín (junto a la puerta de salida, contra su borde izquierdo (x - 1); sólo ocupa lugar si el casino cobra: `farolin_on`). `obstacles` son celdas decorativas que bloquean (barriles, plantas, columnas); `heights` es la
 ## altura del piso (en minibloques) de las celdas elevadas; `table_h` es la altura a la que está la mesa de la ruleta.
 static func layout(stage: int, tier_override := -1) -> Dictionary:
 	var machines: Array[Vector2i] = []
@@ -48,20 +48,20 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 	match tier:
 		0:   # taberna: chica, sólo la ruleta y una tragamonedas (y ninguna estación de servicio)
 			machines.assign([Vector2i(0, 1)])
-			obstacles.assign([Vector2i(0, 0), Vector2i(6, 5), Vector2i(0, 2)])
+			obstacles.assign([Vector2i(0, 0), Vector2i(6, 0), Vector2i(6, 5), Vector2i(0, 2)])
 			return {"tier": 0, "cells": Vector2i(7, 6), "entry": Vector2i(0, 4), "exit": Vector2i(5, 0), "table": Rect2i(2, 2, 3, 2),
-					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [] as Array[Rect2i], "obstacles": obstacles, "farolin": Vector2i(6, 0),
+					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [] as Array[Rect2i], "obstacles": obstacles, "farolin": Vector2i(4, 0),
 					"heights": heights, "table_h": 0, "cam_size": 9.5}
 		1:   # salón: más espacio, dos tragamonedas y una mesa de cartas
 			machines.assign([Vector2i(0, 1), Vector2i(0, 3)])
 			obstacles.assign([Vector2i(8, 0), Vector2i(8, 6)])
 			return {"tier": 1, "cells": Vector2i(9, 7), "entry": Vector2i(0, 5), "exit": Vector2i(6, 0), "table": Rect2i(3, 3, 3, 2),
-					"dealer": Vector2i(4, 2), "machines": machines, "card_tables": [Rect2i(7, 2, 2, 2)] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "taller", "cell": Vector2i(1, 6)}, "farolin": Vector2i(7, 0),
+					"dealer": Vector2i(4, 2), "machines": machines, "card_tables": [Rect2i(7, 2, 2, 2)] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "taller", "cell": Vector2i(1, 6)}, "farolin": Vector2i(5, 0),
 					"heights": heights, "table_h": 0, "cam_size": 13.0}
 		2:   # casino
 			machines.assign(MACHINES)
 			return {"tier": 2, "cells": CELLS, "entry": ENTRY, "exit": EXIT, "table": TABLE, "dealer": DEALER, "machines": machines,
-					"card_tables": [CARD_TABLE] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "caja", "cell": Vector2i(9, 7)}, "farolin": Vector2i(8, 0), "heights": heights, "table_h": 0, "cam_size": 15.0}
+					"card_tables": [CARD_TABLE] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "caja", "cell": Vector2i(9, 7)}, "farolin": Vector2i(6, 0), "heights": heights, "table_h": 0, "cam_size": 15.0}
 		_:   # gran casino: la ruleta está sobre una tarima con dos escalones
 			machines.assign([Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 6)])
 			obstacles.assign([Vector2i(2, 2), Vector2i(2, 8), Vector2i(9, 8), Vector2i(11, 1)])   # columnas de mármol
@@ -75,7 +75,7 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 					heights[Vector2i(x, z)] = 4 if maxi(dx, dz) <= 1 else 2
 			return {"tier": 3, "cells": Vector2i(13, 11), "entry": Vector2i(0, 9), "exit": Vector2i(9, 0), "table": table,
 					"dealer": Vector2i(6, 3), "machines": machines, "card_tables": [Rect2i(10, 3, 2, 2), Rect2i(10, 6, 2, 2)] as Array[Rect2i],
-					"obstacles": obstacles, "farolin": Vector2i(10, 0), "heights": heights, "table_h": 4, "cam_size": 19.0}
+					"obstacles": obstacles, "farolin": Vector2i(8, 0), "heights": heights, "table_h": 4, "cam_size": 19.0}
 
 
 ## La distribución por omisión (la del nivel 2) para quien no pasa una.
