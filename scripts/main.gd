@@ -5,6 +5,7 @@ const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Gen := preload("res://scripts/tower_gen.gd")
 const Abort := preload("res://scripts/gen_abort.gd")
 const STEP_TIME := 0.14
+const POSE_TIME := 0.34   # lo que dura una pose del personaje (empujar, trepar, colgarse...): más que el paso para que se llegue a ver
 const FALL_TIME := 0.08
 const PATH_STEP_TIME := 0.07  # segundos por celda cuando el recorrido tiene varias (salto, hielo, caída)
 const PATH_MAX_TIME := 1.3
@@ -47,6 +48,7 @@ const Items := preload("res://scripts/items.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ItemBar := preload("res://scripts/item_bar.gd")
 const ConsumablePick := preload("res://scripts/consumable_pick.gd")
+const Poses := preload("res://scripts/poses.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Compass := preload("res://scripts/compass.gd")
 const Juice := preload("res://scripts/juice.gd")
@@ -208,6 +210,9 @@ var _keeper_talk := false   # el tabernero del casino está hablando (cuadro de 
 var key_hint                # las teclas de la lección arriba al centro: grises hasta que se aprietan (ver key_hint.gd)
 var perk_label: Control
 var _moved_blocks: Array[Node3D] = []   # bloques que se movieron en la jugada actual (para el rebote al llegar)
+var _act_mode := 0          # la acción que se acaba de hacer (para elegir la pose del personaje)
+var _act_was_y := 0
+var _act_was_hang := Vector3i.ZERO
 var _fell := 0              # celdas que bajó el personaje en la jugada actual
 var juice                # animaciones de sensación de juego (estirar, polvo, temblor, destellos)
 var compass              # rosa de los vientos (qué eje mueve cada tecla)
@@ -732,6 +737,7 @@ func _join_zombies() -> void:
 
 ## Vuelve a la torre generada tal como empezó.
 func restart() -> void:
+	_sync_pose()
 	cancel_targeting()
 	if lost_screen != null:
 		lost_screen.hide_screen()
@@ -1493,6 +1499,7 @@ func _apply(dir: Vector3i, mode: int, release := false) -> void:
 		return
 	logic.release_with_opposite = release   # (colgado, la dirección contraria al bloque no suelta: sólo Espacio)
 	var was_y: int = logic.player.y
+	var was_hang: Vector3i = logic.hang_dir
 	var bombs_before: Array = logic.bomb_timer.keys()
 	var snapshot = logic.clone()
 	var res: Dictionary = logic.try_action(dir, mode)
@@ -1520,6 +1527,9 @@ func _apply(dir: Vector3i, mode: int, release := false) -> void:
 		_check_keys_complete()
 	var face: Vector3i = logic.hang_dir if logic.hang_dir != Vector3i.ZERO else dir
 	player_node.rotation.y = atan2(face.x, face.z)
+	_act_mode = mode
+	_act_was_y = was_y
+	_act_was_hang = was_hang
 	_action_sound(mode, was_y)
 	_check_defused(bombs_before)
 	_animate()
@@ -1614,6 +1624,55 @@ func _check_defused(before: Array) -> void:
 			return
 
 
+## La pose del personaje según lo que acaba de hacer (ver poses.gd).
+func _pose_for_action() -> String:
+	var hang_now: bool = logic.hang_dir != Vector3i.ZERO
+	var was_hang: bool = _act_was_hang != Vector3i.ZERO
+	if logic.won:
+		return "victoria"
+	if logic.lost:
+		return "caer"
+	if hang_now:
+		return "avanzar_colgado" if was_hang else "colgarse"
+	if was_hang:
+		return "subir_del_borde" if logic.player.y > _act_was_y else "soltarse"
+	if _act_mode == TowerLogic.Mode.GRAB and logic.last_grab != "":
+		return "tirar" if logic.last_grab == "pull" else "empujar"
+	if logic.trail.size() > 3 and logic.player.y > _act_was_y + 1:
+		return "saltar"
+	if logic.trail.size() > 2 and logic.kind_at(logic.player + Vector3i(0, -1, 0)) != TowerLogic.Kind.NORMAL and logic.player.y == _act_was_y:
+		return "resbalar"
+	if logic.player.y < _act_was_y:
+		return "caer"
+	if logic.player.y > _act_was_y:
+		return "trepar"
+	return "paso"
+
+
+## Sin animar: colgado si el estado lo está, en reposo si no (al deshacer, reintentar o empezar otra torre).
+func _sync_pose() -> void:
+	for n in [_model, _ghost]:
+		if n == null or not is_instance_valid(n):
+			continue
+		if logic != null and logic.hang_dir != Vector3i.ZERO:
+			Poses.hold(n)
+		else:
+			Poses.rest(n)
+
+
+## Anima el personaje (y su silueta) con la pose de la acción; el paso común sigue siendo el balanceo de siempre.
+func _play_pose() -> void:
+	var pose := _pose_for_action()
+	for n in [_model, _ghost]:
+		if n == null or not is_instance_valid(n):
+			continue
+		if pose == "paso":
+			Poses.rest(n)
+			Characters.step_anim(n, STEP_TIME)
+		else:
+			Poses.play(n, pose, POSE_TIME if pose != "caer" and pose != "saltar" and pose != "victoria" else POSE_TIME * 1.6)
+
+
 func _animate() -> void:
 	busy = true
 	if logic.exploded:
@@ -1639,7 +1698,7 @@ func _animate() -> void:
 		_tween_to(bn, _w(logic.positions[id]))
 	_fell = maxi(0, int(round(player_node.position.y - _player_pos().y)))
 	juice.step(_fell)
-	Characters.step_anim(_model, STEP_TIME)
+	_play_pose()
 	_tween_player()
 	if logic.goal_y > TALL_TOWER or cam_zoom < SIZE_NORMAL:
 		anim_tween.tween_property(pivot, "position", _rig_center(), 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -2358,6 +2417,7 @@ func undo_move() -> void:
 		block_nodes[id] = _make_block(logic.positions[id])
 	player_node.position = _player_pos()
 	juice.reset_body()
+	_sync_pose()
 	banner.text = ""
 	_refresh()
 	_flash(Loc.t("Movimiento deshecho"))
