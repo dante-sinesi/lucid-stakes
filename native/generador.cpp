@@ -910,7 +910,7 @@ static int auditar(const string &in, const string &outp, double minReach) {
 	return 0;
 }
 
-int main(int argc, char **argv) {
+static int generadorMain(int argc, char **argv) {
 	initShapes();
 	if (argc < 2) {
 		fprintf(stderr, "uso: generador mina|auditar ...\n");
@@ -962,4 +962,16 @@ int main(int argc, char **argv) {
 	if (mode == "auditar") return auditar(in, cfg.out, cfg.minReach);
 	fprintf(stderr, "modo desconocido: %s\n", mode.c_str());
 	return 2;
+}
+
+int main(int argc, char **argv) {
+	quietCrashes();
+	try {
+		return generadorMain(argc, argv);
+	} catch (const std::exception &e) {
+		fprintf(stderr, "generador: %s\n", e.what());
+		return 3;
+	} catch (...) {
+		return 3;
+	}
 }

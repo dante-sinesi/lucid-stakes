@@ -16,6 +16,41 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <exception>
+#ifdef _WIN32
+#include <windows.h>
+#include <crtdbg.h>
+#endif
+
+// Que un fallo (por ejemplo, sin memoria) no abra la ventana "dejó de funcionar" de Windows y que un solo proceso no se coma toda la memoria de la PC: el tope por defecto es de 2,5 GB
+// (variable de entorno SOLVER_MEM_MB; 0 = sin tope). Al pasarse, las reservas de memoria fallan (std::bad_alloc) y el programa avisa "STATUS budget" en vez de caerse.
+static void quietCrashes() {
+#ifdef _WIN32
+	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+	long long mb = 2500;
+	const char *env = getenv("SOLVER_MEM_MB");
+	if (env != nullptr) mb = atoll(env);
+	if (mb > 0) {
+		HANDLE job = CreateJobObjectA(nullptr, nullptr);
+		if (job != nullptr) {
+			JOBOBJECT_EXTENDED_LIMIT_INFORMATION info;
+			memset(&info, 0, sizeof(info));
+			info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_PROCESS_MEMORY;
+			info.ProcessMemoryLimit = (SIZE_T)mb * 1024 * 1024;
+			if (SetInformationJobObject(job, JobObjectExtendedLimitInformation, &info, sizeof(info))) AssignProcessToJobObject(job, GetCurrentProcess());
+		}
+	}
+#endif
+}
+
+// Escribe un resultado de "se acabó el presupuesto" cuando falta memoria, para que quien llamó siga como si hubiera llegado al tope de estados.
+static void budgetOut(int argc, char **argv) {
+	if (argc < 3) return;
+	FILE *f = fopen(argv[2], "wb");
+	if (f == nullptr) return;
+	fprintf(f, "STATUS budget\nSTATES 0\nEXPANDED 0\nFREACHED 0\nMS 0\n");
+	fclose(f);
+}
 
 using namespace std;
 typedef int64_t i64;
@@ -1307,5 +1342,16 @@ static int solverMain(int argc, char **argv) {
 }
 
 #ifndef SOLVER_LIB
-int main(int argc, char **argv) { return solverMain(argc, argv); }
+int main(int argc, char **argv) {
+	quietCrashes();
+	try {
+		return solverMain(argc, argv);
+	} catch (const std::exception &e) {
+		fprintf(stderr, "solver: %s\n", e.what());
+		budgetOut(argc, argv);
+		return 0;
+	} catch (...) {
+		return 3;
+	}
+}
 #endif
