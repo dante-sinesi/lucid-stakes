@@ -26,6 +26,7 @@ func _init() -> void:
 	test_difficulty()
 	test_gaps()
 	test_unsupported()
+	test_ice_floor()
 	print("tests de la biblioteca de salas terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -401,3 +402,21 @@ func test_unsupported() -> void:
 		var r2 := RoomLib.copy_room(r)
 		r2.cols = {a: "nnn", side: ".n"}
 		check(RoomLib.unsupported_cells(r2).is_empty(), "pegado de costado a una columna se sostiene")
+
+
+## El piso de la arena puede ser de hielo (salas del Glaciar): cambia el estado, se guarda y es otra sala (otro id).
+func test_ice_floor() -> void:
+	var plain := sample_room()
+	RoomLib.finalize(plain)
+	var ice := sample_room()
+	ice["floor"] = "i"
+	RoomLib.finalize(ice)
+	check(RoomLib.floor_kind(plain) == TowerLogic.Kind.NORMAL and RoomLib.floor_kind(ice) == TowerLogic.Kind.ICE, "el piso es común salvo que la sala diga hielo")
+	var t = RoomLib.build_state(ice)
+	var c: Vector2i = ice.cells[0]
+	check(t.kind_at(Vector3i(c.x, 0, c.y)) == TowerLogic.Kind.ICE and t.kind_at(Vector3i(ice.entry.x, 0, ice.entry.y)) == TowerLogic.Kind.NORMAL, "el piso de la arena es de hielo y la llegada sigue siendo común")
+	check(RoomLib.build_state(plain).kind_at(Vector3i(c.x, 0, c.y)) == TowerLogic.Kind.NORMAL, "sin el campo el piso es común")
+	check(plain.id != ice.id and plain.family != ice.family and plain.pattern != ice.pattern, "otro piso es otra sala (id, familia y patrón distintos)")
+	var back := RoomLib.from_line(RoomLib.to_line(ice))
+	check(str(back.get("floor", "n")) == "i" and back.id == ice.id, "el piso se guarda y se lee")
+	check(not RoomLib.to_dict(plain).has("floor"), "las salas comunes no llevan el campo")

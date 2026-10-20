@@ -1,5 +1,5 @@
 extends SceneTree
-## Captura del Estudio con una sala de una biblioteca: GAME_SANDBOX=1 godot --rendering-driver opengl3 --resolution 1500x850 -s tests/shot_estudio_sala.gd -- BIBLIOTECA.rooms PREFIJO [orden=slides] [posicion=0]
+## Captura del Estudio con una sala de una biblioteca: GAME_SANDBOX=1 godot --rendering-driver opengl3 --resolution 1500x850 -s tests/shot_estudio_sala.gd -- BIBLIOTECA.rooms PREFIJO [orden=slides] [posicion=0] [familia]
 
 
 func _frames(n: int) -> void:
@@ -17,6 +17,8 @@ func _init() -> void:
 	var order := args[2] if args.size() > 2 else "slides"
 	var pos := int(args[3]) if args.size() > 3 else 0
 	var list: Array = studio.model.filtered({"sort": order})
+	if args.size() > 4:
+		list = list.filter(func(r): return str(r.opt.get("familia", "")) == args[4])
 	var room: Dictionary = list[mini(pos, list.size() - 1)]
 	studio.select_room(room.id)
 	await _frames(40)

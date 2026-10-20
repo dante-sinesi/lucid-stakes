@@ -230,6 +230,11 @@ static func room_from_layout(base: Dictionary, blocks: Array) -> Dictionary:
 	return r
 
 ## La sala sola, en una torre chica: piso fijo (la arena y la llegada), el pilar de salida (h - 1 bloques pesados y arriba un bloque fijo) y las columnas. El jugador empieza en la llegada.
+## El tipo del piso de la arena (el campo opcional `floor` de la sala, un carácter de bloque: "i" para el Glaciar; sin él, bloque común). La llegada siempre es común.
+static func floor_kind(room: Dictionary) -> int:
+	return int(KIND_OF_CHAR.get(str(room.get("floor", "n")), K.NORMAL))
+
+
 static func build_state(room: Dictionary):
 	var t = TowerLogic.new()
 	t.size = Vector2i(WORLD, WORLD)
@@ -238,8 +243,9 @@ static func build_state(room: Dictionary):
 	var entry: Vector2i = room.entry
 	var exit: Vector2i = room.exit
 	var h: int = room.h
+	var floor_k := floor_kind(room)
 	for c in room.cells:
-		t.add_block(Vector3i(c.x, 0, c.y), true)
+		t.add_block(Vector3i(c.x, 0, c.y), true, floor_k)
 	t.add_block(Vector3i(entry.x, 0, entry.y), true)
 	for y in range(1, h):
 		t.add_block(Vector3i(exit.x, y, exit.y), false, K.HEAVY)
@@ -847,14 +853,15 @@ static func parse_path(text: String) -> Array:
 static func finalize(room: Dictionary) -> void:
 	var ex := canonical(room, false)
 	var fa := canonical(room, true)
-	room.id = _hash(ex.text)
-	room.family = _hash(fa.text)
+	var floor_tag := "" if str(room.get("floor", "n")) == "n" else "|piso:" + str(room.floor)   # (otro piso es otra sala: se comporta distinto)
+	room.id = _hash(ex.text + floor_tag)
+	room.family = _hash(fa.text + floor_tag)
 	var toks := ""
 	for a in room.path:
 		var d: Vector3i = a.dir
 		var q := _sym(fa.sym, d.x, d.z)
 		toks += String(MODE_CHARS.get(a.mode, "m")) + String(DIR_CHARS.get(Vector3i(q.x, 0, q.y), "E"))
-	room.pattern = _hash("%s|%s" % [fa.text, toks])
+	room.pattern = _hash("%s|%s%s" % [fa.text, toks, floor_tag])
 	room.rules = RULES_VERSION
 
 
@@ -941,6 +948,8 @@ static func to_dict(room: Dictionary) -> Dictionary:
 		"origin": room.origin, "parent": room.parent, "variant_of": room.variant_of, "slots": slots, "variants": room.variants, "status": room.status, "note": room.note, "stamp": room.stamp}
 	if room.has("fuse"):
 		out["fuse"] = int(room.fuse)
+	if str(room.get("floor", "n")) != "n":
+		out["floor"] = str(room.floor)
 	return out
 
 
@@ -974,6 +983,8 @@ static func from_dict(d: Dictionary) -> Dictionary:
 	room.stamp = int(d.get("stamp", 0))
 	if d.has("fuse"):
 		room["fuse"] = int(d.fuse)
+	if d.has("floor"):
+		room["floor"] = str(d.floor)
 	room.rules = int(d.get("rules", 0))
 	room.id = str(d.get("id", ""))
 	room.family = str(d.get("family", ""))

@@ -84,6 +84,8 @@ static func populate(parent: Node3D, st, room: Dictionary, show_player := true, 
 		if fixed and c.y >= 1:
 			model_kind = BlockModels.CORE
 			tint = Color(1.7, 1.7, 1.7)
+		elif fixed and kind == TowerLogic.Kind.ICE:   # el piso de hielo (salas del Glaciar)
+			tint = Color(1.5, 1.5, 1.5)
 		elif fixed:   # el piso
 			model_kind = TowerLogic.Kind.NORMAL
 			tint = Color(0.42, 0.42, 0.52)
