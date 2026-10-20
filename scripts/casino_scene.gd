@@ -210,7 +210,7 @@ func _build_farolin() -> void:
 		return
 	_farolin = Farolin.build()
 	_farolin.scale = Vector3.ONE * FAROLIN_SCALE
-	_farolin.position = Room.world_of_cell(lay.farolin, lay)
+	_farolin.position = Room.world_of_cell(lay.farolin, lay) + Vector3(-0.08, 0.0, 0.28)   # (un poco hacia adentro de la sala: pegado a la pared no entra el farol)
 	_farolin.rotation_degrees.y = yaw_target
 	add_child(_farolin)
 
