@@ -19,6 +19,7 @@ const Compass := preload("res://scripts/compass.gd")
 const Roulette := preload("res://scripts/roulette.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ItemBar := preload("res://scripts/item_bar.gd")
+const ConsumablePick := preload("res://scripts/consumable_pick.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Rules := preload("res://scripts/casino_rules.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
@@ -74,6 +75,7 @@ var hud_panel                  # la ventana de la partida: corazones y claridad
 var toast: Control
 var hud_layer: CanvasLayer
 var left_bar
+var consumable_pick := ConsumablePick.new()   # elegir y usar consumibles con el mando (mantener RT y arriba o abajo)
 var right_bar
 var clarity_counter
 var lives_hud
@@ -103,7 +105,7 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	run = run_state
 	rng = random
 	lay = Room.layout(run.stage, int(run.scenario().get("casino_tier", -1)))
-	lay["farolin_on"] = toll_base > 0   # (Farolín espera del otro lado de la puerta sólo si el casino cobra)
+	lay["farolin_on"] = toll_base > 0   # (Farolín ocupa su celda sólo si el casino cobra)
 	cell = lay.entry
 	if not story:
 		CasinoTheme.apply_ui(int(lay.tier))   # los botones y textos se limpian según el nivel de la sala (se restablece al salir)
@@ -198,7 +200,7 @@ func _build_portals() -> void:
 	_update_toll_ui()
 
 
-## Farolín, del otro lado de la puerta de salida (afuera de la sala, mirando a la cámara): cobra el precio de la torre que sigue. El portal queda apagado hasta que se le paga.
+## Farolín, junto a la puerta de salida (en su celda, libre de muebles y mirando a la cámara): cobra el precio de la torre que sigue. El portal queda apagado hasta que se le paga.
 func toll_now() -> int:
 	return run.toll_after_discounts(toll_base)
 
@@ -208,8 +210,7 @@ func _build_farolin() -> void:
 		return
 	_farolin = Farolin.build()
 	_farolin.scale = Vector3.ONE * FAROLIN_SCALE
-	var door := Room.world_of_cell(lay.exit, lay)
-	_farolin.position = Vector3(door.x, door.y, -0.45)   # (del otro lado de la puerta de salida: afuera de la sala, detrás del portal)
+	_farolin.position = Room.world_of_cell(lay.farolin, lay)
 	_farolin.rotation_degrees.y = yaw_target
 	add_child(_farolin)
 
@@ -217,6 +218,20 @@ func _build_farolin() -> void:
 ## Lo que dice Farolín al llegar a la puerta y las salidas que ofrece (ver Farolin.toll_dialog).
 func toll_dialog() -> Dictionary:
 	return Farolin.toll_dialog(toll_now(), run.claridad, run.can_revive(), run.lives > 0)
+
+
+## ¿La celda de Farolín está dentro de la sala, libre de muebles y máquinas, y se llega a la puerta de salida caminando?
+func farolin_cell_free() -> bool:
+	if not lay.has("farolin") or not Room.in_room(lay.farolin, lay):
+		return false
+	var f: Vector2i = lay.farolin
+	if f == lay.exit or f == lay.entry or f == lay.dealer or lay.table.has_point(f) or lay.machines.has(f) or lay.obstacles.has(f) or (lay.has("station") and f == lay.station.cell):
+		return false
+	for ct in lay.card_tables:
+		if ct.has_point(f):
+			return false
+	var reach := Room.reachable(lay.entry, lay)
+	return reach.has(lay.exit)
 
 
 ## Se llegó a la puerta (o se habló con Farolín): el juego abre el diálogo.
@@ -482,6 +497,9 @@ func _on_arrived() -> void:
 
 ## Chocar contra lo que no se camina: la mesa de la ruleta se abre; el resto avisa.
 func _bump(n: Vector2i) -> String:
+	if toll_base > 0 and lay.get("farolin_on", false) and n == lay.farolin:   # Farolín: se habla con él (el peaje)
+		ask_toll()
+		return "farolin"
 	if n == lay.dealer:   # el tabernero: se habla con él (en el tutorial todavía no hay nada de qué hablar)
 		if story:
 			story_message.emit(Story.BLOCKED_TABLE)
@@ -521,7 +539,7 @@ func interact() -> String:
 	if busy or leaving or input_locked:
 		return "blocked"
 	var n := cell + facing
-	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell):
+	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell) or (toll_base > 0 and n == lay.farolin):
 		return _bump(n)
 	for ct in lay.card_tables:
 		if ct.has_point(n):
@@ -698,6 +716,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				zoom_view(ZOOM_FACTOR)
 		elif event is InputEventMouseMotion and (event.button_mask & (MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT | MOUSE_BUTTON_MASK_MIDDLE)) != 0:
 			orbit_view(event.relative)
+	if not input_locked and screen == null and run != null and left_bar != null:
+		var pick: Dictionary = consumable_pick.process(event, run.consumables.size())
+		if pick.taken:
+			left_bar.set_pick(consumable_pick.marked())
+			if pick.use >= 0:
+				use_consumable_slot(int(pick.use))
+			return
 	if input_locked or not (event is InputEventKey) or not event.pressed or event.echo or screen != null:
 		return
 	match Controls.action_of(event):

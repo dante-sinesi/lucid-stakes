@@ -60,6 +60,7 @@ const TABLE := {
 	"Deshacer el último movimiento": "Undo the last move",
 	"Movimiento deshecho": "Move undone",
 	"Usar consumible 1": "Use consumable 1",
+	"Usar el consumible elegido (mantener y arriba o abajo para elegir)": "Use the chosen consumable (hold, then up or down to choose)",
 	"Usar consumible 2": "Use consumable 2",
 	"Usar consumible 3": "Use consumable 3",
 	"Usar consumible 4": "Use consumable 4",

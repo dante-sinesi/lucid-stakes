@@ -46,6 +46,7 @@ const Loc := preload("res://scripts/loc.gd")
 const Items := preload("res://scripts/items.gd")
 const VoxelLabel := preload("res://scripts/voxel_label.gd")
 const ItemBar := preload("res://scripts/item_bar.gd")
+const ConsumablePick := preload("res://scripts/consumable_pick.gd")
 const ClarityCounter := preload("res://scripts/clarity_counter.gd")
 const Compass := preload("res://scripts/compass.gd")
 const Juice := preload("res://scripts/juice.gd")
@@ -219,6 +220,7 @@ var run_over := false
 var action_log: Array[String] = []   # acciones del intento actual ("dx,dz,modo"): se imprime al perder, para poder reproducir un caso
 var attempt_dirty := false  # el intento actual de la torre ya empezó (hubo un movimiento o se usó un consumible)
 var left_bar              # barra de consumibles (izquierda)
+var consumable_pick := ConsumablePick.new()   # elegir y usar consumibles con el mando (mantener RT y arriba o abajo)
 var right_bar             # barra de boosts (derecha)
 var item_tip: Control     # descripción del ítem bajo el mouse
 var epoch := 0              # sube al volver al menú: las generaciones en curso se descartan
@@ -1226,6 +1228,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if casino != null:  # en el casino manda su propia escena
 		return
+	if run != null and left_bar != null:
+		var pick: Dictionary = consumable_pick.process(event, run.consumables.size())
+		if pick.taken:
+			left_bar.set_pick(consumable_pick.marked())
+			if pick.use >= 0:
+				use_consumable_slot(int(pick.use))
+			return
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
 		if not targeting.is_empty() and event is InputEventMouseButton:
 			_targeting_click(event)

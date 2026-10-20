@@ -202,7 +202,7 @@ func test_lessons_and_outro() -> void:
 		main.dialogue.advance()
 		guard += 1
 	check(seen_icons.has("luz"), "durante el cierre se muestra el sol")
-	check(main.story_kind == "outro" and main.casino != null and not main.casino.input_locked and main.casino.toll_base > 0, "al terminar de hablar se camina hasta la puerta, donde espera Farolín")
+	check(main.story_kind == "outro" and main.casino != null and not main.casino.input_locked and main.casino.toll_base > 0, "al terminar de hablar se camina hasta Farolín, que está junto a la puerta")
 	check(main.run.claridad >= main.casino.toll_now() and main.casino.lay.get("farolin_on", false), "el tabernero presta la claridad del peaje de práctica")
 	main.casino.ask_toll()
 	check(main.dialogue.is_choosing() and main.dialogue._options.size() == 1 and str(main.dialogue._options[0].id) == "pagar", "Farolín ofrece un solo peaje: pagar")
