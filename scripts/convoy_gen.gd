@@ -311,8 +311,141 @@ static func metrics(room: Dictionary) -> Dictionary:
 					touched[Vector2i(t.positions[id].x, t.positions[id].z)] = true
 					break
 		step += 1
+	var dist := _dist_from_exit(room)
+	var maxd := 1
+	for c in room.cells:
+		maxd = maxi(maxd, int(dist.get(c, 0)))
+	var thirds := {}
+	for c in touched:
+		thirds[mini(int(float(dist.get(c, 0)) / float(maxd + 1) * 3.0), 2)] = true
 	var most := 0
 	for id in per_block:
 		most = maxi(most, int(per_block[id]))
 	var spread := float(touched.size()) / float(maxi(room.cells.size(), 1))
-	return {"grabs": grabs, "blocks": per_block.size(), "switches": switches, "first_grab": first_grab, "most": most, "spread": spread, "walk": float(maxi(first_grab, 0)) / float(maxi(room.path.size(), 1))}
+	return {"grabs": grabs, "blocks": per_block.size(), "switches": switches, "first_grab": first_grab, "most": most, "spread": spread, "zones": thirds.size(), "walk": float(maxi(first_grab, 0)) / float(maxi(room.path.size(), 1))}
+
+
+# --- escalada de colinas guiada por el solucionador ---------------------------------------------------------------------------
+
+## Cuánto vale una sala resuelta: camino largo, muchos bloques distintos, muchos cambios de bloque, empujes repartidos por la arena y poca caminata antes del primer agarre.
+static func score(room: Dictionary) -> float:
+	var o: Dictionary = room.opt
+	return float(o.moves) + 4.0 * float(o.blocks) + 3.0 * float(o.switches) + 0.5 * float(o.grabs) + 30.0 * float(o.spread) - 30.0 * float(o.walk) + 25.0 * float(o.zones)
+
+
+## Resuelve (A* exacto) y mide una sala. {} si no se pudo probar o no sirve.
+static func evaluate(room: Dictionary, cap := 150000, max_ms := 3000) -> Dictionary:
+	if RoomLib.validate_structure(room) != "":
+		return {}
+	var ver := RoomLib.verify_exact(room, cap, max_ms)
+	if ver.proof != "exacta":
+		return {}
+	var r := RoomLib.copy_room(room)
+	r["path"] = ver.path
+	RoomLib.apply_result(r, ver.path, "exacta", int(ver.moves), int(ver.states))
+	if not RoomLib.outside_cells(r).is_empty():
+		return {}
+	var m := metrics(r)
+	for k in m:
+		r.opt[k] = m[k]
+	r.opt["spread100"] = int(round(float(m.spread) * 100.0))
+	return r
+
+
+## Un cambio al azar: mover el bloque de arriba de una columna a otra, intercambiar dos columnas o armar un muro de dos pisos que cruza el brazo (con bloques sacados de otras partes).
+static func mutate(rng: RandomNumberGenerator, room: Dictionary) -> Dictionary:
+	var r := RoomLib.copy_room(room)
+	var cols: Dictionary = r.cols
+	var free := RoomLib.free_cells(str(r.shape))
+	var h: int = r.h
+	var kind := rng.randf()
+	if kind < 0.7:
+		if cols.is_empty():
+			return {}
+		var keys: Array = cols.keys()
+		var from: Vector2i = keys[rng.randi_range(0, keys.size() - 1)]
+		var to: Vector2i = free[rng.randi_range(0, free.size() - 1)]
+		if from == to or str(cols.get(to, "")).length() >= h - 1:
+			return {}
+		_pop(cols, from)
+		cols[to] = str(cols.get(to, "")) + "n"
+	elif kind < 0.85:
+		var keys2: Array = cols.keys()
+		if keys2.size() < 2:
+			return {}
+		var a: Vector2i = keys2[rng.randi_range(0, keys2.size() - 1)]
+		var b: Vector2i = keys2[rng.randi_range(0, keys2.size() - 1)]
+		if a == b:
+			return {}
+		var tmp: String = cols[a]
+		cols[a] = cols[b]
+		cols[b] = tmp
+	else:
+		var dist := _dist_from_exit(r)
+		var maxd := 0
+		for c in free:
+			maxd = maxi(maxd, int(dist.get(c, 0)))
+		var want := rng.randi_range(int(maxd * 0.35), int(maxd * 0.7))
+		var line: Array = []
+		for c in free:
+			if int(dist.get(c, 0)) == want:
+				line.append(c)
+		var need := 0
+		for c in line:
+			need += maxi(2 - str(cols.get(c, "")).length(), 0)
+		var have := 0
+		for c in cols:
+			if not line.has(c):
+				have += str(cols[c]).length()
+		if need == 0 or need > have:
+			return {}
+		var guard := 0
+		while need > 0 and guard < 200:
+			guard += 1
+			var keys3: Array = cols.keys()
+			var src: Vector2i = keys3[rng.randi_range(0, keys3.size() - 1)]
+			if line.has(src):
+				continue
+			_pop(cols, src)
+			for c in line:
+				if str(cols.get(c, "")).length() < 2:
+					cols[c] = str(cols.get(c, "")) + "n"
+					need -= 1
+					break
+	for c in cols.keys():
+		if str(cols[c]) == "":
+			cols.erase(c)
+	return r
+
+
+static func _pop(cols: Dictionary, c: Vector2i) -> void:
+	var s: String = cols[c]
+	if s.length() <= 1:
+		cols.erase(c)
+	else:
+		cols[c] = s.substr(0, s.length() - 1)
+
+
+## Sube la puntuación de una sala resuelta con cambios al azar (se queda sólo con las que se siguen resolviendo y suben o igualan), hasta `iters` pruebas o `budget_ms`.
+static func climb(rng: RandomNumberGenerator, start: Dictionary, iters: int, budget_ms: int) -> Dictionary:
+	var best := evaluate(start)
+	if best.is_empty():
+		return {}
+	var best_score := score(best)
+	var t0 := Time.get_ticks_msec()
+	var tries := 0
+	while tries < iters and Time.get_ticks_msec() - t0 < budget_ms:
+		tries += 1
+		var cand := mutate(rng, best)
+		if cand.is_empty():
+			continue
+		var ev := evaluate(cand)
+		if ev.is_empty():
+			continue
+		var sc := score(ev)
+		if sc >= best_score:
+			best = ev
+			best_score = sc
+	best.opt["score"] = int(round(best_score))
+	best.opt["tries"] = tries
+	return best
