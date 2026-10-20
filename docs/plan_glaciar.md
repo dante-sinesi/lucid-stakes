@@ -97,3 +97,11 @@ H1 y H4 son trabajo mío; H2 es tiempo de máquina; H3 y H6 necesitan la vista d
 - **H1 hecho (2026-10-19):** `generador.cpp` con `--types`, `--p-ice`, `--min-ice`, `--min-slides` y la métrica de resbalones; el cierre y `RoomLib.path_stats` guardan `opt.slides` y `opt.ice_moved` medidos con las reglas del juego (coinciden con los del generador); el Estudio ordena y filtra por resbalones; `generador_todo.gd --glaciar` y `herramientas\generador_glaciar.bat`. Pruebas: `test_generador` (`test_ice`), `test_studio_model`.
 - Prueba de rendimiento: con `--min-ice=2 --min-slides=2` salen unas 6 salas por cada ~5 minutos de un solo proceso (mucho filtro); con `--min-ice=1 --min-slides=1` y `--p-type=0.9`, 8 a 10 salas en 18 segundos. Los parámetros definitivos (`--p-type`, `--p-ice`, mínimos) se calibran con la primera tanda larga.
 - **Sigue H2:** una tanda de 24 a 48 horas con `--glaciar` para ver cuántas salas buenas salen y con qué `slides`, antes de curar.
+
+## Giro de enfoque (2026-10-19): salas de deslizamiento
+
+La tanda de una hora con el generador normal en modo hielo (368 salas) salió mal para lo que se busca: casi todo escaleras con uno o dos cubos de hielo. El formato de la biblioteca (una arena alrededor de un pilar que hay que trepar) y el generador (un buscador de escaleras con acertijo) no pueden dar un escenario helado con solo pedir "con hielo". Hace falta un generador propio con otra estructura:
+
+- **Meseta de hielo** (`tests/probe_hielo_plano.gd`, prototipo): casi todas las columnas son de hielo; unas pocas llevan encima un bloque pesado o común que hace de tope; una rampa baja junto a la llegada; huecos al ras del piso. El desafío es resbalar bien (sala lateral, casi no se sube), no armar una escalera. La salida sigue siendo el pilar.
+- **Resultado del prototipo** (6000 intentos, 4 a 6 pisos): 1.654 salas resolubles con prueba exacta y 359 buenas (más del 80 % de hielo, 3 o más resbalones, 8 o más pasos), en unos 8 minutos de un solo proceso. Archivo: `bibliotecas/glaciar_prototipo/plano.rooms`.
+- **Pendiente** (según lo que diga Dante al verlas): bordes mortales, hielo que se empuja entre topes (billar), puentes angostos sobre el vacío, mesetas de varios niveles, compañeros (pinchos, agrietados), probarlas dentro de una torre y pasar el prototipo al generador nativo para generar en cantidad.
