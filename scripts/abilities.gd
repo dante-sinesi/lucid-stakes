@@ -16,6 +16,7 @@ const ALL: Array[Dictionary] = [
 	{"id": "garras_de_hielo", "name": "Garras de hielo", "desc": "Puedes colgarte de los bloques de hielo.", "perk": "garras_de_hielo"},
 	{"id": "fuerza_bruta", "name": "Fuerza bruta", "desc": "Puedes empujar y tirar de los bloques pesados.", "perk": "fuerza_bruta"},
 	{"id": "corazon_extra", "name": "Corazón extra", "desc": "Tienes una vida más en todas las partidas (4 corazones)."},
+	{"id": "margen_de_error", "name": "Margen de error", "desc": "En Sin piedad, cada sala permite un movimiento en falso más (3 en lugar de 2)."},
 	{"id": "mecha_larga", "name": "Mecha larga", "desc": "Las cuentas de las bombas empiezan 3 movimientos más altas.", "perk": "reflejos"},
 ]
 

@@ -249,6 +249,10 @@ static func rule_lines(s: Dictionary) -> Array[String]:
 		out.append("El casino es de lujo desde la primera etapa.")
 	if float(s.get("diff_offset", 0.0)) > 0.0:
 		out.append("Las torres son más difíciles.")
+	if int(s.get("mistakes", 0)) > 0:
+		out.append(Loc.f("Cada sala permite sólo %d movimientos en falso; al siguiente pierdes una vida.", [int(s.mistakes)]))
+	if bool(s.get("no_undo", false)):
+		out.append("No se puede deshacer.")
 	if bool(s.get("permadeath", false)):
 		out.append("Una sola vida: si mueres, se termina.")
 	if bool(s.get("no_totem", false)) or bool(s.get("no_extra_life", false)):
