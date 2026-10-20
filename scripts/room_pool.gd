@@ -11,6 +11,8 @@ const PATH := "res://data/salas.rooms"
 static var _mutex := Mutex.new()
 static var _rooms: Array = []
 static var _loaded := false
+## Formas de sala que no se usan en las torres (por ahora las L y las U: la mayor parte de su recorrido es caminar y el puzzle queda en un tramo). Vacío: se usan todas.
+static var excluded_shapes: Array = [] if OS.get_environment("CON_LU") != "" else ["L", "U"]   # (CON_LU=1 las vuelve a usar, para comparar)
 static var override_path := ""   # (pruebas) otra biblioteca
 static var _reach_cache := {}
 
@@ -54,7 +56,7 @@ static func all() -> Array:
 		_loaded = true
 		var path := override_path if override_path != "" else PATH
 		for r in RoomPack.load_library(path):
-			if not str(r.opt.get("proof", "")) == "exacta" or r.path.is_empty():
+			if not str(r.opt.get("proof", "")) == "exacta" or r.path.is_empty() or excluded_shapes.has(str(r.shape)):
 				continue
 			var kinds := {}
 			for c in r.cols:
@@ -129,7 +131,7 @@ static func pick(rng: RandomNumberGenerator, d: float, index: int, total: int, m
 			s += 0.05
 		scored.append([s, e])
 	scored.sort_custom(func(a, b): return a[0] < b[0])
-	var per_shape := maxi(count / RoomLib.SHAPES.size(), 1)   # (de cada forma las mejores: las grandes (L, U, 3x8) casi nunca entran en el lugar donde cae la llegada)
+	var per_shape := maxi(count / maxi(RoomLib.SHAPES.size() - excluded_shapes.size(), 1), 1)   # (de cada forma las mejores: las grandes (L, U, 3x8) casi nunca entran en el lugar donde cae la llegada)
 	var taken := {}
 	var chosen: Array = []
 	for sc in scored:
