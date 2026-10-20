@@ -59,6 +59,9 @@ func _run_idea(idea: String, want: int, max_attempts: int) -> Dictionary:
 		solved += 1
 		room["path"] = ver.path
 		RoomLib.apply_result(room, ver.path, "exacta", int(ver.moves), int(ver.states))
+		if not RoomLib.outside_cells(room).is_empty():   # (el camino se apoya en el hueco del core, en otra sala o en el vacío: no sirve)
+			why["sale_de_la_arena"] = int(why.get("sale_de_la_arena", 0)) + 1
+			continue
 		var tc := RoomLib.technique_counts(room)
 		room.opt["colgadas"] = int(tc.colgadas)
 		room.opt["arenisca"] = int(tc.arenisca)

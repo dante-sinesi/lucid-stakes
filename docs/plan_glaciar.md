@@ -129,3 +129,6 @@ Para romper la monotonía de la meseta con topes se prototiparon seis ideas dist
 | Embudo | salir de un pozo | terrazas que bajan hacia un pozo en el medio |
 
 Límites que se vieron: las caídas dentro de la sala son gratis (el piso de hielo está abajo), así que sólo el patinaje tiene vacío mortal; el tobogán casi nunca obliga a tirarse (el solucionador prefiere armar escalones con bloques de hielo); colgarse aparece poco en la escalada.
+
+### El hueco del core (2026-10-20)
+Las salas L y U tienen un hueco de 2x2 en el medio (casillas 3 a 4 en x y z): es donde va el core. En la sala no había nada ahí y el solucionador lo usaba como espacio libre (mover bloques o resbalar por ahí), algo imposible en la torre. Ahora el core es de bloques fijos, de arriba a abajo, en el simulador de la sala (`RoomLib.core_cells`, `build_state`) y en el generador nativo (`loadRoom`). Se midió el daño en las bibliotecas viejas: 163 de 11.152 salas de `data/salas.rooms` (ya depuradas, la anterior quedó en `data/salas_con_core_viejo.rooms.bak`) y 4.090 de 91.911 de la tanda de 48 horas (`bibliotecas/generacion_48hs/salas_sin_hueco.rooms` es la versión limpia). `tests/depurar_core.gd` depura cualquier biblioteca. Además, los prototipos del Glaciar descartan las salas cuyo camino toca casillas fuera de la arena (`RoomLib.outside_cells`).

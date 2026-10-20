@@ -180,6 +180,10 @@ static Sim loadRoom(const Room &r) {
 	goalY = r.h + 1;
 	for (int k : sh.cells) blocksIn.push_back({{ckx(k), 0, ckz(k)}, NORMAL, true, false, false, 0});
 	blocksIn.push_back({{sh.nx, 0, sh.nz}, NORMAL, true, false, false, 0});
+	if (r.shape == "L" || r.shape == "U")   // el core (2x2, de arriba a abajo) en el hueco de adentro: ni el jugador ni los bloques pueden usarlo (igual que RoomLib.core_cells)
+		for (int cx = 3; cx <= 4; cx++)
+			for (int cz = 3; cz <= 4; cz++)
+				for (int y = 0; y < r.h + 2; y++) blocksIn.push_back({{cx, y, cz}, NORMAL, true, false, false, 0});
 	for (int y = 1; y < r.h; y++) blocksIn.push_back({{sh.ex, y, sh.ez}, HEAVY, false, false, false, 0});
 	blocksIn.push_back({{sh.ex, r.h, sh.ez}, NORMAL, true, true, false, 0});
 	for (auto &kv : r.cols) {

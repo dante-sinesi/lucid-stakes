@@ -230,6 +230,14 @@ static func room_from_layout(base: Dictionary, blocks: Array) -> Dictionary:
 	return r
 
 ## La sala sola, en una torre chica: piso fijo (la arena y la llegada), el pilar de salida (h - 1 bloques pesados y arriba un bloque fijo) y las columnas. El jugador empieza en la llegada.
+## Las casillas del core (de arriba a abajo) dentro de la huella de la forma: en la L y la U el hueco de adentro es justo donde va el core de 2x2. En la sala son bloques fijos: el
+## jugador y los bloques no pueden usar ese hueco (en la torre hay un core ahí). Las formas de 3 filas no lo tienen en su recuadro.
+static func core_cells(shape: String) -> Array[Vector2i]:
+	if shape == "L" or shape == "U":
+		return [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4)]
+	return []
+
+
 ## El tipo del piso de la arena (el campo opcional `floor` de la sala, un carácter de bloque: "i" para el Glaciar; sin él, bloque común). La llegada siempre es común.
 static func floor_kind(room: Dictionary) -> int:
 	return int(KIND_OF_CHAR.get(str(room.get("floor", "n")), K.NORMAL))
@@ -247,6 +255,9 @@ static func build_state(room: Dictionary):
 	for c in room.cells:
 		t.add_block(Vector3i(c.x, 0, c.y), true, floor_k)
 	t.add_block(Vector3i(entry.x, 0, entry.y), true)
+	for cc in core_cells(str(room.shape)):
+		for y in range(0, h + 2):
+			t.add_block(Vector3i(cc.x, y, cc.y), true)   # el core: fijo, de arriba a abajo
 	for y in range(1, h):
 		t.add_block(Vector3i(exit.x, y, exit.y), false, K.HEAVY)
 	t.add_block(Vector3i(exit.x, h, exit.y), true, K.NORMAL)
@@ -263,6 +274,34 @@ static func build_state(room: Dictionary):
 	t.goal_y = h + 1
 	t.goal_ids = {goal_id: true}
 	return t
+
+
+## Las casillas (x, z) fuera de la arena (y de la llegada) por las que pasa el jugador o algún bloque al seguir el camino. Una sala sólo sirve si no hay ninguna: afuera de la arena
+## puede estar el core (el hueco de adentro), otra sala o el vacío, y el camino no puede depender de lo que haya ahí (por ejemplo, tirar un bloque al hueco para sacárselo de encima).
+static func outside_cells(room: Dictionary) -> Array:
+	var inside := {}
+	for c in room.cells:
+		inside[c] = true
+	inside[room.entry] = true
+	var t = build_state(room)
+	var seen := {}
+	var out: Array = []
+	var note := func(c: Vector3i) -> void:
+		var v := Vector2i(c.x, c.z)
+		if not inside.has(v) and not seen.has(v):
+			seen[v] = true
+			out.append(v)
+	note.call(t.player)
+	for id in t.positions:
+		if not t.fixed.has(t.positions[id]):
+			note.call(t.positions[id])
+	for a in room.path:
+		t.try_action(a.dir, a.mode)
+		note.call(t.player)
+		for id in t.positions:
+			if not t.fixed.has(t.positions[id]):
+				note.call(t.positions[id])
+	return out
 
 
 ## ¿Estar parado en la cima de la salida? (el final de todo camino)
