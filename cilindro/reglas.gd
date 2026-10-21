@@ -26,12 +26,12 @@ static func es_masa(x: int, z: int) -> bool:
 	return x >= 1 and x <= 6 and z >= 1 and z <= 6 and not (x >= 3 and x <= 4 and z >= 3 and z <= 4)
 
 
-## Las celdas de la cima (todas fijas).
+## Las celdas de la cima (todas fijas): el borde del 6x6, de 1 bloque de espesor (20 celdas).
 static func cima(alto: int) -> Array[Vector3i]:
 	var out: Array[Vector3i] = []
 	for x in range(1, 7):
 		for z in range(1, 7):
-			if es_masa(x, z):
+			if x == 1 or x == 6 or z == 1 or z == 6:
 				out.append(Vector3i(x, alto, z))
 	return out
 

@@ -21,7 +21,7 @@ func _escalera() -> Object:
 
 func _init() -> void:
 	var t = _escalera()
-	_ok(t.bloques.size() == 32 + 3, "la escalera de 3 bloques se sostiene entera (sin bloques extra)")
+	_ok(t.bloques.size() == 20 + 3, "la escalera de 3 bloques se sostiene entera (sin bloques extra)")
 	var W := Vector3i(-1, 0, 0)
 	t.actuar(W)
 	t.actuar(W)

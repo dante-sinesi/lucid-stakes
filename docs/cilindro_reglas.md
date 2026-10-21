@@ -6,7 +6,7 @@ Módulo propio en `cilindro/` (no importa nada de `tower_logic.gd`, `solver.gd` 
 - Grilla de 8x8 celdas (x, z en 0..7) y niveles y = 0..H.
 - **Anillo de piso**: las 28 celdas del borde de la 8x8, a y = 0. Es suelo sólido: se puede pisar y los bloques se apoyan encima. NO es fijo.
 - **Masa**: el 6x6 interior (x, z en 1..6) menos el pozo de 2x2 del centro (x, z en 3..4): 32 celdas por nivel. El pozo está vacío y no tiene piso.
-- **Cima**: las 32 celdas de la masa en el nivel H. Es lo ÚNICO fijo (se asume que todas existen como bloques fijos; se confirma con el usuario).
+- **Cima**: el borde del 6x6 en el nivel H, de 1 bloque de espesor (20 celdas; el hueco del medio es de 4x4). Es lo ÚNICO fijo.
 - Lo que cae por debajo del nivel del anillo (y < 0), o fuera del anillo, se pierde.
 
 ## Sostén (como en Catherine)

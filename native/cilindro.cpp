@@ -437,7 +437,7 @@ int main(int argc, char** argv) {
 		else if (w == "b") { int x, y, z; string k; ss >> x >> y >> z >> k; bl.push_back({x, y, z, (int)kind_de(k.empty() ? 'n' : k[0])}); if (k == "f") hay_cima = true; }
 	}
 	base.fijar_alto(alto);
-	if (!hay_cima) for (int x = 1; x <= 6; x++) for (int z = 1; z <= 6; z++) if (es_masa(x, z)) base.poner(x, alto, z, F);
+	if (!hay_cima) for (int x = 1; x <= 6; x++) for (int z = 1; z <= 6; z++) if (x == 1 || x == 6 || z == 1 || z == 6) base.poner(x, alto, z, F);
 	for (auto& b : bl) base.poner(b[0], b[1], b[2], (Kind)b[3]);
 	base.px = jx; base.py = jy; base.pz = jz; base.hx = cx; base.hz = cz;
 	bool hay_k = false;

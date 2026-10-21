@@ -49,7 +49,7 @@ func _init() -> void:
 		for k in ["arana", "puente", "tala"]:
 			if tags[k] > 0:
 				etiquetas.append("%s %d" % [k, tags[k]])
-		print("%s %d: %d bloques, %d pasos / %d agarres / %d bloques distintos, técnicas: %s" % [etiqueta, guardadas, t.bloques.size() - 32, sol.moves, sol.agarres, sol.distintos, ", ".join(etiquetas)])
+		print("%s %d: %d bloques, %d pasos / %d agarres / %d bloques distintos, técnicas: %s" % [etiqueta, guardadas, t.bloques.size() - 20, sol.moves, sol.agarres, sol.distintos, ", ".join(etiquetas)])
 		dump.store_line(JSON.stringify({"etiqueta": "%s %d" % [etiqueta, guardadas], "alto": t.alto, "bloques": _celdas(t), "jugador": [t.jugador.x, t.jugador.y, t.jugador.z], "pasos": sol.moves, "agarres": sol.agarres, "deshechos": sol.distintos, "tocados": sol.distintos, "armado": sol.moves, "tags": tags}))
 	dump.close()
 	print("listo: %d diseños, %d resolubles, %d guardadas, %d s" % [intentos, resolubles, guardadas, (Time.get_ticks_msec() - t0) / 1000])
