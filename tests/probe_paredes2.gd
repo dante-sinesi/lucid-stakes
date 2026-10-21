@@ -49,21 +49,31 @@ func _init() -> void:
 	var faces := int(a[6])
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(a[7])
+	# opciones con nombre (después de los 8 primeros argumentos): esp=i,h,c,s,k,t max=4 muertes=1 podar=1 pb=0 pc=3 T=0 cant=1 elite=ruta caras=0 ancho=6 est=0 pcam=40
+	var o := {}
+	for i in range(8, a.size()):
+		var kv := str(a[i]).split("=", true, 1)
+		if kv.size() == 2:
+			o[kv[0]] = kv[1]
 	var kinds: Array = []
-	if a.size() > 8 and a[8] != "no":
-		kinds = Array(str(a[8]).split(","))
-	var spec_tries := int(a[9]) if a.size() > 9 else 150
-	var deaths := a.size() > 10 and a[10] == "1"
-	var podar := a.size() > 11 and a[11] == "1"
-	Gen.peso_bloques = float(a[12]) if a.size() > 12 else 0.0
-	Gen.peso_cobertura = float(a[13]) if a.size() > 13 else 3.0
-	Gen.temperatura = float(a[14]) if a.size() > 14 else 0.0
-	Gen.peso_caras = float(a[17]) if a.size() > 17 else 0.0
-	Base.ancho = int(a[18]) if a.size() > 18 else 6
-	Gen.cambiar_cantidad = not (a.size() > 15 and a[15] == "0")
+	if str(o.get("esp", "no")) != "no":
+		kinds = Array(str(o.esp).split(","))
+	var spec_tries := int(o.get("max", 4))
+	var deaths := str(o.get("muertes", "0")) == "1"
+	var podar := str(o.get("podar", "1")) == "1"
+	Gen.peso_bloques = float(o.get("pb", 0.0))
+	Gen.peso_cobertura = float(o.get("pc", 3.0))
+	Gen.temperatura = float(o.get("T", 0.0))
+	Gen.cambiar_cantidad = str(o.get("cant", "1")) == "1"
+	Gen.peso_caras = float(o.get("caras", 0.0))
+	Base.ancho = int(o.get("ancho", 6))
+	Base.espesor = int(o.get("esp_pared", 2))
+	Gen.peso_estados = float(o.get("est", 0.0))
+	Gen.peso_dispersion = float(o.get("disp", 2.0))
+	Gen.peso_caminata = float(o.get("pcam", 40.0))
 	var elite: Array = []
-	if a.size() > 16 and a[16] != "" and a[16] != "no":
-		var ep := ProjectSettings.globalize_path(a[16])
+	if str(o.get("elite", "no")) != "no":
+		var ep := ProjectSettings.globalize_path(str(o.elite))
 		if FileAccess.file_exists(ep):
 			for r in Pack.load_library(ep):
 				if (mode == "pared") == (str(r.shape) == "P6"):
@@ -130,7 +140,7 @@ func _init() -> void:
 		for c in best.cols:
 			cols["%d,%d" % [c.x, c.y]] = best.cols[c]
 		var exits: Array = [best.exit] + Array(best.get("exits_extra", []))
-		dump.store_line(JSON.stringify({"etiqueta": tag, "h": h, "cols": cols, "exits": _cells(exits), "floor": _cells(best.floor_cells), "profundidad": 4 if mode == "pared" else 8, "costos": best.costs.map(func(c): return [c.ok, c.moves, c.grabs]), "derrumbes": int(col.movimientos_que_derrumban), "especiales": sp, "frames": _frames(best, rr.path), "camino": RoomLib.path_string(rr.path)}))
+		dump.store_line(JSON.stringify({"etiqueta": tag, "h": h, "cols": cols, "exits": _cells(exits), "floor": _cells(best.floor_cells), "profundidad": (Base.espesor + 2) if mode == "pared" else 8, "costos": best.costs.map(func(c): return [c.ok, c.moves, c.grabs]), "derrumbes": int(col.movimientos_que_derrumban), "especiales": sp, "frames": _frames(best, rr.path), "camino": RoomLib.path_string(rr.path)}))
 	dump.close()
 	Pack.write_library(out, ProjectSettings.globalize_path("bibliotecas/p2_%s.rooms" % tag), true)
 	print("guardadas %d en %.0f s" % [out.size(), float(Time.get_ticks_msec() - t0) / 1000.0])

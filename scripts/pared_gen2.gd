@@ -122,13 +122,13 @@ static func score(room: Dictionary, costs: Array) -> float:
 		if float(c.grabs) < min_empujes_por_piso * float(h) or float(c.moves) < min_pasos_por_piso * float(h):
 			continue   # (una cara que se resuelve con muy poco —un salto de catapulta, un par de empujes— no cuenta como resuelta: es trivial)
 		solved += 1
-		total += float(c.moves) + 3.0 * float(c.grabs) + 4.0 * float(c.blocks) + 2.0 * float(c.get("switches", 0)) - peso_caminata * float(c.get("walk", 0.0))
+		total += float(c.moves) + 3.0 * float(c.grabs) + 4.0 * float(c.blocks) + 2.0 * float(c.get("switches", 0)) - peso_caminata * float(c.get("walk", 0.0)) + peso_estados * log(maxf(float(c.get("states", 1)), 1.0)) / log(2.0)
 		lo = mini(lo, int(c.moves))
 		hi = maxi(hi, int(c.moves))
 	if solved == 0:
 		return -1.0
 	if costs.size() > 1:
-		total += 30.0 * float(solved) + 2.0 * float(hi - lo) - 80.0 * float(costs.size() - solved)
+		total += 30.0 * float(solved) + peso_dispersion * float(hi - lo) - 80.0 * float(costs.size() - solved)
 	return total
 
 
@@ -359,6 +359,8 @@ static var cambiar_cantidad := true   # la escalada también agrega y saca bloqu
 static var temperatura := 0.0         # 0: sólo acepta lo que no baja el puntaje; más: acepta bajas chicas con probabilidad exp(-baja / temperatura)
 static var min_empujes_por_piso := 1.0   # una cara con menos empujes que esto (por piso) no cuenta
 static var min_pasos_por_piso := 3.0     # ni con menos pasos que esto (por piso)
+static var peso_dispersion := 2.0  # con varias salidas: puntos por cada paso de diferencia entre la salida más barata y la más cara (rutas de dificultad distinta)
+static var peso_estados := 0.0     # puntos por cada duplicación de los estados que el A* exacto tuvo que mirar (rooms donde la heurística engaña: hay que pensar más)
 static var peso_caminata := 40.0   # puntos que se restan por la parte del camino que se camina antes del primer empuje (0 a 1)
 static var peso_caras := 0.0       # puntos por cada cara del cilindro (más allá de la primera) de la que el camino más corto saca algún bloque: hace que el material de todo el anillo cuente
 static var peso_bloques := 0.0     # puntos que se restan por cada bloque de la pared (empuja a que haya el material justo)

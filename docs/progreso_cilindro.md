@@ -25,3 +25,10 @@ Bitácora de la noche del 2026-10-21 (desde la 01:50 hasta las 08:00). Las imág
 - **El mejor resultado fue un valor atípico**: una pared plana de 46 pasos y 15 empujes con una agrietada y dos trampas (`08_*`), que apareció una sola vez entre unas 130 salas; el resto, 20 a 32 pasos. Las siguientes corridas parten de las mejores (`bibliotecas/p2_elite.rooms`, `tests/elite_paredes.gd`) sin superarla.
 - **Visor interactivo** de las mejores paredes con reproducción paso a paso: artefacto "Visor de paredes" (datos con `tests/volcar_visor.gd`).
 - **Comparación del ancho de la pared plana** (6, 9 y 12 celdas): en curso.
+
+### 04:25 - ancho, espesor, termino de estados, dispersion (sin mejora)
+- Ancho 6/9/12 de la pared plana: 20-31 pasos / 6-9 empujes. Mas ancho no sube el techo.
+- Espesor 1 y 3: 23-25 pasos / 6-7 empujes. Igual.
+- Termino `est` (estados que explora el A*, proxy de "engano") 6 y 15: 24-27 pasos / 6-7 empujes. Igual.
+- `disp=10` (salidas dispersas): 21-24 pasos / 6 empujes. Igual.
+- Conclusion: la busqueda aleatoria + recocido se estanca en ~25 pasos / 6-7 empujes para h=6; lo que cambia son las variantes de forma, no la dificultad. Imagen: capturas/progreso/04h_espesor_est_disp.png

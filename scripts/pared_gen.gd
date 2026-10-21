@@ -13,13 +13,14 @@ const Conv := preload("res://scripts/convoy_gen.gd")
 const SIX: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]
 
 
+static var espesor := 2   # espesor de la pared plana (el cilindro es siempre de 2)
 static var ancho := 6   # ancho de la pared plana (la franja de piso mide ancho + 2); el cilindro es siempre de 6x6
 
 
 static func arena(kind: String) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	for x in (ancho + 2 if kind == "pared" else 8):
-		for z in (4 if kind == "pared" else 8):
+		for z in (espesor + 2 if kind == "pared" else 8):
 			out.append(Vector2i(x, z))
 	return out
 
@@ -40,7 +41,7 @@ static func mass(kind: String) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if kind == "pared":
 		for x in range(1, ancho + 1):
-			for z in range(1, 3):
+			for z in range(1, espesor + 1):
 				out.append(Vector2i(x, z))
 	else:
 		for x in range(1, 7):
@@ -177,7 +178,7 @@ static func face_costs(room: Dictionary, cap := 300000, ms := 4000) -> Array:
 		if ev.is_empty():
 			out.append({"ok": false, "moves": -1, "grabs": 0, "blocks": 0})
 		else:
-			out.append({"ok": true, "moves": int(ev.opt.moves), "grabs": int(ev.opt.grabs), "blocks": int(ev.opt.blocks), "switches": int(ev.opt.switches), "walk": float(ev.opt.walk), "path": ev.path})
+			out.append({"ok": true, "moves": int(ev.opt.moves), "grabs": int(ev.opt.grabs), "blocks": int(ev.opt.blocks), "switches": int(ev.opt.switches), "walk": float(ev.opt.walk), "states": int(ev.opt.get("states", 1)), "path": ev.path})
 	return out
 
 
