@@ -29,6 +29,9 @@ func _init() -> void:
 		n += 1
 		if (n - 1) % partes != parte:
 			continue
+		if bool(d.get("exacto", false)) and float(d.get("complejidad", 0.0)) > 0.0:   # (ya refinada y medida: se copia tal cual)
+			out.store_line(JSON.stringify(d))
+			continue
 		var t = Vista.motor_de(d)
 		var m: Dictionary = Nat.minimo(t, int(d.pasos), tope)
 		if bool(m.get("exacto", false)):
