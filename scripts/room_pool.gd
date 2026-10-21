@@ -49,6 +49,100 @@ static func reach_cells(room: Dictionary) -> Array:
 	return out
 
 
+## --- Carga por etapa ------------------------------------------------------------------------------------------------------------
+## La biblioteca grande (más de cien mil salas) no se carga entera: está partida en archivos chicos (data/salas/, ver tests/armar_salas.gd) por calificación de a 5 %, con un índice. Para
+## una torre se leen sólo algunos archivos de cada calificación cercana a la que busca su dificultad, elegidos con la semilla de la torre (`salt`): la misma semilla da siempre las mismas
+## salas y torres distintas ven salas distintas. Los archivos leídos se guardan en una caché chica (los más viejos se sueltan) para que la memoria no crezca con las etapas.
+const SHARD_DIR := "res://data/salas/"
+const CHUNKS_PER_BUCKET := 2   # archivos que se leen de cada calificación
+const CACHE_MAX := 40          # archivos que se guardan en memoria a la vez
+static var _index: Dictionary = {}
+static var _index_loaded := false
+static var _chunk_cache: Dictionary = {}   # archivo -> [entradas]
+static var _chunk_order: Array = []        # del más viejo al más nuevo
+
+
+static func _load_index() -> void:
+	if _index_loaded:
+		return
+	_index_loaded = true
+	var path := SHARD_DIR + "indice.json"
+	if override_path == "" and FileAccess.file_exists(path):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if parsed is Dictionary:
+			_index = parsed
+
+
+## ¿Hay biblioteca para armar torres? (por archivos o, si no hay, el archivo único)
+static func has_library() -> bool:
+	_load_index()
+	return not _index.is_empty() or not all().is_empty()
+
+
+static func _entries_of(rooms: Array) -> Array:
+	var out: Array = []
+	for r in rooms:
+		if not str(r.opt.get("proof", "")) == "exacta" or r.path.is_empty() or excluded_shapes.has(str(r.shape)):
+			continue
+		var kinds := {}
+		for c in r.cols:
+			for ch in String(r.cols[c]):
+				if ch != RoomLib.GAP:
+					kinds[ch] = true
+		var unlock := 0.0
+		for ch in kinds:
+			unlock = maxf(unlock, _unlock_of(ch))
+		out.append({"room": r, "rating": rating(r), "kinds": kinds, "unlock": unlock})
+	return out
+
+
+static func _chunk(file: String) -> Array:
+	_mutex.lock()
+	var hit = _chunk_cache.get(file)
+	_mutex.unlock()
+	if hit != null:
+		_touch(file)
+		return hit
+	var entries := _entries_of(RoomPack.load_library(SHARD_DIR + file))
+	_mutex.lock()
+	_chunk_cache[file] = entries
+	_chunk_order.erase(file)
+	_chunk_order.append(file)
+	while _chunk_order.size() > CACHE_MAX:
+		_chunk_cache.erase(_chunk_order.pop_front())
+	_mutex.unlock()
+	return entries
+
+
+static func _touch(file: String) -> void:
+	_mutex.lock()
+	_chunk_order.erase(file)
+	_chunk_order.append(file)
+	_mutex.unlock()
+
+
+## Las salas que puede usar una torre de dificultad `d` con la semilla `salt`: de cada calificación cercana a lo que se busca (de -0,24 a +0,2), unos archivos elegidos por la semilla.
+static func candidates(d: float, salt: int) -> Array:
+	_load_index()
+	if _index.is_empty():
+		return all()
+	var lo := clampf(target(d, 0, 18) - 0.24, 0.0, 1.0)
+	var hi := clampf(target(d, 17, 18) + 0.2, 0.0, 1.0)
+	var out: Array = []
+	var groups: Array = ["r"] if (excluded_shapes.has("L") and excluded_shapes.has("U")) else ["r", "g"]
+	var chunks: Dictionary = _index.get("chunks", {})
+	for b in range(int(lo * 20.0), mini(int(hi * 20.0), 19) + 1):
+		for g in groups:
+			var key := "%s%02d" % [g, b]
+			var files: Array = chunks.get(key, [])
+			if files.is_empty():
+				continue
+			var first := int(absi(hash("%d|%s" % [salt, key])) % files.size())
+			for k in mini(CHUNKS_PER_BUCKET, files.size()):
+				out.append_array(_chunk(str(files[(first + k) % files.size()])))
+	return out
+
+
 ## Todas las salas con su calificación: {room, rating, kinds (caracteres de bloque que usa), unlock (dificultad desde la que puede salir)}.
 static func all() -> Array:
 	_mutex.lock()
@@ -117,10 +211,10 @@ static func target(d: float, index: int, total: int) -> float:
 
 
 ## Hasta `count` salas para esa dificultad, de la más a la menos conveniente: desbloqueadas a esa dificultad, que entran en `max_h` pisos, no repetidas (`used`: ids), cerca de la calificación buscada (con algo de azar).
-static func pick(rng: RandomNumberGenerator, d: float, index: int, total: int, max_h: int, used: Dictionary, count := 10, shapes_avoid: Array = []) -> Array:
+static func pick(rng: RandomNumberGenerator, d: float, index: int, total: int, max_h: int, used: Dictionary, count := 10, shapes_avoid: Array = [], salt := 0) -> Array:
 	var want := target(d, index, total)
 	var scored: Array = []
-	for e in all():
+	for e in candidates(d, salt):
 		var r: Dictionary = e.room
 		if float(e.unlock) > d + 0.0001 or int(r.h) > max_h or used.has(r.id):
 			continue

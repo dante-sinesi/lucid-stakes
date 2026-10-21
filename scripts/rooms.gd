@@ -204,10 +204,10 @@ static func _generate_once(seed_value: int, rows: int, difficulty: float, opts: 
 	var token = opts.get("cancel_token", null)
 	var ideas := catalog(str(opts.get("scenario", "")), difficulty)
 	var order := plan(rng, 16, difficulty, ideas)
-	var use_lib: bool = bool(opts.get("library", true)) and rows >= LIB_MIN_ROWS and OS.get_environment("SIN_BIBLIOTECA") == "" and OS.get_environment("IDEA_ONLY") == "" and not SCENARIO_IDEAS.has(str(opts.get("scenario", ""))) and not RoomPool.all().is_empty()
+	var use_lib: bool = bool(opts.get("library", true)) and rows >= LIB_MIN_ROWS and OS.get_environment("SIN_BIBLIOTECA") == "" and OS.get_environment("IDEA_ONLY") == "" and not SCENARIO_IDEAS.has(str(opts.get("scenario", ""))) and RoomPool.has_library()
 	var base := _new_base(rows + (LIB_EXTRA_CORE if use_lib else 0))   # (con la biblioteca `rows` es el MÍNIMO de pisos: se agregan salas hasta llegar, y la última pone el portal; el core sobrante se recorta)
 	var st := {"tower": base.tower, "sim": base.sim, "path": [], "row_moves": [] as Array[int], "shapes": [] as Array[String],
-			"infos": [], "reserved": {Vector3i(START.x, 1, START.y): true}, "states": 0, "solves": 0, "used": {}, "last_twist": {}, "last_idea": ""}
+			"infos": [], "reserved": {Vector3i(START.x, 1, START.y): true}, "states": 0, "solves": 0, "used": {}, "last_twist": {}, "last_idea": "", "lib_salt": seed_value}
 	var snaps: Array = []   # el estado antes de cada sala: si una no entra, se vuelve atrás y se rehace la anterior de otra manera
 	var eys: Array[int] = []   # el piso donde empieza cada sala (las ideas de pared son de 2 pisos; las de hielo, bomba y catapulta, de 4)
 	var rooms_done: Array = []
@@ -321,7 +321,7 @@ static func _snapshot(st: Dictionary) -> Dictionary:
 	sh.append_array(st.shapes)
 	return {"tower": t, "sim": st.sim.clone(), "path": st.path.duplicate(), "row_moves": rm, "shapes": sh, "infos": st.infos.duplicate(true),
 			"reserved": st.reserved.duplicate(), "states": st.states, "solves": st.solves, "used": st.used.duplicate(), "last_twist": st.last_twist.duplicate(), "last_idea": st.last_idea,
-			"lib_used": st.get("lib_used", {}).duplicate(), "lib_shapes": st.get("lib_shapes", []).duplicate()}
+			"lib_used": st.get("lib_used", {}).duplicate(), "lib_shapes": st.get("lib_shapes", []).duplicate(), "lib_salt": st.get("lib_salt", 0)}
 
 
 ## La torre vacía: el core (fijo, de arriba a abajo) y el bloque donde empieza el jugador; el resto del piso lo agrega la primera sala.
@@ -654,7 +654,7 @@ static func place_library_room(st: Dictionary, ey: int, rng: RandomNumberGenerat
 		return {"ok": false}
 	var used: Dictionary = st.get("lib_used", {})
 	var arrival := Vector2i(sim.player.x, sim.player.z)
-	var picks: Array = RoomPool.pick(rng, difficulty, index, total, RoomLib.MAX_H, used, LIB_PICKS, st.get("lib_shapes", []))
+	var picks: Array = RoomPool.pick(rng, difficulty, index, total, RoomLib.MAX_H, used, LIB_PICKS, st.get("lib_shapes", []), int(st.get("lib_salt", 0)))
 	var walk := _lib_walk(st, ey, arrival)
 	var spots: Array = walk.keys()
 	for i in range(spots.size() - 1, 0, -1):   # (al azar, y después por distancia: las más cerca primero)
