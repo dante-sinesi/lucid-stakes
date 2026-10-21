@@ -77,13 +77,14 @@ func _init() -> void:
 		var ep := ProjectSettings.globalize_path(str(o.elite))
 		if FileAccess.file_exists(ep):
 			for r in Pack.load_library(ep):
-				if (mode == "pared") == (str(r.shape) == "P6"):
+				if (mode == "pared") == (str(r.shape) == "P6") and int(r.h) >= int(o.get("elite_h", 0)):
 					elite.append(r)
 	var dump := FileAccess.open(ProjectSettings.globalize_path("capturas/p2_%s.jsonl" % tag), FileAccess.WRITE)
 	var out: Array = []
 	var guard := 0
 	var t0 := Time.get_ticks_msec()
-	while out.size() < want and guard < 3000:
+	var max_guard := int(o.get("guardia", 3000))   # (cuántos puntos de partida al azar se prueban como mucho)
+	while out.size() < want and guard < max_guard:
 		guard += 1
 		var h: int = hs[guard % hs.size()]
 		var start := Gen.make(rng, mode, h, n, faces)

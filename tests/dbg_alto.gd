@@ -9,7 +9,7 @@ func _init() -> void:
 	var nok := 0
 	var ok := 0
 	var msg := {}
-	for i in 60:
+	for i in 400:
 		var st := Gen.make(rng, "pared", int(OS.get_cmdline_user_args()[0]), int(OS.get_cmdline_user_args()[1]), 1)
 		var v := RoomLib.validate_structure(st)
 		if v != "":

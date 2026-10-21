@@ -38,3 +38,8 @@ Bitácora de la noche del 2026-10-21 (desde la 01:50 hasta las 08:00). Las imág
 - Bombas ('b') como especial: el recocido no las elige (no son "necesarias"): hay que disenar un modulo donde la bomba sea la unica salida.
 - Produccion desde la elite (5 procesos, 4 salas c/u): sigue 20-28 pasos / 6-8 empujes; los mejores usan 3-4 especiales necesarios (28p/8e con h+t+c+k; 33p/9e con s+t). Imagen: capturas/progreso/05a_produccion_elite.png
 - Visor republicado con las 10 mejores (la mejor 47 pasos / 14 empujes).
+
+### 06:00 - paredes altas (h 8-9) por fin
+- Muestreo masivo de puntos de partida (`guardia=40000`, `suave=1`) da algunas paredes altas resolubles (1 de cada ~300 a h8; 0 a h8 con 400 muestras). Luego `elite_h=8` refina desde esas.
+- Resultado: h9 con 26-28 pasos / 11-12 empujes (1.3 empujes por piso), con el hielo/hierro/agrietado "necesarios". Mas empujes por pared que las de h6 (6-8) con los mismos pasos.
+- Imagen: capturas/progreso/06a_paredes_altas.png
