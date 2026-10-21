@@ -200,7 +200,7 @@ func _llenar_lista() -> void:
 
 
 func sala_nueva() -> void:
-	var d := {"tipo": "3x3", "meta": 4, "jugador": [1, 2, 1], "colgado": [0, 0], "bloques": [[1, 1, 1, "p"], [2, 2, 1, "n"], [3, 3, 1, "n"], [4, 4, 1, "p"], [4, 4, 2, "f"]], "pasos": 0, "agarres": 0, "distintos": 0, "armado": -1, "exacto": false, "camino": []}
+	var d := {"tipo": "3x3", "meta": 4, "jugador": [1, 2, 1], "colgado": [0, 0], "bloques": [[1, 1, 1, "p"], [2, 2, 1, "n"], [3, 3, 1, "n"], [4, 4, 1, "f"]], "pasos": 0, "agarres": 0, "distintos": 0, "armado": -1, "exacto": false, "camino": []}
 	salas.append(d)
 	_llenar_lista()
 	elegir(salas.size() - 1)
@@ -246,7 +246,7 @@ func _armar_cuadros() -> void:
 		t.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
 		if t.ganado:
 			for c in t.bloques:
-				if t.bloques[c] == "p" and c.y == t.meta:
+				if t.bloques[c] == "f" and c.y == t.meta:
 					enc[c] = true
 		cuadros.append(t.duplicar())
 		enc_por_cuadro.append(enc.duplicate())
@@ -291,7 +291,7 @@ func _mostrar_info() -> void:
 	var d: Dictionary = salas[actual]
 	var pisos := int(d.meta) - 1
 	var t := "[b]%s, %d pisos[/b]\n" % [str(d.get("tipo", "?")), pisos]
-	t += "bloques: %d (checkpoint en nivel 1 y %d, un fijo)\n" % [d.bloques.size(), int(d.meta)]
+	t += "bloques: %d (entrada en el nivel 1, salida fija en el nivel %d)\n" % [d.bloques.size(), int(d.meta)]
 	t += "[b]camino más corto: %d pasos[/b]\n" % int(d.get("pasos", 0))
 	t += "agarres (Shift que mueven bloques): %d\n" % int(d.get("agarres", 0))
 	t += "bloques distintos movidos: %d (%.2f por piso)\n" % [int(d.get("distintos", 0)), float(d.get("distintos", 0)) / maxf(pisos, 1.0)]
@@ -600,7 +600,7 @@ func _accion_juego(dir: Vector3i, modo) -> void:
 	movs += 1
 	if juego.ganado:
 		for c in juego.bloques:
-			if juego.bloques[c] == "p" and c.y == juego.meta:
+			if juego.bloques[c] == "f" and c.y == juego.meta:
 				enc_juego[c] = true
 		_refrescar_juego()
 		_estado("¡Checkpoint! Sala superada en %d movimientos (el mínimo era %d)." % [movs, int(salas[actual].get("pasos", 0))])

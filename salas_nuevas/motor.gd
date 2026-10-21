@@ -4,7 +4,7 @@ extends RefCounted
 ## Un bloque es { Vector3i: tipo } con tipo "n" común, "p" checkpoint (se comporta como uno común; lleva el farolito), "f" fijo, y los especiales
 ## "i" hielo, "h" pesado, "c" agrietado, "t" trampa, "s" pinchos, "k" catapulta (todavía no se usan: las salas son de bloques básicos).
 ## El jugador está parado en y cuando hay un bloque en y-1. No hay suelo: sin bloque abajo cae, y si cae por debajo del nivel 1 muere.
-## Se gana parado sobre el bloque checkpoint de la salida: a la altura `meta` (el nivel del bloque).
+## Se gana parado sobre el checkpoint de la salida, que es el único bloque fijo de la sala (el ancla): a la altura `meta` (el nivel del bloque).
 
 const Reglas := preload("res://salas_nuevas/reglas.gd")
 
@@ -305,7 +305,7 @@ func _despues(grieta: Vector3i) -> void:
 	if perdido:
 		return
 	# meta: parado sobre el bloque checkpoint de la salida
-	if colgado == Vector3i.ZERO and jugador.y == meta + 1 and tipo_en(jugador + DOWN) == "p":
+	if colgado == Vector3i.ZERO and jugador.y == meta + 1 and tipo_en(jugador + DOWN) == "f":
 		ganado = true
 
 

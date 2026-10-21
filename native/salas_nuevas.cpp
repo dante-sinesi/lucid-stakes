@@ -390,7 +390,7 @@ struct Sim {
 		asentar();
 		peligros();
 		if (perdido) return false;
-		if (!colgando() && py == alto + 1 && kind(px, py - 1, pz) == CP) ganado = true;
+		if (!colgando() && py == alto + 1 && kind(px, py - 1, pz) == F) ganado = true;
 		return true;
 	}
 
@@ -587,6 +587,8 @@ static string camino_json(const vector<int>& acc) {
 // simulando hacia adelante), así que la sala que sale siempre se puede resolver (con ese camino al revés, o uno más corto).
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+static int g_fx0 = -99, g_fz0 = -99, g_fx1 = 99, g_fz1 = 99;   // la huella de la sala que se está generando: los bloques no salen de ella al desordenar
+
 struct Pred { Estado e; int a; bool bloque; int desde, hasta; };   // desde/hasta: celdas del bloque movido (si bloque)
 
 static bool iguales(const Sim& a, const Sim& b) {
@@ -629,12 +631,13 @@ static void predecesores(const Sim& cur, int radio, vector<Pred>& out) {
 	}
 	// b) se empujó o se tiró un bloque
 	for (int i : cur.cel) {
-		if (cur.g[i] == F) continue;
+		if (cur.g[i] == F || cur.g[i] == CP) continue;   // (el fijo y la entrada no se mueven al desordenar)
 		int x = ix(i), y = iy(i), z = iz(i);
 		if (abs(x - cur.px) > radio || abs(z - cur.pz) > radio || abs(y - cur.py) > 2) continue;
 		for (int k = 0; k < 4; k++) {
 			int ax = x - DIRS[k].x, az = z - DIRS[k].z;
 			if (!dentro(ax, y, az) || cur.hay(ax, y, az)) continue;
+			if (ax < g_fx0 || ax > g_fx1 || az < g_fz0 || az > g_fz1) continue;
 			for (int mj = 0; mj < 2; mj++) {
 				c.copiar_de(cur);
 				c.ganado = false; c.perdido = false;
@@ -696,8 +699,16 @@ static void huella(const string& tipo, int& x0, int& z0, int& w, int& d) {
 	else { x0 = 0; z0 = 0; w = 3; d = 3; }
 }
 
-static bool camino_dfs(mt19937_64& rng, int w, int d, int largo, vector<int>& camino, vector<char>& usado, long& presupuesto) {
-	if ((int)camino.size() == largo) return true;
+// ¿La celda (ex, ez) sirve de salida si se entra por (sx, sz)? Entrada y salida son puntos externos y opuestos de la huella:
+// 3x3: salida en el borde y lejos de la entrada (a 3 o más celdas); 5x3 y 8x3: en la punta contraria.
+static bool fin_valido(const string& tipo, int w, int d, int sx, int sz, int ex, int ez) {
+	if (tipo == "5x3" || tipo == "8x3") return sx == 0 ? ex == w - 1 : ex == 0;
+	bool borde = ex == 0 || ex == w - 1 || ez == 0 || ez == d - 1;
+	return borde && abs(ex - sx) + abs(ez - sz) >= 3;
+}
+
+static bool camino_dfs(const string& tipo, mt19937_64& rng, int w, int d, int largo, vector<int>& camino, vector<char>& usado, long& presupuesto) {
+	if ((int)camino.size() == largo) return fin_valido(tipo, w, d, camino[0] % w, camino[0] / w, camino.back() % w, camino.back() / w);
 	if (--presupuesto < 0) return false;
 	int ult = camino.back();
 	int cx = ult % w, cz = ult / w;
@@ -708,7 +719,7 @@ static bool camino_dfs(mt19937_64& rng, int w, int d, int largo, vector<int>& ca
 		if (nx < 0 || nx >= w || nz < 0 || nz >= d || usado[nz * w + nx]) continue;
 		usado[nz * w + nx] = 1;
 		camino.push_back(nz * w + nx);
-		if (camino_dfs(rng, w, d, largo, camino, usado, presupuesto)) return true;
+		if (camino_dfs(tipo, rng, w, d, largo, camino, usado, presupuesto)) return true;
 		camino.pop_back();
 		usado[nz * w + nx] = 0;
 		if (presupuesto < 0) return false;
@@ -728,35 +739,29 @@ static bool sala_resuelta(const Param& P, mt19937_64& rng, Sim& out) {
 	for (int intento = 0; intento < 60 && !ok; intento++) {
 		camino.clear();
 		fill(usado.begin(), usado.end(), 0);
-		int ini = (int)(rng() % (w * d));
+		int ix0, iz0;   // la entrada: una esquina (3x3) o una de las dos puntas (5x3 y 8x3)
+		if (P.tipo == "5x3" || P.tipo == "8x3") { ix0 = (rng() & 1) ? 0 : w - 1; iz0 = (int)(rng() % d); }
+		else { ix0 = (rng() & 1) ? 0 : w - 1; iz0 = (rng() & 1) ? 0 : d - 1; }
+		int ini = iz0 * w + ix0;
 		camino.push_back(ini);
 		usado[ini] = 1;
 		long pres = 30000;
-		ok = camino_dfs(rng, w, d, P.h, camino, usado, pres);
+		ok = camino_dfs(P.tipo, rng, w, d, P.h, camino, usado, pres);
 	}
 	if (!ok) return false;
 	out.limpiar();
 	out.fijar_alto(P.h);
 	for (int k = 0; k < P.h; k++) {
 		int cx = x0 + camino[k] % w, cz = z0 + camino[k] / w;
-		out.poner(cx, k + 1, cz, (k == 0 || k == P.h - 1) ? CP : N);
+		out.poner(cx, k + 1, cz, k == 0 ? CP : (k == P.h - 1 ? F : N));   // entrada = checkpoint común, salida = el checkpoint fijo (el ancla de la sala)
 	}
 	int ex = x0 + camino[P.h - 1] % w, ez = z0 + camino[P.h - 1] / w;
-	// el fijo: al lado de la salida, a su misma altura, en una celda libre (hacia afuera si se puede)
-	int orden[4] = {0, 1, 2, 3};
-	shuffle(orden, orden + 4, rng);
-	bool puesto = false;
-	for (int q = 0; q < 4 && !puesto; q++) {
-		int nx = ex + DIRS[orden[q]].x, nz = ez + DIRS[orden[q]].z;
-		if (!out.hay(nx, P.h, nz)) { out.poner(nx, P.h, nz, F); puesto = true; }
-	}
-	if (!puesto) return false;
 	out.px = ex; out.py = P.h + 1; out.pz = ez;
-	// extras: pegados a los bloques de la sala, dentro de la huella y un borde de margen, entre los niveles 1 y h
+	// extras: pegados a los bloques de la sala, DENTRO de la huella (la sala se arma en su 3x3, 5x3 u 8x3), entre los niveles 1 y h
 	int puestos = 0;
 	for (int intento = 0; intento < P.extras * 120 && puestos < P.extras; intento++) {
 		vector<int> celdas;
-		for (int i = 0; i < out.lim; i++) if (out.g[i] != NONE && out.g[i] != F) celdas.push_back(i);
+		for (int i = 0; i < out.lim; i++) if (out.g[i] != NONE) celdas.push_back(i);
 		int b = celdas[rng() % celdas.size()];
 		int vx = ix(b), vy = iy(b), vz = iz(b);
 		int dxs[3] = {-1, 0, 1};
@@ -764,7 +769,7 @@ static bool sala_resuelta(const Param& P, mt19937_64& rng, Sim& out) {
 		int ndx = (nx != vx) + (ny != vy) + (nz != vz);
 		if (ndx == 0 || ndx == 3) continue;
 		if (ndx == 2 && ny == vy) continue;
-		if (ny < 1 || ny > P.h || nx < x0 - 1 || nx > x0 + w || nz < z0 - 1 || nz > z0 + d || out.hay(nx, ny, nz)) continue;
+		if (ny < 2 || ny > P.h - 1 || nx < x0 || nx >= x0 + w || nz < z0 || nz >= z0 + d || out.hay(nx, ny, nz)) continue;
 		if (nx == out.px && ny == out.py && nz == out.pz) continue;
 		out.poner(nx, ny, nz, N);
 		Sim t = out;
@@ -875,12 +880,12 @@ static bool mutar(const Sim& base, const Param& P, mt19937_64& rng, Sim& out) {
 	out = base;
 	out.ganado = false; out.perdido = false;
 	vector<int> comunes;
-	for (int i = 0; i < out.lim; i++) if (out.g[i] != NONE && out.g[i] != F) comunes.push_back(i);
+	for (int i = 0; i < out.lim; i++) if (out.g[i] != NONE && out.g[i] != F && out.g[i] != CP) comunes.push_back(i);
 	int tipo = (int)(rng() % 10);
 	if (tipo < 7) {   // mover un bloque a otra celda del mismo nivel
 		int b = comunes[rng() % comunes.size()];
 		int y = iy(b);
-		int nx = x0 - 1 + (int)(rng() % (w + 2)), nz = z0 - 1 + (int)(rng() % (d + 2));
+		int nx = x0 + (int)(rng() % w), nz = z0 + (int)(rng() % d);
 		if (out.hay(nx, y, nz)) return false;
 		Kind k = (Kind)out.g[b];
 		out.quitar(ix(b), iy(b), iz(b));
@@ -891,7 +896,7 @@ static bool mutar(const Sim& base, const Param& P, mt19937_64& rng, Sim& out) {
 		int nx = ix(b) + dxs[rng() % 3], nz = iz(b) + dxs[rng() % 3], ny = iy(b) + dxs[rng() % 3];
 		int nd = (nx != ix(b)) + (ny != iy(b)) + (nz != iz(b));
 		if (nd == 0 || nd == 3 || (nd == 2 && ny == iy(b))) return false;
-		if (ny < 1 || ny > P.h || nx < x0 - 1 || nx > x0 + w || nz < z0 - 1 || nz > z0 + d || out.hay(nx, ny, nz)) return false;
+		if (ny < 2 || ny > P.h - 1 || nx < x0 || nx >= x0 + w || nz < z0 || nz >= z0 + d || out.hay(nx, ny, nz)) return false;
 		out.poner(nx, ny, nz, N);
 	} else {   // sacar un común
 		int b = comunes[rng() % comunes.size()];
@@ -914,6 +919,7 @@ static Resolucion evaluar_sala(const Estado& e, const Param& P, long tope) {
 static double valor_de(const Resolucion& r, const Param& P) { return r.moves + 3.0 * r.agarres + P.wd * r.distintos; }
 
 static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
+	{ int hx0, hz0, hw, hd; huella(P.tipo, hx0, hz0, hw, hd); g_fx0 = hx0; g_fz0 = hz0; g_fx1 = hx0 + hw - 1; g_fz1 = hz0 + hd - 1; }
 	Sim e;
 	if (!sala_resuelta(P, rng, e)) return false;
 	e.ganado = true;

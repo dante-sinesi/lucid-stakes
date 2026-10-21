@@ -26,17 +26,14 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		var tint := Color.from_hsv(lerpf(0.62, 0.05, clampf(float(c.y) / meta, 0.0, 1.0)), 0.55, 1.0)
 		tint = Color(tint.r * 1.15, tint.g * 1.15, tint.b * 1.15)
 		var model := kind
-		if letra == "f":
-			model = BlockModels.CORE
-			tint = Color(1.7, 1.7, 1.7)
-		elif letra == "p":
+		if letra == "p" or letra == "f":   # los checkpoint (entrada común, salida fija) son dorados con su farolito
 			tint = Color(1.9, 1.55, 0.55)
 		var m := MeshInstance3D.new()
 		m.mesh = BlockModels.mesh_for(model, BlockModels.State.PURE, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
 		m.material_override = RoomView.material(tint, kind == 1)
 		m.position = world_pos(c)
 		parent.add_child(m)
-		if letra == "p":
+		if letra == "p" or letra == "f":
 			parent.add_child(_farolito(c, encendidos.has(c)))
 	var p := MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -104,7 +101,7 @@ static func _referencia() -> MeshInstance3D:
 static func direccion_hacia_salida(t) -> Vector3:
 	var salida := Vector3(-1, -1, -1)
 	for c in t.bloques:
-		if t.bloques[c] == "p" and c.y == t.meta:
+		if t.bloques[c] == "f" and c.y == t.meta:
 			salida = world_pos(c)
 	var hacia := Vector3(5.5, 0, 5.5) - Vector3(t.jugador.x + 0.5, 0, t.jugador.z + 0.5)
 	if salida.x >= 0:

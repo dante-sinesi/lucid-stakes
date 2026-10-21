@@ -36,9 +36,9 @@ func _init() -> void:
 			elif t.bloques[c] == "p":
 				checks += 1
 		if fijos != 1:
-			motivos.append("hay %d bloques fijos" % fijos)
-		if checks != 2:
-			motivos.append("hay %d checkpoints" % checks)
+			motivos.append("hay %d bloques fijos (tiene que haber uno: la salida)" % fijos)
+		if checks != 1:
+			motivos.append("hay %d checkpoints de entrada (tiene que haber uno)" % checks)
 		var r := Reglas.asentar(t.bloques, t.jugador)
 		if r.caidos > 0 or r.perdidos > 0:
 			motivos.append("no está anclada al empezar")

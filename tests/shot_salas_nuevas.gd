@@ -72,7 +72,7 @@ func _init() -> void:
 			var a: Array = camino[paso]
 			t.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
 			for c in t.bloques:
-				if t.bloques[c] == "p" and t.ganado and c.y == t.meta:
+				if t.bloques[c] == "f" and t.ganado and c.y == t.meta:
 					enc[c] = true
 			paso += 1
 		print("META sala %d: %s %d pisos, %d pasos, %d agarres, %d bloques distintos, gana: %s" % [idx, d.tipo, int(d.meta), pasos_total, int(d.agarres), int(d.distintos), str(t.ganado)])
