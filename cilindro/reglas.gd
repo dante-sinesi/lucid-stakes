@@ -72,8 +72,9 @@ static func sostenidos(bloques: Dictionary, alto: int) -> Dictionary:
 
 ## Hace caer lo que no se sostiene (de abajo hacia arriba) hasta apoyarse; lo que no encuentra apoyo se pierde.
 ## Devuelve { "bloques": nuevo diccionario, "caidos": cuántos se movieron, "perdidos": cuántos se perdieron }.
-static func asentar(bloques: Dictionary, alto: int) -> Dictionary:
+static func asentar(bloques: Dictionary, alto: int, jugador := Vector3i(-999, -999, -999)) -> Dictionary:
 	var b := bloques.duplicate()
+	var quietos := {}   # (apoyados sólo en el jugador: se vuelven a mirar cuando éste se mueva)
 	var caidos := 0
 	var perdidos := 0
 	var guard := 0
@@ -82,19 +83,20 @@ static func asentar(bloques: Dictionary, alto: int) -> Dictionary:
 		var ok := sostenidos(b, alto)
 		var sueltos: Array = []
 		for c in b:
-			if not ok.has(c):
+			if not ok.has(c) and not quietos.has(c):
 				sueltos.append(c)
 		if sueltos.is_empty():
 			break
 		sueltos.sort_custom(func(p, q): return p.y < q.y)
 		var s: Vector3i = sueltos[0]   # el más bajo cae primero
+		var tipo = b[s]
 		b.erase(s)
 		var y := s.y
 		var aterrizo := false
 		while y > 0:
 			y -= 1
 			var abajo := Vector3i(s.x, y, s.z)
-			if b.has(abajo) and ok.has(abajo) or b.has(abajo) and not sueltos.has(abajo):
+			if abajo == jugador or (b.has(abajo) and (ok.has(abajo) or not sueltos.has(abajo))):
 				aterrizo = true
 				y += 1
 				break
@@ -103,9 +105,11 @@ static func asentar(bloques: Dictionary, alto: int) -> Dictionary:
 				y = 1
 				break
 		if aterrizo and y >= 1:
-			b[Vector3i(s.x, y, s.z)] = true
+			b[Vector3i(s.x, y, s.z)] = tipo
 			if y != s.y:
 				caidos += 1
+			else:
+				quietos[s] = true
 		else:
 			perdidos += 1
 	return {"bloques": b, "caidos": caidos, "perdidos": perdidos}

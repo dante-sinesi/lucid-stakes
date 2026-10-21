@@ -16,6 +16,13 @@ Módulo propio en `cilindro/` (no importa nada de `tower_logic.gd`, `solver.gd` 
 - Todo lo demás cae en línea recta hasta apoyarse en el anillo o en un bloque que se sostiene. Si no hay nada abajo, se pierde.
 - Resultado: una escalera diagonal de H bloques colgando de la cima se sostiene sin bloques extra.
 
-## Pendiente de definir (se agrega acá cuando se confirme)
-- Movimientos del jugador (empujar, tirar, colgarse, bordear, trepar).
-- Condición de victoria.
+## Movimientos (copiados del juego actual, `cilindro/motor.gd`)
+- Caminar: a una celda con piso (bloque o anillo), o bajar un escalón; trepar un bloque si no hay nada encima de él ni sobre vos.
+- Agarrar (Shift): empujar un bloque (o una fila de hasta 3; no si es fijo o pesado), tirar de un bloque, o colgarse yendo hacia atrás si no hay piso. El hielo se desliza al empujarlo.
+- Colgarse (Espacio + dirección): pasar el borde y quedar colgado del bloque donde estabas. Colgado: avanzar por el borde (recto, esquina hacia adentro y hacia afuera, también hacia un bloque con otro encima), trepar (no si hay algo encima) o soltarse.
+- Tipos: común, hielo (resbala), pesado (no se mueve), agrietado (se rompe al bajarte), trampa (se desarma al pisarla), pinchos (pierden), catapulta (lanza hacia arriba). Las bombas todavía no.
+- Victoria: estar parado sobre un bloque de la cima. Perder: caer al vacío (fuera del anillo, sin piso debajo) o pisar pinchos.
+- Las escaleras se construyen en la fila exterior (z = 0, encima del anillo de piso) y se enganchan a la cima por arista.
+
+## Pendiente
+- Solucionador propio (primero en GDScript para validar, después C++), generador (escalera, raíces, desordenador por contra-movimientos), visor.

@@ -1,0 +1,378 @@
+extends RefCounted
+## Motor del cilindro: el jugador y los movimientos (ver docs/cilindro_reglas.md). Módulo aislado: sólo usa cilindro/reglas.gd.
+## Las reglas de movimiento se copiaron del juego actual (empujar, tirar, colgarse, bordear, trepar) con el sostén nuevo.
+## Un bloque es { Vector3i: tipo } con tipo "n" común, "i" hielo, "h" pesado, "c" agrietado, "t" trampa, "s" pinchos, "k" catapulta, "f" fijo (la cima).
+## El jugador está "parado en y" cuando hay algo sólido en y-1: un bloque o el anillo de piso (y = 0). El nivel 1 es el primero con bloques.
+
+const Reglas := preload("res://cilindro/reglas.gd")
+
+enum Modo { MOVER, AGARRAR, COLGAR }
+
+const UP := Vector3i(0, 1, 0)
+const DOWN := Vector3i(0, -1, 0)
+const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+const MAX_FILA := 3
+const SUBE_CATAPULTA := 4
+const ALCANCE_CATAPULTA := 2
+const LIMITE_RESBALON := 40
+const NINGUNA := Vector3i(-999, -999, -999)
+
+var alto := 8
+var bloques := {}
+var jugador := Vector3i(0, 1, 0)
+var colgado := Vector3i.ZERO   # ZERO = de pie; si no, dirección hacia el bloque del que cuelga
+var perdido := false
+var ganado := false
+var motivo := ""
+var pasos := 0
+
+
+func duplicar():
+	var t = get_script().new()
+	t.alto = alto
+	t.bloques = bloques.duplicate()
+	t.jugador = jugador
+	t.colgado = colgado
+	t.perdido = perdido
+	t.ganado = ganado
+	t.motivo = motivo
+	t.pasos = pasos
+	return t
+
+
+## Una torre vacía de altura `alto` con la cima fija puesta y el jugador en `inicio` (sobre el anillo).
+static func nueva(alto_: int, inicio: Vector3i):
+	var t = load("res://cilindro/motor.gd").new()
+	t.alto = alto_
+	for c in Reglas.cima(alto_):
+		t.bloques[c] = "f"
+	t.jugador = inicio
+	return t
+
+
+func poner(c: Vector3i, tipo := "n") -> void:
+	bloques[c] = tipo
+
+
+func tipo_en(c: Vector3i) -> String:
+	return bloques.get(c, "")
+
+
+## ¿Hay algo sólido en la celda? Un bloque o el anillo de piso.
+func solido(c: Vector3i) -> bool:
+	return bloques.has(c) or (c.y == 0 and Reglas.es_anillo(c.x, c.z))
+
+
+func en_limites(c: Vector3i) -> bool:
+	return c.x >= -3 and c.x <= 10 and c.z >= -3 and c.z <= 10 and c.y >= 0 and c.y <= alto + 4
+
+
+func en_huella(c: Vector3i) -> bool:
+	return c.x >= 0 and c.x < Reglas.N and c.z >= 0 and c.z < Reglas.N and c.y >= 0
+
+
+func actuar(d: Vector3i, modo: Modo = Modo.MOVER) -> Dictionary:
+	if ganado or perdido:
+		return {"ok": false, "msg": ""}
+	var grieta := NINGUNA   # el agrietado sobre el que estabas al empezar la acción
+	if colgado == Vector3i.ZERO and tipo_en(jugador + DOWN) == "c":
+		grieta = jugador + DOWN
+	var r: Dictionary
+	if colgado != Vector3i.ZERO:
+		r = _colgado(d)
+	elif modo == Modo.AGARRAR:
+		r = _agarrar(d)
+	elif modo == Modo.COLGAR:
+		r = _colgar(d)
+	else:
+		r = _caminar(d)
+	if r.ok:
+		_despues(grieta)
+	return r
+
+
+func _ok() -> Dictionary:
+	return {"ok": true, "msg": ""}
+
+
+func _no(msg: String) -> Dictionary:
+	return {"ok": false, "msg": msg}
+
+
+func _caminar(d: Vector3i) -> Dictionary:
+	var t := jugador + d
+	if not en_limites(t):
+		return _no("Borde")
+	if bloques.has(t):
+		if bloques.has(t + UP) or bloques.has(jugador + UP):
+			return _no("Bloqueado")
+		jugador = t + UP
+		_llegar(d)
+		return _ok()
+	if solido(t + DOWN):
+		jugador = t
+		_llegar(d)
+		return _ok()
+	if solido(t + DOWN * 2):   # bajar un escalón
+		jugador = t + DOWN
+		_llegar(d)
+		return _ok()
+	return _no("Borde")
+
+
+func _agarrar(d: Vector3i) -> Dictionary:
+	var t := jugador + d
+	if bloques.has(t):
+		var dest := t + d
+		if tipo_en(t) == "f":
+			return _no("Bloque fijo")
+		if tipo_en(t) == "h":
+			return _no("Bloque pesado")
+		if bloques.has(dest):
+			return _empujar_fila(t, d)
+		if tipo_en(t) == "i":   # el hielo se desliza hasta chocar con algo o salir de la huella
+			while en_huella(dest):
+				var n := dest + d
+				if bloques.has(n) or n == jugador:
+					break
+				dest = n
+		_mover(t, dest)
+		return _ok()
+	if bloques.has(jugador - d):
+		if tipo_en(jugador - d) == "f":
+			return _no("Bloque fijo")
+		if tipo_en(jugador - d) == "h":
+			return _no("Bloque pesado")
+		if not en_limites(t):
+			return _no("Borde")
+		if not solido(t + DOWN):
+			var h := t + DOWN
+			if solido(h + DOWN):   # un escalón más abajo: se baja
+				_mover(jugador - d, jugador)
+				jugador = h
+				_llegar(d)
+				return _ok()
+			# sin piso atrás: el bloque viene a donde estabas y quedás colgado del bloque donde estabas parado
+			if bloques.has(jugador + DOWN) and not bloques.has(h) and _alcance_cuelgue(h):
+				if tipo_en(jugador + DOWN) == "i":
+					return _no("Hielo: no hay de dónde agarrarse")
+				_mover(jugador - d, jugador)
+				jugador = h
+				colgado = -d
+				return _ok()
+			return _no("No se puede tirar")
+		_mover(jugador - d, jugador)
+		jugador = t
+		_llegar(d)
+		return _ok()
+	return _caminar(d)   # sin nada que empujar ni tirar, Shift es un paso común
+
+
+func _empujar_fila(t: Vector3i, d: Vector3i) -> Dictionary:
+	var fila: Array[Vector3i] = []
+	var c := t
+	while bloques.has(c):
+		if tipo_en(c) == "f":
+			return _no("Bloque fijo")
+		if tipo_en(c) == "h":
+			return _no("Bloque pesado")
+		fila.append(c)
+		if fila.size() > MAX_FILA:
+			return _no("Demasiados bloques")
+		c += d
+	for i in range(fila.size() - 1, -1, -1):
+		_mover(fila[i], fila[i] + d)
+	return _ok()
+
+
+func _alcance_cuelgue(c: Vector3i) -> bool:
+	return c.x >= -4 and c.x <= 11 and c.z >= -4 and c.z <= 11 and c.y >= 0
+
+
+func _colgar(d: Vector3i) -> Dictionary:
+	var t := jugador + d
+	var h := t + DOWN
+	if tipo_en(jugador + DOWN) == "i":
+		return _no("Hielo: no hay de dónde agarrarse")
+	if not _alcance_cuelgue(t) or bloques.has(t):
+		return _no("No hay borde")
+	if solido(h) or solido(h + DOWN):
+		return _no("Ahí se puede caminar")
+	if not bloques.has(jugador + DOWN):
+		return _no("No hay de dónde colgarse")
+	jugador = h
+	colgado = -d
+	return _ok()
+
+
+func _colgado(d: Vector3i) -> Dictionary:
+	var w := colgado
+	if d == w:   # trepar al bloque
+		var s := jugador + w + UP
+		if bloques.has(s) or bloques.has(jugador + UP):
+			return _no("No hay espacio para trepar")
+		jugador = s
+		colgado = Vector3i.ZERO
+		return _ok()
+	if d == -w:   # soltarse
+		colgado = Vector3i.ZERO
+		return _ok()
+	var h2 := jugador + d
+	var g2 := h2 + w
+	if not _alcance_cuelgue(h2):
+		return _no("No se puede avanzar por el borde")
+	if bloques.has(h2):   # esquina hacia adentro (también si tiene otro encima: se avanza agarrado de su costado)
+		if tipo_en(h2) == "i":
+			return _no("Hielo")
+		colgado = d
+		return _ok()
+	if bloques.has(g2):   # tramo recto
+		if tipo_en(g2) == "i":
+			return _no("Hielo")
+		jugador = h2
+		return _ok()
+	if _alcance_cuelgue(g2) and not bloques.has(jugador + w + UP):   # esquina hacia afuera: se rodea el bloque
+		jugador = g2
+		colgado = -d
+		return _ok()
+	if solido(g2 + DOWN):   # del otro lado hay piso: se sube y se queda parado
+		colgado = Vector3i.ZERO
+		jugador = g2
+		_llegar(d)
+		return _ok()
+	return _no("No se puede avanzar por el borde")
+
+
+func _llegar(d: Vector3i) -> void:
+	var k := tipo_en(jugador + DOWN)
+	if k == "i":
+		_resbalar(d)
+	elif k == "k":
+		_lanzar(d)
+
+
+func _resbalar(d: Vector3i) -> void:
+	for _i in LIMITE_RESBALON:
+		var t := jugador + d
+		if bloques.has(t):
+			return
+		if not en_huella(t):
+			perdido = true
+			motivo = "Caíste al vacío"
+			jugador = Vector3i(t.x, maxi(t.y - 3, -3), t.z)
+			return
+		jugador = t
+		if tipo_en(jugador + DOWN) != "i":
+			return
+
+
+func _lanzar(d: Vector3i) -> void:
+	var origen := jugador
+	for _i in SUBE_CATAPULTA:
+		var c := jugador + UP
+		if not en_limites(c) or bloques.has(c):
+			break
+		jugador = c
+	if jugador == origen:
+		return
+	var tope := jugador.y
+	for _i in ALCANCE_CATAPULTA:
+		var arriba := Vector3i(jugador.x, tope + 1, jugador.z)
+		if not en_limites(arriba) or bloques.has(arriba):
+			break
+		tope += 1
+	for y in range(tope, origen.y, -1):
+		for g_dir in [d, Vector3i(-d.z, 0, d.x), Vector3i(d.z, 0, -d.x), -d]:
+			var g: Vector3i = Vector3i(jugador.x, y, jugador.z) + g_dir
+			if bloques.has(g) and not bloques.has(g + UP) and tipo_en(g) != "i":
+				jugador = Vector3i(jugador.x, y, jugador.z)
+				colgado = g_dir
+				return
+
+
+func _mover(de: Vector3i, a: Vector3i) -> void:
+	var tipo = bloques[de]
+	bloques.erase(de)
+	bloques[a] = tipo
+
+
+func _despues(grieta: Vector3i) -> void:
+	pasos += 1
+	if grieta != NINGUNA and bloques.has(grieta) and jugador != grieta + UP and tipo_en(grieta) == "c":
+		bloques.erase(grieta)   # el agrietado se rompe al bajarte de él
+	_asentar()
+	_peligros()
+	if perdido:
+		return
+	# meta: parado sobre la cima
+	if colgado == Vector3i.ZERO and jugador.y == alto + 1 and tipo_en(jugador + DOWN) == "f":
+		ganado = true
+
+
+func _asentar() -> void:
+	var cambio := true
+	var guardia := 0
+	while cambio and guardia < 50:
+		guardia += 1
+		var r := Reglas.asentar(bloques, alto, jugador)
+		bloques = r.bloques
+		var antes := jugador
+		var antes_colgado := colgado
+		_asentar_jugador()
+		cambio = jugador != antes or colgado != antes_colgado or r.caidos > 0 or r.perdidos > 0
+		if perdido:
+			return
+
+
+func _asentar_jugador() -> void:
+	if perdido:
+		return
+	if colgado != Vector3i.ZERO:
+		if bloques.has(jugador + colgado):
+			return
+		colgado = Vector3i.ZERO
+	while not solido(jugador + DOWN):
+		if jugador.y <= 1:
+			perdido = true
+			motivo = "Caíste al vacío"
+			jugador += Vector3i(0, -3, 0)
+			return
+		jugador += DOWN
+
+
+## Trampa (se desarma al pisarla y cae con ella) y pinchos (se pierde).
+func _peligros() -> void:
+	for _i in 8:
+		if perdido or colgado != Vector3i.ZERO:
+			return
+		var k := tipo_en(jugador + DOWN)
+		if k == "t":
+			bloques.erase(jugador + DOWN)
+			_asentar()
+		elif k == "s":
+			perdido = true
+			motivo = "Caíste sobre los pinchos"
+			return
+		else:
+			return
+
+
+## Dibujo de texto por niveles (de arriba hacia abajo), para mirar la torre en la consola.
+func como_texto() -> String:
+	var out := ""
+	for y in range(alto, -1, -1):
+		out += "nivel %d\n" % y
+		for z in range(-1, 9):
+			var fila := ""
+			for x in range(-1, 9):
+				var c := Vector3i(x, y, z)
+				if c == jugador:
+					fila += "@"
+				elif bloques.has(c):
+					fila += str(bloques[c])
+				elif y == 0 and Reglas.es_anillo(x, z):
+					fila += "_"
+				else:
+					fila += "."
+			out += fila + "\n"
+	return out
