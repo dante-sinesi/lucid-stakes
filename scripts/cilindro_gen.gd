@@ -12,6 +12,7 @@ const RoomLib := preload("res://scripts/room_lib.gd")
 
 const IDEAS: Array[String] = ["muro", "mixto", "capas"]
 const SIDE := 8   # el piso incluido
+static var inner_void := 0.35   # parte de las columnas de adentro que se sacan por completo (huecos para maniobrar)
 
 
 static func cells() -> Array[Vector2i]:
@@ -87,3 +88,174 @@ static func top_view(room: Dictionary) -> String:
 				line += " . "
 		lines.append(line)
 	return "\n".join(lines)
+
+
+# --- generador al revés dentro de la masa ---------------------------------------------------------------------------------------
+
+const Solver := preload("res://scripts/solver.gd")
+const Conv := preload("res://scripts/convoy_gen.gd")
+
+
+## Las 20 celdas de la capa de afuera de la masa, en orden alrededor (sentido horario desde la esquina de arriba a la izquierda).
+static func perimeter() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for x in range(1, 7):
+		out.append(Vector2i(x, 1))
+	for z in range(2, 7):
+		out.append(Vector2i(6, z))
+	for x in range(5, 0, -1):
+		out.append(Vector2i(x, 6))
+	for z in range(5, 1, -1):
+		out.append(Vector2i(1, z))
+	return out
+
+
+## La masa resuelta: todas las columnas llenas (h - 1) salvo una escalera tallada en la capa de afuera (de alto h-2, h-3... 1, alejándose del pilar) y los bloques que se sacaron para tallarla,
+## apilados en el piso de afuera. El jugador está en lo alto del pilar. Devuelve {room, state}.
+static func goal_state(rng: RandomNumberGenerator, h: int) -> Dictionary:
+	var room := RoomLib.make_room("3x3", h)
+	room.shape = "C6"
+	room.cells = cells()
+	room.entry = Vector2i(-1, 3)
+	var per := perimeter()
+	var ei := rng.randi_range(0, per.size() - 1)
+	room.exit = per[ei]
+	var dir := 1 if rng.randf() < 0.5 else -1
+	var cols := {}
+	for c in mass_cells():
+		if c != room.exit and (c - room.entry).length() >= 1.5:
+			cols[c] = "n".repeat(h - 1)
+	# la capa de adentro (pegada al core) tiene huecos y alturas distintas: ahí hay lugar para maniobrar; la de afuera queda como una pared lisa (salvo la escalera)
+	var outer := {}
+	for c in per:
+		outer[c] = true
+	for c in mass_cells():
+		if outer.has(c) or not cols.has(c):
+			continue
+		var roll := rng.randf()
+		if roll < inner_void:
+			cols.erase(c)
+		elif roll < inner_void + 0.3:
+			cols[c] = "n".repeat(rng.randi_range(1, h - 1))
+	var removed := 0
+	for k in range(2, h):   # la celda 1 (pegada al pilar) queda llena; de la 2 en adelante se baja de a uno
+		var c: Vector2i = per[posmod(ei + dir * k, per.size())]
+		var keep := h - k
+		if (c - room.entry).length() < 1.5 or keep < 1:
+			continue
+		removed += (h - 1) - keep
+		cols[c] = "n".repeat(keep)
+	# los bloques sacados, apilados en el piso de afuera (lejos de la llegada)
+	var floor_cells: Array[Vector2i] = []
+	for c in cells():
+		if (c.x == 0 or c.x == 7 or c.y == 0 or c.y == 7) and (c - room.entry).length() >= 2.0:
+			floor_cells.append(c)
+	var guard := 0
+	while removed > 0 and guard < 200:
+		guard += 1
+		var fc: Vector2i = floor_cells[rng.randi_range(0, floor_cells.size() - 1)]
+		if String(cols.get(fc, "")).length() < 3:
+			cols[fc] = String(cols.get(fc, "")) + "n"
+			removed -= 1
+	room["cols"] = cols
+	room.origin = "cilindro"
+	var t = RoomLib.build_state(room)
+	t.player = Vector3i(room.exit.x, h + 1, room.exit.y)
+	return {"room": room, "state": t}
+
+
+static func _inside_ok(t, room: Dictionary) -> bool:
+	var inside := {}
+	for c in room.cells:
+		inside[c] = true
+	for id in t.positions:
+		var p: Vector3i = t.positions[id]
+		if t.fixed.has(p) or p.y < 1:
+			continue
+		var c := Vector2i(p.x, p.z)
+		if c == room.exit:
+			continue
+		if not inside.has(c) or (c - room.entry).length() < 1.5:
+			return false
+	return true
+
+
+## Juega `steps` movimientos hacia atrás desde la masa resuelta (caminar, empujar, tirar: cada uno comprobado como reversible con las reglas del juego). Devuelve la sala o {}.
+static func scramble(rng: RandomNumberGenerator, h: int, steps: int) -> Dictionary:
+	var g := goal_state(rng, h)
+	var room: Dictionary = g.room
+	var s = g.state
+	var seen_blocks := {}
+	var done := 0
+	var pushes := 0
+	var stuck := 0
+	while done < steps and stuck < 20:
+		var cands: Array = []
+		for d in Conv.DIRS:
+			for m in Conv.MODES:
+				var p = s.clone()
+				var r: Dictionary = p.try_action(Vector3i(d.x, 0, d.y), m)
+				if not r.ok or p.lost or p.won or p.positions.size() != s.positions.size():
+					continue
+				if not _inside_ok(p, room):
+					continue
+				var mv := false
+				for id in s.positions:
+					if p.positions[id] != s.positions[id]:
+						mv = true
+						break
+				if not Conv._reversible(p, s, 2 if mv else 1):
+					continue
+				var k: Vector3i = Solver.state_key(p)
+				var w := 0.25
+				if mv:
+					w = 6.0
+					if seen_blocks.has(Vector2i(k.x, k.y)):
+						w *= 0.05
+				cands.append([p, w, mv])
+		if cands.is_empty():
+			stuck += 1
+			continue
+		var total := 0.0
+		for c in cands:
+			total += float(c[1])
+		var pick := rng.randf() * total
+		var chosen = cands[cands.size() - 1]
+		for c in cands:
+			pick -= float(c[1])
+			if pick <= 0.0:
+				chosen = c
+				break
+		s = chosen[0]
+		if chosen[2]:
+			pushes += 1
+		var key: Vector3i = Solver.state_key(s)
+		seen_blocks[Vector2i(key.x, key.y)] = true
+		done += 1
+	if done < steps / 3:
+		return {}
+	# la sala que sale: columnas = bloques sueltos donde quedaron; el jugador empieza en la llegada
+	var rows := {}
+	for id in s.positions:
+		var p: Vector3i = s.positions[id]
+		if s.fixed.has(p) or p.y < 1:
+			continue
+		var c := Vector2i(p.x, p.z)
+		if c == room.exit:
+			continue
+		if not rows.has(c):
+			rows[c] = {}
+		rows[c][p.y] = RoomLib.CHAR_OF_KIND.get(s.kind_at(p), "n")
+	var cols := {}
+	for c in rows:
+		var top := 0
+		for y in rows[c]:
+			top = maxi(top, int(y))
+		var text := ""
+		for y in range(1, top + 1):
+			text += str(rows[c].get(y, RoomLib.GAP))
+		cols[c] = text
+	room["cols"] = cols
+	room.opt["scramble_steps"] = done
+	room.opt["scramble_pushes"] = pushes
+	return room
