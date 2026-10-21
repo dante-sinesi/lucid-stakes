@@ -85,3 +85,8 @@ static func minimo(t, ub: int, tope := 6000000) -> Dictionary:
 ## Las métricas de complejidad (ver docs/metrica_dificultad.md).
 static func medir(t, tope := 3000000) -> Dictionary:
 	return correr(["--medir", "tope=%d" % tope], t, tope)
+
+
+## El mejor camino que se consigue sin demostrar el mínimo (lonjas de 3 a 6 pisos acortadas por ventanas): { ok, lonjas, mejor, salto, agarres, distintos, camino }.
+static func conocido(t, tope_lonja := 300000) -> Dictionary:
+	return correr(["--conocido", "tope_lonja=%d" % tope_lonja], t)

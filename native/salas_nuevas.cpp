@@ -555,6 +555,80 @@ static Resolucion resolver_lonjas(const Estado& e0, int meta, int tope_lonja, in
 	return total;
 }
 
+// Acortar un camino conocido por ventanas: desde cada estado del camino se hace una búsqueda a lo ancho (hasta `ventana` pasos) y, si se llega a algún estado
+// posterior del mismo camino en menos pasos que los que el camino tardaba, se reemplaza ese tramo. Se repite hasta que ninguna ventana mejora.
+// El resultado es un camino válido (se verifica jugándolo) y, en la práctica, muy cerca del mínimo; el mínimo DEMOSTRADO sigue necesitando el A*.
+static vector<int> acortar(const Estado& e0, int meta, vector<int> acc, int ventana, long tope_bfs) {
+	for (int ronda = 0; ronda < 200; ronda++) {
+		int n = (int)acc.size();
+		vector<Estado> est(n + 1);
+		vector<uint64_t> hs(n + 1);
+		unordered_map<uint64_t, int> indice;
+		Sim s;
+		cargar(s, e0, meta);
+		guardar(s, est[0]);
+		hs[0] = clave_estado(est[0]);
+		indice[hs[0]] = 0;
+		for (int i = 0; i < n; i++) {
+			s.actuar(DIRS[acc[i] % 4].x, DIRS[acc[i] % 4].z, acc[i] / 4);
+			guardar(s, est[i + 1]);
+			hs[i + 1] = clave_estado(est[i + 1]);
+			indice[hs[i + 1]] = i + 1;   // (si el camino pasa dos veces por un estado, vale el último)
+		}
+		int mejor_i = -1, mejor_k = -1, mejor_ahorro = 0;
+		vector<int> mejor_tramo;
+		for (int i = 0; i + 2 < n && mejor_ahorro < 3; i++) {
+			// búsqueda a lo ancho desde el estado i
+			struct Nb { Estado e; int padre; int a; int d; };
+			vector<Nb> cola;
+			unordered_map<uint64_t, int> vist;
+			cola.push_back({est[i], -1, -1, 0});
+			vist[hs[i]] = 0;
+			size_t cab = 0;
+			Sim t, u;
+			bool hallado = false;
+			while (cab < cola.size() && (long)cola.size() < tope_bfs && !hallado) {
+				Nb actual = cola[cab];
+				int idx_actual = (int)cab;
+				cab++;
+				if (actual.d >= ventana) continue;
+				cargar(t, actual.e, meta);
+				for (int a = 0; a < 12; a++) {
+					int modo = a / 4;
+					if (t.colgando() && modo != 0) continue;
+					u.copiar_de(t);
+					if (!u.actuar(DIRS[a % 4].x, DIRS[a % 4].z, modo)) continue;
+					uint64_t k = clave_sim(u);
+					if (vist.count(k)) continue;
+					vist[k] = actual.d + 1;
+					Estado ne; guardar(u, ne);
+					cola.push_back({ne, idx_actual, a, actual.d + 1});
+					auto it = indice.find(k);
+					if (it != indice.end() && it->second > i && it->second - i > actual.d + 1) {
+						int ahorro = it->second - i - (actual.d + 1);
+						if (ahorro > mejor_ahorro) {
+							mejor_ahorro = ahorro; mejor_i = i; mejor_k = it->second;
+							mejor_tramo.clear();
+							for (int q = (int)cola.size() - 1; cola[q].padre >= 0; q = cola[q].padre) mejor_tramo.push_back(cola[q].a);
+							reverse(mejor_tramo.begin(), mejor_tramo.end());
+						}
+					}
+				}
+			}
+		}
+		if (mejor_ahorro <= 0) break;
+		vector<int> nuevo(acc.begin(), acc.begin() + mejor_i);
+		nuevo.insert(nuevo.end(), mejor_tramo.begin(), mejor_tramo.end());
+		nuevo.insert(nuevo.end(), acc.begin() + mejor_k, acc.end());
+		acc = nuevo;
+	}
+	// comprobación: jugado de punta a punta tiene que ganar
+	Sim v;
+	cargar(v, e0, meta);
+	for (int a : acc) v.actuar(DIRS[a % 4].x, DIRS[a % 4].z, a / 4);
+	return v.ganado ? acc : vector<int>();
+}
+
 static string kind_letra(int k) {
 	const char* L = "?nfhicstkp";
 	return string(1, L[k < 10 ? k : 0]);
@@ -1177,6 +1251,31 @@ static int minimo_main(int argc, char** argv) {
 	return 0;
 }
 
+// --conocido [tope_lonja=N] [ventana=N] [tope_bfs=N]: el mejor camino que se consigue sin demostrar nada: lonjas de 3, 4, 5 y 6 pisos, cada una acortada por
+// ventanas, y se queda con el más corto (en las pruebas queda entre 0% y 7% sobre el mínimo demostrado). JSON de una línea.
+static int conocido_main(int argc, char** argv) {
+	Estado e0; int meta, tope;
+	leer_sala(e0, meta, tope);
+	long tope_lonja = arg_largo(argc, argv, "tope_lonja", 300000);
+	int ventana = (int)arg_largo(argc, argv, "ventana", 8);
+	long tope_bfs = arg_largo(argc, argv, "tope_bfs", 30000);
+	vector<int> mejor;
+	int mejor_salto = 0, primero = 0;
+	for (int salto = 3; salto <= 6; salto++) {
+		Resolucion r = resolver_lonjas(e0, meta, (int)tope_lonja, salto);
+		if (!r.ok) continue;
+		if (!primero) primero = r.moves;
+		vector<int> acc = acortar(e0, meta, r.acc, ventana, tope_bfs);
+		if (acc.empty()) acc = r.acc;
+		if (mejor.empty() || acc.size() < mejor.size()) { mejor = acc; mejor_salto = salto; }
+	}
+	if (mejor.empty()) { printf("{\"ok\":false}\n"); return 0; }
+	int ag = 0, di = 0;
+	estadisticas(e0, meta, mejor, ag, di);
+	printf("{\"ok\":true,\"lonjas\":%d,\"mejor\":%d,\"salto\":%d,\"agarres\":%d,\"distintos\":%d,\"camino\":%s}\n", primero, (int)mejor.size(), mejor_salto, ag, di, camino_json(mejor).c_str());
+	return 0;
+}
+
 static int generar_main(int argc, char** argv) {
 	Param P;
 	for (int i = 2; i < argc; i++) {
@@ -1233,5 +1332,6 @@ int main(int argc, char** argv) {
 	if (argc > 1 && string(argv[1]) == "--gen") return generar_main(argc, argv);
 	if (argc > 1 && string(argv[1]) == "--medir") return medir_main(argc, argv);
 	if (argc > 1 && string(argv[1]) == "--minimo") return minimo_main(argc, argv);
+	if (argc > 1 && string(argv[1]) == "--conocido") return conocido_main(argc, argv);
 	return resolver_main();
 }

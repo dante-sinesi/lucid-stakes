@@ -33,6 +33,13 @@ func _init() -> void:
 			out.store_line(JSON.stringify(d))
 			continue
 		var t = Vista.motor_de(d)
+		# primero el mejor camino que se consigue (lonjas de 3 a 6 pisos acortadas por ventanas): cuanto más justa la cota superior, menos busca el A*
+		var cj: Dictionary = Nat.conocido(t)
+		if bool(cj.get("ok", false)) and int(cj.mejor) < int(d.pasos):
+			d["pasos"] = int(cj.mejor)
+			d["agarres"] = int(cj.agarres)
+			d["distintos"] = int(cj.distintos)
+			d["camino"] = cj.camino
 		var m: Dictionary = Nat.minimo(t, int(d.pasos), tope)
 		if bool(m.get("exacto", false)):
 			if int(m.minimo) < int(d.pasos) and m.has("camino"):
