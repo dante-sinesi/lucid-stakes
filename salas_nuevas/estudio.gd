@@ -116,7 +116,7 @@ func _armar_interfaz() -> void:
 	slider.value_changed.connect(func(v): if not _suprimir: ir_a(int(v)))
 	barra.add_child(slider)
 	barra.add_child(_boton("Desde atrás del jugador", func(): vista_atras = true; _poner_camara()))
-	barra.add_child(_boton("Diagonal", func(): vista_atras = false; _poner_camara()))
+	barra.add_child(_boton("Cámara libre", func(): _pasar_a_libre(); _poner_camara()))
 	centro_v.add_child(barra)
 	estado = Label.new()
 	centro_v.add_child(estado)
@@ -129,7 +129,7 @@ func _armar_interfaz() -> void:
 	info.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	der.add_child(info)
 	var etiq := Label.new()
-	etiq.text = "Edición (clic en la vista: ctrl + arrastrar gira, rueda acerca)"
+	etiq.text = "Cámara: arrastrá con el botón derecho (o ctrl + clic) para girar, rueda o +/- para acercar, flechas para girar; siempre sigue al personaje. Edición: clic izquierdo en la vista."
 	etiq.autowrap_mode = TextServer.AUTOWRAP_WORD
 	der.add_child(etiq)
 	var herr := GridContainer.new()
@@ -251,10 +251,7 @@ func ir_a(n: int) -> void:
 	_suprimir = false
 	var t = cuadros[paso]
 	Vista.poblar(bloques_nodo, t, enc_por_cuadro[paso])
-	if vista_atras:
-		Vista.camara_detras(cam, t)
-	else:
-		_poner_camara()
+	_poner_camara()
 	var s := "Cuadro %d de %d" % [paso, cuadros.size() - 1]
 	if t.ganado:
 		s += " · ¡llegó a la salida!"
@@ -300,12 +297,58 @@ static func maximo_movimientos(minimo: int, etapa: int) -> int:
 func _poner_camara() -> void:
 	if cuadros.is_empty():
 		return
+	var t = cuadros[paso]
 	if vista_atras:
-		Vista.camara_detras(cam, cuadros[paso])
+		Vista.camara_detras(cam, t)
 	else:
-		var c := Vector3(5.5, float(cuadros[paso].meta) * 0.5 + 0.5, 5.5)
-		RoomView.place_camera(cam, c, yaw, pitch, dist)
-		cam.fov = 50.0
+		# cámara libre: gira y se acerca a gusto del usuario, siempre mirando al personaje
+		var objetivo := Vector3(t.jugador.x + 0.5, t.jugador.y + 0.9, t.jugador.z + 0.5)
+		RoomView.place_camera(cam, objetivo, yaw, pitch, dist)
+		cam.fov = 60.0
+
+
+## Pasa a la cámara libre arrancando justo donde estaba la cámara de atrás del jugador.
+func _pasar_a_libre() -> void:
+	if not vista_atras:
+		return
+	vista_atras = false
+	if cuadros.is_empty():
+		return
+	var f: Vector3 = Vista.direccion_hacia_salida(cuadros[paso])
+	yaw = rad_to_deg(atan2(-f.x, -f.z))
+	pitch = 22.0
+	dist = 6.0
+
+
+func _input(ev: InputEvent) -> void:
+	if not (ev is InputEventKey) or not ev.pressed or cuadros.is_empty():
+		return
+	var k := (ev as InputEventKey).keycode
+	var movio := true
+	match k:
+		KEY_LEFT:
+			_pasar_a_libre()
+			yaw += 8.0
+		KEY_RIGHT:
+			_pasar_a_libre()
+			yaw -= 8.0
+		KEY_UP:
+			_pasar_a_libre()
+			pitch = clampf(pitch + 6.0, 3.0, 88.0)
+		KEY_DOWN:
+			_pasar_a_libre()
+			pitch = clampf(pitch - 6.0, 3.0, 88.0)
+		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
+			_pasar_a_libre()
+			dist = maxf(dist - 0.8, 2.5)
+		KEY_MINUS, KEY_KP_SUBTRACT:
+			_pasar_a_libre()
+			dist = minf(dist + 0.8, 40.0)
+		_:
+			movio = false
+	if movio:
+		_poner_camara()
+		get_viewport().set_input_as_handled()
 
 
 # --- edición ----------------------------------------------------------------------------------------------------------------------------------
@@ -314,15 +357,21 @@ func _entrada_vista(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton:
 		var mb := ev as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
-			dist = maxf(dist - 1.0, 4.0)
+			_pasar_a_libre()
+			dist = maxf(dist - 0.8, 2.5)
 			_poner_camara()
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
-			dist = minf(dist + 1.0, 40.0)
+			_pasar_a_libre()
+			dist = minf(dist + 0.8, 40.0)
 			_poner_camara()
+		elif mb.button_index == MOUSE_BUTTON_RIGHT or mb.button_index == MOUSE_BUTTON_MIDDLE:
+			arrastrando = mb.pressed
+			if mb.pressed:
+				_pasar_a_libre()
 		elif mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed and mb.ctrl_pressed:
 				arrastrando = true
-				vista_atras = false
+				_pasar_a_libre()
 			elif mb.pressed:
 				_clic(mb.position)
 			else:
@@ -330,7 +379,7 @@ func _entrada_vista(ev: InputEvent) -> void:
 	elif ev is InputEventMouseMotion and arrastrando:
 		var mm := ev as InputEventMouseMotion
 		yaw -= mm.relative.x * 0.4
-		pitch = clampf(pitch + mm.relative.y * 0.4, 5.0, 85.0)
+		pitch = clampf(pitch + mm.relative.y * 0.4, 3.0, 88.0)
 		_poner_camara()
 
 

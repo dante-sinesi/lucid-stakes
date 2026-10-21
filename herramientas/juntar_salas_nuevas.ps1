@@ -10,5 +10,5 @@ foreach ($f in Get-ChildItem bibliotecas\sn_corridas\*.jsonl) {
     if (-not $vistos.ContainsKey($clave)) { $vistos[$clave] = $true; $salida += $l }
   }
 }
-$salida | Set-Content bibliotecas\salas_nuevas.jsonl -Encoding utf8
+$salida | Set-Content bibliotecas\salas_nuevas.jsonl -Encoding ascii
 "$($salida.Count) salas en bibliotecas\salas_nuevas.jsonl"

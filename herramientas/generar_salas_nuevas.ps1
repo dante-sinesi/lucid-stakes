@@ -22,7 +22,7 @@ $fin = (Get-Date).AddMinutes($Minutos)
 $trabajos = @()
 for ($i = 0; $i -lt $Copias; $i++) {
   $cfg = $cfgs[$i % $cfgs.Count]
-  $semilla = 1000 + $i * 100000 + [int](Get-Date).Ticks % 1000
+  $semilla = 1000 + $i * 100000 + [int]((Get-Date).Ticks % 1000)
   $archivo = "bibliotecas\sn_corridas\copia_$i.jsonl"
   $cmd = "`$fin = Get-Date '$($fin.ToString("o"))'; `$s = $semilla; while ((Get-Date) -lt `$fin) { & tools\salas_nuevas.exe --gen $cfg $comun seed=`$s 2>`$null | Add-Content -Encoding ascii '$archivo'; `$s++ }"
   $p = Start-Process powershell -ArgumentList "-NoProfile", "-Command", $cmd -PassThru -WindowStyle Hidden
