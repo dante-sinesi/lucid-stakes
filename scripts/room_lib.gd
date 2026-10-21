@@ -233,7 +233,7 @@ static func room_from_layout(base: Dictionary, blocks: Array) -> Dictionary:
 ## Las casillas del core (de arriba a abajo) dentro de la huella de la forma: en la L y la U el hueco de adentro es justo donde va el core de 2x2. En la sala son bloques fijos: el
 ## jugador y los bloques no pueden usar ese hueco (en la torre hay un core ahí). Las formas de 3 filas no lo tienen en su recuadro.
 static func core_cells(shape: String) -> Array[Vector2i]:
-	if shape == "L" or shape == "U":
+	if shape == "L" or shape == "U" or shape == "C6":
 		return [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4)]
 	return []
 
