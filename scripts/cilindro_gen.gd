@@ -168,8 +168,8 @@ static func goal_state(rng: RandomNumberGenerator, h: int) -> Dictionary:
 ## repartidos en el anillo. La salida es un pilar fijo en el borde de arriba (la "salida" del cilindro). El jugador está arriba, en la salida.
 static func goal_sparse(rng: RandomNumberGenerator, h: int, extras: int) -> Dictionary:
 	var room := RoomLib.make_room("3x3", h)
-	room.shape = "C6H"   # (sin core sólido: el pozo del medio está vacío, con piso)
-	room.cells = cells(true)
+	room.shape = "C6H"   # (sin core: el pozo del medio está vacío y sin piso: lo que cae ahí se pierde; el piso es el anillo de afuera y la base fija del cilindro)
+	room.cells = cells()
 	room.entry = Vector2i(-1, 3)
 	var per := perimeter()
 	var ei := rng.randi_range(0, per.size() - 1)
@@ -311,7 +311,7 @@ static func mutate(rng: RandomNumberGenerator, room: Dictionary) -> Dictionary:
 		return {}
 	var keys: Array = cols.keys()
 	var allowed: Array = []
-	for c in cells(true):
+	for c in cells():
 		if c != r.exit and (c - r.entry).length() >= 1.5:
 			allowed.append(c)
 	if rng.randf() < 0.75:
