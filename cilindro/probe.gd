@@ -1,6 +1,6 @@
 extends SceneTree
 ## Sonda del generador del cilindro: escalera -> desordenado hacia atrás (haz) -> solucionador exacto.
-## Uso: GAME_SANDBOX=1 godot --headless --path . -s cilindro/probe.gd -- ALTO OBJETIVO_BLOQUES ANCHO SEMILLAS [PRIMERA_SEMILLA=1] [ETIQUETA=probe]
+## Uso: GAME_SANDBOX=1 godot --headless --path . -s cilindro/probe.gd -- alto=6 obj=8 dist=3 ancho=12 n=3 seed=1 tag=probe ramas=0 tope=2 prof=60
 ## Escribe capturas/cilindro_ETIQUETA.jsonl (una línea por torre) para dibujarlas.
 const Esc := preload("res://cilindro/escalera.gd")
 const Des := preload("res://cilindro/desordenador.gd")
@@ -16,13 +16,22 @@ func _celdas(t) -> Array:
 
 
 func _init() -> void:
-	var a := OS.get_cmdline_user_args()
-	var alto := int(a[0]) if a.size() > 0 else 6
-	var objetivo := int(a[1]) if a.size() > 1 else 6
-	var ancho := int(a[2]) if a.size() > 2 else 12
-	var cuantas := int(a[3]) if a.size() > 3 else 3
-	var primera := int(a[4]) if a.size() > 4 else 1
-	var etiqueta := a[5] if a.size() > 5 else "probe"
+	var o := {}
+	for arg in OS.get_cmdline_user_args():
+		var kv: PackedStringArray = arg.split("=", true, 1)
+		if kv.size() == 2:
+			o[kv[0]] = kv[1]
+	var alto := int(o.get("alto", 6))
+	var objetivo := int(o.get("obj", 6))
+	var distintos := int(o.get("dist", 1))
+	var ancho := int(o.get("ancho", 12))
+	var cuantas := int(o.get("n", 3))
+	var primera := int(o.get("seed", 1))
+	var etiqueta: String = o.get("tag", "probe")
+	var n_ramas := int(o.get("ramas", 0))
+	var tope_bloque := int(o.get("tope", 2))
+	var prof := int(o.get("prof", 60))
+	Des.peso_y = float(o.get("py", 0.5))
 	var dump := FileAccess.open(ProjectSettings.globalize_path("capturas/cilindro_%s.jsonl" % etiqueta), FileAccess.WRITE)
 	for semilla in range(primera, primera + cuantas):
 		var rng := RandomNumberGenerator.new()
@@ -34,25 +43,21 @@ func _init() -> void:
 		if e == null:
 			print("semilla %d: la escalera no engancha (inicio %d, sentido %d)" % [semilla, inicio, sentido])
 			continue
+		if n_ramas > 0:
+			Esc.ramas(rng, e, n_ramas)
 		var fin = Esc.resuelta(e)
 		if fin == null:
 			print("semilla %d: la escalera no se resuelve" % semilla)
 			continue
-		var r := Des.desordenar_haz(rng, fin, objetivo, ancho, 60)
+		var r := Des.desordenar_exacto(rng, fin, ancho, prof, int(o.get("pre", 30)), int(o.get("meta", 9999)))
 		if r.is_empty():
 			print("semilla %d: el haz no llegó al anillo" % semilla)
 			continue
 		var s = r.estado
-		var sol := Sol.resolver(s, 300000)
-		var agarres := 0
-		if sol.ok:
-			var u = s.duplicar()
-			for p in sol.path:
-				var antes: int = u.bloques.hash()
-				u.actuar(p[0], p[1])
-				if p[1] == 1 and u.bloques.hash() != antes:
-					agarres += 1
-		print("semilla %d: alto %d, deshechos %d, camino armado %d, solución exacta %s pasos / %d agarres (%d estados) en %d ms" % [semilla, alto, r.bloques, r.profundidad, str(sol.moves) if sol.ok else "?", agarres, sol.states, Time.get_ticks_msec() - t0])
-		dump.store_line(JSON.stringify({"etiqueta": "%s %d" % [etiqueta, semilla], "alto": alto, "bloques": _celdas(s), "jugador": [s.jugador.x, s.jugador.y, s.jugador.z], "pasos": sol.moves if sol.ok else -1, "agarres": agarres, "armado": r.profundidad, "deshechos": r.bloques}))
+		var sol_pasos: int = r.pasos
+		var agarres: int = r.agarres
+		var distintos_mov := 0
+		print("semilla %d: alto %d, valor %d: solución exacta %d pasos / %d agarres (camino armado %d) en %d ms" % [semilla, alto, r.valor, r.pasos, r.agarres, r.profundidad, Time.get_ticks_msec() - t0])
+		dump.store_line(JSON.stringify({"etiqueta": "%s %d" % [etiqueta, semilla], "alto": alto, "bloques": _celdas(s), "jugador": [s.jugador.x, s.jugador.y, s.jugador.z], "pasos": r.pasos, "agarres": r.agarres, "armado": r.profundidad, "deshechos": 0, "tocados": 0}))
 	dump.close()
 	quit(0)

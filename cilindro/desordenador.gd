@@ -8,6 +8,8 @@ const Motor := preload("res://cilindro/motor.gd")
 const Reglas := preload("res://cilindro/reglas.gd")
 const Sol := preload("res://cilindro/solucionador.gd")
 
+static var peso_y := 0.5   # cuánto pesa que el jugador esté más abajo en el puntaje del haz (poco: primero hay que desordenar, bajar viene solo)
+
 const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
 
@@ -157,14 +159,36 @@ static func desordenar(rng: RandomNumberGenerator, final, objetivo_bloques := 8,
 	return {"estado": t, "inverso": hechos, "bloques": bloques_movidos, "fin": motivo, "llego": t.jugador.y == 1 and Reglas.es_anillo(t.jugador.x, t.jugador.z)}
 
 
-## Búsqueda en haz hacia atrás: en cada capa se queda con los `ancho` estados anteriores más prometedores (el jugador más abajo y más
-## movimientos de bloque deshechos, con algo de azar) hasta que alguno llega al anillo con al menos `objetivo_bloques` deshechos.
-## Devuelve igual que desordenar (y "profundidad" = largo del camino al revés), o {} si no llegó.
-static func desordenar_haz(rng: RandomNumberGenerator, final, objetivo_bloques := 8, ancho := 12, profundidad := 40, ruido := 4.0) -> Dictionary:
-	var nodos: Array = [{"t": final.duplicar(), "padre": -1, "hecho": null, "bl": 0}]
+## Diferencia entre dos estados: [celda que dejó de tener bloque, celda que pasó a tenerlo] (o null si no cambió un solo bloque).
+static func _desplazado(antes, despues):
+	var quito = null
+	var puso = null
+	for c in antes.bloques:
+		if not despues.bloques.has(c):
+			quito = c
+	for c in despues.bloques:
+		if not antes.bloques.has(c):
+			puso = c
+	if quito == null or puso == null:
+		return null
+	return [quito, puso]
+
+
+## Búsqueda en haz hacia atrás: en cada capa se queda con los `ancho` estados anteriores más prometedores hasta que alguno llega al anillo
+## con al menos `objetivo` movimientos de bloque EFECTIVOS deshechos (los que devuelven un bloque a una celda donde ya estuvo no cuentan: se cancelarían).
+## Puntúa: movimientos efectivos, bloques distintos tocados, jugador más abajo y algo de azar. Entre los que llegan, evalúa con el solucionador exacto
+## hasta `evaluar` candidatos y se queda con el que pide más pasos. Devuelve { estado, inverso, bloques, profundidad, pasos, agarres } o {}.
+static func desordenar_haz(rng: RandomNumberGenerator, final, objetivo := 8, ancho := 12, profundidad := 40, ruido := 4.0, evaluar := 6, distintos := 1, tope_por_bloque := 2) -> Dictionary:
+	var ids0 := {}
+	var n_id := 0
+	for c in final.bloques:
+		if final.bloques[c] != "f":
+			ids0[c] = n_id
+			n_id += 1
+	var nodos: Array = [{"t": final.duplicar(), "padre": -1, "hecho": null, "bl": 0, "ef": 0, "ids": ids0, "vis": {}, "tocados": {}, "cnt": {}}]
 	var capa: Array = [0]
 	var vistos := {_k(nodos[0].t): true}
-	var mejor := -1
+	var llegaron: Array = []
 	for nivel in profundidad:
 		var siguientes: Array = []
 		for idx in capa:
@@ -174,26 +198,85 @@ static func desordenar_haz(rng: RandomNumberGenerator, final, objetivo_bloques :
 				if vistos.has(k):
 					continue
 				vistos[k] = true
-				var bl: int = nodo.bl + (1 if o.tipo == "bloque" else 0)
-				nodos.append({"t": o.s, "padre": idx, "hecho": [o.d, o.m], "bl": bl})
+				var bl: int = nodo.bl
+				var ef: int = nodo.ef
+				var ids: Dictionary = nodo.ids
+				var vis: Dictionary = nodo.vis
+				var tocados: Dictionary = nodo.tocados
+				var cnt: Dictionary = nodo.cnt
+				if o.tipo == "bloque":
+					var mv = _desplazado(nodo.t, o.s)
+					if mv == null:
+						continue
+					bl += 1
+					ids = ids.duplicate()
+					vis = vis.duplicate(true)
+					tocados = tocados.duplicate()
+					cnt = cnt.duplicate()
+					var id: int = ids[mv[0]]
+					ids.erase(mv[0])
+					ids[mv[1]] = id
+					var v: Dictionary = vis.get(id, {})
+					cnt[id] = int(cnt.get(id, 0)) + 1
+					if v.has(mv[1]) or cnt[id] > tope_por_bloque:
+						pass   # volvió a una celda donde ya estuvo, o ya se movió demasiado: no cuenta (se cancelaría o sería una fila fácil de prever)
+					else:
+						ef += 1
+						v[mv[1]] = true
+						vis[id] = v
+						tocados[id] = true
+				nodos.append({"t": o.s, "padre": idx, "hecho": [o.d, o.m], "bl": bl, "ef": ef, "ids": ids, "vis": vis, "tocados": tocados, "cnt": cnt})
 				var j := nodos.size() - 1
 				siguientes.append(j)
 				var en_anillo: bool = o.s.jugador.y == 1 and Reglas.es_anillo(o.s.jugador.x, o.s.jugador.z) and o.s.colgado == Vector3i.ZERO
-				if en_anillo and bl >= objetivo_bloques and (mejor < 0 or bl > nodos[mejor].bl):
-					mejor = j
-		if mejor >= 0:
+				if en_anillo and ef >= objetivo and tocados.size() >= distintos:
+					llegaron.append(j)
+		if llegaron.size() >= evaluar:
 			break
 		if siguientes.is_empty():
 			break
 		var puntuados: Array = []
 		for j in siguientes:
 			var n: Dictionary = nodos[j]
-			var p: float = float(n.bl) * 10.0 - float(n.t.jugador.y) * 4.0 + rng.randf() * ruido - (2.0 if n.t.colgado != Vector3i.ZERO else 0.0)
+			var p: float = float(n.ef) * 6.0 + float(n.tocados.size()) * 20.0 - float(n.t.jugador.y) * peso_y + rng.randf() * ruido - (2.0 if n.t.colgado != Vector3i.ZERO else 0.0)
 			puntuados.append([p, j])
 		puntuados.sort_custom(func(a, b): return a[0] > b[0])
 		capa = []
 		for i in mini(ancho, puntuados.size()):
 			capa.append(puntuados[i][1])
+		if OS.has_environment("CIL_LOG"):
+			var me := 0
+			var mt := 0
+			var my := 99
+			for j in capa:
+				me = maxi(me, nodos[j].ef)
+				mt = maxi(mt, nodos[j].tocados.size())
+				my = mini(my, nodos[j].t.jugador.y)
+			print("nivel %d: candidatos %d, mejor ef %d, distintos %d, y mínima %d" % [nivel, siguientes.size(), me, mt, my])
+	if llegaron.is_empty():
+		return {}
+	# entre los que llegan se elige el que pide más pasos (solucionador exacto)
+	llegaron.shuffle()
+	var mejor := -1
+	var mejor_pasos := -1
+	var mejor_agarres := 0
+	for q in mini(evaluar, llegaron.size()):
+		var j: int = llegaron[q]
+		var sol := Sol.resolver(nodos[j].t, 60000)
+		if not sol.ok:
+			continue
+		var u = nodos[j].t.duplicar()
+		var agarres := 0
+		for pa in sol.path:
+			var antes: int = u.bloques.hash()
+			u.actuar(pa[0], pa[1])
+			if pa[1] == 1 and u.bloques.hash() != antes:
+				agarres += 1
+		var valor: int = sol.moves + 3 * agarres
+		if valor > mejor_pasos:
+			mejor_pasos = valor
+			mejor = j
+			mejor_agarres = agarres
 	if mejor < 0:
 		return {}
 	var hechos: Array = []
@@ -201,7 +284,78 @@ static func desordenar_haz(rng: RandomNumberGenerator, final, objetivo_bloques :
 	while nodos[i].padre >= 0:
 		hechos.append(nodos[i].hecho)
 		i = nodos[i].padre
-	# (se recorrió de la torre armada hacia la final: el orden de juego es el de la cadena, del jugador abajo hacia la cima)
-	hechos.reverse()
-	hechos.reverse()
-	return {"estado": nodos[mejor].t, "inverso": hechos, "bloques": nodos[mejor].bl, "profundidad": hechos.size(), "fin": "haz", "llego": true}
+	return {"estado": nodos[mejor].t, "inverso": hechos, "bloques": nodos[mejor].ef, "tocados": nodos[mejor].tocados.size(), "profundidad": hechos.size(), "fin": "haz", "llego": true}
+
+
+## Valor exacto de un estado: pasos + 3 · agarres del camino más corto (agarres = movimientos de bloque), con el solucionador. { v, pasos, agarres } o v = -1 si no se resolvió con el tope.
+static func valor(t, tope := 60000) -> Dictionary:
+	var sol := Sol.resolver(t, tope)
+	if not sol.ok:
+		return {"v": -1, "pasos": -1, "agarres": 0}
+	var u = t.duplicar()
+	var agarres := 0
+	for pa in sol.path:
+		var antes: int = u.bloques.hash()
+		u.actuar(pa[0], pa[1])
+		if pa[1] == 1 and u.bloques.hash() != antes:
+			agarres += 1
+	return {"v": sol.moves + 3 * agarres, "pasos": sol.moves, "agarres": agarres}
+
+
+## Haz hacia atrás guiado por la distancia EXACTA (el solucionador): en cada capa se evalúan los mejores candidatos (por el puntaje barato) y se
+## queda con los `ancho` que están más lejos de ganar. Devuelve el mejor estado con el jugador en el anillo: { estado, valor, pasos, agarres, profundidad } o {}.
+static func desordenar_exacto(rng: RandomNumberGenerator, final, ancho := 10, profundidad := 40, pre := 30, meta := 9999) -> Dictionary:
+	var nodos: Array = [{"t": final.duplicar(), "padre": -1, "hecho": null, "v": 0}]
+	var capa: Array = [0]
+	var vistos := {_k(nodos[0].t): true}
+	var mejor := -1
+	var mejor_v := -1
+	var mejor_info := {}
+	for nivel in profundidad:
+		var cand: Array = []
+		for idx in capa:
+			var nodo: Dictionary = nodos[idx]
+			for o in predecesores(nodo.t):
+				var k := _k(o.s)
+				if vistos.has(k):
+					continue
+				vistos[k] = true
+				nodos.append({"t": o.s, "padre": idx, "hecho": [o.d, o.m], "v": 0})
+				cand.append(nodos.size() - 1)
+		if cand.is_empty():
+			break
+		# puntaje barato: lejos de la cima (el valor del padre cuenta) y con el jugador abajo
+		cand.shuffle()
+		var previos: Array = []
+		for j in cand:
+			var n: Dictionary = nodos[j]
+			previos.append([float(nodos[n.padre].v) + rng.randf() * 3.0 - float(n.t.jugador.y) * 0.3, j])
+		previos.sort_custom(func(a, b): return a[0] > b[0])
+		var evaluados: Array = []
+		for q in mini(pre, previos.size()):
+			var j: int = previos[q][1]
+			var info := valor(nodos[j].t)
+			var v: int = info.v if info.v >= 0 else nodos[nodos[j].padre].v + 1
+			nodos[j].v = v
+			evaluados.append([float(v) + rng.randf() * 0.5, j])
+			var t = nodos[j].t
+			if info.v >= 0 and t.jugador.y == 1 and Reglas.es_anillo(t.jugador.x, t.jugador.z) and t.colgado == Vector3i.ZERO and v > mejor_v:
+				mejor_v = v
+				mejor = j
+				mejor_info = info
+		evaluados.sort_custom(func(a, b): return a[0] > b[0])
+		capa = []
+		for i in mini(ancho, evaluados.size()):
+			capa.append(evaluados[i][1])
+		if OS.has_environment("CIL_LOG"):
+			print("nivel %d: candidatos %d, evaluados %d, mejor valor de la capa %d, mejor en el anillo %d" % [nivel, cand.size(), evaluados.size(), int(evaluados[0][0]), mejor_v])
+		if mejor_v >= meta:
+			break
+	if mejor < 0:
+		return {}
+	var hechos: Array = []
+	var i: int = mejor
+	while nodos[i].padre >= 0:
+		hechos.append(nodos[i].hecho)
+		i = nodos[i].padre
+	return {"estado": nodos[mejor].t, "valor": mejor_v, "pasos": mejor_info.pasos, "agarres": mejor_info.agarres, "profundidad": hechos.size(), "inverso": hechos}

@@ -49,3 +49,9 @@ Bitácora de la noche del 2026-10-21 (desde la 01:50 hasta las 08:00). Las imág
 - Refinando desde la elite de h9 (3 rondas, 15 procesos): todas convergen a la misma pared, 28 pasos / 12 empujes (1.3 empujes por piso), con hierro + agrietado necesarios. T=6 no encuentra algo mejor.
 - Visor republicado: 47p/14e (h6), 28p/12e (h9) x3, 27p/11e...
 - Pendiente (necesita idea nueva, no mas tiempo): sembrar paredes altas con una escalera construida; modulo donde la bomba sea necesaria.
+
+### 06:20 - cilindro NUEVO, aislado del juego (`cilindro/`, `docs/cilindro_reglas.md`)
+Por pedido: reglas propias (sostén por propagación desde la cima por caras y aristas horizontales, simétrico; el anillo de piso no es fijo; lo que cae por debajo del anillo se pierde), motor propio (`motor.gd`, movimientos copiados del juego), solucionador propio (`solucionador.gd`, A*), escalera mínima (`escalera.gd`: un bloque por piso sobre el borde del anillo 8x8) y desordenador por contra-movimientos (`desordenador.gd`).
+- Cada paso hacia atrás es un estado desde el que UNA acción del motor lleva al actual (se comprueba simulando): la torre siempre es resoluble.
+- Hallazgos: (1) contar agarres engana: con 5 bloques el haz hacía 12-14 agarres empujando UN solo bloque en fila (lo predecible que temias). Hay que medir bloques DISTINTOS movidos. (2) Con la escalera pelada casi no hay movimientos legales (todo cuelga de la cima: mover un eslabón tira lo demás): hacen falta ramas (bloques extra anclados). (3) Con ramas hay material de sobra y aparecen atajos (10 deshechos -> 13 pasos exactos): hay que guiar con la distancia EXACTA, no con el conteo de deshechos.
+- Haz hacia atrás guiado por el solucionador exacto (`desordenar_exacto`): alto 8, 14 ramas: **29 pasos / 7 agarres exactos, sin atajos** (el camino armado de 30 pasos es casi el mínimo) y el valor sigue creciendo con la profundidad. Lento: 273 s en GDScript. Siguiente: portar motor + solucionador + haz a C++.
