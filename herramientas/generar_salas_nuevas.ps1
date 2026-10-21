@@ -1,7 +1,8 @@
 # Genera salas nuevas (torre sin núcleo) con varias copias de tools\salas_nuevas.exe a la vez y las junta en bibliotecas\salas_nuevas.jsonl (sin repetir).
-# Uso: powershell -ExecutionPolicy Bypass -File herramientas\generar_salas_nuevas.ps1 [-Minutos 30] [-Copias 6]
+# Uso: powershell -ExecutionPolicy Bypass -File herramientas\generar_salas_nuevas.ps1 [-Minutos 30] [-Copias 6] [-Desde 0] [-Prefijo copia]
+# (-Desde: desde qué configuración de la lista arranca; 4 en adelante son las salas de 5x3 y 8x3)
 # Cada copia toma una configuración de la lista (tipo, altura, material extra, exigencia de bloques distintos) y sigue con la semilla siguiente hasta que se acaba el tiempo.
-param([int]$Minutos = 30, [int]$Copias = 6)
+param([int]$Minutos = 30, [int]$Copias = 6, [int]$Desde = 0, [string]$Prefijo = 'copia')
 Set-Location (Join-Path $PSScriptRoot "..")
 New-Item -ItemType Directory -Force bibliotecas | Out-Null
 New-Item -ItemType Directory -Force bibliotecas\sn_corridas | Out-Null
@@ -21,9 +22,9 @@ $comun = "wd=12 prof=80 ef=2 dist=1 cand=500 evaluar=30 ancho=12 pre=30 temp=3 s
 $fin = (Get-Date).AddMinutes($Minutos)
 $trabajos = @()
 for ($i = 0; $i -lt $Copias; $i++) {
-  $cfg = $cfgs[$i % $cfgs.Count]
+  $cfg = $cfgs[($Desde + $i) % $cfgs.Count]
   $semilla = 1000 + $i * 100000 + [int]((Get-Date).Ticks % 1000)
-  $archivo = "bibliotecas\sn_corridas\copia_$i.jsonl"
+  $archivo = "bibliotecas\sn_corridas\$($Prefijo)_$i.jsonl"
   $cmd = "`$fin = Get-Date '$($fin.ToString("o"))'; `$s = $semilla; while ((Get-Date) -lt `$fin) { & tools\salas_nuevas.exe --gen $cfg $comun seed=`$s 2>`$null | Add-Content -Encoding ascii '$archivo'; `$s++ }"
   $p = Start-Process powershell -ArgumentList "-NoProfile", "-Command", $cmd -PassThru -WindowStyle Hidden
   $trabajos += $p

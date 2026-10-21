@@ -440,6 +440,7 @@ struct Resolucion {
 	int moves = 0, agarres = 0, distintos = 0;
 	long expandidos = 0;
 	size_t nodos = 0;
+	int cota = 0;   // si se acabó el tope: el mínimo es al menos esto (el menor f que quedaba abierto)
 	vector<int> acc;   // acciones: modo * 4 + índice de DIRS
 };
 
@@ -465,7 +466,7 @@ static void estadisticas(const Estado& e0, int meta, const vector<int>& acc, int
 }
 
 // A* exacto (heurística: pisos que faltan). tope = nodos como mucho.
-static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats = true, int objetivo = -1) {
+static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats = true, int objetivo = -1, int ub = 1 << 28) {
 	Resolucion res;
 	bool hay_k = false;
 	for (uint32_t b : e0.bloques) if ((b & 15) == K) hay_k = true;
@@ -502,12 +503,13 @@ static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats 
 			int ni = (int)nodos.size() - 1;
 			if (t.ganado || (objetivo > 0 && !t.colgando() && t.py >= objetivo)) { meta_nodo = ni; break; }
 			int f = gn + heur(t.py);
+			if (f > ub) continue;   // (no puede mejorar la cota superior conocida)
 			if (f >= (int)cubos.size()) cubos.resize(f + 64);
 			cubos[f].push_back(ni);
 			if (f < f_min) f_min = f;
 		}
 		if (meta_nodo >= 0) break;
-		if ((int)nodos.size() > tope) { res.tope = true; res.nodos = nodos.size(); return res; }
+		if ((int)nodos.size() > tope) { res.tope = true; res.nodos = nodos.size(); res.cota = f_min; return res; }
 	}
 	res.nodos = nodos.size();
 	if (meta_nodo < 0) return res;
@@ -685,6 +687,7 @@ struct Param {
 	int h_exacto = 9;   // por encima de esta altura se evalúa por lonjas en vez del solucionador exacto
 	int salto = 2;
 	int riesgo = 1;
+	long refinar = 2000000;   // en salas altas (por lonjas) se intenta al final el solucionador exacto con este tope de nodos
 };
 
 static void huella(const string& tipo, int& x0, int& z0, int& w, int& d) {
@@ -799,12 +802,69 @@ static void riesgo(const Estado& e0, int meta, const vector<int>& acc, long tope
 	}
 }
 
-static string sala_json(const Param& P, const Estado& e, const Resolucion& r, int armado, bool exacto, int legales, int letales) {
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Métrica de complejidad (ver docs/metrica_dificultad.md). A lo largo de UN camino más corto, en cada estado se prueban TODOS los movimientos legales y
+// se resuelve cada hijo con el solucionador exacto:
+//   legales_i  = movimientos legales (los que no se rechazan: incluye los que matan en el acto)
+//   optimos_i  = los que dejan al jugador a (restante - 1) pasos de ganar, o sea los que siguen un camino más corto
+//   letales_i  = los que matan en el acto o dejan la sala sin solución
+//   bits_opt   = suma de log2(legales_i / optimos_i): la información que hace falta para seguir un camino más corto entre todos los legales
+//   bits_letal = suma de -log2(1 - letales_i / legales_i): lo "peligroso" que es moverse al azar (una cada vez que hay una trampa a mano)
+//   complejidad = bits_opt + bits_letal  (pesos 1 y 1; provisorio hasta calibrar con el jugador)
+// Si algún hijo se queda sin presupuesto no se sabe su distancia: se cuenta aparte (desconocidos) y la métrica es aproximada.
+// ---------------------------------------------------------------------------------------------------------------------------------
+struct Metricas {
+	int legales = 0, letales = 0, optimos = 0, desconocidos = 0;
+	double bits_opt = 0, bits_letal = 0;
+	int criticos = 0;   // pasos en los que sólo un movimiento legal sigue un camino más corto y hay otros legales
+};
+
+static void medir(const Estado& e0, int meta, const vector<int>& acc, long tope_hijo, Metricas& m) {
+	Sim s, t;
+	cargar(s, e0, meta);
+	int restante = (int)acc.size();
+	for (int a_opt : acc) {
+		int leg = 0, let = 0, opt = 0, desc = 0;
+		for (int a = 0; a < 12; a++) {
+			int modo = a / 4;
+			if (s.colgando() && modo != 0) continue;
+			t.copiar_de(s);
+			if (!t.actuar(DIRS[a % 4].x, DIRS[a % 4].z, modo)) {
+				if (t.perdido) { leg++; let++; }
+				continue;
+			}
+			leg++;
+			if (t.ganado) { if (restante - 1 == 0) opt++; continue; }
+			Estado ne; guardar(t, ne);
+			Resolucion r = resolver(ne, meta, (int)tope_hijo, false);
+			if (r.ok) { if (r.moves == restante - 1) opt++; }
+			else if (r.tope) desc++;
+			else let++;
+		}
+		m.legales += leg; m.letales += let; m.optimos += opt; m.desconocidos += desc;
+		if (leg > 0) {
+			int o = max(opt, 1);
+			m.bits_opt += log2((double)leg / (double)o);
+			if (let < leg) m.bits_letal += -log2(1.0 - (double)let / (double)leg);
+			if (opt == 1 && leg > 1) m.criticos++;
+		}
+		s.actuar(DIRS[a_opt % 4].x, DIRS[a_opt % 4].z, a_opt / 4);
+		restante--;
+	}
+}
+
+static string metricas_json(const Metricas& m) {
+	char buf[320];
+	snprintf(buf, sizeof(buf), "\"legales\":%d,\"letales\":%d,\"optimos\":%d,\"desconocidos\":%d,\"criticos\":%d,\"bits_opt\":%.2f,\"bits_letal\":%.2f,\"complejidad\":%.2f", m.legales, m.letales, m.optimos, m.desconocidos, m.criticos, m.bits_opt, m.bits_letal, m.bits_opt + m.bits_letal);
+	return string(buf);
+}
+
+static string sala_json(const Param& P, const Estado& e, const Resolucion& r, int armado, bool exacto, const Metricas& mt) {
 	string s = "{\"tipo\":\"" + P.tipo + "\",\"meta\":" + to_string(P.h) + ",\"jugador\":[" + to_string(e.px) + "," + to_string(e.py) + "," + to_string(e.pz) + "],\"colgado\":[" + to_string(e.hx) + "," + to_string(e.hz) + "],";
 	s += "\"bloques\":" + estado_json(e) + ",\"pasos\":" + to_string(r.moves) + ",\"agarres\":" + to_string(r.agarres) + ",\"distintos\":" + to_string(r.distintos);
 	s += ",\"armado\":" + to_string(armado) + ",\"exacto\":" + string(exacto ? "true" : "false") + ",\"extras\":" + to_string(P.extras) + ",\"camino\":" + camino_json(r.acc) + "}";
 	s.pop_back();
-	s += ",\"legales\":" + to_string(legales) + ",\"letales\":" + to_string(letales) + "}";
+	s += "," + metricas_json(mt) + "}";
 	return s;
 }
 
@@ -975,9 +1035,14 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 	}
 	int armado = -1;
 	if (cands[mejor].traza >= 0) { armado = 0; for (int t = cands[mejor].traza; trazas[t].padre >= 0; t = trazas[t].padre) armado++; }
-	int legales = 0, letales = 0;
-	if (P.riesgo && P.h <= P.h_exacto) riesgo(cands[mejor].e, P.h, mejor_res.acc, 60000, legales, letales);
-	salida = sala_json(P, cands[mejor].e, mejor_res, armado, P.h <= P.h_exacto, legales, letales);
+	bool es_exacto = P.h <= P.h_exacto;
+	if (!es_exacto && P.refinar > 0) {
+		Resolucion rx = resolver(cands[mejor].e, P.h, (int)P.refinar, true, -1, mejor_res.moves);
+		if (rx.ok) { mejor_res = rx; es_exacto = true; }
+	}
+	Metricas mt;
+	if (P.riesgo && es_exacto) medir(cands[mejor].e, P.h, mejor_res.acc, 60000, mt);
+	salida = sala_json(P, cands[mejor].e, mejor_res, armado, es_exacto, mt);
 	return true;
 }
 
@@ -1014,6 +1079,70 @@ static int resolver_main() {
 	return 0;
 }
 
+static bool leer_sala(Estado& e0, int& meta, int& tope) {
+	Sim base;
+	base.limpiar();
+	meta = 8; tope = 1500000;
+	int jx = 0, jy = 2, jz = 0, cx = 0, cz = 0;
+	vector<array<int, 4>> bl;
+	string linea;
+	while (getline(cin, linea)) {
+		istringstream ss(linea);
+		string w;
+		ss >> w;
+		if (w == "meta") ss >> meta;
+		else if (w == "jugador") ss >> jx >> jy >> jz;
+		else if (w == "colgado") { int dy; ss >> cx >> dy >> cz; }
+		else if (w == "tope") ss >> tope;
+		else if (w == "b") { int x, y, z; string k; ss >> x >> y >> z >> k; bl.push_back({x, y, z, (int)kind_de(k.empty() ? 'n' : k[0])}); }
+	}
+	base.fijar_alto(meta);
+	for (auto& b : bl) base.poner(b[0], b[1], b[2], (Kind)b[3]);
+	base.px = jx; base.py = jy; base.pz = jz; base.hx = cx; base.hz = cz;
+	guardar(base, e0);
+	return !bl.empty();
+}
+
+static long arg_largo(int argc, char** argv, const char* clave, long def) {
+	string k = string(clave) + "=";
+	for (int i = 2; i < argc; i++) { string a = argv[i]; if (a.rfind(k, 0) == 0) return atol(a.c_str() + k.size()); }
+	return def;
+}
+
+// --medir [tope=N] [tope_hijo=N]: lee una sala (texto) y escribe sus métricas de complejidad (JSON, una línea).
+static int medir_main(int argc, char** argv) {
+	Estado e0; int meta, tope;
+	leer_sala(e0, meta, tope);
+	tope = (int)arg_largo(argc, argv, "tope", tope);
+	long tope_hijo = arg_largo(argc, argv, "tope_hijo", 60000);
+	Resolucion r = resolver(e0, meta, tope);
+	if (!r.ok) { printf("{\"ok\":false,\"tope\":%s,\"cota_inferior\":%d}\n", r.tope ? "true" : "false", r.cota); return 0; }
+	Metricas m;
+	medir(e0, meta, r.acc, tope_hijo, m);
+	printf("{\"ok\":true,\"pasos\":%d,\"agarres\":%d,\"distintos\":%d,%s,\"nodos\":%zu}\n", r.moves, r.agarres, r.distintos, metricas_json(m).c_str(), r.nodos);
+	return 0;
+}
+
+// --minimo [ub=N] [tope=N]: busca el camino más corto REAL de una sala (texto) sin pasar de la cota superior `ub` (un camino conocido).
+// Escribe { minimo, cota_inferior, cota_superior, exacto }: si el tope de nodos no alcanza, `cota_inferior` es una cota demostrada
+// (el menor f que quedaba abierto en el A*) y el mínimo está entre las dos.
+static int minimo_main(int argc, char** argv) {
+	Estado e0; int meta, tope;
+	leer_sala(e0, meta, tope);
+	tope = (int)arg_largo(argc, argv, "tope", tope);
+	int ub = (int)arg_largo(argc, argv, "ub", 1 << 28);
+	Resolucion r = resolver(e0, meta, tope, true, -1, ub);
+	if (r.ok) {
+		printf("{\"exacto\":true,\"minimo\":%d,\"cota_inferior\":%d,\"cota_superior\":%d,\"agarres\":%d,\"distintos\":%d,\"nodos\":%zu,\"camino\":%s}\n", r.moves, r.moves, ub < (1 << 28) ? ub : r.moves, r.agarres, r.distintos, r.nodos, camino_json(r.acc).c_str());
+	} else if (r.tope) {
+		printf("{\"exacto\":false,\"minimo\":null,\"cota_inferior\":%d,\"cota_superior\":%d,\"nodos\":%zu}\n", r.cota, ub < (1 << 28) ? ub : -1, r.nodos);
+	} else {
+		// se agotó el espacio sin encontrar nada de a lo sumo `ub`: no hay camino mejor que el conocido (si ub es un camino real, es el mínimo)
+		printf("{\"exacto\":%s,\"minimo\":%d,\"cota_inferior\":%d,\"cota_superior\":%d,\"nodos\":%zu,\"nota\":\"sin camino de a lo sumo ub: el camino conocido es el mínimo\"}\n", ub < (1 << 28) ? "true" : "false", ub < (1 << 28) ? ub : -1, ub < (1 << 28) ? ub : -1, ub < (1 << 28) ? ub : -1, r.nodos);
+	}
+	return 0;
+}
+
 static int generar_main(int argc, char** argv) {
 	Param P;
 	for (int i = 2; i < argc; i++) {
@@ -1046,6 +1175,7 @@ static int generar_main(int argc, char** argv) {
 		else if (k == "h_exacto") P.h_exacto = atoi(v.c_str());
 		else if (k == "salto") P.salto = atoi(v.c_str());
 		else if (k == "riesgo") P.riesgo = atoi(v.c_str());
+		else if (k == "refinar") P.refinar = atol(v.c_str());
 		else if (k == "tope_nivel") P.tope_nivel = atol(v.c_str());
 	}
 	int hechas = 0, intentos = 0;
@@ -1067,5 +1197,7 @@ static int generar_main(int argc, char** argv) {
 int main(int argc, char** argv) {
 	init_tablas();
 	if (argc > 1 && string(argv[1]) == "--gen") return generar_main(argc, argv);
+	if (argc > 1 && string(argv[1]) == "--medir") return medir_main(argc, argv);
+	if (argc > 1 && string(argv[1]) == "--minimo") return minimo_main(argc, argv);
 	return resolver_main();
 }

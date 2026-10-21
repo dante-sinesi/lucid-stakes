@@ -5,6 +5,9 @@ const Motor := preload("res://salas_nuevas/motor.gd")
 
 
 static func exe() -> String:
+	var alt := OS.get_environment("SN_EXE")   # (para probar otra versión del ejecutable)
+	if alt != "":
+		return ProjectSettings.globalize_path(alt) if not alt.is_absolute_path() else alt
 	return ProjectSettings.globalize_path("res://tools/salas_nuevas.exe")
 
 
@@ -51,3 +54,34 @@ static func resolver(t, tope := 1500000) -> Dictionary:
 				res.path.append([d, int(p[i + 2])])
 				i += 3
 	return res
+
+
+## Corre un modo del ejecutable nativo (por ejemplo ["--medir", "tope=500000"]) con la sala `t` por la entrada y devuelve el JSON de la primera línea que lo sea ({} si falla).
+static func correr(args: Array, t, tope := 1500000) -> Dictionary:
+	var dir := OS.get_environment("TEMP")
+	var entrada := dir.path_join("cil_%d_%d.txt" % [OS.get_process_id(), randi()])
+	var f := FileAccess.open(entrada, FileAccess.WRITE)
+	f.store_string(a_texto(t, tope))
+	f.close()
+	var out: Array = []
+	var linea := "\"%s\" %s < \"%s\"" % [exe().replace("/", "\\"), " ".join(args), entrada.replace("/", "\\")]
+	OS.execute("cmd", ["/c", linea], out, true)
+	DirAccess.remove_absolute(entrada)
+	var texto := String(out[0]) if out.size() > 0 else ""
+	for l in texto.split("\n"):
+		var p := l.strip_edges()
+		if p.begins_with("{"):
+			var d = JSON.parse_string(p)
+			if d is Dictionary:
+				return d
+	return {}
+
+
+## El camino más corto real (A* exacto) sin pasar de `ub` (un camino conocido): { exacto, minimo, cota_inferior, cota_superior, agarres, distintos, camino }.
+static func minimo(t, ub: int, tope := 6000000) -> Dictionary:
+	return correr(["--minimo", "ub=%d" % ub, "tope=%d" % tope], t, tope)
+
+
+## Las métricas de complejidad (ver docs/metrica_dificultad.md).
+static func medir(t, tope := 3000000) -> Dictionary:
+	return correr(["--medir", "tope=%d" % tope], t, tope)
