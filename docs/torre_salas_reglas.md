@@ -25,9 +25,8 @@ Los del juego actual (caminar, trepar, empujar y tirar de a un bloque o fila de 
 
 ## 4. Temporizador, checkpoint y muerte
 
-- El temporizador cuenta **movimientos, no tiempo**. Cada sala tiene un máximo de movimientos y a medida que se gastan va desapareciendo la fila más baja de la sala.
-- **El solucionador manda, el temporizador obedece:** el solucionador da el mínimo de movimientos de la sala y el máximo se calcula sobre eso: una etapa temprana deja más movimientos de más, una avanzada menos. El temporizador nunca condiciona al solucionador.
-- Interpretación a confirmar: el camino mínimo marca para cada fila la última vez que se usa un bloque de esa fila o se pisa; la fila no puede desaparecer antes de eso más el margen de la etapa. Así el camino mínimo siempre cabe.
+- El temporizador cuenta **movimientos, no tiempo**. Cada sala tiene un máximo de movimientos; **al agotarse cae la sala entera** (todos sus bloques) y, si el jugador sigue en ella, cae con ella: muere. No hay filas que desaparezcan de a una, así que el temporizador no toca el material mientras se juega.
+- **El solucionador manda, el temporizador obedece:** el solucionador da el mínimo de movimientos de la sala y el máximo se calcula sobre eso: una etapa temprana deja más movimientos de más, una avanzada menos. El temporizador nunca condiciona al solucionador (y como no borra filas, no cambia qué caminos existen).
 - **Checkpoint:** al llegar al bloque de salida de una sala (el comienzo de la siguiente), **toda la sala anterior cae** y el temporizador arranca de cero con los movimientos máximos de la sala actual.
 - **Caer al vacío es morir**, por cualquier motivo: quedar colgado sobre el vacío, perder la plataforma por el temporizador, mover el último bloque que sostenía lo que pisabas, etc.
 - **Al morir se pierde una vida y se vuelve al checkpoint** con la torre reconstruida virgen **desde la sala en la que se entró** (la sala ya pasada ya no existe ni importa).
@@ -54,4 +53,5 @@ Los del juego actual (caminar, trepar, empujar y tirar de a un bloque o fila de 
 
 - Dónde queda el bloque de salida dentro de la huella y qué anclas de verificación lo sostienen.
 - Cuántos movimientos de margen por etapa (la tabla de dificultad).
+- Si el bloque de salida (checkpoint) cae con el resto de la sala cuando se agota el temporizador, o es lo único que queda en pie para el jugador que ya llegó.
 - Qué altura máxima real tiene cada tamaño de sala una vez que el temporizador esté en juego.
