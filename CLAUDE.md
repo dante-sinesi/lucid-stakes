@@ -51,6 +51,14 @@ Juego de puzzle de torres de cubos (estilo Catherine) con casino y economía de 
 - **Sin piedad** (`scripts/false_moves.gd`, `docs/diseno.md` §53): escenario donde cada sala permite 2 movimientos en falso (uno que deja más pasos para salir de la sala, medido con el solucionador sobre el estado recortado, en un hilo); al tercero se pierde una vida; no se puede deshacer. Se agrega a `Scenarios.AVAILABLE`.
 - Documentos: `docs/diseno.md` (diseño, §41–45 el generador), `docs/plan_generador.md` (bitácora de rondas), `docs/cosas_a_mejorar.md`.
 
+## Torre de salas sin núcleo sólido (rama `diseno/torre-salas-sin-nucleo`, en curso)
+
+Rediseño tras archivar el cilindro (`experimento/cilindro`). Reglas en `docs/torre_salas_reglas.md`, bitácora en `docs/progreso_salas_nuevas.md`. Todo **aislado del juego** en `salas_nuevas/` (no usa `tower_logic.gd` ni `solver.gd`): anillo de 11x11 alrededor de un vacío de 5x5, salas 3x3 / 5x3 / 8x3 apiladas, **un único bloque fijo (el portal)**, sostén por propagación simétrica por caras y aristas horizontales, sin suelo, colgarse hacia bloques con otro encima, bloques checkpoint (entrada y salida de cada sala, con farolito), temporizador de movimientos (el solucionador da el mínimo y el máximo sale de ahí; al agotarse cae la sala entera), caer = perder una vida y volver al checkpoint con la torre virgen.
+- `salas_nuevas/{reglas,motor,solucionador,nativo,vista,estudio}.gd` y `native/salas_nuevas.cpp` (`tools/salas_nuevas.exe`: A* exacto, lonjas, riesgo y generador `--gen`). Se arma con `g++ -O3 -std=c++17 -static -o tools/salas_nuevas.exe native/salas_nuevas.cpp` (MSYS2 en `C:\msys64\mingw64in`).
+- Generador: escalera resuelta en la huella + bloques extra, contra-movimientos con haz guiado por la distancia exacta, variante con el jugador sobre la entrada y escalada local (mover/agregar/sacar un bloque, vale lo que `pasos + 3·agarres + wd·bloques distintos`). Hasta 9 pisos el solucionador es exacto; más alto se usan lonjas (`resolver_lonjas`, de a 3 pisos: válido pero no necesariamente el más corto).
+- Medir con **bloques distintos movidos** (Catherine pide 3-4 por cada 3 pisos), no con agarres.
+- Estudio: `herramientas\estudio_salas_nuevas.bat [archivo.jsonl]` (lista, reproducción desde atrás del jugador, edición, resolver con el nativo, guardar). Capturas: `tests/shot_estudio_salas_nuevas.gd` + `herramientas/montaje_salas_nuevas.py` (siempre desde detrás del jugador). Producción: `herramientas\generar_salas_nuevas.ps1` y `juntar_salas_nuevas.ps1` -> `bibliotecas/salas_nuevas.jsonl`. Pruebas: `salas_nuevas/test_*` y `tests/test_salas_nuevas.gd`.
+
 ## Lo aprendido sobre la dificultad de las torres
 
 - Los bloques solo se mueven horizontalmente y la altura total se conserva: subir exige **transportar material** hasta la escalera. Ahí está la complejidad (en Catherine, ~15 movimientos de bloque por cada 3 filas).
