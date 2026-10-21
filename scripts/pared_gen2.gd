@@ -29,6 +29,8 @@ static func make(rng: RandomNumberGenerator, kind: String, h: int, n: int, faces
 	# (se rehace la pared: crece de las salidas que quedaron)
 	var again := Base.make(rng, kind, h, n, 4)
 	again.exit = exits[0]
+	if kind != "pared":
+		again.entry = Base.entry_for(exits[0])
 	again["exits_extra"] = extra
 	var allowed := {}
 	for c in again.mass:
@@ -113,11 +115,14 @@ static func score(room: Dictionary, costs: Array) -> float:
 	var lo := 9999
 	var hi := 0
 	var solved := 0
+	var h: int = room.h
 	for c in costs:
 		if not c.ok:
 			continue
+		if float(c.grabs) < min_empujes_por_piso * float(h) or float(c.moves) < min_pasos_por_piso * float(h):
+			continue   # (una cara que se resuelve con muy poco —un salto de catapulta, un par de empujes— no cuenta como resuelta: es trivial)
 		solved += 1
-		total += float(c.moves) + 3.0 * float(c.grabs) + 4.0 * float(c.blocks) + 2.0 * float(c.get("switches", 0))
+		total += float(c.moves) + 3.0 * float(c.grabs) + 4.0 * float(c.blocks) + 2.0 * float(c.get("switches", 0)) - peso_caminata * float(c.get("walk", 0.0))
 		lo = mini(lo, int(c.moves))
 		hi = maxi(hi, int(c.moves))
 	if solved == 0:
@@ -277,7 +282,22 @@ static func mutate2(rng: RandomNumberGenerator, room: Dictionary, kinds: Array, 
 		return {}
 	var keys: Array = blocks.keys()
 	var roll := rng.randf()
-	if roll < 0.7 or kinds.is_empty():
+	if roll < 0.12 and cambiar_cantidad:   # agregar un bloque pegado a otro (o a una salida)
+		var base0: Vector3i = keys[rng.randi_range(0, keys.size() - 1)]
+		if rng.randf() < 0.3:
+			var ex0: Array = [room.exit] + Array(room.get("exits_extra", []))
+			var e0: Vector2i = ex0[rng.randi_range(0, ex0.size() - 1)]
+			base0 = Vector3i(e0.x, int(room.h), e0.y)
+		var r0: Vector3i = base0 + Base.SIX[rng.randi_range(0, Base.SIX.size() - 1)]
+		var c0 := Vector2i(r0.x, r0.z)
+		if not (room.get("mass", []) as Array).has(c0) or r0.y < 1 or r0.y > int(room.h) - 1 or blocks.has(r0) or (c0 - room.entry).length() < 1.5:
+			return {}
+		blocks[r0] = "n"
+	elif roll < 0.22 and cambiar_cantidad:   # sacar un bloque
+		if blocks.size() <= int(room.h):
+			return {}
+		blocks.erase(keys[rng.randi_range(0, keys.size() - 1)])
+	elif roll < 0.7 or kinds.is_empty():
 		var q: Vector3i = keys[rng.randi_range(0, keys.size() - 1)]
 		var ch: String = blocks[q]
 		blocks.erase(q)
@@ -335,7 +355,39 @@ static func needed_specials(room: Dictionary, costs: Array) -> int:
 
 ## Escalada con especiales: el puntaje suma 30 por cada especial que hace falta y se quita 15 por cada uno que sobra (así no quedan de adorno).
 static var peso_riesgo := 1.0      # puntos por cada movimiento legal que hace caer partes de la pared (en los pasos del camino más corto), hasta 30
+static var cambiar_cantidad := true   # la escalada también agrega y saca bloques
+static var temperatura := 0.0         # 0: sólo acepta lo que no baja el puntaje; más: acepta bajas chicas con probabilidad exp(-baja / temperatura)
+static var min_empujes_por_piso := 1.0   # una cara con menos empujes que esto (por piso) no cuenta
+static var min_pasos_por_piso := 3.0     # ni con menos pasos que esto (por piso)
+static var peso_caminata := 40.0   # puntos que se restan por la parte del camino que se camina antes del primer empuje (0 a 1)
+static var peso_caras := 0.0       # puntos por cada cara del cilindro (más allá de la primera) de la que el camino más corto saca algún bloque: hace que el material de todo el anillo cuente
+static var peso_bloques := 0.0     # puntos que se restan por cada bloque de la pared (empuja a que haya el material justo)
 static var peso_cobertura := 3.0   # puntos por cada columna distinta de la masa que tiene bloques (que no quede todo amontonado en un racimo)
+
+
+## En qué caras del cilindro (0 norte, 1 este, 2 sur, 3 oeste; las esquinas cuentan para las dos) estaban los bloques que el camino mueve.
+static func caras_usadas(room: Dictionary, path: Array) -> int:
+	var t = RoomLib.build_state(room)
+	var faces := {}
+	for a in path:
+		if a.mode == 1:
+			var before: Dictionary = t.positions.duplicate()
+			t.try_action(a.dir, a.mode)
+			for id in t.positions:
+				if before.has(id) and t.positions[id] != before[id] and not t.fixed.has(before[id]):
+					var c := Vector2i(before[id].x, before[id].z)
+					if c.y <= 2:
+						faces[0] = true
+					if c.x >= 5:
+						faces[1] = true
+					if c.y >= 5:
+						faces[2] = true
+					if c.x <= 2:
+						faces[3] = true
+					break
+		else:
+			t.try_action(a.dir, a.mode)
+	return faces.size()
 
 
 static func total_score(room: Dictionary, costs: Array, with_needed: bool) -> float:
@@ -346,13 +398,16 @@ static func total_score(room: Dictionary, costs: Array, with_needed: bool) -> fl
 		var cells := {}
 		for c in room.cols:
 			cells[c] = true
-		base += peso_cobertura * float(mini(cells.size(), 24))
-		if peso_riesgo > 0.0:
+		base += peso_cobertura * float(mini(cells.size(), 24)) - peso_bloques * float(RoomLib.block_count(room))
+		if peso_riesgo > 0.0 or peso_caras > 0.0:
 			for c in costs:
 				if c.ok:
 					var rr := RoomLib.copy_room(room)
 					rr["path"] = c.path
-					base += peso_riesgo * float(mini(int(colapsos(rr).movimientos_que_derrumban), 30))
+					if peso_riesgo > 0.0:
+						base += peso_riesgo * float(mini(int(colapsos(rr).movimientos_que_derrumban), 30))
+					if peso_caras > 0.0:
+						base += peso_caras * float(maxi(caras_usadas(rr, c.path) - 1, 0))
 					break
 	var sp := special_count(room)
 	if sp == 0 or not with_needed:
@@ -363,30 +418,40 @@ static func total_score(room: Dictionary, costs: Array, with_needed: bool) -> fl
 
 static func climb2(rng: RandomNumberGenerator, start: Dictionary, kinds: Array, max_special: int, budget_ms: int) -> Dictionary:
 	var costs := Base.face_costs(start)
-	var best := start
-	var best_costs := costs
-	var best_score := total_score(start, costs, true)
-	if best_score < -0.5:
+	var cur := start
+	var cur_costs := costs
+	var cur_score := total_score(start, costs, true)
+	if cur_score < -0.5:
 		return {}
+	var best := cur
+	var best_costs := cur_costs
+	var best_score := cur_score
 	var t0 := Time.get_ticks_msec()
 	var tries := 0
 	var accepted := 0
 	while Time.get_ticks_msec() - t0 < budget_ms:
 		tries += 1
-		var cand := mutate2(rng, best, kinds, max_special)
+		var cand := mutate2(rng, cur, kinds, max_special)
 		if cand.is_empty() or RoomLib.validate_structure(cand) != "":
 			continue
 		var cc := Base.face_costs(cand)
 		var quick := score(cand, cc)
 		if quick < 0.0:
 			continue
-		var sc := total_score(cand, cc, quick >= best_score - 60.0)   # (lo caro, probar cada especial, sólo si el resto del puntaje es competitivo)
-		if sc >= best_score:
-			if sc > best_score:
+		var sc := total_score(cand, cc, quick >= cur_score - 60.0)   # (lo caro, probar cada especial, sólo si el resto del puntaje es competitivo)
+		var take := sc >= cur_score
+		if not take and temperatura > 0.0:
+			take = rng.randf() < exp((sc - cur_score) / temperatura)
+		if take:
+			if sc > cur_score:
 				accepted += 1
-			best = cand
-			best_costs = cc
-			best_score = sc
+			cur = cand
+			cur_costs = cc
+			cur_score = sc
+			if sc > best_score:
+				best = cand
+				best_costs = cc
+				best_score = sc
 	var out := RoomLib.copy_room(best)
 	out["costs"] = best_costs
 	out.opt["tries"] = tries

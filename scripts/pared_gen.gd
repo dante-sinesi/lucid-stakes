@@ -13,9 +13,12 @@ const Conv := preload("res://scripts/convoy_gen.gd")
 const SIX: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]
 
 
+static var ancho := 6   # ancho de la pared plana (la franja de piso mide ancho + 2); el cilindro es siempre de 6x6
+
+
 static func arena(kind: String) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for x in 8:
+	for x in (ancho + 2 if kind == "pared" else 8):
 		for z in (4 if kind == "pared" else 8):
 			out.append(Vector2i(x, z))
 	return out
@@ -36,7 +39,7 @@ static func floor_cells(kind: String) -> Array[Vector2i]:
 static func mass(kind: String) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if kind == "pared":
-		for x in range(1, 7):
+		for x in range(1, ancho + 1):
 			for z in range(1, 3):
 				out.append(Vector2i(x, z))
 	else:
@@ -51,7 +54,7 @@ static func mass(kind: String) -> Array[Vector2i]:
 ## Las celdas del borde de arriba donde puede estar una salida, una por cara: [la de adelante (la que mira al piso), derecha, atrás, izquierda].
 static func face_cells(kind: String, rng: RandomNumberGenerator) -> Array[Vector2i]:
 	if kind == "pared":
-		return [Vector2i(rng.randi_range(1, 6), 1)]
+		return [Vector2i(rng.randi_range(1, ancho), 1)]
 	return [Vector2i(rng.randi_range(2, 5), 1), Vector2i(6, rng.randi_range(2, 5)), Vector2i(rng.randi_range(2, 5), 6), Vector2i(1, rng.randi_range(2, 5))]
 
 
@@ -68,6 +71,8 @@ static func make(rng: RandomNumberGenerator, kind: String, h: int, n: int, faces
 	if faces == 1:
 		exits = [exits[0]]
 	room.exit = exits[0]
+	if kind != "pared":
+		room.entry = entry_for(exits[0])
 	var extra: Array[Vector2i] = []
 	for i in range(1, exits.size()):
 		extra.append(exits[i])
@@ -94,6 +99,17 @@ static func make(rng: RandomNumberGenerator, kind: String, h: int, n: int, faces
 	room["cols"] = cols_from_set(blocks)
 	room.origin = "cilindro"
 	return room
+
+
+## La entrada del cilindro: afuera del anillo de piso, pegada a la cara donde está la salida (así no hay que dar la vuelta entera para llegar).
+static func entry_for(e: Vector2i) -> Vector2i:
+	if e.y == 1:
+		return Vector2i(e.x, -1)
+	if e.x == 6:
+		return Vector2i(8, e.y)
+	if e.y == 6:
+		return Vector2i(e.x, 8)
+	return Vector2i(-1, e.y)
 
 
 static func block_set(room: Dictionary) -> Dictionary:
@@ -161,7 +177,7 @@ static func face_costs(room: Dictionary, cap := 300000, ms := 4000) -> Array:
 		if ev.is_empty():
 			out.append({"ok": false, "moves": -1, "grabs": 0, "blocks": 0})
 		else:
-			out.append({"ok": true, "moves": int(ev.opt.moves), "grabs": int(ev.opt.grabs), "blocks": int(ev.opt.blocks), "switches": int(ev.opt.switches), "path": ev.path})
+			out.append({"ok": true, "moves": int(ev.opt.moves), "grabs": int(ev.opt.grabs), "blocks": int(ev.opt.blocks), "switches": int(ev.opt.switches), "walk": float(ev.opt.walk), "path": ev.path})
 	return out
 
 
