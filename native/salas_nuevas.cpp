@@ -985,7 +985,9 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 				q.first = v + (double)(rng() % 1000) / 1000.0 * 2.0;
 				for (auto& cd : cands) if (cd.traza == q.second.traza) cd.puntaje = q.first;
 				// variante con el jugador puesto sobre el bloque de entrada (el checkpoint del nivel 1): es el estado con el que se arrancaría
+				static int c_gate = 0, c_ok = 0, c_fail = 0, c_tope = 0;
 				if (q.second.ef >= P.min_ef && q.second.tocados >= P.min_dist) {
+					c_gate++;
 					Sim ts;
 					cargar(ts, q.second.e, P.h);
 					int pc = -1;
@@ -994,9 +996,10 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 						ts.px = ix(pc); ts.py = 2; ts.pz = iz(pc); ts.hx = 0; ts.hz = 0;
 						Estado te; guardar(ts, te);
 						Resolucion r2 = evaluar_sala(te, P, P.tope_nivel);
-						if (r2.ok) cands.push_back({r2.moves + 3.0 * r2.agarres + P.wd * r2.distintos, te, -1});
+						if (r2.ok) { c_ok++; cands.push_back({r2.moves + 3.0 * r2.agarres + P.wd * r2.distintos, te, -1}); } else if (r2.tope) c_tope++; else c_fail++;
 					}
 				}
+				if (getenv("SN_LOG") && (c_gate % 20 == 1)) fprintf(stderr, "  teleport: gate %d ok %d fail %d tope %d\n", c_gate, c_ok, c_fail, c_tope);
 			}
 			sort(sig.begin(), sig.end(), [](const pair<double, NodoH>& a, const pair<double, NodoH>& b) { return a.first > b.first; });
 		}
