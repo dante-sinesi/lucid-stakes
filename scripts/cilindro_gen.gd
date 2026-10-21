@@ -15,12 +15,12 @@ const SIDE := 8   # el piso incluido
 static var inner_void := 0.35   # parte de las columnas de adentro que se sacan por completo (huecos para maniobrar)
 
 
-static func cells() -> Array[Vector2i]:
+static func cells(with_hollow := false) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	for x in SIDE:
 		for z in SIDE:
-			if x >= 3 and x <= 4 and z >= 3 and z <= 4:
-				continue   # el core
+			if x >= 3 and x <= 4 and z >= 3 and z <= 4 and not with_hollow:
+				continue   # el core (o, con with_hollow, el pozo vacío del medio: lleva piso)
 			out.append(Vector2i(x, z))
 	return out
 
@@ -78,10 +78,10 @@ static func top_view(room: Dictionary) -> String:
 		var line := ""
 		for x in SIDE:
 			var c := Vector2i(x, z)
-			if x >= 3 and x <= 4 and z >= 3 and z <= 4:
-				line += " # "
-			elif c == room.exit:
+			if c == room.exit:
 				line += " E "
+			elif x >= 3 and x <= 4 and z >= 3 and z <= 4 and not room.cols.has(c):
+				line += " # "
 			elif room.cols.has(c):
 				line += " %d " % String(room.cols[c]).length()
 			else:
@@ -164,6 +164,40 @@ static func goal_state(rng: RandomNumberGenerator, h: int) -> Dictionary:
 	return {"room": room, "state": t}
 
 
+## La masa escasa (versión 2, con el pozo del medio vacío): casi no hay material. Sólo la escalera hasta la salida (columnas de h-1, h-2... 1 a lo largo de la capa de afuera) y unos bloques sueltos de más
+## repartidos en el anillo. La salida es un pilar fijo en el borde de arriba (la "salida" del cilindro). El jugador está arriba, en la salida.
+static func goal_sparse(rng: RandomNumberGenerator, h: int, extras: int) -> Dictionary:
+	var room := RoomLib.make_room("3x3", h)
+	room.shape = "C6H"   # (sin core sólido: el pozo del medio está vacío, con piso)
+	room.cells = cells(true)
+	room.entry = Vector2i(-1, 3)
+	var per := perimeter()
+	var ei := rng.randi_range(0, per.size() - 1)
+	room.exit = per[ei]
+	var dir := 1 if rng.randf() < 0.5 else -1
+	var cols := {}
+	for k in range(1, h):
+		var c: Vector2i = per[posmod(ei + dir * k, per.size())]
+		if (c - room.entry).length() < 1.5:
+			continue
+		cols[c] = "n".repeat(h - k)
+	var ring := mass_cells()
+	var guard := 0
+	while extras > 0 and guard < 200:
+		guard += 1
+		var c: Vector2i = ring[rng.randi_range(0, ring.size() - 1)]
+		if c == room.exit or (c - room.entry).length() < 1.5:
+			continue
+		if String(cols.get(c, "")).length() < 3:
+			cols[c] = String(cols.get(c, "")) + "n"
+			extras -= 1
+	room["cols"] = cols
+	room.origin = "cilindro"
+	var t = RoomLib.build_state(room)
+	t.player = Vector3i(room.exit.x, h + 1, room.exit.y)
+	return {"room": room, "state": t}
+
+
 static func _inside_ok(t, room: Dictionary) -> bool:
 	var inside := {}
 	for c in room.cells:
@@ -181,8 +215,8 @@ static func _inside_ok(t, room: Dictionary) -> bool:
 
 
 ## Juega `steps` movimientos hacia atrás desde la masa resuelta (caminar, empujar, tirar: cada uno comprobado como reversible con las reglas del juego). Devuelve la sala o {}.
-static func scramble(rng: RandomNumberGenerator, h: int, steps: int) -> Dictionary:
-	var g := goal_state(rng, h)
+static func scramble(rng: RandomNumberGenerator, h: int, steps: int, sparse := false, extras := 6) -> Dictionary:
+	var g := goal_sparse(rng, h, extras) if sparse else goal_state(rng, h)
 	var room: Dictionary = g.room
 	var s = g.state
 	var seen_blocks := {}
@@ -259,3 +293,78 @@ static func scramble(rng: RandomNumberGenerator, h: int, steps: int) -> Dictiona
 	room.opt["scramble_steps"] = done
 	room.opt["scramble_pushes"] = pushes
 	return room
+
+
+# --- escalada de colinas sobre el cilindro (guiada por el solucionador) ----------------------------------------------------------
+
+static func score(room: Dictionary) -> float:
+	var o: Dictionary = room.opt
+	return float(o.moves) + 3.0 * float(o.grabs) + 4.0 * float(o.blocks) + 2.0 * float(o.switches)
+
+
+## Un cambio al azar: el bloque de arriba de una columna pasa arriba de otra (en el anillo, el piso de afuera o el pozo), o se intercambian dos columnas.
+static func mutate(rng: RandomNumberGenerator, room: Dictionary) -> Dictionary:
+	var r := RoomLib.copy_room(room)
+	var cols: Dictionary = r.cols
+	var h: int = r.h
+	if cols.is_empty():
+		return {}
+	var keys: Array = cols.keys()
+	var allowed: Array = []
+	for c in cells(true):
+		if c != r.exit and (c - r.entry).length() >= 1.5:
+			allowed.append(c)
+	if rng.randf() < 0.75:
+		var from: Vector2i = keys[rng.randi_range(0, keys.size() - 1)]
+		var to: Vector2i = allowed[rng.randi_range(0, allowed.size() - 1)]
+		if from == to or String(cols.get(to, "")).length() >= h - 1:
+			return {}
+		var sf: String = cols[from]
+		if sf.length() <= 1:
+			cols.erase(from)
+		else:
+			cols[from] = sf.substr(0, sf.length() - 1)
+		cols[to] = String(cols.get(to, "")) + "n"
+	else:
+		var a: Vector2i = keys[rng.randi_range(0, keys.size() - 1)]
+		var b: Vector2i = allowed[rng.randi_range(0, allowed.size() - 1)]
+		if a == b:
+			return {}
+		var ta: String = cols[a]
+		var tb: String = String(cols.get(b, ""))
+		if tb == "":
+			cols.erase(a)
+		else:
+			cols[a] = tb
+		if ta == "":
+			cols.erase(b)
+		else:
+			cols[b] = ta
+	return r
+
+
+static func climb(rng: RandomNumberGenerator, start: Dictionary, budget_ms: int) -> Dictionary:
+	var best: Dictionary = Conv.evaluate(start, 300000, 4000)
+	if best.is_empty():
+		return {}
+	var best_score := score(best)
+	var t0 := Time.get_ticks_msec()
+	var tries := 0
+	var accepted := 0
+	while Time.get_ticks_msec() - t0 < budget_ms:
+		tries += 1
+		var cand := mutate(rng, best)
+		if cand.is_empty():
+			continue
+		var ev: Dictionary = Conv.evaluate(cand, 300000, 4000)
+		if ev.is_empty():
+			continue
+		var sc := score(ev)
+		if sc >= best_score:
+			if sc > best_score:
+				accepted += 1
+			best = ev
+			best_score = sc
+	best.opt["tries"] = tries
+	best.opt["accepted"] = accepted
+	return best

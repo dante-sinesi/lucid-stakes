@@ -27,7 +27,7 @@ func _init() -> void:
 		tried += 1
 		var h: int = hs[tried % hs.size()]
 		var t1 := Time.get_ticks_msec()
-		var room := Gen.scramble(rng, h, steps)
+		var room := Gen.scramble(rng, h, steps, OS.get_environment("ESCASA") != "", int(OS.get_environment("EXTRAS")) if OS.get_environment("EXTRAS") != "" else 6)
 		if room.is_empty() or RoomLib.validate_structure(room) != "":
 			print("(intento %d: la masa no sirve)" % tried)
 			continue
