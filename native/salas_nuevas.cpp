@@ -918,10 +918,14 @@ static Resolucion evaluar_sala(const Estado& e, const Param& P, long tope) {
 
 static double valor_de(const Resolucion& r, const Param& P) { return r.moves + 3.0 * r.agarres + P.wd * r.distintos; }
 
+static double ahora() { return (double)clock() / CLOCKS_PER_SEC; }
+
 static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
+	double t_ini = ahora();
 	{ int hx0, hz0, hw, hd; huella(P.tipo, hx0, hz0, hw, hd); g_fx0 = hx0; g_fz0 = hz0; g_fx1 = hx0 + hw - 1; g_fz1 = hz0 + hd - 1; }
 	Sim e;
-	if (!sala_resuelta(P, rng, e)) return false;
+	if (!sala_resuelta(P, rng, e)) { if (getenv("SN_LOG")) fprintf(stderr, "sala resuelta: no se pudo armar (%.1f s)\n", ahora() - t_ini); return false; }
+	if (getenv("SN_LOG")) fprintf(stderr, "sala resuelta lista (%.1f s)\n", ahora() - t_ini);
 	e.ganado = true;
 	vector<Traza> trazas;
 	trazas.push_back({-1, 0});
@@ -934,6 +938,7 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 	vector<NodoH> capa;
 	capa.push_back(raiz);
 	vector<Candidata> cands;
+	vector<pair<double, Estado>> pool;   // sin evaluación exacta en cada capa (salas altas): los estados que pasan la exigencia, para armar las variantes al final
 	Sim cur;
 	vector<Pred> preds;
 	for (int nivel = 0; nivel < P.profundidad && (int)cands.size() < P.limite_cand; nivel++) {
@@ -968,6 +973,7 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 				cargar(ps, h2.e, P.h);
 				double puntaje = 6.0 * h2.ef + 20.0 * h2.tocados - 0.5 * ps.py + (double)(rng() % 1000) / 1000.0 * P.ruido - (ps.colgando() ? 2.0 : 0.0);
 				if (es_inicio(ps) && h2.ef >= P.min_ef && h2.tocados >= P.min_dist) cands.push_back({puntaje, h2.e, h2.traza});
+				if (!P.exacto && h2.ef >= P.min_ef && h2.tocados >= P.min_dist) pool.push_back({puntaje, h2.e});
 				sig.push_back({puntaje, std::move(h2)});
 			}
 		}
@@ -1006,7 +1012,24 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 		capa.clear();
 		for (int i = 0; i < (int)sig.size() && i < P.ancho; i++) capa.push_back(std::move(sig[i].second));
 	}
-	if (getenv("SN_LOG")) fprintf(stderr, "fin del haz: %zu iniciales\n", cands.size());
+	if (getenv("SN_LOG")) fprintf(stderr, "fin del haz: %zu iniciales (%.1f s)\n", cands.size(), ahora() - t_ini);
+	if (!P.exacto && !pool.empty()) {
+		// variantes con el jugador puesto sobre la entrada, de los mejores estados por el puntaje barato
+		sort(pool.begin(), pool.end(), [](const pair<double, Estado>& a, const pair<double, Estado>& b) { return a.first > b.first; });
+		int hechas = 0;
+		for (auto& q : pool) {
+			if (hechas >= P.evaluar * 2) break;
+			Sim ts;
+			cargar(ts, q.second, P.h);
+			int pc = -1;
+			for (int i = 0; i < ts.lim && i < GZ * GX * 2; i++) if (ts.g[i] == CP && iy(i) == 1) pc = i;
+			if (pc < 0 || ts.hay(ix(pc), 2, iz(pc))) continue;
+			ts.px = ix(pc); ts.py = 2; ts.pz = iz(pc); ts.hx = 0; ts.hz = 0;
+			Estado te; guardar(ts, te);
+			cands.push_back({q.first, te, -1});
+			hechas++;
+		}
+	}
 	if (cands.empty()) return false;
 	sort(cands.begin(), cands.end(), [](const Candidata& a, const Candidata& b) { return a.puntaje > b.puntaje; });
 	// entre las mejores candidatas se elige la que pide más con el solucionador exacto
@@ -1017,11 +1040,11 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 		Resolucion r = evaluar_sala(cands[i].e, P, P.tope_eval);
 		if (getenv("SN_LOG")) fprintf(stderr, "  candidata %d: ok=%d pasos=%d distintos=%d tope=%d\n", i, (int)r.ok, r.moves, r.distintos, (int)r.tope);
 		if (!r.ok) continue;
-		if (r.distintos < P.min_distintos_exactos) continue;
 		double v = r.moves + 3.0 * r.agarres + P.wd * r.distintos;
 		if (v > mejor_valor) { mejor_valor = v; mejor = i; mejor_res = r; }
 	}
 	if (mejor < 0) return false;
+	if (getenv("SN_LOG")) fprintf(stderr, "evaluadas las candidatas (%.1f s)\n", ahora() - t_ini);
 	if (P.escalada > 0) {
 		Estado actual = cands[mejor].e;
 		Resolucion ract = mejor_res;
@@ -1038,10 +1061,12 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 			if (!acepta && P.temp > 0.0) acepta = ((double)(rng() % 10000) / 10000.0) < exp((vc - vact) / P.temp);
 			if (acepta) { actual = ce; ract = rc; vact = vc; }
 		}
+		if (getenv("SN_LOG")) fprintf(stderr, "escalada terminada (%.1f s)\n", ahora() - t_ini);
 		cands[mejor].e = actual;
 		cands[mejor].traza = -1;
 		mejor_res = ract;
 	}
+	if (mejor_res.distintos < P.min_distintos_exactos) return false;   // (la exigencia de bloques distintos vale para la sala ya mejorada)
 	int armado = -1;
 	if (cands[mejor].traza >= 0) { armado = 0; for (int t = cands[mejor].traza; trazas[t].padre >= 0; t = trazas[t].padre) armado++; }
 	bool es_exacto = P.h <= P.h_exacto;
