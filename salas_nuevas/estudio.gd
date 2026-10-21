@@ -297,7 +297,15 @@ func _mostrar_info() -> void:
 	t += "bloques distintos movidos: %d (%.2f por piso)\n" % [int(d.get("distintos", 0)), float(d.get("distintos", 0)) / maxf(pisos, 1.0)]
 	if int(d.get("armado", -1)) >= 0:
 		t += "camino armado hacia atrás: %d\n" % int(d.armado)
-	t += "exacto: %s\n" % ("sí" if bool(d.get("exacto", false)) else "no (cota)")
+	if d.has("complejidad"):
+		t += "[b]complejidad: %.0f bits[/b] (decisión %.0f + peligro %.0f)\n" % [float(d.complejidad), float(d.bits_opt), float(d.bits_letal)]
+		t += "pasos críticos (un solo movimiento sigue un camino más corto): %d de %d\n" % [int(d.get("criticos", 0)), int(d.get("pasos", 0))]
+		if int(d.get("desconocidos", 0)) > 0:
+			t += "(métrica aproximada: %d movimientos sin resolver)\n" % int(d.desconocidos)
+	if bool(d.get("exacto", false)):
+		t += "camino más corto demostrado\n"
+	else:
+		t += "camino conocido: el mínimo está entre %d y %d pasos\n" % [int(d.get("cota_inferior", 0)), int(d.get("pasos", 0))]
 	if editado:
 		t += "\n[color=orange]cambios sin guardar[/color]"
 	info.text = t
