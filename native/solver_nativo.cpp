@@ -507,14 +507,12 @@ static bool actHanging(Sim &s, V d) {
 	V h2 = s.p + d;
 	V g2 = h2 + w;
 	if (!inHangReach(h2)) return false;
-	if (has(s, h2)) {
-		if (has(s, h2 + UP)) return false;
+	if (has(s, h2)) {   // (también si el bloque tiene otro encima: se avanza agarrado de su costado)
 		if (kindAt(s, h2) == ICE) return false;
 		s.hang = d;
 		return true;
 	}
 	if (has(s, g2)) {
-		if (has(s, g2 + UP)) return false;
 		if (kindAt(s, g2) == ICE) return false;
 		setP(s, h2);
 		return true;

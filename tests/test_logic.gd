@@ -851,7 +851,7 @@ func test_hang() -> void:
 	check(t.try_action(E).ok and t.player == Vector3i(1, 0, 3) and t.hang_dir == E, "doblar una esquina hacia adentro: se agarra de la pared que gira sin moverse")
 	check(t.try_action(E, MOVE).ok and t.player == Vector3i(2, 1, 3), "...y desde ahi se trepa a ese bloque")
 
-	# La esquina hacia adentro no se dobla si no hay borde libre arriba, o si es de hielo.
+	# La esquina hacia adentro se dobla aunque el bloque tenga otro encima (se avanza agarrado de su costado, como en Catherine), pero no si es de hielo.
 	var wall = t.clone()
 	t = fresh()
 	t.blocks.clear()
@@ -859,10 +859,10 @@ func test_hang() -> void:
 	for x in range(0, 3):
 		t.add_block(Vector3i(x, 0, 2))
 	t.add_block(Vector3i(2, 0, 3))
-	t.add_block(Vector3i(2, 1, 3))  # bloque arriba: no hay borde
+	t.add_block(Vector3i(2, 1, 3))  # bloque arriba: se avanza agarrado de su costado
 	t.player = Vector3i(1, 1, 2)
 	t.try_action(S, HANG)
-	check(not t.try_action(E).ok and t.hang_dir == N, "esquina hacia adentro con un bloque encima: no hay borde, no se dobla")
+	check(t.try_action(E).ok and t.hang_dir == E, "esquina hacia adentro con un bloque encima: se dobla agarrado de su costado")
 	t = fresh()
 	t.blocks.clear()
 	t.positions.clear()
@@ -878,6 +878,13 @@ func test_hang() -> void:
 	t.try_action(E, HANG)
 	t.add_block(Vector3i(2, 1, 2))  # ahora el bloque (2,0,2) tiene otro encima
 	check(not t.try_action(S).ok and t.player == Vector3i(3, 0, 2), "esquina hacia afuera con un bloque encima del agarre: no se dobla")
+
+	# Colgado, se avanza por el borde hacia un bloque que tiene otro encima (agarrado de su costado, como en Catherine); lo que no se puede es trepar ahí.
+	t = ledge()
+	t.try_action(E, HANG)
+	t.add_block(Vector3i(2, 1, 1))
+	check(t.try_action(N).ok and t.player == Vector3i(3, 0, 1) and t.hang_dir == W, "colgado: se avanza hacia un bloque con otro encima")
+	check(not t.try_action(W).ok, "...pero no se puede trepar ahí (hay un bloque encima)")
 
 	# No se dobla hacia fuera de la huella.
 	t = fresh()

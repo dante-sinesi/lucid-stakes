@@ -577,16 +577,12 @@ func _act_hanging(d: Vector3i) -> Dictionary:
 	var g2 := h2 + w
 	if not in_hang_reach(h2):
 		return _fail("No se puede avanzar por el borde")
-	if blocks.has(h2):  # esquina hacia adentro: la pared gira hacia el jugador y se agarra de ella
-		if blocks.has(h2 + UP):
-			return _fail("No se puede avanzar por el borde")
+	if blocks.has(h2):  # esquina hacia adentro: la pared gira hacia el jugador y se agarra de ella (como en Catherine, también si el bloque tiene otro encima: se avanza agarrado de su costado)
 		if kind_at(h2) == Kind.ICE:
 			return _fail("Hielo: no hay de dónde agarrarse")
 		hang_dir = d
 		return _ok()
-	if blocks.has(g2):  # tramo recto
-		if blocks.has(g2 + UP):
-			return _fail("No se puede avanzar por el borde")
+	if blocks.has(g2):  # tramo recto (también si el bloque tiene otro encima: se avanza agarrado de su costado; lo que no se puede es trepar ahí)
 		if kind_at(g2) == Kind.ICE:
 			return _fail("Hielo: no hay de dónde agarrarse")
 		_set_player(h2)
