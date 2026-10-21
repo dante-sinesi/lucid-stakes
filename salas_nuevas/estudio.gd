@@ -290,6 +290,12 @@ func _mostrar_info() -> void:
 	info.text = t
 
 
+## El máximo de movimientos de la sala en una etapa (1 a 15): el mínimo del solucionador por un margen que baja con la etapa. Tabla provisoria.
+static func maximo_movimientos(minimo: int, etapa: int) -> int:
+	var margen := lerpf(2.0, 1.15, clampf(float(etapa - 1) / 14.0, 0.0, 1.0))
+	return ceili(float(minimo) * margen)
+
+
 func _poner_camara() -> void:
 	if cuadros.is_empty():
 		return
