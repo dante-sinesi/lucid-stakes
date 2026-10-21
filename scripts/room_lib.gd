@@ -246,7 +246,7 @@ static func build_state(room: Dictionary):
 	var entry: Vector2i = room.entry
 	var exit: Vector2i = room.exit
 	var h: int = room.h
-	for c in room.cells:
+	for c in room.get("floor_cells", room.cells):   # (el cilindro y la pared: el piso es sólo un anillo o una franja; el resto de la arena es vacío)
 		t.add_block(Vector3i(c.x, 0, c.y), true)
 	t.add_block(Vector3i(entry.x, 0, entry.y), true)
 	for cc in core_cells(str(room.shape)):
@@ -257,6 +257,10 @@ static func build_state(room: Dictionary):
 			t.add_block(Vector3i(exit.x, y, exit.y), false, K.HEAVY)
 	t.add_block(Vector3i(exit.x, h, exit.y), true, K.NORMAL)
 	var goal_id: int = t.blocks[Vector3i(exit.x, h, exit.y)]
+	var extra_goals := {}
+	for e in room.get("exits_extra", []):   # (el cilindro de 4 salidas: una por cara; `goal_first_only` hace que sólo cuente la primera)
+		t.add_block(Vector3i(e.x, h, e.y), true, K.NORMAL)
+		extra_goals[t.blocks[Vector3i(e.x, h, e.y)]] = true
 	var keys: Array = room.cols.keys()
 	keys.sort_custom(func(a, b): return a.y * 100 + a.x < b.y * 100 + b.x)
 	for c in keys:
@@ -268,6 +272,9 @@ static func build_state(room: Dictionary):
 	t.player = Vector3i(entry.x, 1, entry.y)
 	t.goal_y = h + 1
 	t.goal_ids = {goal_id: true}
+	if not bool(room.get("goal_first_only", false)):
+		for gid in extra_goals:
+			t.goal_ids[gid] = true
 	return t
 
 
@@ -983,6 +990,16 @@ static func to_dict(room: Dictionary) -> Dictionary:
 		out["fuse"] = int(room.fuse)
 	if bool(room.get("exit_solo", false)):
 		out["exit_solo"] = true
+	if room.has("floor_cells"):
+		var fc: Array = []
+		for c in room.floor_cells:
+			fc.append([c.x, c.y])
+		out["floor_cells"] = fc
+	if room.has("exits_extra"):
+		var ex: Array = []
+		for c in room.exits_extra:
+			ex.append([c.x, c.y])
+		out["exits_extra"] = ex
 	return out
 
 
@@ -1018,6 +1035,16 @@ static func from_dict(d: Dictionary) -> Dictionary:
 		room["fuse"] = int(d.fuse)
 	if d.has("exit_solo"):
 		room["exit_solo"] = bool(d.exit_solo)
+	if d.has("floor_cells"):
+		var fc2: Array[Vector2i] = []
+		for c in d.floor_cells:
+			fc2.append(Vector2i(int(c[0]), int(c[1])))
+		room["floor_cells"] = fc2
+	if d.has("exits_extra"):
+		var ex2: Array[Vector2i] = []
+		for c in d.exits_extra:
+			ex2.append(Vector2i(int(c[0]), int(c[1])))
+		room["exits_extra"] = ex2
 	room.rules = int(d.get("rules", 0))
 	room.id = str(d.get("id", ""))
 	room.family = str(d.get("family", ""))
