@@ -115,13 +115,12 @@ static func direccion_hacia_salida(t) -> Vector3:
 
 
 ## Cámara detrás del jugador: mira hacia donde queda la salida, desde atrás y un poco arriba, con la parte de adelante y de arriba de la sala a la vista.
-static func camara_detras(cam: Camera3D, t, dist := 5.6, altura := 2.2, mirar_adelante := 2.0) -> void:
+static func camara_detras(cam: Camera3D, t, dist := 5.0, altura := 2.3, mirar_adelante := 1.4) -> void:
 	var f := direccion_hacia_salida(t)
 	var p := Vector3(t.jugador.x + 0.5, t.jugador.y + 0.5, t.jugador.z + 0.5)
-	var falta := float(maxi(t.meta + 1 - t.jugador.y, 0))
-	var objetivo := p + f * mirar_adelante + Vector3(0, minf(falta * 0.15, 1.6), 0)
-	cam.look_at_from_position(p - f * dist + Vector3(0, altura + falta * 0.1, 0), objetivo, Vector3.UP)
-	cam.fov = 68.0
+	var objetivo := p + f * mirar_adelante + Vector3(0, 1.3, 0)
+	cam.look_at_from_position(p - f * dist + Vector3(0, altura, 0), objetivo, Vector3.UP)
+	cam.fov = 66.0
 
 
 ## Un Motor desde la línea de una sala del archivo (jsonl).

@@ -25,6 +25,9 @@ func _init() -> void:
 		estudio.elegir(idx)
 		await _frames(8)
 		root.get_texture().get_image().save_png("%s_%d_ui.png" % [prefijo, idx])
+		estudio.contenedor.stretch = false
+		estudio.vp.size = Vector2i(1280, 720)
+		await _frames(3)
 		var total: int = estudio.cuadros.size() - 1
 		for k in n_cuadros:
 			estudio.ir_a(int(round(float(k) * float(total) / float(maxi(n_cuadros - 1, 1)))))

@@ -15,9 +15,14 @@ except Exception:
     f = ImageFont.load_default()
 d.text((10, 9), titulo, fill=(255, 235, 160), font=f)
 for k in range(n):
-    try:
-        im = Image.open('%s_%s_%d.png' % (prefijo, idx, k)).convert('RGB').resize((W, H))
-    except Exception:
+    im = None
+    for nombre in ('%s_%s_%d_vista.png' % (prefijo, idx, k), '%s_%s_%d.png' % (prefijo, idx, k)):
+        try:
+            im = Image.open(nombre).convert('RGB').resize((W, H))
+            break
+        except Exception:
+            pass
+    if im is None:
         continue
     img.paste(im, ((k % cols) * W, 36 + (k // cols) * H))
     d.text(((k % cols) * W + 8, 40 + (k // cols) * H), 'cuadro %d' % (k + 1), fill=(220, 220, 235), font=f)
