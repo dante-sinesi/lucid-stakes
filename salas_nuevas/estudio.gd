@@ -8,6 +8,7 @@ const Vista := preload("res://salas_nuevas/vista.gd")
 const Motor := preload("res://salas_nuevas/motor.gd")
 const Nat := preload("res://salas_nuevas/nativo.gd")
 const RoomView := preload("res://scripts/room_view.gd")
+const Reglas := preload("res://salas_nuevas/reglas.gd")
 
 
 class Mira:
