@@ -23,3 +23,9 @@ Reglas en `docs/torre_salas_reglas.md`. Código aislado del juego en `salas_nuev
 - Heurística admisible más fuerte (el techo del A* son unos 25-30 pasos con muchos bloques).
 - Tabla de margen del temporizador por etapa (hoy provisoria: mínimo x 2,0 en la etapa 1 hasta x 1,15 en la 15).
 - Integración al juego (motor de la torre, bloque checkpoint, caída y checkpoint): sólo cuando el usuario lo pida.
+
+## Biblioteca v3 (176 salas: 82 de 3x3, 50 de 5x3, 44 de 8x3 de 5 a 23 pisos)
+- Forma comprobada (`herramientas/revisar_forma_salas_nuevas.py`: 0 problemas), caminos jugados en el motor de GDScript (`tests/test_salas_nuevas.gd`: 0 fallos).
+- Se arreglaron las 8x3: la exigencia de bloques distintos ahora se aplica después de mejorar la sala; las grandes llevan ~2,3 bloques extra por piso; el armado de las altas usa un puntaje barato y la evaluación por lonjas va al final con un tope de nodos por lonja de 60 mil (una 8x3 de 24 pisos tarda ~2 minutos).
+- Mínimo exacto demostrado: todas las 3x3, 5x3 hasta 8 pisos y 8x3 hasta 9; las más altas quedan con cota inferior (A* con presupuesto) y camino de lonjas (cota superior): 39 salas.
+- Pendiente: certificar las altas (A* con memoria compacta o heurística más fuerte) y calibrar la métrica con salas jugadas.
