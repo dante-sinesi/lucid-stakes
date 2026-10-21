@@ -118,8 +118,9 @@ static func direccion_hacia_salida(t) -> Vector3:
 static func camara_detras(cam: Camera3D, t, dist := 5.0, altura := 2.3, mirar_adelante := 1.4) -> void:
 	var f := direccion_hacia_salida(t)
 	var p := Vector3(t.jugador.x + 0.5, t.jugador.y + 0.5, t.jugador.z + 0.5)
-	var objetivo := p + f * mirar_adelante + Vector3(0, 1.3, 0)
-	cam.look_at_from_position(p - f * dist + Vector3(0, altura, 0), objetivo, Vector3.UP)
+	var falta := float(maxi(t.meta + 1 - t.jugador.y, 0))   # (pisos que faltan: en salas altas la cámara se aleja y mira más arriba)
+	var objetivo := p + f * mirar_adelante + Vector3(0, 1.1 + minf(falta * 0.26, 3.0), 0)
+	cam.look_at_from_position(p - f * (dist + minf(falta * 0.1, 1.2)) + Vector3(0, altura + minf(falta * 0.05, 0.8), 0), objetivo, Vector3.UP)
 	cam.fov = 66.0
 
 

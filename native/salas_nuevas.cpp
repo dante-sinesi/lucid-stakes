@@ -91,9 +91,23 @@ struct Sim {
 	int sig_id = 0;
 	int lim = NC;   // sólo se recorren los niveles que pueden tener algo (hasta alto + 6)
 	vector<uint8_t> ok_, quietos_;
+	vector<int> cel;   // celdas ocupadas (sin orden): los recorridos son por los bloques y no por toda la grilla
 	void fijar_alto(int a) { alto = a; lim = min(NC, (a + 6) * GZ * GX); }
 
-	void limpiar() { memset(g, 0, sizeof(g)); }
+	Sim() { memset(g, 0, sizeof(g)); }
+	void limpiar() { memset(g, 0, lim); cel.clear(); }
+	// Copia sólo los niveles que se usan (el resto es cero en las dos): mucho más barata que la copia entera.
+	void copiar_de(const Sim& o) {
+		alto = o.alto; lim = o.lim;
+		px = o.px; py = o.py; pz = o.pz; hx = o.hx; hy = o.hy; hz = o.hz;
+		perdido = o.perdido; ganado = o.ganado; track = false;
+		mov_jugador.clear();
+		memcpy(g, o.g, lim);
+		cel = o.cel;
+	}
+	void reconstruir() { cel.clear(); for (int i = 0; i < lim; i++) if (g[i] != NONE) cel.push_back(i); }
+	void agregar_cel(int i) { cel.push_back(i); }
+	void sacar_cel(int i) { for (size_t k = 0; k < cel.size(); k++) if (cel[k] == i) { cel[k] = cel.back(); cel.pop_back(); return; } }
 	bool hay(int x, int y, int z) const { return dentro(x, y, z) && g[idx(x, y, z)] != NONE; }
 	Kind kind(int x, int y, int z) const { return dentro(x, y, z) ? (Kind)g[idx(x, y, z)] : NONE; }
 	bool colgando() const { return hx != 0 || hy != 0 || hz != 0; }
@@ -104,18 +118,22 @@ struct Sim {
 
 	void poner(int x, int y, int z, Kind k) {
 		if (!dentro(x, y, z)) return;
-		g[idx(x, y, z)] = k;
+		int i0 = idx(x, y, z);
+		if (g[i0] == NONE) agregar_cel(i0);
+		g[i0] = k;
 		if (track) { if (ids.empty()) ids.assign(NC, 0); ids[idx(x, y, z)] = sig_id++; }
 	}
-	void quitar(int x, int y, int z) { if (dentro(x, y, z)) g[idx(x, y, z)] = NONE; }
+	void quitar(int x, int y, int z) { if (dentro(x, y, z)) { int i0 = idx(x, y, z); if (g[i0] != NONE) { g[i0] = NONE; sacar_cel(i0); } } }
 
 	void mover_bloque(int fx, int fy, int fz, int tx, int ty, int tz, bool del_jugador) {
 		int a = idx(fx, fy, fz);
 		Kind k = (Kind)g[a];
 		g[a] = NONE;
+		sacar_cel(a);
 		if (!dentro(tx, ty, tz)) { return; }   // se fue lejísimo: se pierde
 		int b = idx(tx, ty, tz);
 		g[b] = k;
+		agregar_cel(b);
 		if (track) ids[b] = ids[a];
 		if (del_jugador) mov_jugador.push_back({a, b});
 	}
@@ -124,7 +142,7 @@ struct Sim {
 	void anclados(vector<uint8_t>& ok) const {
 		ok.assign(lim, 0);
 		vector<int> cola;
-		for (int i = 0; i < lim; i++) if (g[i] == F) { ok[i] = 1; cola.push_back(i); }
+		for (int i : cel) if (g[i] == F) { ok[i] = 1; cola.push_back(i); }
 		while (!cola.empty()) {
 			int c = cola.back(); cola.pop_back();
 			int x = ix(c), y = iy(c), z = iz(c);
@@ -147,8 +165,8 @@ struct Sim {
 			sostenidos(ok);
 			int s = -1;
 			int smin_y = 1000, smin_x = 1000, smin_z = 1000;
-			for (int i = 0; i < lim; i++) {
-				if (g[i] == NONE || ok[i] || quietos[i]) continue;
+			for (int i : cel) {
+				if (ok[i] || quietos[i]) continue;
 				int y = iy(i), x = ix(i), z = iz(i);
 				if (y < smin_y || (y == smin_y && (x < smin_x || (x == smin_x && z < smin_z)))) { smin_y = y; smin_x = x; smin_z = z; s = i; }
 			}
@@ -157,6 +175,7 @@ struct Sim {
 			Kind tipo = (Kind)g[s];
 			int16_t id = track ? ids[s] : (int16_t)0;
 			g[s] = NONE;
+			sacar_cel(s);
 			int y = sy;
 			bool aterrizo = false;
 			while (y > 0) {
@@ -168,6 +187,7 @@ struct Sim {
 			if (aterrizo && y >= 1) {
 				int d = idx(sx, y, sz);
 				g[d] = tipo;
+				agregar_cel(d);
 				if (track) ids[d] = id;
 				if (y != sy) cambios++; else quietos[d] = 1;
 			} else {
@@ -383,16 +403,18 @@ struct Estado {
 };
 
 static void cargar(Sim& s, const Estado& e, int alto) {
+	memset(s.g, 0, s.lim);
 	s.fijar_alto(alto);
-	s.limpiar();
-	for (uint32_t b : e.bloques) s.g[b >> 4] = (uint8_t)(b & 15);
+	memset(s.g, 0, s.lim);
+	s.cel.clear();
+	for (uint32_t b : e.bloques) { s.g[b >> 4] = (uint8_t)(b & 15); s.cel.push_back((int)(b >> 4)); }
 	s.px = e.px; s.py = e.py; s.pz = e.pz;
 	s.hx = e.hx; s.hy = 0; s.hz = e.hz;
 	s.perdido = false; s.ganado = false;
 }
 static void guardar(const Sim& s, Estado& e) {
 	e.bloques.clear();
-	for (int i = 0; i < s.lim; i++) if (s.g[i] != NONE) e.bloques.push_back(((uint32_t)i << 4) | s.g[i]);
+	for (int i : s.cel) e.bloques.push_back(((uint32_t)i << 4) | s.g[i]);
 	e.px = s.px; e.py = s.py; e.pz = s.pz; e.hx = s.hx; e.hz = s.hz;
 }
 static uint64_t clave_estado(const Estado& e) {
@@ -400,6 +422,14 @@ static uint64_t clave_estado(const Estado& e) {
 	for (uint32_t b : e.bloques) { int k = b & 15; if (k != F) h ^= ZOB[b >> 4][k]; }
 	h ^= ZJ[idx(e.px, e.py, e.pz)] * 31;
 	h ^= splitmix(1000 + (e.hx + 2) * 5 + (e.hz + 2)) * 17;
+	return h;
+}
+
+static uint64_t clave_sim(const Sim& s) {
+	uint64_t h = 0;
+	for (int i : s.cel) { int k = s.g[i]; if (k != F) h ^= ZOB[i][k]; }
+	h ^= ZJ[idx(s.px, s.py, s.pz)] * 31;
+	h ^= splitmix(1000 + (s.hx + 2) * 5 + (s.hz + 2)) * 17;
 	return h;
 }
 
@@ -448,7 +478,7 @@ static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats 
 	vector<vector<int>> cubos(512);
 	int f_min = heur(e0.py);
 	cubos[f_min].push_back(0);
-	Sim s;
+	Sim s, t;
 	int meta_nodo = -1;
 	while (true) {
 		while (f_min < (int)cubos.size() && cubos[f_min].empty()) f_min++;
@@ -460,14 +490,14 @@ static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats 
 		for (int a = 0; a < 12; a++) {
 			int dx = DIRS[a % 4].x, dz = DIRS[a % 4].z, modo = a / 4;
 			if (s.colgando() && modo != 0) continue;
-			Sim t = s;
+			t.copiar_de(s);
 			if (!t.actuar(dx, dz, modo)) continue;
-			Estado ne; guardar(t, ne);
-			uint64_t k = clave_estado(ne);
+			uint64_t k = clave_sim(t);
 			int gn = g0 + 1;
 			auto it = vistos.find(k);
 			if (it != vistos.end() && it->second <= gn) continue;
 			vistos[k] = gn;
+			Estado ne; guardar(t, ne);
 			nodos.push_back({ne, id, (uint8_t)a, gn});
 			int ni = (int)nodos.size() - 1;
 			if (t.ganado || (objetivo > 0 && !t.colgando() && t.py >= objetivo)) { meta_nodo = ni; break; }
@@ -565,16 +595,18 @@ static bool estable(const Sim& c) {
 	if (c.hay(c.px, c.py, c.pz)) return false;
 	if (c.colgando()) { if (!c.hay(c.px + c.hx, c.py, c.pz + c.hz)) return false; }
 	else if (!c.hay(c.px, c.py - 1, c.pz)) return false;
-	Sim t = c;
+	static thread_local Sim t;
+	t.copiar_de(c);
 	return t.asentar_bloques() == 0;
 }
 
 static void predecesores(const Sim& cur, int radio, vector<Pred>& out) {
 	out.clear();
+	static thread_local Sim c, t;
 	static const int HD[5][2] = {{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 	// a) se movió el jugador
 	for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int dy = -1; dy <= 1; dy++) for (int ch = 0; ch < 5; ch++) {
-		Sim c = cur;
+		c.copiar_de(cur);
 		c.ganado = false; c.perdido = false;
 		c.px += dx; c.py += dy; c.pz += dz;
 		c.hx = HD[ch][0]; c.hy = 0; c.hz = HD[ch][1];
@@ -584,7 +616,7 @@ static void predecesores(const Sim& cur, int radio, vector<Pred>& out) {
 		for (int a = 0; a < 12; a++) {
 			int modo = a / 4;
 			if (c.colgando() && modo != 0) continue;
-			Sim t = c;
+			t.copiar_de(c);
 			if (!t.actuar(DIRS[a % 4].x, DIRS[a % 4].z, modo)) continue;
 			if (iguales(t, cur)) {
 				Pred p; guardar(c, p.e); p.a = a; p.bloque = false; p.desde = p.hasta = -1;
@@ -594,22 +626,21 @@ static void predecesores(const Sim& cur, int radio, vector<Pred>& out) {
 		}
 	}
 	// b) se empujó o se tiró un bloque
-	for (int i = 0; i < cur.lim; i++) {
-		if (cur.g[i] == NONE || cur.g[i] == F) continue;
+	for (int i : cur.cel) {
+		if (cur.g[i] == F) continue;
 		int x = ix(i), y = iy(i), z = iz(i);
 		if (abs(x - cur.px) > radio || abs(z - cur.pz) > radio || abs(y - cur.py) > 2) continue;
 		for (int k = 0; k < 4; k++) {
 			int ax = x - DIRS[k].x, az = z - DIRS[k].z;
 			if (!dentro(ax, y, az) || cur.hay(ax, y, az)) continue;
 			for (int mj = 0; mj < 2; mj++) {
-				Sim c = cur;
+				c.copiar_de(cur);
 				c.ganado = false; c.perdido = false;
-				c.g[idx(ax, y, az)] = c.g[i];
-				c.g[i] = NONE;
+				{ Kind kk = (Kind)c.g[i]; c.quitar(x, y, z); c.poner(ax, y, az, kk); }
 				if (mj) { c.px -= DIRS[k].x; c.pz -= DIRS[k].z; }
 				if (!c.en_limites(c.px, c.py, c.pz)) continue;
 				if (!estable(c)) continue;
-				Sim t = c;
+				t.copiar_de(c);
 				if (!t.actuar(DIRS[k].x, DIRS[k].z, 1)) continue;
 				if (iguales(t, cur)) {
 					Pred p; guardar(c, p.e); p.a = 4 + k; p.bloque = true; p.desde = i; p.hasta = idx(ax, y, az);
@@ -732,9 +763,9 @@ static bool sala_resuelta(const Param& P, mt19937_64& rng, Sim& out) {
 		if (ndx == 2 && ny == vy) continue;
 		if (ny < 1 || ny > P.h || nx < x0 - 1 || nx > x0 + w || nz < z0 - 1 || nz > z0 + d || out.hay(nx, ny, nz)) continue;
 		if (nx == out.px && ny == out.py && nz == out.pz) continue;
-		out.g[idx(nx, ny, nz)] = N;
+		out.poner(nx, ny, nz, N);
 		Sim t = out;
-		if (t.asentar_bloques() != 0) { out.g[idx(nx, ny, nz)] = NONE; continue; }
+		if (t.asentar_bloques() != 0) { out.quitar(nx, ny, nz); continue; }
 		puestos++;
 	}
 	return true;
@@ -792,8 +823,8 @@ static bool mutar(const Sim& base, const Param& P, mt19937_64& rng, Sim& out) {
 		int nx = x0 - 1 + (int)(rng() % (w + 2)), nz = z0 - 1 + (int)(rng() % (d + 2));
 		if (out.hay(nx, y, nz)) return false;
 		Kind k = (Kind)out.g[b];
-		out.g[b] = NONE;
-		out.g[idx(nx, y, nz)] = k;
+		out.quitar(ix(b), iy(b), iz(b));
+		out.poner(nx, y, nz, k);
 	} else if (tipo < 9) {   // agregar un común
 		int b = comunes[rng() % comunes.size()];
 		int dxs[3] = {-1, 0, 1};
@@ -801,11 +832,11 @@ static bool mutar(const Sim& base, const Param& P, mt19937_64& rng, Sim& out) {
 		int nd = (nx != ix(b)) + (ny != iy(b)) + (nz != iz(b));
 		if (nd == 0 || nd == 3 || (nd == 2 && ny == iy(b))) return false;
 		if (ny < 1 || ny > P.h || nx < x0 - 1 || nx > x0 + w || nz < z0 - 1 || nz > z0 + d || out.hay(nx, ny, nz)) return false;
-		out.g[idx(nx, ny, nz)] = N;
+		out.poner(nx, ny, nz, N);
 	} else {   // sacar un común
 		int b = comunes[rng() % comunes.size()];
 		if (out.g[b] != N) return false;
-		out.g[b] = NONE;
+		out.quitar(ix(b), iy(b), iz(b));
 	}
 	// el jugador sobre el bloque de entrada (el checkpoint del nivel 1)
 	int pc = -1;
