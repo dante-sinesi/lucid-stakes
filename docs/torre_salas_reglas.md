@@ -30,7 +30,8 @@ Los del juego actual (caminar, trepar, empujar y tirar de a un bloque o fila de 
 - Interpretación a confirmar: el camino mínimo marca para cada fila la última vez que se usa un bloque de esa fila o se pisa; la fila no puede desaparecer antes de eso más el margen de la etapa. Así el camino mínimo siempre cabe.
 - **Checkpoint:** al llegar al bloque de salida de una sala (el comienzo de la siguiente), **toda la sala anterior cae** y el temporizador arranca de cero con los movimientos máximos de la sala actual.
 - **Caer al vacío es morir**, por cualquier motivo: quedar colgado sobre el vacío, perder la plataforma por el temporizador, mover el último bloque que sostenía lo que pisabas, etc.
-- **Al morir se pierde una vida y se vuelve al checkpoint con la torre reconstruida virgen** (las salas vuelven a su diseño original).
+- **Al morir se pierde una vida y se vuelve al checkpoint** con la torre reconstruida virgen **desde la sala en la que se entró** (la sala ya pasada ya no existe ni importa).
+- **Bloques de checkpoint:** el bloque de salida de cada sala (el comienzo de la siguiente) lleva un farolito que se prende al llegar: marca que el checkpoint está activado.
 - Todas las salas tienen la misma tensión: ni siquiera la primera tiene suelo.
 
 ## 5. Qué es una buena sala (para medir)
@@ -53,5 +54,4 @@ Los del juego actual (caminar, trepar, empujar y tirar de a un bloque o fila de 
 
 - Dónde queda el bloque de salida dentro de la huella y qué anclas de verificación lo sostienen.
 - Cuántos movimientos de margen por etapa (la tabla de dificultad).
-- Si al morir también se reconstruye la sala anterior (la que cayó al llegar al checkpoint) o queda caída.
 - Qué altura máxima real tiene cada tamaño de sala una vez que el temporizador esté en juego.
