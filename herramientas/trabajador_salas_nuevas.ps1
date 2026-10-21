@@ -1,6 +1,6 @@
 # Un trabajador del generador de salas nuevas: recorre una lista de (tipo, altura) y para cada una arma la configuración con fórmulas y corre tools\salas_nuevas.exe
 # hasta la hora de fin. Lo lanza herramientas\generar_salas_nuevas.ps1 (no hace falta correrlo a mano).
-param([string]$Prefijo, [int]$Indice, [string]$Fin, [string]$Tipos)
+param([string]$Prefijo, [int]$Indice, [string]$Fin, [string]$Tipos, [int]$NivelFijo = 0, [int]$HMax = 99)
 Set-Location (Join-Path $PSScriptRoot "..")
 $alturas = @{
   '3x3' = @(5, 6, 7, 8, 9);
@@ -8,7 +8,7 @@ $alturas = @{
   '8x3' = @(8, 10, 12, 14, 16, 18, 20, 22, 24)
 }
 $lista = @()
-foreach ($t in $Tipos.Split(',')) { foreach ($h in $alturas[$t]) { $lista += ,@($t, $h) } }
+foreach ($t in $Tipos.Split(',')) { foreach ($h in $alturas[$t]) { if ($h -le $HMax) { $lista += ,@($t, $h) } } }
 # nivel 1 (tutorial) a 5 (pesadilla): menos material, haz más corto y menos mejora local para las fáciles
 function Config($tipo, $h, $nivel) {
   $grande = $tipo -ne '3x3'
@@ -32,6 +32,7 @@ $s = 1000 + $Indice * 100000
 while ((Get-Date) -lt $fin) {
   $par = $lista[$k % $lista.Count]
   $nivel = @(1, 2, 1, 3, 2, 4, 3, 5)[$k % 8]   # (se reparte entre los cinco niveles de dificultad: más fáciles que difíciles)
+  if ($NivelFijo -gt 0) { $nivel = $NivelFijo }
   $cfg = (Config $par[0] $par[1] $nivel) -split ' '
   $salida = & tools\salas_nuevas.exe --gen @cfg wd=12 evaluar=16 temp=3 salto=3 n=1 seed=$s 2>$null
   if ($salida) { $salida | Add-Content -Encoding ascii $archivo }

@@ -629,6 +629,96 @@ static vector<int> acortar(const Estado& e0, int meta, vector<int> acc, int vent
 	return v.ganado ? acc : vector<int>();
 }
 
+// A* exacto con poca memoria, para demostrar mínimos de salas altas con muchísimos nodos: de cada nodo sólo se guarda el padre, la acción y la distancia (12 bytes);
+// el estado completo se guarda cada 8 pasos y se reconstruye repitiendo las acciones desde el último guardado. La tabla de estados vistos es de direccionamiento abierto
+// (10 bytes por estado). Con la misma memoria alcanza para unas 5 veces más nodos que resolver().
+struct TablaVistos {
+	vector<uint64_t> clave;
+	vector<uint16_t> val;   // distancia + 1 (0 = vacío)
+	size_t n = 0, mascara = 0;
+	TablaVistos() { clave.assign(1 << 20, 0); val.assign(1 << 20, 0); mascara = (1 << 20) - 1; }
+	size_t pos(uint64_t k) const { size_t p = (size_t)(k * 0x9E3779B97F4A7C15ULL >> 20) & mascara; while (val[p] && clave[p] != k) p = (p + 1) & mascara; return p; }
+	int get(uint64_t k) const { size_t p = pos(k); return val[p] ? (int)val[p] - 1 : -1; }
+	void crecer() {
+		vector<uint64_t> ck; vector<uint16_t> cv;
+		ck.swap(clave); cv.swap(val);
+		size_t nuevo = (mascara + 1) * 2;
+		clave.assign(nuevo, 0); val.assign(nuevo, 0); mascara = nuevo - 1;
+		for (size_t i = 0; i < ck.size(); i++) if (cv[i]) { size_t p = pos(ck[i]); clave[p] = ck[i]; val[p] = cv[i]; }
+	}
+	void poner(uint64_t k, int g) {
+		if ((n + 1) * 10 > (mascara + 1) * 7) crecer();
+		size_t p = pos(k);
+		if (!val[p]) n++;
+		clave[p] = k; val[p] = (uint16_t)(g + 1);
+	}
+};
+
+struct NodoC { int padre; uint16_t g; uint8_t a; int32_t est; };
+
+static Resolucion resolver_compacto(const Estado& e0, int meta, long tope, int ub) {
+	Resolucion res;
+	bool hay_k = false;
+	for (uint32_t b : e0.bloques) if ((b & 15) == K) hay_k = true;
+	auto heur = [&](int py) { int falta = meta + 1 - py; if (falta <= 0) return 0; return hay_k ? (falta + 6) / 7 : falta; };
+	vector<NodoC> nodos;
+	vector<Estado> pool;
+	pool.push_back(e0);
+	nodos.push_back({-1, 0, 255, 0});
+	TablaVistos vistos;
+	vistos.poner(clave_estado(e0), 0);
+	vector<vector<int>> cubos(512);
+	int f_min = heur(e0.py);
+	cubos[f_min].push_back(0);
+	Sim s, t;
+	int meta_nodo = -1;
+	vector<int> acciones;
+	while (true) {
+		while (f_min < (int)cubos.size() && cubos[f_min].empty()) f_min++;
+		if (f_min >= (int)cubos.size()) break;
+		int id = cubos[f_min].back(); cubos[f_min].pop_back();
+		// reconstruir el estado: desde el último guardado, repitiendo las acciones
+		acciones.clear();
+		int cur = id;
+		while (nodos[cur].est < 0) { acciones.push_back(nodos[cur].a); cur = nodos[cur].padre; }
+		cargar(s, pool[nodos[cur].est], meta);
+		for (int q = (int)acciones.size() - 1; q >= 0; q--) s.actuar(DIRS[acciones[q] % 4].x, DIRS[acciones[q] % 4].z, acciones[q] / 4);
+		int g0 = nodos[id].g;
+		res.expandidos++;
+		for (int a = 0; a < 12; a++) {
+			int dx = DIRS[a % 4].x, dz = DIRS[a % 4].z, modo = a / 4;
+			if (s.colgando() && modo != 0) continue;
+			t.copiar_de(s);
+			if (!t.actuar(dx, dz, modo)) continue;
+			uint64_t k = clave_sim(t);
+			int gn = g0 + 1;
+			int previo = vistos.get(k);
+			if (previo >= 0 && previo <= gn) continue;
+			vistos.poner(k, gn);
+			int32_t est = -1;
+			if (gn % 8 == 0) { Estado ne; guardar(t, ne); pool.push_back(ne); est = (int32_t)pool.size() - 1; }
+			nodos.push_back({id, (uint16_t)gn, (uint8_t)a, est});
+			int ni = (int)nodos.size() - 1;
+			if (t.ganado) { meta_nodo = ni; break; }
+			int f = gn + heur(t.py);
+			if (f > ub) continue;
+			if (f >= (int)cubos.size()) cubos.resize(f + 64);
+			cubos[f].push_back(ni);
+			if (f < f_min) f_min = f;
+		}
+		if (meta_nodo >= 0) break;
+		if ((long)nodos.size() > tope) { res.tope = true; res.nodos = nodos.size(); res.cota = f_min; return res; }
+	}
+	res.nodos = nodos.size();
+	if (meta_nodo < 0) return res;
+	for (int i = meta_nodo; nodos[i].padre >= 0; i = nodos[i].padre) res.acc.push_back(nodos[i].a);
+	reverse(res.acc.begin(), res.acc.end());
+	res.ok = true;
+	res.moves = (int)res.acc.size();
+	estadisticas(e0, meta, res.acc, res.agarres, res.distintos);
+	return res;
+}
+
 static string kind_letra(int k) {
 	const char* L = "?nfhicstkp";
 	return string(1, L[k < 10 ? k : 0]);
@@ -1237,9 +1327,9 @@ static int medir_main(int argc, char** argv) {
 static int minimo_main(int argc, char** argv) {
 	Estado e0; int meta, tope;
 	leer_sala(e0, meta, tope);
-	tope = (int)arg_largo(argc, argv, "tope", tope);
 	int ub = (int)arg_largo(argc, argv, "ub", 1 << 28);
-	Resolucion r = resolver(e0, meta, tope, true, -1, ub);
+	long tope_largo = arg_largo(argc, argv, "tope", tope);
+	Resolucion r = arg_largo(argc, argv, "compacto", 1) ? resolver_compacto(e0, meta, tope_largo, ub) : resolver(e0, meta, tope, true, -1, ub);
 	if (r.ok) {
 		printf("{\"exacto\":true,\"minimo\":%d,\"cota_inferior\":%d,\"cota_superior\":%d,\"agarres\":%d,\"distintos\":%d,\"nodos\":%zu,\"camino\":%s}\n", r.moves, r.moves, ub < (1 << 28) ? ub : r.moves, r.agarres, r.distintos, r.nodos, camino_json(r.acc).c_str());
 	} else if (r.tope) {
