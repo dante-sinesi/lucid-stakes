@@ -120,7 +120,8 @@ static func score(room: Dictionary, costs: Array) -> float:
 		if not c.ok:
 			continue
 		if float(c.grabs) < min_empujes_por_piso * float(h) or float(c.moves) < min_pasos_por_piso * float(h):
-			continue   # (una cara que se resuelve con muy poco —un salto de catapulta, un par de empujes— no cuenta como resuelta: es trivial)
+			if not piso_suave:
+				continue   # (una cara que se resuelve con muy poco —un salto de catapulta, un par de empujes— no cuenta como resuelta: es trivial)
 		solved += 1
 		total += float(c.moves) + 3.0 * float(c.grabs) + 4.0 * float(c.blocks) + 2.0 * float(c.get("switches", 0)) - peso_caminata * float(c.get("walk", 0.0)) + peso_estados * log(maxf(float(c.get("states", 1)), 1.0)) / log(2.0)
 		lo = mini(lo, int(c.moves))
@@ -358,6 +359,7 @@ static var peso_riesgo := 1.0      # puntos por cada movimiento legal que hace c
 static var cambiar_cantidad := true   # la escalada también agrega y saca bloques
 static var temperatura := 0.0         # 0: sólo acepta lo que no baja el puntaje; más: acepta bajas chicas con probabilidad exp(-baja / temperatura)
 static var min_empujes_por_piso := 1.0   # una cara con menos empujes que esto (por piso) no cuenta
+static var piso_suave := false   # si es true, los pisos mínimos no descartan: se cuentan como puntaje (para arrancar paredes altas)
 static var min_pasos_por_piso := 3.0     # ni con menos pasos que esto (por piso)
 static var peso_dispersion := 2.0  # con varias salidas: puntos por cada paso de diferencia entre la salida más barata y la más cara (rutas de dificultad distinta)
 static var peso_estados := 0.0     # puntos por cada duplicación de los estados que el A* exacto tuvo que mirar (rooms donde la heurística engaña: hay que pensar más)

@@ -99,6 +99,14 @@ static func make(rng: RandomNumberGenerator, kind: String, h: int, n: int, faces
 		placed += 1
 	room["cols"] = cols_from_set(blocks)
 	room.origin = "cilindro"
+	# Reparación: lo que no se sostiene (apoyado sobre otro, no se cuelga de los costados) se saca, hasta que quede estable. Sin esto las paredes altas casi nunca salen válidas.
+	for _i in 12:
+		var caen: Array = RoomLib.unsupported_cells(room)
+		if caen.is_empty():
+			break
+		for q in caen:
+			blocks.erase(Vector3i(q.x, q.y, q.z))
+		room["cols"] = cols_from_set(blocks)
 	return room
 
 

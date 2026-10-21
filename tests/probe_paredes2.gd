@@ -68,6 +68,7 @@ func _init() -> void:
 	Gen.peso_caras = float(o.get("caras", 0.0))
 	Base.ancho = int(o.get("ancho", 6))
 	Base.espesor = int(o.get("esp_pared", 2))
+	Gen.piso_suave = str(o.get("suave", "0")) == "1"
 	Gen.peso_estados = float(o.get("est", 0.0))
 	Gen.peso_dispersion = float(o.get("disp", 2.0))
 	Gen.peso_caminata = float(o.get("pcam", 40.0))

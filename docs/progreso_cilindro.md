@@ -32,3 +32,9 @@ Bitácora de la noche del 2026-10-21 (desde la 01:50 hasta las 08:00). Las imág
 - Termino `est` (estados que explora el A*, proxy de "engano") 6 y 15: 24-27 pasos / 6-7 empujes. Igual.
 - `disp=10` (salidas dispersas): 21-24 pasos / 6 empujes. Igual.
 - Conclusion: la busqueda aleatoria + recocido se estanca en ~25 pasos / 6-7 empujes para h=6; lo que cambia son las variantes de forma, no la dificultad. Imagen: capturas/progreso/04h_espesor_est_disp.png
+
+### 05:30 - paredes altas, reparacion, produccion desde la elite
+- Paredes altas (h 9-12) no arrancan: el crecimiento al azar no da una sala resoluble de partida (el climb necesita un punto de partida resoluble). Agregue una reparacion (saca los bloques sin apoyo) en `Base.make` -> ahora son siempre estables, pero siguen sin ser resolubles. Pendiente: sembrar con una escalera construida. Opcion `suave=1` (pisos minimos como puntaje) lista.
+- Bombas ('b') como especial: el recocido no las elige (no son "necesarias"): hay que disenar un modulo donde la bomba sea la unica salida.
+- Produccion desde la elite (5 procesos, 4 salas c/u): sigue 20-28 pasos / 6-8 empujes; los mejores usan 3-4 especiales necesarios (28p/8e con h+t+c+k; 33p/9e con s+t). Imagen: capturas/progreso/05a_produccion_elite.png
+- Visor republicado con las 10 mejores (la mejor 47 pasos / 14 empujes).
