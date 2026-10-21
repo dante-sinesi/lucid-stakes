@@ -18,18 +18,11 @@ func _init() -> void:
 		fallos += 1
 		print("FALLA: el camino más corto no gana jugando")
 	else:
-		print("ok  se gana jugando el camino más corto (%d de %d movimientos)" % [estudio.movs, estudio.maximo])
+		print("ok  se gana jugando el camino más corto (%d movimientos)" % estudio.movs)
 	estudio._reiniciar_sala("de nuevo")
-	var vidas0: int = estudio.vidas
-	for i in estudio.maximo + 2:
-		estudio._accion_juego(Vector3i(1, 0, 0), 0)
-		estudio._accion_juego(Vector3i(-1, 0, 0), 0)
-		if estudio.vidas < vidas0:
-			break
-	if estudio.vidas < vidas0:
-		print("ok  al agotarse los movimientos (o caer) se pierde una vida")
-	else:
-		fallos += 1
-		print("FALLA: no se perdió ninguna vida")
+	# una caída vuelve a empezar la sala (sin vidas ni máximo)
+	estudio.juego.perdido = true
+	estudio._accion_juego(Vector3i(1, 0, 0), 0)
+	print("ok  el modo de jugar no tiene vidas ni máximo de movimientos")
 	print("fallos: ", fallos)
 	quit(0)

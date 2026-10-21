@@ -38,13 +38,10 @@ var info: RichTextLabel
 var slider: HSlider
 var estado: Label
 var hud: Label
-var etapa_spin: SpinBox
 var jugando := false
 var juego = null        # Motor de la partida en curso
 var enc_juego := {}
 var movs := 0
-var vidas := 3
-var maximo := 0
 var timer: Timer
 var arrastrando := false
 var _suprimir := false
@@ -149,19 +146,9 @@ func _armar_interfaz() -> void:
 		herr.add_child(_boton(h[1], func(): herramienta = h[0]; _estado("Herramienta: " + h[1])))
 	der.add_child(herr)
 	der.add_child(_boton("Resolver de nuevo (solucionador nativo)", resolver_ahora))
-	var fila_j := HBoxContainer.new()
-	fila_j.add_child(_boton("Jugar esta sala (J)", alternar_juego))
-	var le := Label.new()
-	le.text = " etapa:"
-	fila_j.add_child(le)
-	etapa_spin = SpinBox.new()
-	etapa_spin.min_value = 1
-	etapa_spin.max_value = 15
-	etapa_spin.value = 1
-	fila_j.add_child(etapa_spin)
-	der.add_child(fila_j)
+	der.add_child(_boton("Jugar esta sala (J)", alternar_juego))
 	var ayuda := Label.new()
-	ayuda.text = "Jugando: flechas o WASD mueven (relativo a la cámara), Shift + dirección empuja o tira, Espacio + dirección se cuelga, Q/E giran la cámara, R reinicia, Esc sale."
+	ayuda.text = "Para probar la sala: flechas o WASD mueven (relativo a la cámara), Shift + dirección empuja o tira, Espacio + dirección se cuelga, Q/E giran la cámara, R reinicia, Esc sale. Si te caés, la sala vuelve a empezar."
 	ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD
 	der.add_child(ayuda)
 	timer = Timer.new()
@@ -314,12 +301,6 @@ func _mostrar_info() -> void:
 	if editado:
 		t += "\n[color=orange]cambios sin guardar[/color]"
 	info.text = t
-
-
-## El máximo de movimientos de la sala en una etapa (1 a 15): el mínimo del solucionador por un margen que baja con la etapa. Tabla provisoria.
-static func maximo_movimientos(minimo: int, etapa: int) -> int:
-	var margen := lerpf(2.0, 1.15, clampf(float(etapa - 1) / 14.0, 0.0, 1.0))
-	return ceili(float(minimo) * margen)
 
 
 func _estado_visible():
@@ -527,8 +508,7 @@ func alternar_juego() -> void:
 	if actual < 0:
 		return
 	jugando = true
-	vidas = 3
-	_reiniciar_sala("Jugá: llegá al checkpoint de arriba antes de que se acaben los movimientos.")
+	_reiniciar_sala("Probá la sala: llegá al checkpoint de arriba.")
 
 
 func _reiniciar_sala(msg: String) -> void:
@@ -539,7 +519,6 @@ func _reiniciar_sala(msg: String) -> void:
 		if juego.bloques[c] == "p" and c.y == 1:
 			enc_juego[c] = true
 	movs = 0
-	maximo = maximo_movimientos(int(d.get("pasos", 0)), int(etapa_spin.value))
 	vista_atras = true
 	_refrescar_juego()
 	_estado(msg)
@@ -548,7 +527,7 @@ func _reiniciar_sala(msg: String) -> void:
 func _refrescar_juego() -> void:
 	Vista.poblar(bloques_nodo, juego, enc_juego)
 	_poner_camara()
-	hud.text = "Movimientos %d / %d   ·   Vidas %d   ·   mínimo posible %d" % [movs, maximo, vidas, int(salas[actual].get("pasos", 0))]
+	hud.text = "Movimientos %d   ·   mínimo posible %d" % [movs, int(salas[actual].get("pasos", 0))]
 
 
 ## El eje horizontal hacia donde mira la cámara (para que las flechas sean relativas a ella).
@@ -587,7 +566,7 @@ func _tecla_juego(ev: InputEventKey) -> void:
 			_poner_camara()
 			return
 		KEY_R:
-			_reiniciar_sala("Sala reiniciada (sin costo, solo para practicar).")
+			_reiniciar_sala("Sala reiniciada.")
 			return
 		KEY_ESCAPE:
 			alternar_juego()
@@ -619,18 +598,6 @@ func _accion_juego(dir: Vector3i, modo) -> void:
 		_estado("¡Checkpoint! Sala superada en %d movimientos (el mínimo era %d)." % [movs, int(salas[actual].get("pasos", 0))])
 		return
 	if juego.perdido:
-		_morir("Caíste al vacío.")
-		return
-	if movs >= maximo:
-		_morir("Se acabaron los movimientos: la sala cayó entera.")
+		_reiniciar_sala("Caíste al vacío: la sala vuelve a empezar.")
 		return
 	_refrescar_juego()
-
-
-func _morir(motivo: String) -> void:
-	vidas -= 1
-	if vidas <= 0:
-		vidas = 3
-		_reiniciar_sala(motivo + " Sin vidas: volvés a empezar con 3.")
-	else:
-		_reiniciar_sala(motivo + " Perdés una vida y volvés al checkpoint con la sala virgen.")
