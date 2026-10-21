@@ -10,7 +10,7 @@ func _line(titulo: String, room: Dictionary) -> String:
 	var cols := {}
 	for c in room.cols:
 		cols["%d,%d" % [c.x, c.y]] = room.cols[c]
-	return JSON.stringify({"titulo": titulo, "h": room.h, "exit": [room.exit.x, room.exit.y], "hueco": str(room.shape) == "C6H", "cols": cols, "path": RoomLib.path_string(room.path) if room.has("path") else "", "pasos": int(room.opt.get("moves", 0)), "empujes": int(room.opt.get("grabs", 0))})
+	return JSON.stringify({"titulo": titulo, "h": room.h, "exit": [room.exit.x, room.exit.y], "hueco": str(room.shape) == "C6H", "solo": bool(room.get("exit_solo", false)) or str(room.shape) == "C6H", "cols": cols, "path": RoomLib.path_string(room.path) if room.has("path") else "", "pasos": int(room.opt.get("moves", 0)), "empujes": int(room.opt.get("grabs", 0))})
 
 
 func _init() -> void:
@@ -19,8 +19,9 @@ func _init() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(args[2]) if args.size() > 2 else 3
 	var f := FileAccess.open(ProjectSettings.globalize_path(args[0]), FileAccess.WRITE)
-	var g := Gen.goal_sparse(rng, h, 6) if args.size() > 3 else Gen.goal_state(rng, h)
-	f.store_line(_line("Punto de partida: la escalera sola y unos bloques de mas", g.room))
+	if args.size() <= 4:
+		var g := Gen.goal_sparse(rng, h, 6) if args.size() > 3 else Gen.goal_state(rng, h)
+		f.store_line(_line("Punto de partida: la escalera sola y unos bloques de mas", g.room))
 	var rooms: Array = Pack.load_library(ProjectSettings.globalize_path(args[3] if args.size() > 3 else "bibliotecas/cilindro_rev.rooms"))
 	var n := 0
 	for r in rooms:

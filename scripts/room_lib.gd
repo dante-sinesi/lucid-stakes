@@ -139,7 +139,7 @@ static func validate_structure(room: Dictionary) -> String:
 	for c in room.cols:
 		if not cells.has(c):
 			return "hay una columna fuera de la arena"
-		if c == room.exit:
+		if c == room.exit and not bool(room.get("exit_solo", false)):
 			return "hay una columna sobre la salida"
 		if (c - room.entry).length() < 1.5:
 			return "hay una columna pegada a la llegada"
@@ -252,8 +252,9 @@ static func build_state(room: Dictionary):
 	for cc in core_cells(str(room.shape)):
 		for y in range(0, h + 2):
 			t.add_block(Vector3i(cc.x, y, cc.y), true)   # el core: fijo, de arriba a abajo
-	for y in range(1, h):
-		t.add_block(Vector3i(exit.x, y, exit.y), false, K.HEAVY)
+	if not bool(room.get("exit_solo", false)):   # (el cilindro: la salida es un solo bloque fijo en el borde de arriba, sin pilar debajo)
+		for y in range(1, h):
+			t.add_block(Vector3i(exit.x, y, exit.y), false, K.HEAVY)
 	t.add_block(Vector3i(exit.x, h, exit.y), true, K.NORMAL)
 	var goal_id: int = t.blocks[Vector3i(exit.x, h, exit.y)]
 	var keys: Array = room.cols.keys()
@@ -980,6 +981,8 @@ static func to_dict(room: Dictionary) -> Dictionary:
 		"origin": room.origin, "parent": room.parent, "variant_of": room.variant_of, "slots": slots, "variants": room.variants, "status": room.status, "note": room.note, "stamp": room.stamp}
 	if room.has("fuse"):
 		out["fuse"] = int(room.fuse)
+	if bool(room.get("exit_solo", false)):
+		out["exit_solo"] = true
 	return out
 
 
@@ -1013,6 +1016,8 @@ static func from_dict(d: Dictionary) -> Dictionary:
 	room.stamp = int(d.get("stamp", 0))
 	if d.has("fuse"):
 		room["fuse"] = int(d.fuse)
+	if d.has("exit_solo"):
+		room["exit_solo"] = bool(d.exit_solo)
 	room.rules = int(d.get("rules", 0))
 	room.id = str(d.get("id", ""))
 	room.family = str(d.get("family", ""))

@@ -368,3 +368,135 @@ static func climb(rng: RandomNumberGenerator, start: Dictionary, budget_ms: int)
 	best.opt["tries"] = tries
 	best.opt["accepted"] = accepted
 	return best
+
+
+# --- pared colgante: la estructura cuelga de la salida --------------------------------------------------------------------------
+
+const SIX: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]
+
+
+## Una pared que cuelga de la salida (un solo bloque fijo en el borde de arriba, que nunca cae): crece pegando bloques a los que ya hay (cualquier lado) dentro del anillo de 2 de espesor, así que todo
+## está sostenido por una cadena que llega a la salida (o a la base). Si se saca un eslabón, lo que cuelga de él cae. `n` bloques.
+static func colgante(rng: RandomNumberGenerator, h: int, n: int) -> Dictionary:
+	var room := RoomLib.make_room("3x3", h)
+	room.shape = "C6H"
+	room.cells = cells()
+	room.entry = Vector2i(-1, 3)
+	room["exit_solo"] = true
+	var ring := mass_cells()
+	var rim: Array[Vector2i] = []
+	for c in ring:
+		if c.x == 1 or c.x == 6 or c.y == 1 or c.y == 6:
+			rim.append(c)
+	room.exit = rim[rng.randi_range(0, rim.size() - 1)]
+	var allowed := {}
+	for c in ring:
+		allowed[c] = true
+	var blocks := {Vector3i(room.exit.x, h, room.exit.y): true}
+	var list: Array = [Vector3i(room.exit.x, h, room.exit.y)]
+	var guard := 0
+	var placed := 0
+	while placed < n and guard < n * 40:
+		guard += 1
+		var base: Vector3i = list[rng.randi_range(0, list.size() - 1)]
+		var q: Vector3i = base + SIX[rng.randi_range(0, SIX.size() - 1)]
+		var c := Vector2i(q.x, q.z)
+		if not allowed.has(c) or q.y < 1 or q.y > h - 1 or blocks.has(q) or (c - room.entry).length() < 1.5:
+			continue
+		blocks[q] = true
+		list.append(q)
+		placed += 1
+	var cols := {}
+	for q in blocks:
+		if q.y == h:
+			continue
+		var c := Vector2i(q.x, q.z)
+		if cols.has(c):
+			continue
+		var top := 0
+		for y in range(1, h):
+			if blocks.has(Vector3i(c.x, y, c.y)):
+				top = y
+		var text := ""
+		for y in range(1, top + 1):
+			text += "n" if blocks.has(Vector3i(c.x, y, c.y)) else RoomLib.GAP
+		cols[c] = text
+	room["cols"] = cols
+	room.origin = "cilindro"
+	return room
+
+
+## Los bloques de una pared colgante como conjunto de posiciones (x, nivel, z).
+static func block_set(room: Dictionary) -> Dictionary:
+	var out := {}
+	for c in room.cols:
+		var text: String = room.cols[c]
+		for i in text.length():
+			if text[i] != RoomLib.GAP:
+				out[Vector3i(c.x, i + 1, c.y)] = true
+	return out
+
+
+static func cols_from_set(blocks: Dictionary) -> Dictionary:
+	var tops := {}
+	for q in blocks:
+		var c := Vector2i(q.x, q.z)
+		tops[c] = maxi(int(tops.get(c, 0)), q.y)
+	var cols := {}
+	for c in tops:
+		var text := ""
+		for y in range(1, int(tops[c]) + 1):
+			text += "n" if blocks.has(Vector3i(c.x, y, c.y)) else RoomLib.GAP
+		cols[c] = text
+	return cols
+
+
+## Un cambio al azar de la pared colgante: un bloque cualquiera pasa a un lugar pegado a otro (de cualquier lado).
+static func mutate_colgante(rng: RandomNumberGenerator, room: Dictionary) -> Dictionary:
+	var blocks := block_set(room)
+	if blocks.size() < 3:
+		return {}
+	var keys: Array = blocks.keys()
+	var q: Vector3i = keys[rng.randi_range(0, keys.size() - 1)]
+	blocks.erase(q)
+	keys = blocks.keys()
+	var base: Vector3i = keys[rng.randi_range(0, keys.size() - 1)]
+	var r: Vector3i = base + SIX[rng.randi_range(0, SIX.size() - 1)]
+	var c := Vector2i(r.x, r.z)
+	var inside := false
+	for m in mass_cells():
+		if m == c:
+			inside = true
+	if not inside or r.y < 1 or r.y > int(room.h) - 1 or blocks.has(r) or r == q or (c - room.entry).length() < 1.5:
+		return {}
+	blocks[r] = true
+	var out := RoomLib.copy_room(room)
+	out["cols"] = cols_from_set(blocks)
+	return out
+
+
+static func climb_colgante(rng: RandomNumberGenerator, start: Dictionary, budget_ms: int) -> Dictionary:
+	var best: Dictionary = Conv.evaluate(start, 300000, 4000)
+	if best.is_empty():
+		return {}
+	var best_score := score(best)
+	var t0 := Time.get_ticks_msec()
+	var tries := 0
+	var accepted := 0
+	while Time.get_ticks_msec() - t0 < budget_ms:
+		tries += 1
+		var cand := mutate_colgante(rng, best)
+		if cand.is_empty():
+			continue
+		var ev: Dictionary = Conv.evaluate(cand, 300000, 4000)
+		if ev.is_empty():
+			continue
+		var sc := score(ev)
+		if sc >= best_score:
+			if sc > best_score:
+				accepted += 1
+			best = ev
+			best_score = sc
+	best.opt["tries"] = tries
+	best.opt["accepted"] = accepted
+	return best
