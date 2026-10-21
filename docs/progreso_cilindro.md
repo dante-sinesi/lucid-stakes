@@ -61,3 +61,9 @@ Por pedido: reglas propias (sostén por propagación desde la cima por caras y a
 - `cilindro/modulos.gd` + `probe_modulos.gd`: paredes al azar de la cara de adelante (6 de ancho, 2 de espesor, h pisos), resueltas con el nativo y etiquetadas por técnica (araña = avanzar colgado, puente = pisar un bloque empujado sobre un vacío, tala = algo se cae).
 - Resultado de la primera tanda (5400 diseños, ~13% resolubles): módulos de 3 pisos con 40-70 pasos, 13-22 agarres y 5-6 bloques distintos movidos (la mejor pared plana vieja: 28 pasos / 12 empujes en 9 pisos). Imagen: capturas/progreso/08a_modulos_3_y_4_pisos.png
 - Reservas: los pasos incluyen caminar por el anillo; las etiquetas de técnica son heurísticas; falta revisar los caminos cuadro por cuadro y apilar módulos.
+
+### 12:30 - medidas de módulos y experimento de apilar (cilindro nuevo)
+- Módulos al azar (900 diseños c/u): resolubles 15% a 3 pisos, 4,8% a 4, 2,2% a 5; valor medio 48 / 51 / 63 (no sube por piso). ~30% de los pasos son caminar sin mover nada.
+- Especiales al azar (2 por módulo): alguno necesario (cambiarlo por común cambia la solución) en 41% de los de hielo, 27% de agrietado, 49% de pesado/trampa.
+- Apilar dos módulos de 3 pisos sin placa fija en el medio (`cilindro/probe_apilar.gd`, 60 pares): 50 quedan enganchados y estables; sólo 21 se resuelven con 250 mil nodos (el resto: sin presupuesto, es decir, no se sabe); en los 21, la torre entera cuesta 705 pasos contra 952 de la suma (74%): entera < suma en 18, mayor en 3.
+- Lectura: las uniones al azar casi siempre se sostienen, pero hay atajos entre módulos (~26% menos) y el A* no puede verificar torres de 6 pisos (la heurística es floja; cada piso multiplica por ~3 los nodos). El límite práctico de verificación es 3-4 pisos.

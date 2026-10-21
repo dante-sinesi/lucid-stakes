@@ -9,7 +9,7 @@ const Nat := preload("res://cilindro/nativo.gd")
 
 
 ## Un diseño al azar: `n` bloques que crecen desde la cima por contactos (caras y aristas horizontales) dentro de la banda x 1..6, z 1..2 (o 1..espesor), niveles 1..h.
-static func al_azar(rng: RandomNumberGenerator, h: int, n: int, espesor := 2):
+static func al_azar(rng: RandomNumberGenerator, h: int, n: int, espesor := 2, tipos := "", n_esp := 0):
 	var alto := h + 1
 	var x0 := rng.randi_range(1, 6)
 	var t = Motor.nueva(alto, Vector3i(x0, 1, 0))
@@ -32,14 +32,40 @@ static func al_azar(rng: RandomNumberGenerator, h: int, n: int, espesor := 2):
 	var r := Reglas.asentar(t.bloques, alto, t.jugador)
 	if r.caidos > 0 or r.perdidos > 0:
 		return null
+	# bloques especiales (n_esp de los tipos pedidos) en lugar de bloques comunes
+	if tipos != "" and n_esp > 0:
+		var comunes: Array = []
+		for c in t.bloques:
+			if t.bloques[c] == "n":
+				comunes.append(c)
+		comunes.shuffle()
+		for i in mini(n_esp, comunes.size()):
+			t.bloques[comunes[i]] = tipos[rng.randi_range(0, tipos.length() - 1)]
 	return t
+
+
+## ¿Cada especial es necesario? Se cambia cada uno por un bloque común y se vuelve a resolver: es necesario si la solución cambia o deja de existir.
+static func necesidad(t, pasos: int, tope := 200000) -> Dictionary:
+	var total := 0
+	var necesarios := 0
+	for c in t.bloques.keys():
+		var k: String = t.bloques[c]
+		if k == "n" or k == "f":
+			continue
+		total += 1
+		var u = t.duplicar()
+		u.bloques[c] = "n"
+		var s := Nat.resolver(u, tope)
+		if not s.ok or s.moves != pasos:
+			necesarios += 1
+	return {"total": total, "necesarios": necesarios}
 
 
 ## Qué técnicas usa el camino: { arana (pasos colgado hacia un costado), puente (bloques empujados sobre un vacío en los que luego se pisa),
 ## tala (acciones en las que algo se cae), empujes, tiradas, distintos (bloques distintos movidos) }.
 static func analizar(t, path: Array) -> Dictionary:
 	var u = t.duplicar()
-	var r := {"arana": 0, "puente": 0, "tala": 0, "empujes": 0, "tiradas": 0}
+	var r := {"arana": 0, "puente": 0, "tala": 0, "empujes": 0, "tiradas": 0, "libres": 0, "de_bloque": 0}
 	var puentes := {}
 	for a in path:
 		var antes: Dictionary = u.bloques.duplicate()
@@ -54,6 +80,10 @@ static func analizar(t, path: Array) -> Dictionary:
 		for c in u.bloques:
 			if not antes.has(c):
 				puso.append(c)
+		if not quito.is_empty() or not puso.is_empty():
+			r.de_bloque += 1
+		elif not estaba_colgado and u.jugador.y == pos_antes.y and u.colgado == Vector3i.ZERO:
+			r.libres += 1   # un paso por el piso, sin mover nada ni subir
 		if estaba_colgado and a[1] == 0 and u.jugador.y == pos_antes.y and u.jugador != pos_antes:
 			r.arana += 1
 		var cayo := false
