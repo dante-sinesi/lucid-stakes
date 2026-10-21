@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <random>
+#include <cmath>
 #include <iostream>
 #include <sstream>
 
@@ -434,11 +435,12 @@ static void estadisticas(const Estado& e0, int meta, const vector<int>& acc, int
 }
 
 // A* exacto (heurística: pisos que faltan). tope = nodos como mucho.
-static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats = true) {
+static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats = true, int objetivo = -1) {
 	Resolucion res;
 	bool hay_k = false;
 	for (uint32_t b : e0.bloques) if ((b & 15) == K) hay_k = true;
-	auto heur = [&](int py) { int falta = meta + 1 - py; if (falta <= 0) return 0; return hay_k ? (falta + 6) / 7 : falta; };
+	int fin_y = objetivo > 0 ? objetivo : meta + 1;
+	auto heur = [&](int py) { int falta = fin_y - py; if (falta <= 0) return 0; return hay_k ? (falta + 6) / 7 : falta; };
 	vector<Nodo> nodos;
 	nodos.push_back({e0, -1, 255, 0});
 	unordered_map<uint64_t, int> vistos;
@@ -468,7 +470,7 @@ static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats 
 			vistos[k] = gn;
 			nodos.push_back({ne, id, (uint8_t)a, gn});
 			int ni = (int)nodos.size() - 1;
-			if (t.ganado) { meta_nodo = ni; break; }
+			if (t.ganado || (objetivo > 0 && !t.colgando() && t.py >= objetivo)) { meta_nodo = ni; break; }
 			int f = gn + heur(t.py);
 			if (f >= (int)cubos.size()) cubos.resize(f + 64);
 			cubos[f].push_back(ni);
@@ -485,6 +487,40 @@ static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats 
 	res.moves = (int)res.acc.size();
 	if (con_stats) estadisticas(e0, meta, res.acc, res.agarres, res.distintos);
 	return res;
+}
+
+// Resolución por lonjas: se resuelve de a `salto` pisos (el solucionador exacto sólo hasta el próximo nivel), y se sigue desde donde quedó el jugador.
+// La concatenación es una solución válida de la sala entera (sin garantía de ser la más corta). Falla si alguna lonja no se resuelve.
+static Resolucion resolver_lonjas(const Estado& e0, int meta, int tope_lonja, int salto = 2) {
+	Resolucion total;
+	Estado actual = e0;
+	Sim s;
+	for (int vuelta = 0; vuelta < 80; vuelta++) {
+		cargar(s, actual, meta);
+		int objetivo = min(s.py + salto, meta + 1);
+		Resolucion r = (objetivo >= meta + 1) ? resolver(actual, meta, tope_lonja, false) : resolver(actual, meta, tope_lonja, false, objetivo);
+		total.expandidos += r.expandidos;
+		total.nodos += r.nodos;
+		if (!r.ok) {
+			// una lonja de un solo piso a veces sale cuando la de dos no
+			if (salto > 1) { r = (s.py + 1 >= meta + 1) ? resolver(actual, meta, tope_lonja, false) : resolver(actual, meta, tope_lonja, false, s.py + 1); total.expandidos += r.expandidos; }
+			if (!r.ok) { total.tope = r.tope; return total; }
+		}
+		for (int a : r.acc) {
+			s.actuar(DIRS[a % 4].x, DIRS[a % 4].z, a / 4);
+			total.acc.push_back(a);
+		}
+		if (s.ganado) break;
+		guardar(s, actual);
+	}
+	Sim fin;
+	cargar(fin, e0, meta);
+	for (int a : total.acc) fin.actuar(DIRS[a % 4].x, DIRS[a % 4].z, a / 4);
+	if (!fin.ganado) return total;
+	total.ok = true;
+	total.moves = (int)total.acc.size();
+	estadisticas(e0, meta, total.acc, total.agarres, total.distintos);
+	return total;
 }
 
 static string kind_letra(int k) {
@@ -610,7 +646,14 @@ struct Param {
 	int cuantas = 1;
 	int limite_cand = 160;
 	int exacto = 1, pre = 24;
+	double wd = 6.0;   // peso de los bloques distintos movidos en el valor
+	int escalada = 0;   // iteraciones de mejora local sobre la mejor sala
+	long tope_escalada = 60000;
+	double temp = 0.0;
 	long tope_nivel = 20000;
+	int h_exacto = 9;   // por encima de esta altura se evalúa por lonjas en vez del solucionador exacto
+	int salto = 2;
+	int riesgo = 1;
 };
 
 static void huella(const string& tipo, int& x0, int& z0, int& w, int& d) {
@@ -701,13 +744,83 @@ static bool es_inicio(const Sim& s) {
 	return !s.colgando() && s.py == 2 && s.kind(s.px, s.py - 1, s.pz) == CP;
 }
 
-static string sala_json(const Param& P, const Estado& e, const Resolucion& r, int armado, bool exacto, int vecesA) {
+// Riesgo: a lo largo del camino más corto, de todos los movimientos legales cuántos son letales (se cae en el acto o la sala deja de tener solución).
+static void riesgo(const Estado& e0, int meta, const vector<int>& acc, long tope, int& legales, int& letales) {
+	legales = 0; letales = 0;
+	Sim s;
+	cargar(s, e0, meta);
+	for (int a_opt : acc) {
+		for (int a = 0; a < 12; a++) {
+			int modo = a / 4;
+			if (s.colgando() && modo != 0) continue;
+			Sim t = s;
+			if (!t.actuar(DIRS[a % 4].x, DIRS[a % 4].z, modo)) {
+				if (t.perdido) { legales++; letales++; }
+				continue;
+			}
+			legales++;
+			if (t.ganado) continue;
+			Estado ne; guardar(t, ne);
+			Resolucion r = resolver(ne, meta, (int)tope, false);
+			if (!r.ok && !r.tope) letales++;
+		}
+		s.actuar(DIRS[a_opt % 4].x, DIRS[a_opt % 4].z, a_opt / 4);
+	}
+}
+
+static string sala_json(const Param& P, const Estado& e, const Resolucion& r, int armado, bool exacto, int legales, int letales) {
 	string s = "{\"tipo\":\"" + P.tipo + "\",\"meta\":" + to_string(P.h) + ",\"jugador\":[" + to_string(e.px) + "," + to_string(e.py) + "," + to_string(e.pz) + "],\"colgado\":[" + to_string(e.hx) + "," + to_string(e.hz) + "],";
 	s += "\"bloques\":" + estado_json(e) + ",\"pasos\":" + to_string(r.moves) + ",\"agarres\":" + to_string(r.agarres) + ",\"distintos\":" + to_string(r.distintos);
 	s += ",\"armado\":" + to_string(armado) + ",\"exacto\":" + string(exacto ? "true" : "false") + ",\"extras\":" + to_string(P.extras) + ",\"camino\":" + camino_json(r.acc) + "}";
-	(void)vecesA;
+	s.pop_back();
+	s += ",\"legales\":" + to_string(legales) + ",\"letales\":" + to_string(letales) + "}";
 	return s;
 }
+
+// Un cambio chico a la sala (mover un bloque, agregar uno o sacar uno) que la deja estable; el jugador queda sobre el bloque de entrada.
+static bool mutar(const Sim& base, const Param& P, mt19937_64& rng, Sim& out) {
+	int x0, z0, w, d;
+	huella(P.tipo, x0, z0, w, d);
+	out = base;
+	out.ganado = false; out.perdido = false;
+	vector<int> comunes;
+	for (int i = 0; i < out.lim; i++) if (out.g[i] != NONE && out.g[i] != F) comunes.push_back(i);
+	int tipo = (int)(rng() % 10);
+	if (tipo < 7) {   // mover un bloque a otra celda del mismo nivel
+		int b = comunes[rng() % comunes.size()];
+		int y = iy(b);
+		int nx = x0 - 1 + (int)(rng() % (w + 2)), nz = z0 - 1 + (int)(rng() % (d + 2));
+		if (out.hay(nx, y, nz)) return false;
+		Kind k = (Kind)out.g[b];
+		out.g[b] = NONE;
+		out.g[idx(nx, y, nz)] = k;
+	} else if (tipo < 9) {   // agregar un común
+		int b = comunes[rng() % comunes.size()];
+		int dxs[3] = {-1, 0, 1};
+		int nx = ix(b) + dxs[rng() % 3], nz = iz(b) + dxs[rng() % 3], ny = iy(b) + dxs[rng() % 3];
+		int nd = (nx != ix(b)) + (ny != iy(b)) + (nz != iz(b));
+		if (nd == 0 || nd == 3 || (nd == 2 && ny == iy(b))) return false;
+		if (ny < 1 || ny > P.h || nx < x0 - 1 || nx > x0 + w || nz < z0 - 1 || nz > z0 + d || out.hay(nx, ny, nz)) return false;
+		out.g[idx(nx, ny, nz)] = N;
+	} else {   // sacar un común
+		int b = comunes[rng() % comunes.size()];
+		if (out.g[b] != N) return false;
+		out.g[b] = NONE;
+	}
+	// el jugador sobre el bloque de entrada (el checkpoint del nivel 1)
+	int pc = -1;
+	for (int i = 0; i < GZ * GX * 2 && i < out.lim; i++) if (out.g[i] == CP && iy(i) == 1) pc = i;
+	if (pc < 0 || out.hay(ix(pc), 2, iz(pc))) return false;
+	out.px = ix(pc); out.py = 2; out.pz = iz(pc); out.hx = 0; out.hz = 0;
+	return estable(out);
+}
+
+static Resolucion evaluar_sala(const Estado& e, const Param& P, long tope) {
+	if (P.h <= P.h_exacto) return resolver(e, P.h, (int)tope);
+	return resolver_lonjas(e, P.h, (int)tope, P.salto);
+}
+
+static double valor_de(const Resolucion& r, const Param& P) { return r.moves + 3.0 * r.agarres + P.wd * r.distintos; }
 
 static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 	Sim e;
@@ -768,9 +881,9 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 			// se evalúan con el solucionador exacto los mejores por el puntaje barato; se queda el haz con los que están más lejos de ganar
 			if ((int)sig.size() > P.pre) sig.resize(P.pre);
 			for (auto& q : sig) {
-				Resolucion r = resolver(q.second.e, P.h, (int)P.tope_nivel);
+				Resolucion r = evaluar_sala(q.second.e, P, P.tope_nivel);
 				double v;
-				if (r.ok) v = r.moves + 3.0 * r.agarres + 6.0 * r.distintos;
+				if (r.ok) v = r.moves + 3.0 * r.agarres + P.wd * r.distintos;
 				else v = 40.0 + 1.5 * (nivel + 1);   // (sin presupuesto: se supone difícil)
 				q.first = v + (double)(rng() % 1000) / 1000.0 * 2.0;
 				for (auto& cd : cands) if (cd.traza == q.second.traza) cd.puntaje = q.first;
@@ -783,8 +896,8 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 					if (pc >= 0 && !ts.hay(ix(pc), 2, iz(pc))) {
 						ts.px = ix(pc); ts.py = 2; ts.pz = iz(pc); ts.hx = 0; ts.hz = 0;
 						Estado te; guardar(ts, te);
-						Resolucion r2 = resolver(te, P.h, (int)P.tope_nivel);
-						if (r2.ok) cands.push_back({r2.moves + 3.0 * r2.agarres + 6.0 * r2.distintos, te, -1});
+						Resolucion r2 = evaluar_sala(te, P, P.tope_nivel);
+						if (r2.ok) cands.push_back({r2.moves + 3.0 * r2.agarres + P.wd * r2.distintos, te, -1});
 					}
 				}
 			}
@@ -801,16 +914,39 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 	int mejor = -1;
 	Resolucion mejor_res;
 	for (int i = 0; i < (int)cands.size() && i < P.evaluar; i++) {
-		Resolucion r = resolver(cands[i].e, P.h, (int)P.tope_eval);
+		Resolucion r = evaluar_sala(cands[i].e, P, P.tope_eval);
+		if (getenv("SN_LOG")) fprintf(stderr, "  candidata %d: ok=%d pasos=%d distintos=%d tope=%d\n", i, (int)r.ok, r.moves, r.distintos, (int)r.tope);
 		if (!r.ok) continue;
 		if (r.distintos < P.min_distintos_exactos) continue;
-		double v = r.moves + 3.0 * r.agarres + 6.0 * r.distintos;
+		double v = r.moves + 3.0 * r.agarres + P.wd * r.distintos;
 		if (v > mejor_valor) { mejor_valor = v; mejor = i; mejor_res = r; }
 	}
 	if (mejor < 0) return false;
+	if (P.escalada > 0) {
+		Estado actual = cands[mejor].e;
+		Resolucion ract = mejor_res;
+		double vact = valor_de(ract, P);
+		Sim base, cand;
+		for (int it = 0; it < P.escalada; it++) {
+			cargar(base, actual, P.h);
+			if (!mutar(base, P, rng, cand)) continue;
+			Estado ce; guardar(cand, ce);
+			Resolucion rc = evaluar_sala(ce, P, P.tope_escalada);
+			if (!rc.ok) continue;
+			double vc = valor_de(rc, P);
+			bool acepta = vc >= vact;
+			if (!acepta && P.temp > 0.0) acepta = ((double)(rng() % 10000) / 10000.0) < exp((vc - vact) / P.temp);
+			if (acepta) { actual = ce; ract = rc; vact = vc; }
+		}
+		cands[mejor].e = actual;
+		cands[mejor].traza = -1;
+		mejor_res = ract;
+	}
 	int armado = -1;
 	if (cands[mejor].traza >= 0) { armado = 0; for (int t = cands[mejor].traza; trazas[t].padre >= 0; t = trazas[t].padre) armado++; }
-	salida = sala_json(P, cands[mejor].e, mejor_res, armado, true, 0);
+	int legales = 0, letales = 0;
+	if (P.riesgo && P.h <= P.h_exacto) riesgo(cands[mejor].e, P.h, mejor_res.acc, 60000, legales, letales);
+	salida = sala_json(P, cands[mejor].e, mejor_res, armado, P.h <= P.h_exacto, legales, letales);
 	return true;
 }
 
@@ -835,7 +971,7 @@ static int resolver_main() {
 	for (auto& b : bl) base.poner(b[0], b[1], b[2], (Kind)b[3]);
 	base.px = jx; base.py = jy; base.pz = jz; base.hx = cx; base.hz = cz;
 	Estado e0; guardar(base, e0);
-	Resolucion r = resolver(e0, alto, tope);
+	Resolucion r = getenv("SN_LONJAS") ? resolver_lonjas(e0, alto, tope, atoi(getenv("SN_LONJAS"))) : resolver(e0, alto, tope);
 	if (r.ok) {
 		printf("RESULT ok %d %ld %zu %d %d\n", r.moves, r.expandidos, r.nodos, r.agarres, r.distintos);
 		printf("PATH");
@@ -872,6 +1008,13 @@ static int generar_main(int argc, char** argv) {
 		else if (k == "radio") P.radio = atoi(v.c_str());
 		else if (k == "exacto") P.exacto = atoi(v.c_str());
 		else if (k == "pre") P.pre = atoi(v.c_str());
+		else if (k == "wd") P.wd = atof(v.c_str());
+		else if (k == "climb") P.escalada = atoi(v.c_str());
+		else if (k == "tope_climb") P.tope_escalada = atol(v.c_str());
+		else if (k == "temp") P.temp = atof(v.c_str());
+		else if (k == "h_exacto") P.h_exacto = atoi(v.c_str());
+		else if (k == "salto") P.salto = atoi(v.c_str());
+		else if (k == "riesgo") P.riesgo = atoi(v.c_str());
 		else if (k == "tope_nivel") P.tope_nivel = atol(v.c_str());
 	}
 	int hechas = 0, intentos = 0;

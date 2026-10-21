@@ -186,7 +186,7 @@ func _llenar_lista() -> void:
 
 
 func sala_nueva() -> void:
-	var d := {"tipo": "3x3", "meta": 4, "jugador": [1, 2, 1], "colgado": [0, 0], "bloques": [[1, 1, 1, "p"], [2, 2, 1, "n"], [2, 3, 2, "n"], [2, 4, 2, "p"], [3, 4, 2, "f"]], "pasos": 0, "agarres": 0, "distintos": 0, "armado": -1, "exacto": false, "camino": []}
+	var d := {"tipo": "3x3", "meta": 4, "jugador": [1, 2, 1], "colgado": [0, 0], "bloques": [[1, 1, 1, "p"], [2, 2, 1, "n"], [3, 3, 1, "n"], [4, 4, 1, "p"], [4, 4, 2, "f"]], "pasos": 0, "agarres": 0, "distintos": 0, "armado": -1, "exacto": false, "camino": []}
 	salas.append(d)
 	_llenar_lista()
 	elegir(salas.size() - 1)

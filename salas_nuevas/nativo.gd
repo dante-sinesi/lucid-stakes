@@ -14,7 +14,7 @@ static func disponible() -> bool:
 
 ## El estado en el formato de texto de salas_nuevas.exe.
 static func a_texto(t, tope := 1500000) -> String:
-	var s := "alto %d\njugador %d %d %d\ncolgado %d 0 %d\ntope %d\n" % [t.meta, t.jugador.x, t.jugador.y, t.jugador.z, t.colgado.x, t.colgado.z, tope]
+	var s := "meta %d\njugador %d %d %d\ncolgado %d 0 %d\ntope %d\n" % [t.meta, t.jugador.x, t.jugador.y, t.jugador.z, t.colgado.x, t.colgado.z, tope]
 	for c in t.bloques:
 		s += "b %d %d %d %s\n" % [c.x, c.y, c.z, t.bloques[c]]
 	return s
