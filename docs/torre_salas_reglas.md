@@ -18,6 +18,12 @@ Todo lo de acá es propuesta hasta que el usuario lo confirme. Segunda versión,
 - Los "bloques de salida" de cada sala son **bloques comunes** (se pueden mover): conceptualmente son el final de una sala y el comienzo de la siguiente, en la práctica nada los distingue. Una sala se sostiene a través de su bloque de salida, que a su vez se sostiene de la sala siguiente, y así hasta el portal.
 - **La reacción en cadena no se frena en la sala**: si un movimiento afecta al bloque de salida, éste también cae, y la caída puede seguir hacia abajo por toda la torre.
 
+## 2b. Forma de una sala (reglas de diseño, por pedido del usuario)
+- **Todos los bloques de la sala empiezan dentro de su huella** (3x3, 5x3 u 8x3). Durante el juego se pueden sacar de ahí, pero la sala se arma adentro.
+- **La entrada y la salida son puntos externos y opuestos de la huella**: en el 3x3, esquinas o bordes lejanos entre sí; en el 5x3 y el 8x3, una en cada punta. Así las salas se pueden concatenar.
+- **El checkpoint de la salida es el bloque fijo de la sala** (el ancla): no existe ningún otro bloque fijo. El de entrada es un checkpoint común.
+- **Los niveles de la entrada y de la salida están limpios**: a esa altura sólo está el checkpoint, para que no choquen con los bloques de las salas de al lado (que comparten esa altura por el checkpoint).
+
 ## 3. Movimientos
 
 Los del juego actual (caminar, trepar, empujar y tirar de a un bloque o fila de hasta 3, colgarse, avanzar colgado por el borde y doblar esquinas), más:
