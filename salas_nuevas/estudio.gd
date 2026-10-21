@@ -37,6 +37,14 @@ var lista: ItemList
 var info: RichTextLabel
 var slider: HSlider
 var estado: Label
+var hud: Label
+var etapa_spin: SpinBox
+var jugando := false
+var juego = null        # Motor de la partida en curso
+var enc_juego := {}
+var movs := 0
+var vidas := 3
+var maximo := 0
 var timer: Timer
 var arrastrando := false
 var _suprimir := false
@@ -120,6 +128,9 @@ func _armar_interfaz() -> void:
 	centro_v.add_child(barra)
 	estado = Label.new()
 	centro_v.add_child(estado)
+	hud = Label.new()
+	hud.add_theme_font_size_override("font_size", 18)
+	centro_v.add_child(hud)
 	# derecha: datos y herramientas
 	var der := VBoxContainer.new()
 	der.custom_minimum_size = Vector2(340, 0)
@@ -138,6 +149,21 @@ func _armar_interfaz() -> void:
 		herr.add_child(_boton(h[1], func(): herramienta = h[0]; _estado("Herramienta: " + h[1])))
 	der.add_child(herr)
 	der.add_child(_boton("Resolver de nuevo (solucionador nativo)", resolver_ahora))
+	var fila_j := HBoxContainer.new()
+	fila_j.add_child(_boton("Jugar esta sala (J)", alternar_juego))
+	var le := Label.new()
+	le.text = " etapa:"
+	fila_j.add_child(le)
+	etapa_spin = SpinBox.new()
+	etapa_spin.min_value = 1
+	etapa_spin.max_value = 15
+	etapa_spin.value = 1
+	fila_j.add_child(etapa_spin)
+	der.add_child(fila_j)
+	var ayuda := Label.new()
+	ayuda.text = "Jugando: flechas o WASD mueven (relativo a la cámara), Shift + dirección empuja o tira, Espacio + dirección se cuelga, Q/E giran la cámara, R reinicia, Esc sale."
+	ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD
+	der.add_child(ayuda)
 	timer = Timer.new()
 	timer.wait_time = 0.6
 	timer.timeout.connect(func(): if paso + 1 < cuadros.size(): ir_a(paso + 1) else: timer.stop())
@@ -250,6 +276,8 @@ func ir_a(n: int) -> void:
 	slider.value = paso
 	_suprimir = false
 	var t = cuadros[paso]
+	if jugando:
+		return
 	Vista.poblar(bloques_nodo, t, enc_por_cuadro[paso])
 	_poner_camara()
 	var s := "Cuadro %d de %d" % [paso, cuadros.size() - 1]
@@ -294,10 +322,14 @@ static func maximo_movimientos(minimo: int, etapa: int) -> int:
 	return ceili(float(minimo) * margen)
 
 
+func _estado_visible():
+	return juego if jugando else cuadros[paso]
+
+
 func _poner_camara() -> void:
 	if cuadros.is_empty():
 		return
-	var t = cuadros[paso]
+	var t = _estado_visible()
 	if vista_atras:
 		Vista.camara_detras(cam, t)
 	else:
@@ -314,7 +346,7 @@ func _pasar_a_libre() -> void:
 	vista_atras = false
 	if cuadros.is_empty():
 		return
-	var f: Vector3 = Vista.direccion_hacia_salida(cuadros[paso])
+	var f: Vector3 = Vista.direccion_hacia_salida(_estado_visible())
 	yaw = rad_to_deg(atan2(-f.x, -f.z))
 	pitch = 22.0
 	dist = 6.0
@@ -322,6 +354,14 @@ func _pasar_a_libre() -> void:
 
 func _input(ev: InputEvent) -> void:
 	if not (ev is InputEventKey) or not ev.pressed or cuadros.is_empty():
+		return
+	if (ev as InputEventKey).keycode == KEY_J and not (ev as InputEventKey).echo:
+		alternar_juego()
+		get_viewport().set_input_as_handled()
+		return
+	if jugando:
+		_tecla_juego(ev as InputEventKey)
+		get_viewport().set_input_as_handled()
 		return
 	var k := (ev as InputEventKey).keycode
 	var movio := true
@@ -473,3 +513,124 @@ func resolver_ahora() -> void:
 	_llenar_lista()
 	lista.select(actual)
 	_mostrar_info()
+
+
+# --- modo de jugar ----------------------------------------------------------------------------------------------------------------------------
+
+func alternar_juego() -> void:
+	if jugando:
+		jugando = false
+		hud.text = ""
+		ir_a(paso)
+		_estado("Modo de reproducción.")
+		return
+	if actual < 0:
+		return
+	jugando = true
+	vidas = 3
+	_reiniciar_sala("Jugá: llegá al checkpoint de arriba antes de que se acaben los movimientos.")
+
+
+func _reiniciar_sala(msg: String) -> void:
+	var d: Dictionary = salas[actual]
+	juego = Vista.motor_de(d)
+	enc_juego = {}
+	for c in juego.bloques:
+		if juego.bloques[c] == "p" and c.y == 1:
+			enc_juego[c] = true
+	movs = 0
+	maximo = maximo_movimientos(int(d.get("pasos", 0)), int(etapa_spin.value))
+	vista_atras = true
+	_refrescar_juego()
+	_estado(msg)
+
+
+func _refrescar_juego() -> void:
+	Vista.poblar(bloques_nodo, juego, enc_juego)
+	_poner_camara()
+	hud.text = "Movimientos %d / %d   ·   Vidas %d   ·   mínimo posible %d" % [movs, maximo, vidas, int(salas[actual].get("pasos", 0))]
+
+
+## El eje horizontal hacia donde mira la cámara (para que las flechas sean relativas a ella).
+func _adelante_camara() -> Vector3i:
+	var v := -cam.global_transform.basis.z
+	v.y = 0.0
+	if v.length() < 0.01:
+		return Vector3i(0, 0, -1)
+	if absf(v.x) > absf(v.z):
+		return Vector3i(int(signf(v.x)), 0, 0)
+	return Vector3i(0, 0, int(signf(v.z)))
+
+
+func _tecla_juego(ev: InputEventKey) -> void:
+	var k := ev.keycode
+	var f := _adelante_camara()
+	var der := Vector3i(-f.z, 0, f.x)   # a la derecha de la cámara (giro de 90 grados)
+	var dir := Vector3i.ZERO
+	match k:
+		KEY_UP, KEY_W:
+			dir = f
+		KEY_DOWN, KEY_S:
+			dir = -f
+		KEY_LEFT, KEY_A:
+			dir = -der
+		KEY_RIGHT, KEY_D:
+			dir = der
+		KEY_Q:
+			_pasar_a_libre()
+			yaw += 90.0
+			_poner_camara()
+			return
+		KEY_E:
+			_pasar_a_libre()
+			yaw -= 90.0
+			_poner_camara()
+			return
+		KEY_R:
+			_reiniciar_sala("Sala reiniciada (sin costo, solo para practicar).")
+			return
+		KEY_ESCAPE:
+			alternar_juego()
+			return
+	if dir == Vector3i.ZERO:
+		return
+	var modo := Motor.Modo.MOVER
+	if Input.is_key_pressed(KEY_SHIFT):
+		modo = Motor.Modo.AGARRAR
+	elif Input.is_key_pressed(KEY_SPACE):
+		modo = Motor.Modo.COLGAR
+	_accion_juego(dir, modo)
+
+
+func _accion_juego(dir: Vector3i, modo) -> void:
+	if juego.ganado:
+		_estado("¡Ya llegaste! Reiniciá con R o salí con Esc.")
+		return
+	var r: Dictionary = juego.actuar(dir, modo)
+	if not r.ok:
+		_estado(str(r.msg))
+		return
+	movs += 1
+	if juego.ganado:
+		for c in juego.bloques:
+			if juego.bloques[c] == "p" and c.y == juego.meta:
+				enc_juego[c] = true
+		_refrescar_juego()
+		_estado("¡Checkpoint! Sala superada en %d movimientos (el mínimo era %d)." % [movs, int(salas[actual].get("pasos", 0))])
+		return
+	if juego.perdido:
+		_morir("Caíste al vacío.")
+		return
+	if movs >= maximo:
+		_morir("Se acabaron los movimientos: la sala cayó entera.")
+		return
+	_refrescar_juego()
+
+
+func _morir(motivo: String) -> void:
+	vidas -= 1
+	if vidas <= 0:
+		vidas = 3
+		_reiniciar_sala(motivo + " Sin vidas: volvés a empezar con 3.")
+	else:
+		_reiniciar_sala(motivo + " Perdés una vida y volvés al checkpoint con la sala virgen.")
