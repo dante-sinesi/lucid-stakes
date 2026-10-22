@@ -15,6 +15,22 @@ La construcción de una sala es hacia atrás: cada paso es un estado desde el cu
 
 **Comprobado (paso 1 del plan, hecho):** `salas_nuevas/test_especiales.gd` arma salas chicas al azar con cada tipo y compara el motor de GDScript con el nativo: 87 salas comparadas (pesado, agrietado, pinchos, trampa, hielo y catapulta), 0 diferencias en la solución, y los caminos nativos ganan jugados en GDScript. Es poca muestra para el hielo y la catapulta (los casos más delicados): conviene repetirla con más salas antes de usarlos.
 
+## 1b. Los especiales son verbos, no cantidades (corrección del usuario)
+
+Un especial no se agrega "porque sí" ni por cantidad: **cambia cómo se juega la sala**. Cada tipo tiene un papel, y el generador lo pone **por propósito** y lo valida con una prueba de efecto:
+
+| Bloque | Papel (qué le hace al jugador) | Cómo se coloca | Prueba de que cumple su papel |
+|---|---|---|---|
+| **Pesado** | molestar y limitar: no se puede traer ni llevar | se mira la solución de la sala sin especiales y se vuelve pesado un bloque que ESA solución movía (o el que ocupaba una celda clave): obliga a rodear, colgarse o usar otro material | con el pesado la solución exacta es más larga o usa otros bloques; si cambiarlo por común no cambia nada, es decorado y se descarta |
+| **Agrietado** (arenisca) | que cada decisión tenga consecuencia: se pisa una vez | se vuelven agrietados los escalones que la solución pisa y deja atrás: ya no se puede volver ni reconsiderar | sube el peligro medido (bits de peligro, movimientos letales) sin que la sala deje de tener solución; sacarle lo agrietado permite un camino más corto o con vuelta atrás |
+| **Hielo** | cuidado al resbalar, pero también transporte si hay línea | una línea de hielo de 2 o más celdas donde deslizarse ahorra pasos, con un borde cerca donde un resbalón es letal | la solución exacta USA un deslizamiento (de 2 o más celdas) y hay movimientos letales por resbalar; si cambiarlo por común acorta o alarga la solución, es útil |
+| **Trampolín** | atajo vertical que hay que ganarse: salto, no escalera | un tramo de escalera se reemplaza por la catapulta y se dejan bloques señuelo que parecen servir para escalar y no alcanzan | con el trampolín la sala se resuelve; cambiado por común no tiene solución (o es mucho más larga) |
+| **Pinchos** | celdas prohibidas: obligan a rodear o a colgarse | se ponen donde el camino más corto habría pisado | cambiados por común, la solución se acorta |
+
+**Cómo sale la cantidad:** no se decide de antemano. La colocación es un bucle "adversario": (1) se resuelve la sala; (2) se pone el especial en el lugar que le rompe el paso más barato a esa solución; (3) se vuelve a resolver con el solucionador exacto; (4) se acepta si sigue teniendo solución y la prueba de efecto da positivo; (5) se repite mientras cada especial nuevo sume. Cuantos especiales aguanta una sala es un resultado, no un parámetro.
+
+**Estructura de la herramienta:** un segundo paso sobre salas ya generadas (`salas_nuevas.exe --especializar rol=pesado ...`), no un generador distinto: la sala base sigue saliendo del generador que ya funciona y la especialización la modifica y la vuelve a verificar. Así lo ya validado no se toca.
+
 ## 2. Los tipos, del más fácil al más difícil
 
 Orden propuesto (distinto al tuyo en un punto: pinchos antes que el trampolín, porque no necesitan generar candidatos nuevos hacia atrás):
@@ -70,8 +86,7 @@ Trampa (la marca roja) y arenisca: asumo que "arenisca" es el bloque agrietado d
 6. **Hielo**.
 7. En cada paso: capturas desde el Estudio (el Estudio ya dibuja todos los tipos con los modelos del juego), salas guardadas con el campo `especiales`, y niveles de dificultad por la misma métrica.
 
-## 4. Qué hay que decidir con vos antes de empezar
-- ¿Pesados, pinchos, agrietados, trampolines y hielo, en ese orden? ¿O querés el trampolín antes?
-- Cantidad de especiales por sala y por nivel de dificultad (por ejemplo: ninguno en tutorial, 1 en fácil, hasta 3 en pesadilla).
-- ¿"Arenisca" es el agrietado?
-- Si los especiales tienen que aparecer de a uno por etapa del juego (así se enseñan) o mezclados desde la primera pesadilla.
+## 4. Decisiones
+- "Arenisca" es el bloque agrietado (confirmado).
+- La cantidad de especiales no es un parámetro: sale del bucle de colocación por propósito (sección 1b).
+- Pendiente: en qué etapas del juego aparece cada tipo (así se enseñan de a uno) y cómo entran en la escalera de dificultad.
