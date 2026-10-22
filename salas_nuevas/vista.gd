@@ -14,7 +14,27 @@ static func world_pos(c: Vector3i) -> Vector3:
 
 
 ## Arma los bloques bajo `parent` (se borra lo que había). `t` es un Motor. `encendidos`: celdas de checkpoint con el farolito prendido.
-static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := true, con_jugador := true, omitir_p := false) -> void:
+static var _mats_glow := {}
+
+
+## El material de un bloque con su brillo (los purificados emanan luz, las bombas activas brillan en rojo): como en el juego.
+static func _material_brillo(tint: Color, ice: bool, glow: Color, energia: float) -> ShaderMaterial:
+	var key := "%s|%s|%s|%.2f" % [tint.to_html(), str(ice), glow.to_html(), energia]
+	if not _mats_glow.has(key):
+		var mat := ShaderMaterial.new()
+		mat.shader = RoomView.BLOCK_SHADER
+		mat.set_shader_parameter("roughness_value", 0.15 if ice else 0.8)
+		mat.set_shader_parameter("tint", tint)
+		mat.set_shader_parameter("glow_color", glow)
+		mat.set_shader_parameter("glow_energy", energia)
+		mat.set_shader_parameter("shake", 0.0)
+		_mats_glow[key] = mat
+	return _mats_glow[key]
+
+
+## `aspecto_juego`: los bloques se ven como en el juego: corruptos (oscuros, violetas) hasta que el jugador los pisa o se cuelga de ellos, y entonces se purifican
+## (el color de la etapa y una luz suave); las bombas activas brillan en rojo.
+static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := true, con_jugador := true, omitir_p := false, aspecto_juego := false) -> void:
 	RoomView.register_globals()
 	for ch in parent.get_children():
 		parent.remove_child(ch)
@@ -40,8 +60,32 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		if kind == 2:   # la bola oscura de la bomba se pierde contra el fondo con el color de la altura: se la aclara
 			tint = Color(3.2, 3.2, 3.4) if letra != "d" else Color(2.2, 2.4, 2.2)
 		var m := MeshInstance3D.new()
+		var glow := Color.BLACK
+		var energia := 0.0
+		if aspecto_juego and letra != "p" and letra != "f":
+			var pura: bool = t.purificados.has(t.ids.get(c, -1))
+			var base := Color.from_hsv(0.62, 0.65, 0.85)   # el color de la etapa 1 (sólo los bloques normales purificados)
+			tint = Color.WHITE
+			if letra.begins_with("b"):
+				estado_modelo = BlockModels.State.CORRUPT   # la bomba activa: bola oscura con brillo rojo
+				glow = Color(0.9, 0.1, 0.05)
+				energia = 0.35
+			elif letra == "d":
+				estado_modelo = BlockModels.State.DEFUSED
+				glow = Color(1.0, 0.95, 0.7)
+				energia = 0.12
+			else:
+				estado_modelo = BlockModels.State.PURE if pura else BlockModels.State.CORRUPT
+				if pura:
+					if letra == "n":
+						tint = base
+						glow = base.lightened(0.3)
+						energia = 0.22
+					else:
+						glow = Color(1.0, 0.95, 0.7)
+						energia = 0.12
 		m.mesh = BlockModels.mesh_for(model, estado_modelo, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
-		m.material_override = RoomView.material(tint, kind == 1)
+		m.material_override = _material_brillo(tint, kind == 1, glow, energia) if energia > 0.0 else RoomView.material(tint, kind == 1)
 		m.position = world_pos(c)
 		parent.add_child(m)
 		if letra == "p" or letra == "f":

@@ -1,18 +1,35 @@
 extends Node3D
 ## Prototipo jugable de la torre de salas sin núcleo (aislado del juego actual). Arma una torre de salas del paquete (salas_nuevas/torre.gd) y se juega
 ## desde atrás del personaje.
-## Teclas: flechas o WASD mueven (relativas a la cámara), Shift + dirección agarra (empuja o tira), Espacio + dirección se cuelga, R arma otra torre, Esc sale.
-## Variables de entorno: SN_PAQUETE (archivo .jsonl, por defecto bibliotecas/paquete_salas.jsonl), SN_SEMILLA (para repetir una torre), SN_SALAS (cuántas salas).
+## Se ve como en el juego: cámara isométrica ortogonal que sigue al personaje (por defecto el gatito) y se puede girar.
+## Teclas: WASD o flechas mueven (W es la dirección que más sube en la pantalla), Shift + dirección agarra (empuja o tira), Espacio + dirección se cuelga,
+## Q / E giran la cámara, + / - el zoom, V alterna la vista de toda la torre, R arma otra torre, Esc sale.
+## Variables de entorno: SN_PAQUETE (archivo .jsonl, por defecto bibliotecas/paquete_salas.jsonl), SN_SEMILLA (para repetir una torre), SN_SALAS (cuántas salas),
+## SN_PERSONAJE (gato, perro, conejo, dante o gaby).
 
 const Torre := preload("res://salas_nuevas/torre.gd")
 const Vista := preload("res://salas_nuevas/vista.gd")
 const Motor := preload("res://salas_nuevas/motor.gd")
 const RoomView := preload("res://scripts/room_view.gd")
+const Characters := preload("res://scripts/characters.gd")
+const KeyDirs := preload("res://scripts/key_dirs.gd")
+
+const PITCH := -35.264        # ángulo isométrico (el del juego)
+const STEP_TIME := 0.14
 
 var t                     # la Torre
 var paquete: Array = []
 var semilla := 0
 var cam: Camera3D
+var pivot: Node3D            # la cámara cuelga de un pivote que gira (yaw) y sigue al personaje
+var pitch_node: Node3D
+var yaw_target := 45.0
+var zoom := 9.0
+var gato: Node3D             # el personaje
+var gato_nodo: Node3D        # su posición y orientación
+var mira := Vector3i(0, 0, 1)
+var _camara_tween: Tween
+var _paso_tween: Tween
 var estaticas: Array = []   # una por sala: la sala dibujada tal como empieza (decorado; la actual se dibuja viva aparte)
 var vivo: Node3D            # la sala actual, dibujada con su estado
 var texto_hud: Label
@@ -24,9 +41,25 @@ var panorama := false      # V: se ve la torre entera desde afuera
 func _ready() -> void:
 	RoomView.register_globals()
 	RoomView.add_lighting(self)
+	pivot = Node3D.new()
+	pivot.rotation_degrees.y = yaw_target
+	add_child(pivot)
+	pitch_node = Node3D.new()
+	pitch_node.rotation_degrees.x = PITCH
+	pivot.add_child(pitch_node)
 	cam = Camera3D.new()
-	add_child(cam)
-	cam.current = true
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.size = zoom
+	cam.far = 400.0
+	cam.position = Vector3(0, 0, 60)
+	pitch_node.add_child(cam)
+	cam.make_current()
+	gato_nodo = Node3D.new()
+	add_child(gato_nodo)
+	var personaje := OS.get_environment("SN_PERSONAJE")
+	gato = Characters.build(personaje if personaje != "" else "gato")
+	gato_nodo.add_child(gato)
+	gato_nodo.add_child(Characters.build(personaje if personaje != "" else "gato", "", "", true))   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego)
 	vivo = Node3D.new()
 	add_child(vivo)
 	var capa := CanvasLayer.new()
@@ -73,31 +106,68 @@ func _nueva_torre() -> void:
 		var nodo := Node3D.new()
 		add_child(nodo)
 		nodo.position = Vector3(0, int(t.salas[i].off), 0)
-		Vista.poblar(nodo, Vista.motor_de(t.salas[i].d), {}, false, false, true)
+		Vista.poblar(nodo, Vista.motor_de(t.salas[i].d), {}, false, false, true, true)
 		estaticas.append(nodo)
 	_refrescar()
 	_aviso("Torre %d: %d salas, %d pisos" % [semilla, t.salas.size(), t.total_pisos()], 3.0)
 
 
-func _refrescar() -> void:
+func _refrescar(animar := false) -> void:
 	for i in estaticas.size():
 		var n = estaticas[i]
 		if n == null or not is_instance_valid(n):
 			continue
 		n.visible = i > t.indice   # la actual se dibuja viva; las de abajo ya cayeron
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
-	Vista.poblar(vivo, t.motor, t.encendidos, true)
+	Vista.poblar(vivo, t.motor, t.encendidos, true, false, false, true)
+	_poner_gato(animar)
+	_poner_camara(animar)
 	if panorama:
-		var alto := float(t.total_pisos())
-		var centro := Vector3(5.5, alto * 0.5, 5.5)
-		cam.look_at_from_position(centro + Vector3(0, 0.0, 1.0) * (alto * 1.25 + 8.0) + Vector3(0, alto * 0.1, 0), centro, Vector3.UP)
 		for i in estaticas.size():
 			if estaticas[i] != null and is_instance_valid(estaticas[i]):
 				estaticas[i].visible = i >= t.indice
-	else:
-		Vista.camara_detras(cam, t.motor, 6.8, 3.2, 1.8)
-		cam.global_translate(Vector3(0, int(t.sala_actual().off), 0))
 	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), t.vidas]
+
+
+## Dónde están los pies del personaje (colgado, el cuerpo se arrima al bloque del que se agarra).
+func _pos_gato() -> Vector3:
+	var j: Vector3i = t.motor.jugador
+	var off := float(int(t.sala_actual().off))
+	return Vector3(j.x + 0.5, j.y + off, j.z + 0.5) + Vector3(t.motor.colgado) * 0.22
+
+
+func _poner_gato(animar: bool) -> void:
+	var destino := _pos_gato()
+	if _paso_tween != null and _paso_tween.is_valid():
+		_paso_tween.kill()
+	if animar:
+		_paso_tween = create_tween()
+		_paso_tween.tween_property(gato_nodo, "position", destino, STEP_TIME)
+		Characters.step_anim(gato, STEP_TIME)
+	else:
+		gato_nodo.position = destino
+	var cara: Vector3i = t.motor.colgado if t.motor.colgado != Vector3i.ZERO else mira
+	gato_nodo.rotation.y = atan2(cara.x, cara.z)
+
+
+func _poner_camara(animar: bool) -> void:
+	var foco := _pos_gato() + Vector3(0, 0.5, 0)
+	var tam := zoom
+	if panorama:
+		var alto := float(t.total_pisos())
+		foco = Vector3(5.5, alto * 0.5, 5.5)
+		tam = maxf(alto * 0.75, 24.0)
+	if _camara_tween != null and _camara_tween.is_valid():
+		_camara_tween.kill()
+	if animar:
+		_camara_tween = create_tween().set_parallel(true)
+		_camara_tween.tween_property(pivot, "position", foco, 0.25).set_trans(Tween.TRANS_SINE)
+		_camara_tween.tween_property(pivot, "rotation_degrees:y", yaw_target, 0.25).set_trans(Tween.TRANS_SINE)
+		_camara_tween.tween_property(cam, "size", tam, 0.25).set_trans(Tween.TRANS_SINE)
+	else:
+		pivot.position = foco
+		pivot.rotation_degrees.y = yaw_target
+		cam.size = tam
 
 
 func _aviso(msg: String, segundos := 2.2) -> void:
@@ -111,48 +181,48 @@ func _aviso(msg: String, segundos := 2.2) -> void:
 		texto_aviso.text = ""
 
 
-## El eje horizontal hacia donde mira la cámara (para que las flechas sean relativas a ella).
-func _adelante_camara() -> Vector3i:
-	var v := -cam.global_transform.basis.z
-	v.y = 0.0
-	if v.length() < 0.01:
-		return Vector3i(0, 0, -1)
-	if absf(v.x) > absf(v.z):
-		return Vector3i(int(signf(v.x)), 0, 0)
-	return Vector3i(0, 0, int(signf(v.z)))
-
-
 func _input(ev: InputEvent) -> void:
-	if not (ev is InputEventKey) or not ev.pressed or ev.echo:
+	if not (ev is InputEventKey) or not ev.pressed:
 		return
 	var k: int = (ev as InputEventKey).keycode
+	if ev.echo and k != KEY_EQUAL and k != KEY_MINUS and k != KEY_KP_ADD and k != KEY_KP_SUBTRACT:
+		return
 	if k == KEY_ESCAPE:
 		get_tree().quit()
 		return
 	if k == KEY_V:
 		panorama = not panorama
-		_refrescar()
+		_refrescar(true)
 		return
 	if k == KEY_R:
 		semilla = (semilla * 7 + 13) % 1000000
 		_nueva_torre()
 		return
+	if k == KEY_Q or k == KEY_E:
+		yaw_target += 90.0 if k == KEY_Q else -90.0
+		_poner_camara(true)
+		return
+	if k == KEY_EQUAL or k == KEY_PLUS or k == KEY_KP_ADD or k == KEY_MINUS or k == KEY_KP_SUBTRACT:
+		zoom = clampf(zoom * (0.9 if k == KEY_EQUAL or k == KEY_PLUS or k == KEY_KP_ADD else 1.1), 6.0, 36.0)
+		_poner_camara(false)
+		return
 	if t == null or t.salas.is_empty():
 		return
-	var f := _adelante_camara()
-	var der := Vector3i(-f.z, 0, f.x)
-	var dir := Vector3i.ZERO
+	var sx := 0
+	var sy := 0
 	match k:
 		KEY_UP, KEY_W:
-			dir = f
-		KEY_DOWN, KEY_S:
-			dir = -f
-		KEY_LEFT, KEY_A:
-			dir = -der
+			sx = 1; sy = 1
 		KEY_RIGHT, KEY_D:
-			dir = der
-	if dir == Vector3i.ZERO:
+			sx = 1; sy = -1
+		KEY_DOWN, KEY_S:
+			sx = -1; sy = -1
+		KEY_LEFT, KEY_A:
+			sx = -1; sy = 1
+	if sx == 0:
 		return
+	var d2 := KeyDirs.dir_for(yaw_target, float(sx), float(sy))   # (W es la dirección que más sube en pantalla)
+	var dir := Vector3i(d2.x, 0, d2.y)
 	var modo := Motor.Modo.MOVER
 	if Input.is_key_pressed(KEY_SHIFT):
 		modo = Motor.Modo.AGARRAR
@@ -164,8 +234,10 @@ func _input(ev: InputEvent) -> void:
 ## Una acción del jugador (también la usan las pruebas).
 func accion(dir: Vector3i, modo: int) -> Dictionary:
 	var r: Dictionary = t.actuar(dir, modo)
+	mira = dir
 	if not r.ok:
 		_aviso(str(r.msg), 1.4)
+		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
 	match str(r.evento):
 		"checkpoint":
@@ -177,7 +249,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 			_aviso("%s. Pierdes una vida (te quedan %d)." % [str(r.msg), t.vidas], 3.0)
 		"fin":
 			_aviso("%s. Te quedaste sin vidas. Pulsa R para otra torre." % str(r.msg), 0.0)
-	_refrescar()
+	_refrescar(str(r.evento) == "")   # (tras un checkpoint o una muerte el personaje aparece de golpe en su sitio)
 	return r
 
 

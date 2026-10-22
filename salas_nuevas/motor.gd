@@ -29,6 +29,9 @@ var perdido := false
 var ganado := false
 var motivo := ""
 var pasos := 0
+var ids := {}            # la identidad de cada bloque (celda -> número): sigue al bloque cuando lo empujan o cae
+var sig_id := 0
+var purificados := {}    # los bloques que el jugador ya pisó o de los que se colgó (número -> true): el aspecto de la torre lo usa
 
 
 func duplicar():
@@ -41,6 +44,9 @@ func duplicar():
 	t.ganado = ganado
 	t.motivo = motivo
 	t.pasos = pasos
+	t.ids = ids.duplicate()
+	t.sig_id = sig_id
+	t.purificados = purificados.duplicate()
 	return t
 
 
@@ -53,6 +59,8 @@ static func nueva(meta_: int, inicio: Vector3i):
 
 func poner(c: Vector3i, tipo := "n") -> void:
 	bloques[c] = tipo
+	ids[c] = sig_id
+	sig_id += 1
 
 
 func tipo_en(c: Vector3i) -> String:
@@ -295,6 +303,9 @@ func _mover(de: Vector3i, a: Vector3i) -> void:
 	var tipo = bloques[de]
 	bloques.erase(de)
 	bloques[a] = tipo
+	if ids.has(de):
+		ids[a] = ids[de]
+		ids.erase(de)
 
 
 func _despues(grieta: Vector3i) -> void:
@@ -305,6 +316,7 @@ func _despues(grieta: Vector3i) -> void:
 	_peligros()
 	if perdido:
 		return
+	_purificar()
 	# meta: parado sobre el bloque checkpoint de la salida
 	if colgado == Vector3i.ZERO and jugador.y == meta + 1 and tipo_en(jugador + DOWN) == "f":
 		ganado = true
@@ -330,7 +342,7 @@ func _asentar() -> void:
 	var guardia := 0
 	while cambio and guardia < 50:
 		guardia += 1
-		var r := Reglas.asentar(bloques, jugador)
+		var r := Reglas.asentar(bloques, jugador, ids)
 		bloques = r.bloques
 		var antes := jugador
 		var antes_colgado := colgado
@@ -354,6 +366,13 @@ func _asentar_jugador() -> void:
 			jugador += Vector3i(0, -3, 0)
 			return
 		jugador += DOWN
+
+
+## Pisar un bloque (o colgarse de él) lo purifica: sólo cambia cómo se ve.
+func _purificar() -> void:
+	var c := jugador + DOWN if colgado == Vector3i.ZERO else jugador + colgado
+	if bloques.has(c) and ids.has(c):
+		purificados[ids[c]] = true
 
 
 ## Trampa (se desarma al pisarla y cae con ella) y pinchos (se pierde).

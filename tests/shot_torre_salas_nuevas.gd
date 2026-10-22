@@ -9,7 +9,8 @@ func _frames(n: int) -> void:
 
 
 func _foto(nombre: String) -> void:
-	await _frames(6)
+	await create_timer(0.8).timeout   # (los tweens del personaje y de la cámara duran un cuarto de segundo)
+	await _frames(3)
 	root.get_texture().get_image().save_png(nombre)
 
 

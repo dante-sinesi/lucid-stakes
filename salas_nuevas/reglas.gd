@@ -38,7 +38,7 @@ static func anclados(bloques: Dictionary) -> Dictionary:
 ## Hace caer lo que no está anclado (de abajo hacia arriba) hasta apoyarse en algo que se sostiene; lo que no encuentra apoyo se pierde.
 ## `jugador`: un bloque suelto que cae sobre el jugador se queda ahí (se vuelve a mirar cuando éste se mueva).
 ## Devuelve { "bloques": diccionario nuevo, "caidos": cuántos se movieron, "perdidos": cuántos se perdieron }.
-static func asentar(bloques: Dictionary, jugador := Vector3i(-999, -999, -999)) -> Dictionary:
+static func asentar(bloques: Dictionary, jugador := Vector3i(-999, -999, -999), ids := {}) -> Dictionary:
 	var b := bloques.duplicate()
 	var quietos := {}
 	var caidos := 0
@@ -59,6 +59,8 @@ static func asentar(bloques: Dictionary, jugador := Vector3i(-999, -999, -999)) 
 			break
 		var tipo = b[s]
 		b.erase(s)
+		var id = ids.get(s)   # (`ids`: la identidad de cada bloque, para que lo que cae lleve consigo lo suyo; se modifica en el lugar)
+		ids.erase(s)
 		var y := s.y
 		var aterrizo := false
 		while y > 0:
@@ -74,6 +76,8 @@ static func asentar(bloques: Dictionary, jugador := Vector3i(-999, -999, -999)) 
 				break
 		if aterrizo and y >= 1:
 			b[Vector3i(s.x, y, s.z)] = tipo
+			if id != null:
+				ids[Vector3i(s.x, y, s.z)] = id
 			if y != s.y:
 				caidos += 1
 			else:

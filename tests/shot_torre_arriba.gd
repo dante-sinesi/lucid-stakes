@@ -13,10 +13,12 @@ func _init() -> void:
 			n.visible = true
 	escena.vivo.visible = true
 	var alto := float(t.total_pisos())
-	escena.cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	escena.pitch_node.rotation_degrees.x = -90.0
+	escena.pivot.rotation_degrees.y = 0.0
+	escena.pivot.position = Vector3(5.5, alto, 5.5)
 	escena.cam.size = 15.0
-	escena.cam.look_at_from_position(Vector3(5.5, alto + 20.0, 5.5), Vector3(5.5, 0, 5.5), Vector3(0, 0, -1))
-	escena.cam.far = alto + 100.0
+	escena.cam.position = Vector3(0, 0, alto + 40.0)
+	escena.cam.far = alto + 120.0
 	escena.texto_aviso.text = ""
 	await _frames(8)
 	root.get_texture().get_image().save_png(OS.get_cmdline_user_args()[0])

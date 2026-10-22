@@ -1,6 +1,6 @@
 @echo off
 rem Prototipo jugable de la torre de salas nuevas. Uso: torre_salas_nuevas.bat [semilla] [salas]
-rem Teclas: flechas o WASD mueven, Shift + direccion agarra (empuja o tira), Espacio + direccion se cuelga, R arma otra torre, V alterna la vista de toda la torre, Esc sale.
+rem Teclas: WASD o flechas mueven, Shift + direccion agarra (empuja o tira), Espacio + direccion se cuelga, Q y E giran la camara, + y - el zoom, V alterna la vista de toda la torre, R arma otra torre, Esc sale.
 setlocal
 cd /d "%~dp0.."
 if not "%~1"=="" set SN_SEMILLA=%~1
