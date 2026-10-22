@@ -18,6 +18,7 @@ class Mira:
 var salas: Array = []
 var actual := -1
 var archivo := ""
+var encuadre_sala := false   # capturas: cámara fija que encuadra toda la sala (en vez de seguir al personaje)
 var cuadros: Array = []     # estados (Motor) del camino: el 0 es el de partida
 var enc_por_cuadro: Array = []   # celdas de checkpoint prendidas en cada cuadro
 var paso := 0
@@ -319,7 +320,9 @@ func _poner_camara() -> void:
 	if cuadros.is_empty():
 		return
 	var t = _estado_visible()
-	if vista_atras:
+	if vista_atras and encuadre_sala:
+		Vista.camara_sala(cam, cuadros[0])
+	elif vista_atras:
 		Vista.camara_detras(cam, t)
 	else:
 		# cámara libre: gira y se acerca a gusto del usuario, siempre mirando al personaje

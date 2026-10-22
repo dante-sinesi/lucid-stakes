@@ -121,6 +121,26 @@ static func camara_detras(cam: Camera3D, t, dist := 5.0, altura := 2.3, mirar_ad
 	cam.fov = 66.0
 
 
+## Cámara fija para ver TODA la sala: mismo ángulo que `camara_detras` (desde atrás de la entrada, hacia la salida, un poco elevada) pero alejada hasta encuadrar la sala entera.
+## `t` es el estado de partida: la cámara no se mueve mientras se reproduce el camino.
+static func camara_sala(cam: Camera3D, t) -> void:
+	var f := direccion_hacia_salida(t)
+	var lo := Vector3(1e9, 1e9, 1e9)
+	var hi := Vector3(-1e9, -1e9, -1e9)
+	var celdas: Array = t.bloques.keys()
+	celdas.append(t.jugador)
+	celdas.append(Vector3i(t.jugador.x, t.meta + 1, t.jugador.z))
+	for c in celdas:
+		lo = Vector3(minf(lo.x, c.x), minf(lo.y, c.y), minf(lo.z, c.z))
+		hi = Vector3(maxf(hi.x, c.x + 1.0), maxf(hi.y, c.y + 1.0), maxf(hi.z, c.z + 1.0))
+	var centro := (lo + hi) * 0.5
+	var radio := (hi - lo).length() * 0.5
+	cam.fov = 66.0
+	var d := radio / sin(deg_to_rad(cam.fov * 0.5)) * 0.88
+	var elev := deg_to_rad(18.0)
+	cam.look_at_from_position(centro - f * d * cos(elev) + Vector3(0, d * sin(elev), 0), centro, Vector3.UP)
+
+
 ## Un Motor desde la línea de una sala del archivo (jsonl).
 static func motor_de(d: Dictionary):
 	var Motor = load("res://salas_nuevas/motor.gd")

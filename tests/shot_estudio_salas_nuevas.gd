@@ -13,6 +13,7 @@ func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var prefijo: String = args[0]
 	var estudio = load("res://salas_nuevas/estudio.tscn").instantiate()
+	estudio.encuadre_sala = OS.get_environment("SN_SALA") == "1"   # SN_SALA=1: cámara fija que encuadra toda la sala
 	root.add_child(estudio)
 	await _frames(6)
 	var indices: Array = []

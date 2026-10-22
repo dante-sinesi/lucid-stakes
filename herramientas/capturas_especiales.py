@@ -27,7 +27,7 @@ os.makedirs(os.path.join(RAIZ, 'capturas', 'sn'), exist_ok=True)
 sel = os.path.join(RAIZ, 'capturas', 'sn', 'sel_especiales.jsonl')
 with open(sel, 'w') as f:
     for d in elegidas: f.write(json.dumps(d) + '\n')
-env = dict(os.environ, GAME_SANDBOX='1', SN_LIB=sel)
+env = dict(os.environ, GAME_SANDBOX='1', SN_LIB=sel, SN_SALA='1')
 subprocess.run([os.path.join(RAIZ, 'tools', 'Godot_v4.7.2-stable_win64_console.exe'), '--path', RAIZ, '--rendering-driver', 'opengl3', '--resolution', '1600x900', '-s', 'tests/shot_estudio_salas_nuevas.gd', '--', os.path.join(RAIZ, 'capturas', 'sn', 'esp'), ','.join(str(i) for i in range(len(elegidas))), '6'], env=env, cwd=RAIZ, stdout=subprocess.DEVNULL)
 os.makedirs(salida, exist_ok=True)
 NOM = {'pesado': 'PESADOS (oscuros)', 'pinchos': 'PINCHOS', 'agrietado': 'AGRIETADOS', 'hielo': 'HIELO', 'trampolin': 'TRAMPOLIN'}
