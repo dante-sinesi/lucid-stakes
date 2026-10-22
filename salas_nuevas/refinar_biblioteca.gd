@@ -31,6 +31,7 @@ func _init() -> void:
 			continue
 		if bool(d.get("exacto", false)) and float(d.get("complejidad", 0.0)) > 0.0:   # (ya refinada y medida: se copia tal cual)
 			out.store_line(JSON.stringify(d))
+			out.flush()
 			continue
 		var t = Vista.motor_de(d)
 		# primero el mejor camino que se consigue (lonjas de 3 a 6 pisos acortadas por ventanas): cuanto más justa la cota superior, menos busca el A*
@@ -58,6 +59,7 @@ func _init() -> void:
 				for k in ["legales", "letales", "optimos", "desconocidos", "criticos", "bits_opt", "bits_letal", "complejidad"]:
 					d[k] = mt[k]
 		out.store_line(JSON.stringify(d))
+		out.flush()   # (para no perder lo hecho si se corta el proceso)
 		print("sala %d/%d: %s %d pisos, %d pasos %s, complejidad %s" % [n, salas.size(), str(d.tipo), int(d.meta) - 1, int(d.pasos), "(exacto)" if bool(d.exacto) else "(cota inferior %d)" % int(d.cota_inferior), str(d.get("complejidad", "?"))])
 	out.close()
 	print("listo")

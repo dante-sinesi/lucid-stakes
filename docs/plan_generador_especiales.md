@@ -13,6 +13,8 @@ La construcción de una sala es hacia atrás: cada paso es un estado desde el cu
 5. **Pruebas del motor para cada tipo** (hoy los especiales del motor nuevo no tienen pruebas propias: se copiaron del juego actual).
 6. **Métrica** (`--medir`): ya cuenta los movimientos legales de cualquier tipo; sólo hay que confirmar que los especiales entran bien (por ejemplo, el hielo agrega movimientos que resbalan).
 
+**Comprobado (paso 1 del plan, hecho):** `salas_nuevas/test_especiales.gd` arma salas chicas al azar con cada tipo y compara el motor de GDScript con el nativo: 87 salas comparadas (pesado, agrietado, pinchos, trampa, hielo y catapulta), 0 diferencias en la solución, y los caminos nativos ganan jugados en GDScript. Es poca muestra para el hielo y la catapulta (los casos más delicados): conviene repetirla con más salas antes de usarlos.
+
 ## 2. Los tipos, del más fácil al más difícil
 
 Orden propuesto (distinto al tuyo en un punto: pinchos antes que el trampolín, porque no necesitan generar candidatos nuevos hacia atrás):
