@@ -32,6 +32,9 @@ var pasos := 0
 var ids := {}            # la identidad de cada bloque (celda -> número): sigue al bloque cuando lo empujan o cae
 var sig_id := 0
 var obstaculos := {}      # celdas de la sala de arriba que están en el alcance de ésta: bloques fijos (tipo "f") que no se dibujan acá (la torre los dibuja con su sala)
+var luz_propia := false  # boost Luz propia: también se purifican los vecinos de lo que se pisa
+var ultimos_purificados: Array = []   # las letras de los bloques que se purificaron en la última acción (para la claridad)
+var agarro := false      # en la última acción se movió un bloque (empujar o tirar)
 var purificados := {}    # los bloques que el jugador ya pisó o de los que se colgó (número -> true): el aspecto de la torre lo usa
 
 
@@ -49,6 +52,7 @@ func duplicar():
 	t.sig_id = sig_id
 	t.purificados = purificados.duplicate()
 	t.obstaculos = obstaculos.duplicate()
+	t.luz_propia = luz_propia
 	return t
 
 
@@ -99,6 +103,8 @@ func _alcance_cuelgue(c: Vector3i) -> bool:
 func actuar(d: Vector3i, modo: Modo = Modo.MOVER) -> Dictionary:
 	if ganado or perdido:
 		return {"ok": false, "msg": ""}
+	ultimos_purificados = []
+	agarro = false
 	var grieta := NINGUNA   # el agrietado sobre el que estabas al empezar la acción
 	if colgado == Vector3i.ZERO and tipo_en(jugador + DOWN) == "c":
 		grieta = jugador + DOWN
@@ -315,6 +321,7 @@ func _mover(de: Vector3i, a: Vector3i) -> void:
 	var tipo = bloques[de]
 	bloques.erase(de)
 	bloques[a] = tipo
+	agarro = true
 	if ids.has(de):
 		ids[a] = ids[de]
 		ids.erase(de)
@@ -383,8 +390,14 @@ func _asentar_jugador() -> void:
 ## Pisar un bloque (o colgarse de él) lo purifica: sólo cambia cómo se ve.
 func _purificar() -> void:
 	var c := jugador + DOWN if colgado == Vector3i.ZERO else jugador + colgado
-	if bloques.has(c) and ids.has(c):
-		purificados[ids[c]] = true
+	var celdas: Array = [c]
+	if luz_propia:
+		for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
+			celdas.append(c + d)
+	for k in celdas:
+		if bloques.has(k) and ids.has(k) and not purificados.has(ids[k]):
+			purificados[ids[k]] = true
+			ultimos_purificados.append(str(bloques[k]))
 
 
 ## Trampa (se desarma al pisarla y cae con ella) y pinchos (se pierde).

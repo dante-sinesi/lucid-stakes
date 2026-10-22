@@ -9,6 +9,7 @@ extends RefCounted
 
 const Vista := preload("res://salas_nuevas/vista.gd")
 const Motor := preload("res://salas_nuevas/motor.gd")
+const Cosecha := preload("res://salas_nuevas/cosecha.gd")
 
 const LADO := 11
 static var rechazos_choque := 0   # (estadística: placements descartados porque la sala de arriba tapaba el camino de la de abajo)
@@ -27,6 +28,7 @@ var encendidos := {} # checkpoints con el farolito prendido
 var terminada := false   # llegó al portal
 var perdida := false     # se quedó sin vidas
 var muertes := 0
+var cosecha = Cosecha.new()   # la claridad de la torre (ver cosecha.gd)
 var ultima_caida := -1   # índice de la sala que acaba de caer por el checkpoint (para la animación)
 
 
@@ -337,6 +339,7 @@ func max_mov() -> int:
 func _entrar(i: int) -> void:
 	indice = i
 	motor = Vista.motor_de(salas[i].d)
+	motor.luz_propia = cosecha.perks.has("luz_propia")
 	if i + 1 < salas.size():   # (los bloques de la sala de arriba que quedan al alcance de ésta)
 		motor.agregar_obstaculos(obstaculos_de(salas[i + 1].d, int(salas[i].d.meta)))
 	movs = 0
@@ -356,7 +359,9 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 		r["evento"] = ""
 		return r
 	movs = motor.pasos
+	cosecha.despues_de_accion(motor.ultimos_purificados, motor.agarro, int(salas[indice].off) + motor.jugador.y)
 	if motor.ganado:
+		cosecha.asegurar()
 		for c in motor.bloques:
 			if str(motor.bloques[c]) == "f":
 				encendidos[c] = true
@@ -379,6 +384,7 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 func _morir(motivo: String) -> Dictionary:
 	vidas -= 1
 	muertes += 1
+	cosecha.perder_intento()
 	if vidas <= 0:
 		perdida = true
 		return {"ok": true, "msg": motivo, "evento": "fin"}

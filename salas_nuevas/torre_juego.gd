@@ -136,7 +136,7 @@ func _refrescar(animar := false) -> void:
 				estaticas[i].visible = i >= t.indice
 	else:
 		_ocultar_arriba()
-	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), t.vidas]
+	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d   ·   Claridad %d%s" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), t.vidas, t.cosecha.claridad(), ("  (racha ×%.1f)" % t.cosecha.streak_mult(t.cosecha.streak)) if t.cosecha.streak > 1 else ""]
 
 
 ## Dónde están los pies del personaje (colgado, el cuerpo se arrima al bloque del que se agarra).
