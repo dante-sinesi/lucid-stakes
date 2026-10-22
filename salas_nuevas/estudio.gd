@@ -84,7 +84,9 @@ func _armar_interfaz() -> void:
 	lista.item_selected.connect(func(i): elegir(i))
 	izq.add_child(lista)
 	var fila_arch := HBoxContainer.new()
+	fila_arch.add_child(_boton("Abrir...", func(): _dialogo_archivo(FileDialog.FILE_MODE_OPEN_FILE)))
 	fila_arch.add_child(_boton("Guardar", guardar))
+	fila_arch.add_child(_boton("Guardar como...", func(): _dialogo_archivo(FileDialog.FILE_MODE_SAVE_FILE)))
 	fila_arch.add_child(_boton("Sala nueva", sala_nueva))
 	fila_arch.add_child(_boton("Borrar", borrar))
 	izq.add_child(fila_arch)
@@ -156,6 +158,29 @@ func _armar_interfaz() -> void:
 	timer.wait_time = 0.6
 	timer.timeout.connect(func(): if paso + 1 < cuadros.size(): ir_a(paso + 1) else: timer.stop())
 	add_child(timer)
+
+
+## Abre (o guarda como) cualquier archivo .jsonl de salas, para no tener que pasar la ruta por el .bat.
+func _dialogo_archivo(modo: int) -> void:
+	var dlg := FileDialog.new()
+	dlg.use_native_dialog = true
+	dlg.access = FileDialog.ACCESS_FILESYSTEM
+	dlg.file_mode = modo
+	dlg.filters = PackedStringArray(["*.jsonl ; Salas (jsonl)", "* ; Todos los archivos"])
+	dlg.current_dir = archivo.get_base_dir() if archivo != "" else ProjectSettings.globalize_path("res://bibliotecas")
+	dlg.current_file = archivo.get_file()
+	dlg.file_selected.connect(func(ruta: String):
+		if modo == FileDialog.FILE_MODE_OPEN_FILE:
+			cargar(ruta)
+			if not salas.is_empty():
+				elegir(0)
+		else:
+			archivo = ruta
+			guardar()
+		dlg.queue_free())
+	dlg.canceled.connect(func(): dlg.queue_free())
+	add_child(dlg)
+	dlg.popup_centered_ratio(0.7)
 
 
 func _estado(t: String) -> void:
