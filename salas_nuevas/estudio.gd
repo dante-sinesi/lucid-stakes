@@ -35,6 +35,11 @@ var contenedor: SubViewportContainer
 var cam: Camera3D
 var bloques_nodo: Node3D
 var lista: ItemList
+var visibles: Array = []    # índices (en `salas`) de las salas que muestra la lista con el filtro actual
+var filtro := {}            # letra del especial -> true si está marcado ("-" = salas sin especiales)
+var filtro_modo := 0        # 0: alguno de los marcados, 1: todos los marcados, 2: exactamente los marcados
+var etiqueta_filtro: Label
+const ESPECIALES := [["h", "Pesado"], ["s", "Pinchos"], ["c", "Agrietado"], ["i", "Hielo"], ["k", "Trampolín"], ["t", "Trampa"], ["b", "Bomba"], ["-", "Sin especiales"]]
 var info: RichTextLabel
 var slider: HSlider
 var estado: Label
@@ -79,9 +84,33 @@ func _armar_interfaz() -> void:
 	var titulo := Label.new()
 	titulo.text = "Salas nuevas (torre sin núcleo)"
 	izq.add_child(titulo)
+	# filtro por los tipos de cubos especiales que incluye la sala
+	var rotulo := Label.new()
+	rotulo.text = "Filtrar por cubos especiales:"
+	izq.add_child(rotulo)
+	var cuadricula := GridContainer.new()
+	cuadricula.columns = 2
+	izq.add_child(cuadricula)
+	for e in ESPECIALES:
+		var cb := CheckBox.new()
+		cb.text = str(e[1])
+		cb.toggled.connect(func(on: bool):
+			filtro[str(e[0])] = on
+			_filtro_cambio())
+		cuadricula.add_child(cb)
+	var modo := OptionButton.new()
+	modo.add_item("Alguno de los marcados")
+	modo.add_item("Todos los marcados")
+	modo.add_item("Exactamente los marcados")
+	modo.item_selected.connect(func(m: int):
+		filtro_modo = m
+		_filtro_cambio())
+	izq.add_child(modo)
+	etiqueta_filtro = Label.new()
+	izq.add_child(etiqueta_filtro)
 	lista = ItemList.new()
 	lista.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lista.item_selected.connect(func(i): elegir(i))
+	lista.item_selected.connect(func(fila: int): if fila >= 0 and fila < visibles.size(): elegir(int(visibles[fila])))
 	izq.add_child(lista)
 	var fila_arch := HBoxContainer.new()
 	fila_arch.add_child(_boton("Abrir...", func(): _dialogo_archivo(FileDialog.FILE_MODE_OPEN_FILE)))
@@ -218,11 +247,83 @@ func guardar() -> void:
 	_estado("Guardado en " + archivo)
 
 
+## Las letras de los especiales que tiene una sala (h pesado, s pinchos, c agrietado, i hielo, k trampolín, t trampa, b bomba), sin repetir y en orden.
+static func especiales_de(d: Dictionary) -> String:
+	var hay := {}
+	for b in d.bloques:
+		var l := str(b[3]).substr(0, 1)
+		if l == "d":
+			l = "b"   # (una bomba ya desactivada sigue siendo una bomba)
+		if ["h", "s", "c", "i", "k", "t", "b"].has(l):
+			hay[l] = true
+	var out := ""
+	for e in ESPECIALES:
+		if hay.has(str(e[0])):
+			out += str(e[0])
+	return out
+
+
+## ¿La sala pasa el filtro actual de especiales? Sin nada marcado pasan todas.
+func pasa_filtro(d: Dictionary) -> bool:
+	var marcados: Array = []
+	for e in ESPECIALES:
+		if filtro.get(str(e[0]), false):
+			marcados.append(str(e[0]))
+	if marcados.is_empty():
+		return true
+	var tiene := especiales_de(d)
+	var sin := tiene == ""
+	var pedidos: Array = marcados.filter(func(l): return l != "-")
+	var quiere_sin := marcados.has("-")
+	match filtro_modo:
+		0:   # alguno de los marcados
+			if sin and quiere_sin:
+				return true
+			for l in pedidos:
+				if tiene.contains(l):
+					return true
+			return false
+		1:   # todos los marcados ("sin especiales" no se puede combinar con otros)
+			if quiere_sin:
+				return sin and pedidos.is_empty()
+			for l in pedidos:
+				if not tiene.contains(l):
+					return false
+			return true
+		_:   # exactamente los marcados
+			if quiere_sin and pedidos.is_empty():
+				return sin
+			if quiere_sin:
+				return false
+			if tiene.length() != pedidos.size():
+				return false
+			for l in pedidos:
+				if not tiene.contains(l):
+					return false
+			return true
+
+
+## Cambió el filtro: se rearma la lista y, si la sala elegida ya no se ve, se pasa a la primera que sí.
+func _filtro_cambio() -> void:
+	_llenar_lista()
+	if not visibles.is_empty() and not visibles.has(actual):
+		elegir(int(visibles[0]))
+
+
 func _llenar_lista() -> void:
 	lista.clear()
+	visibles.clear()
 	for i in salas.size():
 		var d: Dictionary = salas[i]
-		lista.add_item("%d · %s %d pisos · %dp %da %dd" % [i + 1, str(d.get("tipo", "?")), int(d.meta) - 1, int(d.get("pasos", 0)), int(d.get("agarres", 0)), int(d.get("distintos", 0))])
+		if not pasa_filtro(d):
+			continue
+		visibles.append(i)
+		var esp := especiales_de(d)
+		lista.add_item("%d · %s %d pisos · %dp %da %dd%s" % [i + 1, str(d.get("tipo", "?")), int(d.meta) - 1, int(d.get("pasos", 0)), int(d.get("agarres", 0)), int(d.get("distintos", 0)), ("  [" + esp + "]") if esp != "" else ""])
+	if etiqueta_filtro != null:
+		etiqueta_filtro.text = "Mostrando %d de %d salas" % [visibles.size(), salas.size()]
+	if actual >= 0 and visibles.has(actual):
+		lista.select(visibles.find(actual))
 
 
 func sala_nueva() -> void:
@@ -248,7 +349,8 @@ func borrar() -> void:
 
 func elegir(i: int) -> void:
 	actual = i
-	lista.select(i)
+	if visibles.has(i):
+		lista.select(visibles.find(i))
 	_armar_cuadros()
 	ir_a(0)
 	_mostrar_info()
@@ -528,7 +630,6 @@ func resolver_ahora() -> void:
 		d["camino"] = []
 		_estado("Sin solución %s (%d nodos)." % ["(se agotó el tope)" if r.get("tope", false) else "", r.states])
 	_llenar_lista()
-	lista.select(actual)
 	_mostrar_info()
 
 
