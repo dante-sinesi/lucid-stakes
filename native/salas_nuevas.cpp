@@ -39,13 +39,24 @@ static inline int iz(int i) { return ((i / GX) % GZ) - OFF; }
 static inline int iy(int i) { return i / (GX * GZ); }
 static inline bool dentro(int x, int y, int z) { return x >= -OFF && x < GX - OFF && z >= -OFF && z < GZ - OFF && y >= 0 && y < GY; }
 
-enum Kind : uint8_t { NONE = 0, N = 1, F = 2, H = 3, I = 4, C = 5, T = 6, S = 7, K = 8, CP = 9 };
+enum Kind : uint8_t { NONE = 0, N = 1, F = 2, H = 3, I = 4, C = 5, T = 6, S = 7, K = 8, CP = 9, BD = 10 };
+// Una bomba vive en la grilla como el valor 16 + su mecha (los movimientos que le quedan dentro de su zona); desactivada pasa a BD.
+static const int BOMBA0 = 16, BOMBA_R2 = 5;   // la zona: celdas con dx² + dy² + dz² <= 5 (como en el juego)
+static inline bool es_bomba(int k) { return k > BOMBA0; }
+static inline bool en_zona(int bx, int by, int bz, int x, int y, int z) { int dx = x - bx, dy = y - by, dz = z - bz; return dx * dx + dy * dy + dz * dz <= BOMBA_R2; }
 static Kind kind_de(char c) {
 	switch (c) {
 		case 'n': return N; case 'f': return F; case 'h': return H; case 'i': return I;
 		case 'c': return C; case 't': return T; case 's': return S; case 'k': return K; case 'p': return CP;
 	}
 	return N;
+}
+// Un bloque del texto o del jsonl: una letra, y la bomba lleva su mecha pegada ("b7"); "d" es una bomba desactivada.
+static int codigo_de(const string& k) {
+	if (k.empty()) return N;
+	if (k[0] == 'b') return BOMBA0 + max(1, k.size() > 1 ? atoi(k.c_str() + 1) : 5);
+	if (k[0] == 'd') return BD;
+	return kind_de(k[0]);
 }
 
 static const int LADO = 11;   // la torre: un anillo de 11 x 11 alrededor de un vacío de 5 x 5
@@ -55,6 +66,8 @@ static const V DIRS[4] = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}};
 static vector<V> VECINOS;
 
 static uint64_t ZOB[NC][16];
+static uint64_t ZT[256];
+static inline uint64_t zk(int i, int k) { return k < 16 ? ZOB[i][k] : ZOB[i][11] ^ ZT[k]; }
 static uint64_t ZJ[NC], ZH[8];
 
 static uint64_t splitmix(uint64_t v) {
@@ -70,6 +83,7 @@ static void init_tablas() {
 		ZJ[i] = splitmix((uint64_t)i * 77 + 12345);
 	}
 	for (int h = 0; h < 8; h++) ZH[h] = splitmix(999000 + h);
+	for (int k = 0; k < 256; k++) ZT[k] = splitmix(555000 + k);
 	for (int dy = -1; dy <= 1; dy++)
 		for (int dz = -1; dz <= 1; dz++)
 			for (int dx = -1; dx <= 1; dx++) {
@@ -220,6 +234,7 @@ struct Sim {
 		for (int i = 0; i < 8; i++) {
 			if (perdido || colgando()) return;
 			Kind k = kind(px, py - 1, pz);
+			if (es_bomba(k)) { g[idx(px, py - 1, pz)] = BD; return; }   // pararse encima la desactiva
 			if (k == T) { quitar(px, py - 1, pz); asentar(); }
 			else if (k == S) { perdido = true; return; }
 			else return;
@@ -390,14 +405,19 @@ struct Sim {
 		asentar();
 		peligros();
 		if (perdido) return false;
-		if (!colgando() && py == alto + 1 && kind(px, py - 1, pz) == F) ganado = true;
+		if (!colgando() && py == alto + 1 && kind(px, py - 1, pz) == F) { ganado = true; return true; }   // (ganar en el mismo movimiento tiene prioridad sobre la explosión)
+		for (int i : cel) {
+			if (!es_bomba(g[i]) || !en_zona(ix(i), iy(i), iz(i), px, py, pz)) continue;
+			g[i]--;
+			if (g[i] <= BOMBA0) { perdido = true; return false; }   // explotó: cae la sala entera
+		}
 		return true;
 	}
 
 };
 
 struct Estado {
-	vector<uint32_t> bloques;   // (idx << 4) | kind, ordenado
+	vector<uint32_t> bloques;   // (idx << 8) | kind, ordenado
 	int16_t px, py, pz;
 	int8_t hx, hz;
 };
@@ -407,19 +427,19 @@ static void cargar(Sim& s, const Estado& e, int alto) {
 	s.fijar_alto(alto);
 	memset(s.g, 0, s.lim);
 	s.cel.clear();
-	for (uint32_t b : e.bloques) { s.g[b >> 4] = (uint8_t)(b & 15); s.cel.push_back((int)(b >> 4)); }
+	for (uint32_t b : e.bloques) { s.g[b >> 8] = (uint8_t)(b & 255); s.cel.push_back((int)(b >> 8)); }
 	s.px = e.px; s.py = e.py; s.pz = e.pz;
 	s.hx = e.hx; s.hy = 0; s.hz = e.hz;
 	s.perdido = false; s.ganado = false;
 }
 static void guardar(const Sim& s, Estado& e) {
 	e.bloques.clear();
-	for (int i : s.cel) e.bloques.push_back(((uint32_t)i << 4) | s.g[i]);
+	for (int i : s.cel) e.bloques.push_back(((uint32_t)i << 8) | s.g[i]);
 	e.px = s.px; e.py = s.py; e.pz = s.pz; e.hx = s.hx; e.hz = s.hz;
 }
 static uint64_t clave_estado(const Estado& e) {
 	uint64_t h = 0;
-	for (uint32_t b : e.bloques) { int k = b & 15; if (k != F) h ^= ZOB[b >> 4][k]; }
+	for (uint32_t b : e.bloques) { int k = b & 255; if (k != F) h ^= zk(b >> 8, k); }
 	h ^= ZJ[idx(e.px, e.py, e.pz)] * 31;
 	h ^= splitmix(1000 + (e.hx + 2) * 5 + (e.hz + 2)) * 17;
 	return h;
@@ -427,7 +447,7 @@ static uint64_t clave_estado(const Estado& e) {
 
 static uint64_t clave_sim(const Sim& s) {
 	uint64_t h = 0;
-	for (int i : s.cel) { int k = s.g[i]; if (k != F) h ^= ZOB[i][k]; }
+	for (int i : s.cel) { int k = s.g[i]; if (k != F) h ^= zk(i, k); }
 	h ^= ZJ[idx(s.px, s.py, s.pz)] * 31;
 	h ^= splitmix(1000 + (s.hx + 2) * 5 + (s.hz + 2)) * 17;
 	return h;
@@ -469,7 +489,7 @@ static void estadisticas(const Estado& e0, int meta, const vector<int>& acc, int
 static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats = true, int objetivo = -1, int ub = 1 << 28) {
 	Resolucion res;
 	bool hay_k = false;
-	for (uint32_t b : e0.bloques) if ((b & 15) == K) hay_k = true;
+	for (uint32_t b : e0.bloques) if ((b & 255) == K) hay_k = true;
 	int fin_y = objetivo > 0 ? objetivo : meta + 1;
 	auto heur = [&](int py) { int falta = fin_y - py; if (falta <= 0) return 0; return hay_k ? (falta + 6) / 7 : falta; };
 	vector<Nodo> nodos;
@@ -659,7 +679,7 @@ struct NodoC { int padre; uint16_t g; uint8_t a; int32_t est; };
 static Resolucion resolver_compacto(const Estado& e0, int meta, long tope, int ub) {
 	Resolucion res;
 	bool hay_k = false;
-	for (uint32_t b : e0.bloques) if ((b & 15) == K) hay_k = true;
+	for (uint32_t b : e0.bloques) if ((b & 255) == K) hay_k = true;
 	auto heur = [&](int py) { int falta = meta + 1 - py; if (falta <= 0) return 0; return hay_k ? (falta + 6) / 7 : falta; };
 	vector<NodoC> nodos;
 	vector<Estado> pool;
@@ -721,6 +741,8 @@ static Resolucion resolver_compacto(const Estado& e0, int meta, long tope, int u
 
 static string kind_letra(int k) {
 	const char* L = "?nfhictskp";   // (el orden de Kind: T = trampa va antes que S = pinchos)
+	if (k == BD) return "d";
+	if (es_bomba(k)) return "b" + to_string(k - BOMBA0);
 	return string(1, L[k < 10 ? k : 0]);
 }
 
@@ -728,10 +750,10 @@ static string estado_json(const Estado& e) {
 	string s = "[";
 	bool primero = true;
 	for (uint32_t b : e.bloques) {
-		int i = b >> 4;
+		int i = b >> 8;
 		if (!primero) s += ",";
 		primero = false;
-		s += "[" + to_string(ix(i)) + "," + to_string(iy(i)) + "," + to_string(iz(i)) + ",\"" + kind_letra(b & 15) + "\"]";
+		s += "[" + to_string(ix(i)) + "," + to_string(iy(i)) + "," + to_string(iz(i)) + ",\"" + kind_letra(b & 255) + "\"]";
 	}
 	return s + "]";
 }
@@ -1259,7 +1281,7 @@ static int resolver_main() {
 		else if (w == "jugador") ss >> jx >> jy >> jz;
 		else if (w == "colgado") { int dy; ss >> cx >> dy >> cz; }
 		else if (w == "tope") ss >> tope;
-		else if (w == "b") { int x, y, z; string k; ss >> x >> y >> z >> k; bl.push_back({x, y, z, (int)kind_de(k.empty() ? 'n' : k[0])}); }
+		else if (w == "b") { int x, y, z; string k; ss >> x >> y >> z >> k; bl.push_back({x, y, z, codigo_de(k)}); }
 	}
 	base.fijar_alto(alto);
 	for (auto& b : bl) base.poner(b[0], b[1], b[2], (Kind)b[3]);
@@ -1292,7 +1314,7 @@ static bool leer_sala(Estado& e0, int& meta, int& tope) {
 		else if (w == "jugador") ss >> jx >> jy >> jz;
 		else if (w == "colgado") { int dy; ss >> cx >> dy >> cz; }
 		else if (w == "tope") ss >> tope;
-		else if (w == "b") { int x, y, z; string k; ss >> x >> y >> z >> k; bl.push_back({x, y, z, (int)kind_de(k.empty() ? 'n' : k[0])}); }
+		else if (w == "b") { int x, y, z; string k; ss >> x >> y >> z >> k; bl.push_back({x, y, z, codigo_de(k)}); }
 	}
 	base.fijar_alto(meta);
 	for (auto& b : bl) base.poner(b[0], b[1], b[2], (Kind)b[3]);
@@ -1403,6 +1425,8 @@ struct Uso {
 	int deslizamientos = 0;   // acciones en las que algo se movió 2 o más celdas de golpe (hielo)
 };
 
+static double valor_sala(const Resolucion& r) { return r.moves + 3.0 * r.agarres + 12.0 * r.distintos; }
+
 static Uso usos_del_camino(const Estado& e0, int meta, const vector<int>& acc) {
 	Uso u;
 	Sim r;
@@ -1428,6 +1452,87 @@ static Uso usos_del_camino(const Estado& e0, int meta, const vector<int>& acc) {
 	return u;
 }
 
+// Rol bomba: obliga a jugar lo más eficiente posible dentro de su zona (desactivarla pisándola o tirándola al vacío, o pasar antes de que explote).
+// Para cada bloque común que el camino pisa o mueve se busca la MECHA MÍNIMA con la que la sala todavía se resuelve (búsqueda binaria: más mecha
+// nunca quita soluciones) y se queda con la bomba que más aprieta: la que sube más la fracción de movimientos letales a lo largo del camino.
+// Prueba de necesidad: con la bomba vuelta un común el resultado o la fracción letal cambian.
+static int bomba_rol(const Estado& e0, int meta, const Resolucion& base, int tope_eval, const string& tipo, mt19937_64& rng) {
+	auto error = [&](const char* msg) { printf("{\"ok\":false,\"error\":\"%s\"}\n", msg); return 0; };
+	auto letales_de = [&](const Estado& e, const Resolucion& r, int& legales) {
+		int leg = 0, let = 0;
+		riesgo(e, meta, r.acc, 4000, leg, let);
+		legales = leg;
+		return let;
+	};
+	Uso uso = usos_del_camino(e0, meta, base.acc);
+	vector<int> cand = uso.pisadas;
+	for (int c : uso.movidas) cand.push_back(c);
+	sort(cand.begin(), cand.end());
+	cand.erase(unique(cand.begin(), cand.end()), cand.end());
+	shuffle(cand.begin(), cand.end(), rng);
+	int leg0 = 0, let0 = letales_de(e0, base, leg0);
+	double frac0 = leg0 > 0 ? (double)let0 / leg0 : 0.0;
+	const int MECHA_MAX = 40;
+	double mejor = -1e9; int mejor_celda = -1, mejor_mecha = 0;
+	Resolucion mejor_res; Estado mejor_estado;
+	int probadas = 0;
+	for (int c : cand) {
+		if (probadas >= 8) break;
+		Sim t; cargar(t, e0, meta);
+		if (t.g[c] != N) continue;
+		probadas++;
+		auto con_mecha = [&](int f, Estado& ne) { Sim u; cargar(u, e0, meta); u.g[c] = (uint8_t)(BOMBA0 + f); guardar(u, ne); return resolver(ne, meta, tope_eval); };
+		Estado ne; Resolucion rmax = con_mecha(MECHA_MAX, ne);
+		if (!rmax.ok) continue;
+		int lo = 1, hi = MECHA_MAX;   // la menor mecha con solución
+		while (lo < hi) { int m = (lo + hi) / 2; Estado tmp; if (con_mecha(m, tmp).ok) hi = m; else lo = m + 1; }
+		if (lo < 3) continue;   // una mecha de 1 o 2 sólo se esquiva sin tocar la zona: no obliga a nada
+		Estado nb; Resolucion r = con_mecha(lo, nb);
+		if (!r.ok) continue;
+		// la solución tiene que pasar tiempo dentro de la zona (si no, la bomba no aprieta)
+		int dentro_zona = 0;
+		{
+			Sim sim; cargar(sim, nb, meta);
+			for (int a : r.acc) {
+				sim.actuar(DIRS[a % 4].x, DIRS[a % 4].z, a / 4);
+				if (en_zona(ix(c), iy(c), iz(c), sim.px, sim.py, sim.pz)) dentro_zona++;
+			}
+		}
+		if (dentro_zona < 3) continue;
+		int leg = 0; int let = letales_de(nb, r, leg);
+		double frac = leg > 0 ? (double)let / leg : 0.0;
+		double puntaje = (frac - frac0) * 100.0 + (valor_sala(r) - valor_sala(base)) * 0.1;
+		if (puntaje > mejor) { mejor = puntaje; mejor_celda = c; mejor_mecha = lo; mejor_res = r; mejor_estado = nb; }
+	}
+	if (mejor_celda < 0) return error("ninguna bomba cumplió su papel");
+	// prueba de necesidad: con la bomba común cambia el camino o cuánto pesa cada movimiento
+	{
+		Sim u; cargar(u, mejor_estado, meta);
+		u.g[mejor_celda] = N;
+		Estado ne; guardar(u, ne);
+		Resolucion r = resolver(ne, meta, tope_eval);
+		bool distinto = !r.ok || r.moves != mejor_res.moves || r.distintos != mejor_res.distintos;
+		if (!distinto) {
+			int leg = 0; int let = letales_de(ne, r, leg);
+			double f = leg > 0 ? (double)let / leg : 0.0;
+			int leg2 = 0; int let2 = letales_de(mejor_estado, mejor_res, leg2);
+			double f2 = leg2 > 0 ? (double)let2 / leg2 : 0.0;
+			if (fabs(f2 - f) >= 0.005) distinto = true;
+		}
+		if (!distinto) return error("la bomba es decorativa");
+	}
+	Metricas mt;
+	medir(mejor_estado, meta, mejor_res.acc, 60000, mt);
+	Param P; P.tipo = tipo; P.h = meta;
+	string js = sala_json(P, mejor_estado, mejor_res, -1, true, mt);
+	js.pop_back();
+	char buf[64];
+	snprintf(buf, sizeof(buf), "%.0f", mejor);
+	js += ",\"rol\":\"bomba\",\"especiales\":{\"b\":1},\"mecha\":" + to_string(mejor_mecha) + ",\"necesarios\":1,\"ganancias\":[" + buf + "]}";
+	printf("%s\n", js.c_str());
+	return 0;
+}
+
 static int especializar_main(int argc, char** argv) {
 	Estado e0; int meta, tope;
 	leer_sala(e0, meta, tope);
@@ -1446,9 +1551,11 @@ static int especializar_main(int argc, char** argv) {
 	else if (rol == "agrietado") { especial = C; letra = 'c'; }
 	else if (rol == "hielo") { especial = I; letra = 'i'; }
 	else if (rol == "trampolin") { especial = K; letra = 'k'; }
+	else if (rol == "bomba") { especial = N; letra = 'b'; }
 	else return error("rol desconocido");
 	Resolucion base = resolver(e0, meta, (int)tope_eval);
 	if (!base.ok) return error("la sala base no se resolvió");
+	if (rol == "bomba") return bomba_rol(e0, meta, base, (int)tope_eval, tipo, rng);
 	auto valor = [&](const Resolucion& r) { return r.moves + 3.0 * r.agarres + wd * r.distintos; };
 	// riesgo barato: movimientos letales a lo largo del camino (para pinchos, agrietado y hielo)
 	auto letales_de = [&](const Estado& e, const Resolucion& r, int& legales) {

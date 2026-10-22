@@ -22,19 +22,28 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 	var meta := float(maxi(t.meta, 1))
 	for c in t.bloques:
 		var letra: String = t.bloques[c]
-		var kind: int = KIND_DE_LETRA.get(letra, 0)
+		var kind: int = KIND_DE_LETRA.get(letra.substr(0, 1), 0)
+		if letra.begins_with("b"):
+			kind = 2   # bomba (con la mecha pegada: "b7")
+		elif letra == "d":
+			kind = 2   # bomba desactivada
 		var tint := Color.from_hsv(lerpf(0.62, 0.05, clampf(float(c.y) / meta, 0.0, 1.0)), 0.55, 1.0)
 		tint = Color(tint.r * 1.15, tint.g * 1.15, tint.b * 1.15)
 		var model := kind
+		var estado_modelo := BlockModels.State.PURE
+		if letra == "d":
+			estado_modelo = BlockModels.State.DEFUSED
 		if letra == "p" or letra == "f":   # los checkpoint (entrada común, salida fija) son dorados con su farolito
 			tint = Color(1.9, 1.55, 0.55)
 		var m := MeshInstance3D.new()
-		m.mesh = BlockModels.mesh_for(model, BlockModels.State.PURE, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
+		m.mesh = BlockModels.mesh_for(model, estado_modelo, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
 		m.material_override = RoomView.material(tint, kind == 1)
 		m.position = world_pos(c)
 		parent.add_child(m)
 		if letra == "p" or letra == "f":
 			parent.add_child(_farolito(c, encendidos.has(c)))
+		if letra.length() >= 2 and letra[0] == "b":
+			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador))
 	var p := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(0.42, 0.78, 0.42)
@@ -51,6 +60,21 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 	parent.add_child(p)
 	if mostrar_referencia:
 		parent.add_child(_referencia())
+
+
+## La cuenta de una bomba: un número grande flotando arriba (rojo si el jugador está dentro de su zona y la mecha corre).
+static func _cuenta(c: Vector3i, mecha: int, jugador: Vector3i) -> Label3D:
+	var l := Label3D.new()
+	l.text = str(mecha)
+	l.font_size = 96
+	l.pixel_size = 0.012
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	var d := jugador - c
+	l.modulate = Color(1.0, 0.25, 0.2) if d.x * d.x + d.y * d.y + d.z * d.z <= 5 else Color(0.95, 0.95, 0.95)
+	l.outline_size = 12
+	l.position = Vector3(c.x + 0.5, c.y + 1.25, c.z + 0.5)
+	return l
 
 
 ## El farolito del bloque checkpoint: una esferita arriba (amarilla y brillante si está prendido, apagada si no).

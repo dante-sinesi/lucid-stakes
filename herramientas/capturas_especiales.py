@@ -3,7 +3,7 @@ Uso: python herramientas/capturas_especiales.py [salida=capturas/progreso_sn] [r
 import json, os, subprocess, sys
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 salida = os.path.join(RAIZ, 'capturas', 'progreso_sn')
-roles = 'pinchos,pesado,hielo,trampolin,agrietado'.split(',')
+roles = 'pinchos,pesado,hielo,trampolin,agrietado,bomba'.split(',')
 for a in sys.argv[1:]:
     if a.startswith('salida='): salida = a[7:]
     if a.startswith('roles='): roles = a[6:].split(',')
@@ -30,7 +30,7 @@ with open(sel, 'w') as f:
 env = dict(os.environ, GAME_SANDBOX='1', SN_LIB=sel, SN_SALA='1')
 subprocess.run([os.path.join(RAIZ, 'tools', 'Godot_v4.7.2-stable_win64_console.exe'), '--path', RAIZ, '--rendering-driver', 'opengl3', '--resolution', '1600x900', '-s', 'tests/shot_estudio_salas_nuevas.gd', '--', os.path.join(RAIZ, 'capturas', 'sn', 'esp'), ','.join(str(i) for i in range(len(elegidas))), '6'], env=env, cwd=RAIZ, stdout=subprocess.DEVNULL)
 os.makedirs(salida, exist_ok=True)
-NOM = {'pesado': 'PESADOS (oscuros)', 'pinchos': 'PINCHOS', 'agrietado': 'AGRIETADOS', 'hielo': 'HIELO', 'trampolin': 'TRAMPOLIN'}
+NOM = {'bomba': 'BOMBAS', 'pesado': 'PESADOS (oscuros)', 'pinchos': 'PINCHOS', 'agrietado': 'AGRIETADOS', 'hielo': 'HIELO', 'trampolin': 'TRAMPOLIN'}
 for i, d in enumerate(elegidas):
     esp = d.get('especiales', {})
     n = sum(esp.values())

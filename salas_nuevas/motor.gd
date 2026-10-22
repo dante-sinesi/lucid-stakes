@@ -18,6 +18,7 @@ const SUBE_CATAPULTA := 4
 const ALCANCE_CATAPULTA := 2
 const LIMITE_RESBALON := 40
 const NINGUNA := Vector3i(-999, -999, -999)
+const BOMBA_R2 := 5   # zona de una bomba: celdas con dx² + dy² + dz² <= 5
 const LADO := 11   # la torre: un anillo de 11 x 11 alrededor de un vacío de 5 x 5
 
 var meta := 8   # nivel del bloque checkpoint de la salida
@@ -307,6 +308,21 @@ func _despues(grieta: Vector3i) -> void:
 	# meta: parado sobre el bloque checkpoint de la salida
 	if colgado == Vector3i.ZERO and jugador.y == meta + 1 and tipo_en(jugador + DOWN) == "f":
 		ganado = true
+		return   # (ganar en el mismo movimiento tiene prioridad sobre la explosión)
+	# bombas: la mecha ("b7") baja un movimiento por acción mientras el jugador está dentro de su zona; al llegar a 0 cae la sala entera
+	for c in bloques.keys():
+		var tp: String = bloques[c]
+		if tp.length() < 2 or tp[0] != "b":
+			continue
+		var d: Vector3i = jugador - c
+		if d.x * d.x + d.y * d.y + d.z * d.z > BOMBA_R2:
+			continue
+		var mecha := int(tp.substr(1)) - 1
+		if mecha <= 0:
+			perdido = true
+			motivo = "Explotó una bomba: la sala se derrumbó"
+			return
+		bloques[c] = "b%d" % mecha
 
 
 func _asentar() -> void:
@@ -346,6 +362,9 @@ func _peligros() -> void:
 		if perdido or colgado != Vector3i.ZERO:
 			return
 		var k := tipo_en(jugador + DOWN)
+		if k.length() >= 2 and k[0] == "b":
+			bloques[jugador + DOWN] = "d"   # pararse encima de una bomba la desactiva (queda como un bloque común)
+			return
 		if k == "t":
 			bloques.erase(jugador + DOWN)
 			_asentar()
