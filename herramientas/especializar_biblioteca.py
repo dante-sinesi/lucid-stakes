@@ -7,7 +7,7 @@ import json, os, random, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 LETRA = {'pesado': 'h', 'pinchos': 's', 'agrietado': 'c', 'hielo': 'i', 'trampolin': 'k'}
-o = {'rol': 'pesado', 'objetivo': '40', 'entrada': 'bibliotecas/salas_nuevas_final.jsonl', 'exe': 'tools/salas_nuevas.exe', 'hilos': '6', 'tope': '200000', 'max': '4', 'ganancia': '2', 'niveles': ''}
+o = {'rol': 'pesado', 'objetivo': '40', 'entrada': 'bibliotecas/salas_nuevas_final.jsonl', 'exe': 'tools/salas_nuevas.exe', 'hilos': '6', 'tope': '200000', 'max': '4', 'ganancia': '2', 'niveles': '', 'tipos': '', 'largo': ''}
 for a in sys.argv[1:]:
     if '=' in a:
         k, v = a.split('=', 1); o[k] = v
@@ -16,7 +16,7 @@ salida = o.get('salida', 'bibliotecas/salas_especiales_%s.jsonl' % rol)
 exe = os.path.join(RAIZ, o['exe'])
 salas = [json.loads(l) for l in open(os.path.join(RAIZ, o['entrada']), encoding='utf-8') if l.strip()]
 niv = [x for x in o['niveles'].split(',') if x]
-cand = [d for d in salas if d.get('exacto') and d['meta'] <= 10 and not any(b[3] not in 'pnf' for b in d['bloques']) and (not niv or d.get('nivel') in niv)]
+cand = [d for d in salas if d.get('exacto') and d['meta'] <= 10 and not any(b[3] not in 'pnf' for b in d['bloques']) and (not niv or d.get('nivel') in niv) and (not o['tipos'] or d['tipo'] in o['tipos'].split(','))]
 random.seed(11)
 random.shuffle(cand)
 
@@ -27,7 +27,8 @@ def procesar(d):
         t += 'b %d %d %d %s\n' % tuple(b)
     try:
         r = subprocess.run([exe, '--especializar', 'rol=' + rol, 'tipo=' + d['tipo'], 'tope=' + o['tope'], 'max=' + o['max'], 'ganancia=' + o['ganancia'], 'seed=%d' % random.randint(1, 10**6)],
-                           input=t, capture_output=True, text=True, timeout=900)
+                           input=t, capture_output=True, text=True, timeout=900,
+                           env=dict(os.environ, **({'SN_LARGO': str(random.randint(*[int(x) for x in o['largo'].split('-')]))} if o['largo'] else {})))
         j = json.loads(r.stdout.strip().splitlines()[-1])
     except Exception:
         return None

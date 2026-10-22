@@ -1585,6 +1585,7 @@ static int especializar_main(int argc, char** argv) {
 	if (rol == "hielo") {
 		int tope_largo = tipo == "3x3" ? 3 : tipo == "5x3" ? 5 : 6;
 		largo_hielo = 1 + (int)(rng() % (unsigned long long)tope_largo);
+		if (getenv("SN_LARGO")) largo_hielo = atoi(getenv("SN_LARGO"));   // (para probar)
 		maximo = max(maximo, largo_hielo);
 	}
 	int n_hielo = 0;
@@ -1615,14 +1616,20 @@ static int especializar_main(int argc, char** argv) {
 				int x = ix(c) + dxs[k], z = iz(c) + dzs[k];
 				if (abs(x) > 8 || abs(z) > 8) return -1;
 				int n = idx(x, iy(c), z);
-				return t0.g[n] == N ? n : -1;
+				if (t0.g[n] == N) return n;
+				// una celda vacía dentro de la huella también sirve (el cubo de hielo nuevo queda pegado a la línea, así que se sostiene): si no, las líneas largas
+				// dependen de que la sala ya tenga bloques en fila, y casi nunca los tiene
+				int hx0, hz0, hw, hd;
+				huella(tipo, hx0, hz0, hw, hd);
+				if (t0.g[n] == NONE && x >= hx0 && x < hx0 + hw && z >= hz0 && z < hz0 + hd && iy(c) >= 2 && iy(c) <= meta - 1 && n != idx(t0.px, t0.py, t0.pz)) return n;
+				return -1;
 			};
 			n_hielo = (int)hielos.size();
 			if (n_hielo >= largo_hielo) break;   // (la línea ya tiene el largo que le tocó)
 			if (hielos.empty() && largo_hielo == 1) {
 				for (int c : cand) opciones.push_back({c});
 			} else if (hielos.empty()) {
-				for (int c : cand) for (int k = 0; k < 4; k++) { int n = vecina(c, k); if (n >= 0) opciones.push_back({c, n}); }
+				for (int c : cand) for (int k = 0; k < (largo_hielo > 3 ? 2 : 4); k++) { int n = vecina(c, k); if (n >= 0) opciones.push_back({c, n}); }   // (las líneas de más de 3 van a lo largo de la sala: en el ancho de 3 no entran)
 			} else {
 				for (int h : hielos) for (int k = 0; k < 4; k++) {
 					int n = vecina(h, k);
@@ -1649,14 +1656,14 @@ static int especializar_main(int argc, char** argv) {
 			Sim t;
 			cargar(t, actual, meta);
 			bool todos_comunes = true;
-			for (int o : grupo) if (t.g[o] != N) todos_comunes = false;
-			if (!todos_comunes) continue;   // (sólo se cambian los comunes: no la entrada, la salida ni otro especial)
-			for (int o : grupo) t.g[o] = especial;
+			for (int o : grupo) if (t.g[o] != N && !(rol == "hielo" && t.g[o] == NONE)) todos_comunes = false;
+			if (!todos_comunes) continue;   // (sólo se cambian los comunes -el hielo también puede ocupar una celda vacía-: no la entrada, la salida ni otro especial)
+			for (int o : grupo) t.poner(ix(o), iy(o), iz(o), especial);
 			Estado ne; guardar(t, ne);
 			Resolucion r = resolver_sala(ne, meta, (int)tope_eval);
 			static int c_prob = 0, c_sinsol = 0;
 			c_prob++;
-			if (!r.ok) { c_sinsol++; if (getenv("SN_LOG") && c_prob % 10 == 0) fprintf(stderr, "  candidatos %d, sin solución %d\n", c_prob, c_sinsol); continue; }   // no puede dejar la sala sin solución
+			if (!r.ok) { c_sinsol++; if (getenv("SN_LOG") && n_hielo > 0) fprintf(stderr, "  ext: sin solución\n"); if (getenv("SN_LOG") && c_prob % 10 == 0) fprintf(stderr, "  candidatos %d, sin solución %d\n", c_prob, c_sinsol); continue; }   // no puede dejar la sala sin solución
 			double g = valor(r) - valor(res);
 			double puntaje = g;
 			double frac = frac_actual;
@@ -1673,12 +1680,14 @@ static int especializar_main(int argc, char** argv) {
 				if (puntaje < 0.5) continue;
 			} else if (rol == "hielo") {
 				// que la solución USE un deslizamiento (transporte) y que haya algún resbalón letal más que antes
+				// (al ALARGAR una línea que ya cumplió su papel alcanza con que se siga usando y el riesgo no baje: si no, casi nunca pasan de dos cubos)
 				Uso u2 = usos_del_camino(ne, meta, r.acc);
-				if (u2.deslizamientos < 1) continue;
+				if (u2.deslizamientos < 1) { if (getenv("SN_LOG") && n_hielo > 0) fprintf(stderr, "  ext: sin deslizamiento\n"); continue; }
 				con_riesgo++;
 				int leg = 0; int let = letales_de(ne, r, leg);
 				frac = leg > 0 ? (double)let / leg : 0.0;
-				if (frac <= frac_actual) continue;
+				if (getenv("SN_LOG") && n_hielo > 0) fprintf(stderr, "  ext: frac %.4f contra %.4f (n_hielo %d)\n", frac, frac_actual, n_hielo);
+				if (n_hielo == 0 && frac <= frac_actual) continue;   // (al alargar la línea no se pide que suba el riesgo: la línea entera tiene que ser necesaria, y eso se prueba al final)
 				puntaje = 10.0 * u2.deslizamientos + (frac - frac_actual) * 100.0;
 			} else if (rol == "trampolin") {
 				Uso u2 = usos_del_camino(ne, meta, r.acc);
