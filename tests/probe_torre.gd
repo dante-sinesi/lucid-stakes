@@ -2,13 +2,9 @@ extends SceneTree
 const Torre := preload("res://salas_nuevas/torre.gd")
 func _init() -> void:
 	var p := Torre.cargar_paquete(ProjectSettings.globalize_path("res://bibliotecas/paquete_salas.jsonl"))
-	var tot := {}
-	for semilla in [3, 4, 5, 6, 7, 8, 9, 10]:
-		var t = Torre.armar(p, semilla, 6)
-		var tam := []
+	for semilla in [4, 5]:
+		var t = Torre.armar_espiral(p, semilla, 8)
+		print("semilla ", semilla, " salas ", t.salas.size(), " giros ", Torre.giros(t), " lugares ", Torre.lugares(t))
 		for s in t.salas:
-			tam.append(str(s.d.tipo) + "/" + str(s.d.nivel).substr(0, 3) + "/" + str(s.d.categoria).substr(0, 4))
-			tot[str(s.d.tipo)] = tot.get(str(s.d.tipo), 0) + 1
-		print(semilla, " ", tam)
-	print(tot)
+			print("  ", s.d.tipo, " ", Torre.huella(s.d), " ent ", Torre.entrada_xz(s.d), " sal ", Torre.salida_xz(s.d))
 	quit(0)
