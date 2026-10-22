@@ -720,7 +720,7 @@ static Resolucion resolver_compacto(const Estado& e0, int meta, long tope, int u
 }
 
 static string kind_letra(int k) {
-	const char* L = "?nfhicstkp";
+	const char* L = "?nfhictskp";   // (el orden de Kind: T = trampa va antes que S = pinchos)
 	return string(1, L[k < 10 ? k : 0]);
 }
 
@@ -1457,6 +1457,14 @@ static int especializar_main(int argc, char** argv) {
 		legales = leg;
 		return let;
 	};
+	// hielo: la línea mide entre 1 y 6 celdas según el tamaño de la sala (3x3 hasta 3, 5x3 hasta 5, 8x3 hasta 6) y cada sala sortea su largo
+	int largo_hielo = 1;
+	if (rol == "hielo") {
+		int tope_largo = tipo == "3x3" ? 3 : tipo == "5x3" ? 5 : 6;
+		largo_hielo = 1 + (int)(rng() % (unsigned long long)tope_largo);
+		maximo = max(maximo, largo_hielo);
+	}
+	int n_hielo = 0;
 	Estado actual = e0;
 	Resolucion res = base;
 	vector<int> elegidos;      // celdas (en el estado de partida) de los especiales
@@ -1484,7 +1492,11 @@ static int especializar_main(int argc, char** argv) {
 				int n = idx(x, iy(c), z);
 				return t0.g[n] == N ? n : -1;
 			};
-			if (hielos.empty()) {
+			n_hielo = (int)hielos.size();
+			if (n_hielo >= largo_hielo) break;   // (la línea ya tiene el largo que le tocó)
+			if (hielos.empty() && largo_hielo == 1) {
+				for (int c : cand) opciones.push_back({c});
+			} else if (hielos.empty()) {
 				for (int c : cand) for (int k = 0; k < 4; k++) { int n = vecina(c, k); if (n >= 0) opciones.push_back({c, n}); }
 			} else {
 				for (int h : hielos) for (int k = 0; k < 4; k++) {
@@ -1607,9 +1619,12 @@ static int especializar_main(int argc, char** argv) {
 		Sim t; cargar(t, actual, meta);
 		vector<int> celdas;
 		for (int i : t.cel) if (t.g[i] == especial) celdas.push_back(i);
-		for (int c : celdas) {
+		if (rol == "hielo") n_hielo = (int)celdas.size();
+		vector<vector<int>> unidades;
+		if (rol == "hielo") unidades.push_back(celdas); else for (int c : celdas) unidades.push_back({c});
+		for (auto& unidad : unidades) {
 			Sim u; cargar(u, actual, meta);
-			u.g[c] = N;
+			for (int c : unidad) u.g[c] = N;
 			Estado ne; guardar(u, ne);
 			Resolucion r = resolver(ne, meta, (int)tope_eval);
 			bool distinto = !r.ok || r.moves != res.moves || r.distintos != res.distintos || fabs(valor(r) - valor(res)) > 0.5;
@@ -1619,7 +1634,7 @@ static int especializar_main(int argc, char** argv) {
 				double f = leg > 0 ? (double)let / leg : 0.0;
 				if (fabs(f - frac_actual) >= 0.005) distinto = true;
 			}
-			if (distinto) necesarios++;
+			if (distinto) necesarios += (int)unidad.size();
 		}
 		if (necesarios < (int)celdas.size()) return error("hay especiales decorativos");
 	}
@@ -1629,7 +1644,7 @@ static int especializar_main(int argc, char** argv) {
 	string js = sala_json(P, actual, res, -1, true, mt);
 	js.pop_back();
 	char buf[64];
-	js += ",\"rol\":\"" + rol + "\",\"especiales\":{\"" + string(1, letra) + "\":" + to_string((int)elegidos.size()) + "},\"necesarios\":" + to_string(necesarios) + ",\"ganancias\":[";
+	js += ",\"rol\":\"" + rol + "\",\"especiales\":{\"" + string(1, letra) + "\":" + to_string(rol == "hielo" ? n_hielo : (int)elegidos.size()) + "},\"necesarios\":" + to_string(necesarios) + ",\"ganancias\":[";
 	for (size_t i = 0; i < ganancias.size(); i++) { snprintf(buf, sizeof(buf), "%s%.0f", i ? "," : "", ganancias[i]); js += buf; }
 	js += "]}";
 	printf("%s\n", js.c_str());
