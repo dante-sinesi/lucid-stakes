@@ -42,6 +42,8 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 	var meta := float(maxi(t.meta, 1))
 	for c in t.bloques:
 		var letra: String = t.bloques[c]
+		if t.obstaculos.has(c):
+			continue   # (es de la sala de arriba: la torre la dibuja con su sala)
 		if omitir_p and letra == "p":
 			continue   # (en la torre la entrada de una sala es la salida de la anterior: se dibuja una sola vez)
 		var kind: int = KIND_DE_LETRA.get(letra.substr(0, 1), 0)

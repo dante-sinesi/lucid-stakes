@@ -31,6 +31,7 @@ var motivo := ""
 var pasos := 0
 var ids := {}            # la identidad de cada bloque (celda -> número): sigue al bloque cuando lo empujan o cae
 var sig_id := 0
+var obstaculos := {}      # celdas de la sala de arriba que están en el alcance de ésta: bloques fijos (tipo "f") que no se dibujan acá (la torre los dibuja con su sala)
 var purificados := {}    # los bloques que el jugador ya pisó o de los que se colgó (número -> true): el aspecto de la torre lo usa
 
 
@@ -47,6 +48,7 @@ func duplicar():
 	t.ids = ids.duplicate()
 	t.sig_id = sig_id
 	t.purificados = purificados.duplicate()
+	t.obstaculos = obstaculos.duplicate()
 	return t
 
 
@@ -61,6 +63,16 @@ func poner(c: Vector3i, tipo := "n") -> void:
 	bloques[c] = tipo
 	ids[c] = sig_id
 	sig_id += 1
+
+
+## Los bloques de la sala de arriba que quedan al alcance de esta sala (están anclados y no se mueven): se agregan como fijos.
+func agregar_obstaculos(celdas: Array) -> void:
+	for c in celdas:
+		if not bloques.has(c):
+			bloques[c] = "f"
+			ids[c] = sig_id
+			sig_id += 1
+			obstaculos[c] = true
 
 
 func tipo_en(c: Vector3i) -> String:

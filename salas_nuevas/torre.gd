@@ -11,6 +11,8 @@ const Vista := preload("res://salas_nuevas/vista.gd")
 const Motor := preload("res://salas_nuevas/motor.gd")
 
 const LADO := 11
+static var rechazos_choque := 0   # (estadística: placements descartados porque la sala de arriba tapaba el camino de la de abajo)
+static var aceptados := 0
 const VIDAS := 3
 ## Niveles de dificultad que admite cada sala de la torre (la curva sube de a poco); las dos primeras son de bloques comunes (se aprende a jugar).
 const CURVA := [["facil"], ["facil", "media"], ["media"], ["media", "dificil"], ["dificil"], ["dificil", "pesadilla"]]
@@ -87,6 +89,21 @@ static func salida_xz(d: Dictionary) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
+## Las celdas de la sala `g` (la que sigue) que caen al alcance de la sala de abajo, en las alturas de ésta (la entrada de `g`, su nivel 1, es la salida de la de abajo):
+## son bloques anclados que no se mueven y que pueden tapar el camino (por ejemplo, la cabeza del jugador al trepar a la salida).
+static func obstaculos_de(g: Dictionary, meta_abajo: int) -> Array:
+	var out: Array = []
+	for b in g.bloques:
+		var nivel := int(b[1])
+		if nivel < 2:
+			continue
+		var y := nivel + meta_abajo - 1
+		if y > meta_abajo + 6:
+			continue
+		out.append(Vector3i(int(b[0]), y, int(b[2])))
+	return out
+
+
 ## La huella de la sala: el rectángulo (en celdas x, z) que ocupan sus bloques.
 static func huella(d: Dictionary) -> Rect2i:
 	var x0 := 99
@@ -108,8 +125,9 @@ static func solape(a: Rect2i, b: Rect2i) -> int:
 
 
 ## ¿El camino de la sala (ya girada) llega a la salida en el motor? (se comprueba al armar, por si alguna simetría cambia el resultado)
-static func camino_ok(d: Dictionary) -> bool:
+static func camino_ok(d: Dictionary, obstaculos: Array = []) -> bool:
 	var t = Vista.motor_de(d)
+	t.agregar_obstaculos(obstaculos)
 	for a in d.get("camino", []):
 		t.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
 	return t.ganado
@@ -274,6 +292,12 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			var g := mover(girar(datos.d, s), dx, dz)
 			if not camino_ok(g):
 				continue
+			if i > 0:   # la sala nueva queda sobre la anterior: el camino de la anterior tiene que seguir andando con sus bloques al alcance
+				var prev: Dictionary = ctx.elegidas[i - 1].d
+				if not camino_ok(prev, obstaculos_de(g, int(prev.meta))):
+					rechazos_choque += 1
+					continue
+			aceptados += 1
 			ctx.elegidas.append({"d": g, "sim": s, "id": int(datos.d.id)})
 			ctx.usadas[int(datos.d.id)] = true
 			if _extender(ctx, i + 1):
@@ -313,6 +337,8 @@ func max_mov() -> int:
 func _entrar(i: int) -> void:
 	indice = i
 	motor = Vista.motor_de(salas[i].d)
+	if i + 1 < salas.size():   # (los bloques de la sala de arriba que quedan al alcance de ésta)
+		motor.agregar_obstaculos(obstaculos_de(salas[i + 1].d, int(salas[i].d.meta)))
 	movs = 0
 	encendidos = {}
 	for c in motor.bloques:
