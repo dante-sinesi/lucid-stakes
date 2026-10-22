@@ -7,7 +7,7 @@ import json, os, random, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 o = {'objetivo': '40', 'entrada': 'bibliotecas/salas_nuevas_final.jsonl', 'salida': 'bibliotecas/salas_mixtas.jsonl', 'hilos': '7', 'tope': '100000',
-     'pmin': '5', 'pmax': '24', 'tipo': '', 'semilla': '11', 'espera': '120', 'exe': 'tools/salas_nuevas.exe'}
+     'pmin': '5', 'pmax': '24', 'tipo': '', 'semilla': '11', 'repetir': '1', 'espera': '120', 'exe': 'tools/salas_nuevas.exe'}
 for a in sys.argv[1:]:
     if '=' in a:
         k, v = a.split('=', 1); o[k] = v
@@ -92,6 +92,7 @@ def main():
     pmin, pmax = int(o['pmin']), int(o['pmax'])
     cand = [d for d in salas if pmin <= d['meta'] - 1 <= pmax and d.get('camino') and not any(b[3] not in 'pnf' for b in d['bloques'])
             and (not o['tipo'] or d['tipo'] == o['tipo'])]
+    cand = cand * int(o['repetir'])   # (una misma sala base puede dar salas distintas con otros especiales)
     rng0 = random.Random(int(o['semilla']))
     rng0.shuffle(cand)
     objetivo = int(o['objetivo'])
