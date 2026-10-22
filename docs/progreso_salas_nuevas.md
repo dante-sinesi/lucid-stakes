@@ -29,3 +29,8 @@ Reglas en `docs/torre_salas_reglas.md`. Código aislado del juego en `salas_nuev
 - Se arreglaron las 8x3: la exigencia de bloques distintos ahora se aplica después de mejorar la sala; las grandes llevan ~2,3 bloques extra por piso; el armado de las altas usa un puntaje barato y la evaluación por lonjas va al final con un tope de nodos por lonja de 60 mil (una 8x3 de 24 pisos tarda ~2 minutos).
 - Mínimo exacto demostrado: todas las 3x3, 5x3 hasta 8 pisos y 8x3 hasta 9; las más altas quedan con cota inferior (A* con presupuesto) y camino de lonjas (cota superior): 39 salas.
 - Pendiente: certificar las altas (A* con memoria compacta o heurística más fuerte) y calibrar la métrica con salas jugadas.
+
+## Salas con especiales por propósito (segundo paso `--especializar`, ver docs/plan_generador_especiales.md)
+- Cinco roles: pesado (limita: no se puede mover), pinchos (celdas prohibidas), agrietado (cada decisión pesa: se pisa una vez), hielo (resbalar, pero también transporte) y trampolín (salto en vez de escalera). Cada uno se pone donde le rompe el paso más barato a la solución, se vuelve a resolver con el solucionador exacto y se acepta sólo si cumple su papel; al final cada especial pasa la prueba de necesidad (volverlo común cambia el resultado: el largo, el valor, o cuánto pesa cada decisión).
+- Primera tanda (sobre salas base exactas de hasta 10 pisos): pinchos 36 salas, pesado 33, hielo 33, trampolín 40, agrietado 40. En `bibliotecas/salas_especiales_<rol>.jsonl` (no se versionan).
+- Observaciones: el trampolín acorta mucho la sala (salta tramos): las más difíciles quedan en unos 180 bits; las pesadillas de pesado, hielo y agrietado salen con poca frecuencia (un especial casi siempre deja la sala sin solución o no suma).
