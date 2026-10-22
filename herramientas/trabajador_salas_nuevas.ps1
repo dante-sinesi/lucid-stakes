@@ -1,6 +1,6 @@
 # Un trabajador del generador de salas nuevas: recorre una lista de (tipo, altura) y para cada una arma la configuración con fórmulas y corre tools\salas_nuevas.exe
 # hasta la hora de fin. Lo lanza herramientas\generar_salas_nuevas.ps1 (no hace falta correrlo a mano).
-param([string]$Prefijo, [int]$Indice, [string]$Fin, [string]$Tipos, [int]$NivelFijo = 0, [int]$HMax = 99, [switch]$PorDemanda)
+param([string]$Prefijo, [int]$Indice, [string]$Fin, [string]$Tipos, [int]$NivelFijo = 0, [int]$HMax = 99, [switch]$PorDemanda, [string]$Exe = 'tools\salas_nuevas.exe', [int]$Giro = 0)
 Set-Location (Join-Path $PSScriptRoot "..")
 $alturas = @{
   '3x3' = @(5, 6, 7, 8, 9);
@@ -23,7 +23,7 @@ function Config($tipo, $h, $nivel) {
   $dist = if ($nivel -le 2) { 1 } else { [int][math]::Floor(0.6 * ($h - 1)) }
   $refinar = if ($h -le 9) { 0 } else { 3000000 }
   $riesgo = 1
-  return "tipo=$tipo h=$h extras=$extras ef=$ef dist=1 dist_exactos=$dist climb=$climb tope_climb=$tope tope_eval=$tope tope_nivel=$tope prof=$prof cand=300 ancho=12 pre=30 exacto=$exacto refinar=$refinar riesgo=$riesgo"
+  return "tipo=$tipo h=$h extras=$extras ef=$ef dist=1 dist_exactos=$dist climb=$climb tope_climb=$tope tope_eval=$tope tope_nivel=$tope prof=$prof cand=300 ancho=12 pre=30 exacto=$exacto refinar=$refinar riesgo=$riesgo giro=$Giro"
 }
 # Alturas que se prueban para cada (nivel, tipo) en el modo por demanda (bibliotecas\sn_demanda.json lo escribe herramientas\clasificar_salas_nuevas.py)
 $alt_demanda = @{
@@ -60,7 +60,7 @@ while ((Get-Date) -lt $fin) {
     $nivel = switch ($c.nivel) { 'facil' { Get-Random -InputObject @(1, 2) } 'media' { 3 } 'dificil' { 4 } default { 5 } }
   }
   $cfg = (Config $par[0] $par[1] $nivel) -split ' '
-  $salida = & tools\salas_nuevas.exe --gen @cfg wd=12 evaluar=16 temp=3 salto=3 n=1 seed=$s 2>$null
+  $salida = & $Exe --gen @cfg wd=12 evaluar=16 temp=3 salto=3 n=1 seed=$s 2>$null
   if ($salida) { $salida | Add-Content -Encoding ascii $archivo }
   $k++
   $s++

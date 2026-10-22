@@ -142,111 +142,155 @@ static func max_movimientos(pasos: int, nivel: String) -> int:
 	return int(ceil(pasos * k)) + extra
 
 
-## Arma una torre de `n` salas con la curva de dificultad CURVA (si n es mayor se repite el último tramo). Devuelve un Torre; si no pudo encadenar una sala, queda más corta.
-static func armar(paquete: Array, semilla: int, n := 6):
+## ¿La celda (x, z) es del anillo? (11 x 11 con el vacío de 5 x 5 en el medio)
+static func es_anillo(x: int, z: int) -> bool:
+	return x >= 0 and x < LADO and z >= 0 and z < LADO and not (x >= 3 and x <= 7 and z >= 3 and z <= 7)
+
+
+static func huella_valida(r: Rect2i) -> bool:
+	for x in range(r.position.x, r.position.x + r.size.x):
+		for z in range(r.position.y, r.position.y + r.size.y):
+			if not es_anillo(x, z):
+				return false
+	return true
+
+
+## La sala `d` corrida (dx, dz) celdas (las salas no dependen del lugar del anillo donde estén: se deslizan hasta que su entrada cae en la salida de la anterior).
+static func mover(d: Dictionary, dx: int, dz: int) -> Dictionary:
+	var o := d.duplicate(true)
+	var bl: Array = []
+	for b in d.bloques:
+		bl.append([int(b[0]) + dx, int(b[1]), int(b[2]) + dz, b[3]])
+	o["bloques"] = bl
+	o["jugador"] = [int(d.jugador[0]) + dx, int(d.jugador[1]), int(d.jugador[2]) + dz]
+	return o
+
+
+## El ángulo (alrededor del centro del anillo) del centro de una huella.
+static func angulo(r: Rect2i) -> float:
+	return atan2(r.position.y + r.size.y * 0.5 - 5.5, r.position.x + r.size.x * 0.5 - 5.5)
+
+
+## Datos de cada sala del paquete que no cambian al girarla: entrada, salida y huella.
+static func _info(paquete: Array) -> Array:
+	var out: Array = []
+	for d in paquete:
+		out.append({"d": d, "e": entrada_xz(d), "x": salida_xz(d), "r": huella(d)})
+	return out
+
+
+static func _rect_sim(r: Rect2i, s: int) -> Rect2i:
+	var a := xz_sim(r.position.x, r.position.y, s)
+	var b := xz_sim(r.position.x + r.size.x - 1, r.position.y + r.size.y - 1, s)
+	return Rect2i(mini(a.x, b.x), mini(a.y, b.y), absi(a.x - b.x) + 1, absi(a.y - b.y) + 1)
+
+
+## Arma una torre de `n` salas con la curva de dificultad CURVA (si n es mayor se repite el último tramo). Cada sala se gira o espeja y se desliza por el anillo
+## hasta que su entrada caiga en la salida de la anterior; con `espiral` la torre da vueltas siempre hacia el mismo lado (cada sala sigue por delante de la anterior).
+## Si no se puede con espiral se arma sin esa condición. Devuelve un Torre; si no pudo encadenar una sala queda más corta.
+static func armar(paquete: Array, semilla: int, n := 6, espiral := true):
 	var rng := RandomNumberGenerator.new()
 	rng.seed = semilla
+	var info := _info(paquete)
+	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral}
+	var ok := _extender(ctx, 0)
+	if not ok and espiral:
+		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false}
+		ok = _extender(ctx, 0)
 	var t = load("res://salas_nuevas/torre.gd").new()
 	var off := 0
-	var prev_salida := Vector2i(-1, -1)
-	var prev_huella := Rect2i()
-	var usadas := {}
-	# celdas donde puede caer la entrada de alguna sala (con cualquier simetría): la salida de cada sala tiene que dejar una continuación posible
-	var alcanzables := {}
-	for d in paquete:
-		var e := entrada_xz(d)
-		for s in 8:
-			alcanzables[xz_sim(e.x, e.y, s)] = true
-	for i in n:
-		var niveles: Array = CURVA[mini(i, CURVA.size() - 1)]
-		var elegida := {}
-		for relajar in 3:   # 0: nivel y huella en otro lado del anillo; 1: cualquier huella; 2: cualquier nivel
-			var cand: Array = []
-			for d in paquete:
-				if usadas.has(int(d.id)):
-					continue
-				if relajar < 2 and not niveles.has(str(d.nivel)):
-					continue
-				if i < 2 and str(d.get("categoria", "base")) != "base":
-					continue   # (las dos primeras salas son de bloques comunes)
-				cand.append(d)
-			# se mezclan los candidatos y se toma el primero que se pueda girar para que su entrada caiga en la salida anterior
-			for k in range(cand.size() - 1, 0, -1):
-				var j := rng.randi_range(0, k)
-				var tmp = cand[k]
-				cand[k] = cand[j]
-				cand[j] = tmp
-			for d in cand:
-				var sims := [0, 1, 2, 3, 4, 5, 6, 7]
-				for k in range(7, 0, -1):
-					var j := rng.randi_range(0, k)
-					var tmp2 = sims[k]
-					sims[k] = sims[j]
-					sims[j] = tmp2
-				for s in sims:
-					var g := girar(d, s)
-					if i > 0 and entrada_xz(g) != prev_salida:
-						continue
-					if relajar == 0 and i > 0 and solape(prev_huella, huella(g)) > 3:
-						continue   # (la torre da la vuelta al anillo: cada sala sigue por otro lado)
-					if i < n - 1 and not alcanzables.has(salida_xz(g)):
-						continue
-					if not camino_ok(g):
-						continue
-					elegida = {"d": g, "sim": s, "id": int(d.id)}
-					break
-				if not elegida.is_empty():
-					break
-			if not elegida.is_empty():
-				break
-		if elegida.is_empty():
-			break
-		var g: Dictionary = elegida.d
-		elegida["off"] = off
-		elegida["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel))
-		t.salas.append(elegida)
-		usadas[elegida.id] = true
-		prev_salida = salida_xz(g)
-		prev_huella = huella(g)
+	for e in ctx.elegidas:
+		var g: Dictionary = e.d
+		e["off"] = off
+		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel))
+		t.salas.append(e)
 		off += int(g.meta) - 1   # la entrada de la siguiente (nivel 1) queda en el nivel de salida de ésta
 	if not t.salas.is_empty():
 		t._entrar(0)
 	return t
 
 
-## Cuántas vueltas al anillo da la torre: cada sala que NO sigue por el mismo lado que la anterior (dobla la esquina) cuenta; cuatro seguidas son una vuelta.
-static func giros(t) -> int:
-	var n := 0
-	for i in range(1, t.salas.size()):
-		if solape(huella(t.salas[i - 1].d), huella(t.salas[i].d)) <= 3:
-			n += 1
-	return n
-
-
-## Cuántos lugares distintos del anillo ocupan las salas.
-static func lugares(t) -> int:
-	var v := {}
-	for s in t.salas:
-		v[str(huella(s.d))] = true
-	return v.size()
-
-
-## Arma varias torres con semillas derivadas y se queda con la que más da la vuelta al anillo (la entrada y la salida de las salas están en los extremos de su lado,
-## así que si no se elige, las salas van y vuelven por el mismo lado).
-static func armar_espiral(paquete: Array, semilla: int, n := 6, intentos := 80):
-	var mejor = null
-	var mejor_giros := -1
-	for k in intentos:
-		var t = armar(paquete, semilla * 1000 + k, n)
-		if t.salas.size() < n:
+## Busca (con vuelta atrás) la sala número i y las que siguen. Devuelve true si se armaron las n.
+static func _extender(ctx: Dictionary, i: int) -> bool:
+	if i >= ctx.n:
+		return true
+	var rng: RandomNumberGenerator = ctx.rng
+	var niveles: Array = CURVA[mini(i, CURVA.size() - 1)]
+	var info: Array = ctx.info
+	var orden: Array = []
+	for k in info.size():
+		var d: Dictionary = info[k].d
+		if ctx.usadas.has(int(d.id)):
 			continue
-		var g := giros(t) * 10 + lugares(t)
-		if g > mejor_giros:
-			mejor_giros = g
-			mejor = t
-			if giros(t) >= n - 1 and lugares(t) >= mini(n, 8):
-				break
-	return mejor if mejor != null else armar(paquete, semilla, n)
+		if i < 2 and str(d.get("categoria", "base")) != "base":
+			continue   # (las dos primeras salas son de bloques comunes)
+		orden.append(k)
+	# primero las del nivel que toca (mezcladas) y después las otras
+	for k in range(orden.size() - 1, 0, -1):
+		var j := rng.randi_range(0, k)
+		var tmp = orden[k]
+		orden[k] = orden[j]
+		orden[j] = tmp
+	var buenas: Array = []
+	var otras: Array = []
+	for k in orden:
+		(buenas if niveles.has(str(info[k].d.nivel)) else otras).append(k)
+	var prev_salida: Vector2i = Vector2i(-1, -1)
+	var prev_ang := 0.0
+	if i > 0:
+		var pe: Dictionary = ctx.elegidas[i - 1]
+		prev_salida = salida_xz(pe.d)
+		prev_ang = angulo(huella(pe.d))
+	for k in buenas + otras:
+		var datos: Dictionary = info[k]
+		var sims := [0, 1, 2, 3, 4, 5, 6, 7]
+		for q in range(7, 0, -1):
+			var j := rng.randi_range(0, q)
+			var tmp2 = sims[q]
+			sims[q] = sims[j]
+			sims[j] = tmp2
+		for s in sims:
+			if ctx.presupuesto <= 0:
+				return false
+			var e := xz_sim(datos.e.x, datos.e.y, s)
+			var r := _rect_sim(datos.r, s)
+			var dx := 0
+			var dz := 0
+			if i == 0:   # la primera: un lugar cualquiera del anillo
+				var lugar := Vector2i(rng.randi_range(0, LADO - 1), rng.randi_range(0, LADO - 1))
+				dx = lugar.x - e.x
+				dz = lugar.y - e.y
+			else:
+				dx = prev_salida.x - e.x
+				dz = prev_salida.y - e.y
+			var rr := Rect2i(r.position.x + dx, r.position.y + dz, r.size.x, r.size.y)
+			if not huella_valida(rr):
+				continue
+			if i > 0 and ctx.espiral:
+				var dif := wrapf(angulo(rr) - prev_ang, -PI, PI) * float(ctx.sentido)
+				if dif < deg_to_rad(12.0) or dif > deg_to_rad(150.0):
+					continue
+			ctx.presupuesto -= 1
+			var g := mover(girar(datos.d, s), dx, dz)
+			if not camino_ok(g):
+				continue
+			ctx.elegidas.append({"d": g, "sim": s, "id": int(datos.d.id)})
+			ctx.usadas[int(datos.d.id)] = true
+			if _extender(ctx, i + 1):
+				return true
+			ctx.elegidas.pop_back()
+			ctx.usadas.erase(int(datos.d.id))
+			if ctx.presupuesto <= 0:
+				return false
+	return false
+
+
+## Cuántas vueltas al anillo da la torre (suma de los avances angulares entre salas consecutivas).
+static func vueltas(t) -> float:
+	var total := 0.0
+	for i in range(1, t.salas.size()):
+		total += absf(wrapf(angulo(huella(t.salas[i].d)) - angulo(huella(t.salas[i - 1].d)), -PI, PI))
+	return total / TAU
 
 
 # --- partida ---

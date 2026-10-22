@@ -66,6 +66,18 @@ func _init() -> void:
 		if t.terminada:
 			jugadas += 1
 	_ok(cortas == 0, "todas las torres salieron de 6 salas (%d cortas)" % cortas)
+	# la torre da vueltas al anillo: con 8 salas, al menos media vuelta (y las huellas caen dentro del anillo)
+	var dan_vuelta := 0
+	var en_anillo := true
+	for semilla in range(1, 11):
+		var t3 = Torre.armar(paquete, semilla, 8)
+		if t3.salas.size() == 8 and Torre.vueltas(t3) >= 0.4:
+			dan_vuelta += 1
+		for sala in t3.salas:
+			if not Torre.huella_valida(Torre.huella(sala.d)):
+				en_anillo = false
+	_ok(dan_vuelta >= 9, "las torres de 8 salas dan al menos media vuelta al anillo (%d de 10)" % dan_vuelta)
+	_ok(en_anillo, "todas las salas caen dentro del anillo, sin pisar el vacío")
 	# temporizador: con 3 movimientos de máximo, se muere al tercero y la sala vuelve a empezar
 	var t2 = Torre.armar(paquete, 5, 6)
 	t2.salas[0].max_mov = 3

@@ -876,6 +876,7 @@ struct Param {
 	int h_exacto = 9;   // por encima de esta altura se evalúa por lonjas en vez del solucionador exacto
 	int salto = 2;
 	int riesgo = 1;
+	int giro = 0;   // 1: la salida queda a 90 grados de la entrada (5x3 y 8x3: sobre el lado largo, en el bloque del extremo contrario; 3x3: en el lado perpendicular)
 	long refinar = 2000000;   // en salas altas (por lonjas) se intenta al final el solucionador exacto con este tope de nodos
 };
 
@@ -887,8 +888,16 @@ static void huella(const string& tipo, int& x0, int& z0, int& w, int& d) {
 
 // ¿La celda (ex, ez) sirve de salida si se entra por (sx, sz)? Entrada y salida son puntos externos y opuestos de la huella:
 // 3x3: salida en el borde y lejos de la entrada (a 3 o más celdas); 5x3 y 8x3: en la punta contraria.
+static int g_giro = 0;   // (lo fija sala_resuelta: salida a 90 grados de la entrada)
 static bool fin_valido(const string& tipo, int w, int d, int sx, int sz, int ex, int ez) {
-	if (tipo == "5x3" || tipo == "8x3") return sx == 0 ? ex == w - 1 : ex == 0;
+	if (tipo == "5x3" || tipo == "8x3") {
+		if (g_giro) {   // la salida sobre un lado largo, dentro del bloque de 3 del extremo contrario (sin ser la punta: ahí sería una sala recta)
+			bool lado = ez == 0 || ez == d - 1;
+			return lado && (sx == 0 ? (ex >= w - 3 && ex <= w - 2) : (ex >= 1 && ex <= 2));
+		}
+		return sx == 0 ? ex == w - 1 : ex == 0;
+	}
+	if (g_giro) return ez == d - 1 - sz && ex != w - 1 - sx && abs(ex - sx) + abs(ez - sz) >= 3;
 	bool borde = ex == 0 || ex == w - 1 || ez == 0 || ez == d - 1;
 	return borde && abs(ex - sx) + abs(ez - sz) >= 3;
 }
@@ -919,6 +928,7 @@ static bool sala_resuelta(const Param& P, mt19937_64& rng, Sim& out) {
 	int x0, z0, w, d;
 	huella(P.tipo, x0, z0, w, d);
 	if (P.h > w * d || P.h < 2) return false;
+	g_giro = P.giro;
 	vector<int> camino;
 	vector<char> usado(w * d, 0);
 	bool ok = false;
@@ -1053,7 +1063,7 @@ static string metricas_json(const Metricas& m) {
 static string sala_json(const Param& P, const Estado& e, const Resolucion& r, int armado, bool exacto, const Metricas& mt) {
 	string s = "{\"tipo\":\"" + P.tipo + "\",\"meta\":" + to_string(P.h) + ",\"jugador\":[" + to_string(e.px) + "," + to_string(e.py) + "," + to_string(e.pz) + "],\"colgado\":[" + to_string(e.hx) + "," + to_string(e.hz) + "],";
 	s += "\"bloques\":" + estado_json(e) + ",\"pasos\":" + to_string(r.moves) + ",\"agarres\":" + to_string(r.agarres) + ",\"distintos\":" + to_string(r.distintos);
-	s += ",\"armado\":" + to_string(armado) + ",\"exacto\":" + string(exacto ? "true" : "false") + ",\"extras\":" + to_string(P.extras) + ",\"camino\":" + camino_json(r.acc) + "}";
+	s += ",\"giro\":" + to_string(P.giro) + ",\"armado\":" + to_string(armado) + ",\"exacto\":" + string(exacto ? "true" : "false") + ",\"extras\":" + to_string(P.extras) + ",\"camino\":" + camino_json(r.acc) + "}";
 	s.pop_back();
 	s += "," + metricas_json(mt) + "}";
 	return s;
@@ -1857,6 +1867,7 @@ static int generar_main(int argc, char** argv) {
 		else if (k == "tope_climb") P.tope_escalada = atol(v.c_str());
 		else if (k == "temp") P.temp = atof(v.c_str());
 		else if (k == "h_exacto") P.h_exacto = atoi(v.c_str());
+		else if (k == "giro") P.giro = atoi(v.c_str());
 		else if (k == "salto") P.salto = atoi(v.c_str());
 		else if (k == "riesgo") P.riesgo = atoi(v.c_str());
 		else if (k == "refinar") P.refinar = atol(v.c_str());
