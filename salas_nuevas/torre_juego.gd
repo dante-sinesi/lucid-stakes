@@ -64,7 +64,7 @@ func _nueva_torre() -> void:
 		if n != null and is_instance_valid(n):
 			n.queue_free()
 	estaticas.clear()
-	var n_salas := int(OS.get_environment("SN_SALAS")) if OS.get_environment("SN_SALAS") != "" else 6
+	var n_salas := int(OS.get_environment("SN_SALAS")) if OS.get_environment("SN_SALAS") != "" else 8
 	t = Torre.armar(paquete, semilla, n_salas)
 	if t.salas.is_empty():
 		_aviso("No se pudo armar la torre", 0.0)

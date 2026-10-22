@@ -87,6 +87,26 @@ static func salida_xz(d: Dictionary) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
+## La huella de la sala: el rectángulo (en celdas x, z) que ocupan sus bloques.
+static func huella(d: Dictionary) -> Rect2i:
+	var x0 := 99
+	var z0 := 99
+	var x1 := -99
+	var z1 := -99
+	for b in d.bloques:
+		x0 = mini(x0, int(b[0]))
+		x1 = maxi(x1, int(b[0]))
+		z0 = mini(z0, int(b[2]))
+		z1 = maxi(z1, int(b[2]))
+	return Rect2i(x0, z0, x1 - x0 + 1, z1 - z0 + 1)
+
+
+## Celdas de huella que comparten dos salas (una sala que sigue por el mismo lado del anillo comparte mucho; doblar la esquina, sólo la esquina).
+static func solape(a: Rect2i, b: Rect2i) -> int:
+	var c := a.intersection(b)
+	return c.size.x * c.size.y if c.has_area() else 0
+
+
 ## ¿El camino de la sala (ya girada) llega a la salida en el motor? (se comprueba al armar, por si alguna simetría cambia el resultado)
 static func camino_ok(d: Dictionary) -> bool:
 	var t = Vista.motor_de(d)
@@ -129,6 +149,7 @@ static func armar(paquete: Array, semilla: int, n := 6):
 	var t = load("res://salas_nuevas/torre.gd").new()
 	var off := 0
 	var prev_salida := Vector2i(-1, -1)
+	var prev_huella := Rect2i()
 	var usadas := {}
 	# celdas donde puede caer la entrada de alguna sala (con cualquier simetría): la salida de cada sala tiene que dejar una continuación posible
 	var alcanzables := {}
@@ -139,12 +160,12 @@ static func armar(paquete: Array, semilla: int, n := 6):
 	for i in n:
 		var niveles: Array = CURVA[mini(i, CURVA.size() - 1)]
 		var elegida := {}
-		for relajar in 2:
+		for relajar in 3:   # 0: nivel y huella en otro lado del anillo; 1: cualquier huella; 2: cualquier nivel
 			var cand: Array = []
 			for d in paquete:
 				if usadas.has(int(d.id)):
 					continue
-				if relajar == 0 and not niveles.has(str(d.nivel)):
+				if relajar < 2 and not niveles.has(str(d.nivel)):
 					continue
 				if i < 2 and str(d.get("categoria", "base")) != "base":
 					continue   # (las dos primeras salas son de bloques comunes)
@@ -166,6 +187,8 @@ static func armar(paquete: Array, semilla: int, n := 6):
 					var g := girar(d, s)
 					if i > 0 and entrada_xz(g) != prev_salida:
 						continue
+					if relajar == 0 and i > 0 and solape(prev_huella, huella(g)) > 3:
+						continue   # (la torre da la vuelta al anillo: cada sala sigue por otro lado)
 					if i < n - 1 and not alcanzables.has(salida_xz(g)):
 						continue
 					if not camino_ok(g):
@@ -184,10 +207,46 @@ static func armar(paquete: Array, semilla: int, n := 6):
 		t.salas.append(elegida)
 		usadas[elegida.id] = true
 		prev_salida = salida_xz(g)
+		prev_huella = huella(g)
 		off += int(g.meta) - 1   # la entrada de la siguiente (nivel 1) queda en el nivel de salida de ésta
 	if not t.salas.is_empty():
 		t._entrar(0)
 	return t
+
+
+## Cuántas vueltas al anillo da la torre: cada sala que NO sigue por el mismo lado que la anterior (dobla la esquina) cuenta; cuatro seguidas son una vuelta.
+static func giros(t) -> int:
+	var n := 0
+	for i in range(1, t.salas.size()):
+		if solape(huella(t.salas[i - 1].d), huella(t.salas[i].d)) <= 3:
+			n += 1
+	return n
+
+
+## Cuántos lugares distintos del anillo ocupan las salas.
+static func lugares(t) -> int:
+	var v := {}
+	for s in t.salas:
+		v[str(huella(s.d))] = true
+	return v.size()
+
+
+## Arma varias torres con semillas derivadas y se queda con la que más da la vuelta al anillo (la entrada y la salida de las salas están en los extremos de su lado,
+## así que si no se elige, las salas van y vuelven por el mismo lado).
+static func armar_espiral(paquete: Array, semilla: int, n := 6, intentos := 80):
+	var mejor = null
+	var mejor_giros := -1
+	for k in intentos:
+		var t = armar(paquete, semilla * 1000 + k, n)
+		if t.salas.size() < n:
+			continue
+		var g := giros(t) * 10 + lugares(t)
+		if g > mejor_giros:
+			mejor_giros = g
+			mejor = t
+			if giros(t) >= n - 1 and lugares(t) >= mini(n, 8):
+				break
+	return mejor if mejor != null else armar(paquete, semilla, n)
 
 
 # --- partida ---
