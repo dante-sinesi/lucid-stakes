@@ -21,6 +21,8 @@ def leer(ruta):
 
 
 fuentes = [('base', 'bibliotecas/salas_nuevas_final.jsonl')]
+for f in sorted(glob.glob(os.path.join(RAIZ, 'bibliotecas', 'sn_corridas', 'giro_*.jsonl'))):   # (salas 5x3 y 8x3 con la salida a 90 grados de la entrada)
+    fuentes.append(('base', os.path.relpath(f, RAIZ)))
 for rol in ['pinchos', 'pesado', 'agrietado', 'hielo', 'trampolin', 'bomba']:
     fuentes.append((rol, 'bibliotecas/salas_especiales_%s.jsonl' % rol))
 for f in sorted(glob.glob(os.path.join(RAIZ, 'bibliotecas', 'salas_mixtas*.jsonl*'))):
