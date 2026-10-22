@@ -1437,6 +1437,7 @@ static int especializar_main(int argc, char** argv) {
 	double ganancia = (double)arg_largo(argc, argv, "ganancia", 2);
 	long tope_eval = arg_largo(argc, argv, "tope", 200000);
 	double wd = (double)arg_largo(argc, argv, "wd", 12);
+	int ahorro_min = (int)arg_largo(argc, argv, "salto", 18);   // trampolín: sin él la sala no se resuelve o cuesta al menos tantos pasos más
 	mt19937_64 rng((unsigned long long)arg_largo(argc, argv, "seed", 1));
 	auto error = [&](const char* msg) { printf("{\"ok\":false,\"error\":\"%s\"}\n", msg); return 0; };
 	Kind especial; char letra;
@@ -1470,18 +1471,50 @@ static int especializar_main(int argc, char** argv) {
 		sort(cand.begin(), cand.end());
 		cand.erase(unique(cand.begin(), cand.end()), cand.end());
 		shuffle(cand.begin(), cand.end(), rng);
+		// opciones: grupos de celdas que se vuelven especial a la vez (el hielo va en LÍNEA: de a dos al principio y después se alarga la misma línea)
+		vector<vector<int>> opciones;
+		if (rol == "hielo") {
+			Sim t0; cargar(t0, actual, meta);
+			vector<int> hielos;
+			for (int i : t0.cel) if (t0.g[i] == I) hielos.push_back(i);
+			const int dxs[4] = {1, -1, 0, 0}, dzs[4] = {0, 0, 1, -1};
+			auto vecina = [&](int c, int k) {
+				int x = ix(c) + dxs[k], z = iz(c) + dzs[k];
+				if (abs(x) > 8 || abs(z) > 8) return -1;
+				int n = idx(x, iy(c), z);
+				return t0.g[n] == N ? n : -1;
+			};
+			if (hielos.empty()) {
+				for (int c : cand) for (int k = 0; k < 4; k++) { int n = vecina(c, k); if (n >= 0) opciones.push_back({c, n}); }
+			} else {
+				for (int h : hielos) for (int k = 0; k < 4; k++) {
+					int n = vecina(h, k);
+					if (n < 0) continue;
+					bool misma_x = true, misma_z = true;
+					for (int o : hielos) { if (ix(o) != ix(n)) misma_x = false; if (iz(o) != iz(n)) misma_z = false; }
+					if (misma_x || misma_z) opciones.push_back({n});
+				}
+			}
+			shuffle(opciones.begin(), opciones.end(), rng);
+			if (opciones.size() > 40) opciones.resize(40);
+		} else {
+			for (int c : cand) opciones.push_back({c});
+		}
 		double mejor_puntaje = -1e9;
 		int mejor_celda = -1;
 		Resolucion mejor_res;
 		Estado mejor_estado;
 		double mejor_frac = frac_actual;
 		int con_riesgo = 0;   // cuántos candidatos se evaluaron con el riesgo (es lo caro): como mucho 5 por ronda
-		for (int c : cand) {
+		for (auto& grupo : opciones) {
+			int c = grupo[0];
 			if (con_riesgo >= 5 && (rol == "agrietado" || rol == "hielo")) break;
 			Sim t;
 			cargar(t, actual, meta);
-			if (t.g[c] != N) continue;   // (sólo se cambian los comunes: no la entrada, la salida ni otro especial)
-			t.g[c] = especial;
+			bool todos_comunes = true;
+			for (int o : grupo) if (t.g[o] != N) todos_comunes = false;
+			if (!todos_comunes) continue;   // (sólo se cambian los comunes: no la entrada, la salida ni otro especial)
+			for (int o : grupo) t.g[o] = especial;
 			Estado ne; guardar(t, ne);
 			Resolucion r = resolver(ne, meta, (int)tope_eval);
 			static int c_prob = 0, c_sinsol = 0;
@@ -1552,6 +1585,13 @@ static int especializar_main(int argc, char** argv) {
 				}
 				if (!quito) break;
 			}
+			{
+				Sim ta; cargar(ta, actual, meta);
+				for (int i : ta.cel) if (ta.g[i] == K) ta.g[i] = N;
+				Estado sin_k; guardar(ta, sin_k);
+				Resolucion rn = resolver(sin_k, meta, (int)tope_eval);
+				if (rn.ok && rn.moves < res.moves + ahorro_min) return error("el trampolín ahorra poco");
+			}
 			break;   // (un trampolín por sala)
 		}
 	}
@@ -1573,7 +1613,7 @@ static int especializar_main(int argc, char** argv) {
 			Estado ne; guardar(u, ne);
 			Resolucion r = resolver(ne, meta, (int)tope_eval);
 			bool distinto = !r.ok || r.moves != res.moves || r.distintos != res.distintos || fabs(valor(r) - valor(res)) > 0.5;
-			if (rol == "trampolin") distinto = !r.ok || r.moves > res.moves + 3;
+			if (rol == "trampolin") distinto = !r.ok || r.moves >= res.moves + ahorro_min;
 			if (!distinto && r.ok && (rol == "agrietado" || rol == "hielo")) {   // (su efecto no siempre cambia el largo: cambia cuánto pesa cada decisión)
 				int leg = 0; int let = letales_de(ne, r, leg);
 				double f = leg > 0 ? (double)let / leg : 0.0;
