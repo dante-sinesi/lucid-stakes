@@ -1425,6 +1425,12 @@ struct Uso {
 	int deslizamientos = 0;   // acciones en las que algo se movió 2 o más celdas de golpe (hielo)
 };
 
+// Resolver una sala para especializarla: exacto hasta 10 pisos y por lonjas de 3 pisos más arriba (válido, no necesariamente el más corto).
+static Resolucion resolver_sala(const Estado& e, int meta, int tope) {
+	if (meta <= 10) return resolver(e, meta, tope);
+	return resolver_lonjas(e, meta, tope, 3);
+}
+
 static double valor_sala(const Resolucion& r) { return r.moves + 3.0 * r.agarres + 12.0 * r.distintos; }
 
 static Uso usos_del_camino(const Estado& e0, int meta, const vector<int>& acc) {
@@ -1481,7 +1487,7 @@ static int bomba_rol(const Estado& e0, int meta, const Resolucion& base, int top
 		Sim t; cargar(t, e0, meta);
 		if (t.g[c] != N) continue;
 		probadas++;
-		auto con_mecha = [&](int f, Estado& ne) { Sim u; cargar(u, e0, meta); u.g[c] = (uint8_t)(BOMBA0 + f); guardar(u, ne); return resolver(ne, meta, tope_eval); };
+		auto con_mecha = [&](int f, Estado& ne) { Sim u; cargar(u, e0, meta); u.g[c] = (uint8_t)(BOMBA0 + f); guardar(u, ne); return resolver_sala(ne, meta, tope_eval); };
 		Estado ne; Resolucion rmax = con_mecha(MECHA_MAX, ne);
 		if (!rmax.ok) continue;
 		int lo = 1, hi = MECHA_MAX;   // la menor mecha con solución
@@ -1510,7 +1516,7 @@ static int bomba_rol(const Estado& e0, int meta, const Resolucion& base, int top
 		Sim u; cargar(u, mejor_estado, meta);
 		u.g[mejor_celda] = N;
 		Estado ne; guardar(u, ne);
-		Resolucion r = resolver(ne, meta, tope_eval);
+		Resolucion r = resolver_sala(ne, meta, tope_eval);
 		bool distinto = !r.ok || r.moves != mejor_res.moves || r.distintos != mejor_res.distintos;
 		if (!distinto) {
 			int leg = 0; int let = letales_de(ne, r, leg);
@@ -1553,7 +1559,7 @@ static int especializar_main(int argc, char** argv) {
 	else if (rol == "trampolin") { especial = K; letra = 'k'; }
 	else if (rol == "bomba") { especial = N; letra = 'b'; }
 	else return error("rol desconocido");
-	Resolucion base = resolver(e0, meta, (int)tope_eval);
+	Resolucion base = resolver_sala(e0, meta, (int)tope_eval);
 	if (!base.ok) return error("la sala base no se resolvió");
 	if (rol == "bomba") return bomba_rol(e0, meta, base, (int)tope_eval, tipo, rng);
 	auto valor = [&](const Resolucion& r) { return r.moves + 3.0 * r.agarres + wd * r.distintos; };
@@ -1572,6 +1578,8 @@ static int especializar_main(int argc, char** argv) {
 		maximo = max(maximo, largo_hielo);
 	}
 	int n_hielo = 0;
+	unordered_set<int> previo;   // celdas del mismo tipo que ya había (en una sala mixta los especiales de los pasos anteriores no se tocan ni se prueban)
+	{ Sim t0; cargar(t0, e0, meta); for (int i : t0.cel) if (t0.g[i] == especial) previo.insert(i); }
 	Estado actual = e0;
 	Resolucion res = base;
 	vector<int> elegidos;      // celdas (en el estado de partida) de los especiales
@@ -1591,7 +1599,7 @@ static int especializar_main(int argc, char** argv) {
 		if (rol == "hielo") {
 			Sim t0; cargar(t0, actual, meta);
 			vector<int> hielos;
-			for (int i : t0.cel) if (t0.g[i] == I) hielos.push_back(i);
+			for (int i : t0.cel) if (t0.g[i] == I && !previo.count(i)) hielos.push_back(i);
 			const int dxs[4] = {1, -1, 0, 0}, dzs[4] = {0, 0, 1, -1};
 			auto vecina = [&](int c, int k) {
 				int x = ix(c) + dxs[k], z = iz(c) + dzs[k];
@@ -1635,7 +1643,7 @@ static int especializar_main(int argc, char** argv) {
 			if (!todos_comunes) continue;   // (sólo se cambian los comunes: no la entrada, la salida ni otro especial)
 			for (int o : grupo) t.g[o] = especial;
 			Estado ne; guardar(t, ne);
-			Resolucion r = resolver(ne, meta, (int)tope_eval);
+			Resolucion r = resolver_sala(ne, meta, (int)tope_eval);
 			static int c_prob = 0, c_sinsol = 0;
 			c_prob++;
 			if (!r.ok) { c_sinsol++; if (getenv("SN_LOG") && c_prob % 10 == 0) fprintf(stderr, "  candidatos %d, sin solución %d\n", c_prob, c_sinsol); continue; }   // no puede dejar la sala sin solución
@@ -1682,7 +1690,7 @@ static int especializar_main(int argc, char** argv) {
 				Sim ta; cargar(ta, actual, meta);
 				for (int i : ta.cel) if (ta.g[i] == K) ta.g[i] = N;
 				Estado sin_k; guardar(ta, sin_k);
-				Resolucion rn = resolver(sin_k, meta, (int)tope_eval);
+				Resolucion rn = resolver_sala(sin_k, meta, (int)tope_eval);
 				if (!rn.ok) break;   // sin el trampolín no se resuelve: es necesario
 				Uso un = usos_del_camino(sin_k, meta, rn.acc);
 				vector<int> quitables;
@@ -1697,7 +1705,7 @@ static int especializar_main(int argc, char** argv) {
 					t.g[c] = NONE; t.cel.clear(); for (int i = 0; i < t.lim; i++) if (t.g[i] != NONE) t.cel.push_back(i);
 					if (!estable(t)) continue;
 					Estado ne; guardar(t, ne);
-					Resolucion r = resolver(ne, meta, (int)tope_eval);
+					Resolucion r = resolver_sala(ne, meta, (int)tope_eval);
 					if (!r.ok) continue;
 					actual = ne; res = r; quito = true;
 					break;
@@ -1708,7 +1716,7 @@ static int especializar_main(int argc, char** argv) {
 				Sim ta; cargar(ta, actual, meta);
 				for (int i : ta.cel) if (ta.g[i] == K) ta.g[i] = N;
 				Estado sin_k; guardar(ta, sin_k);
-				Resolucion rn = resolver(sin_k, meta, (int)tope_eval);
+				Resolucion rn = resolver_sala(sin_k, meta, (int)tope_eval);
 				if (rn.ok && rn.moves < res.moves + ahorro_min) return error("el trampolín ahorra poco");
 			}
 			break;   // (un trampolín por sala)
@@ -1725,7 +1733,7 @@ static int especializar_main(int argc, char** argv) {
 		}
 		Sim t; cargar(t, actual, meta);
 		vector<int> celdas;
-		for (int i : t.cel) if (t.g[i] == especial) celdas.push_back(i);
+		for (int i : t.cel) if (t.g[i] == especial && !previo.count(i)) celdas.push_back(i);
 		if (rol == "hielo") n_hielo = (int)celdas.size();
 		vector<vector<int>> unidades;
 		if (rol == "hielo") unidades.push_back(celdas); else for (int c : celdas) unidades.push_back({c});
@@ -1733,7 +1741,7 @@ static int especializar_main(int argc, char** argv) {
 			Sim u; cargar(u, actual, meta);
 			for (int c : unidad) u.g[c] = N;
 			Estado ne; guardar(u, ne);
-			Resolucion r = resolver(ne, meta, (int)tope_eval);
+			Resolucion r = resolver_sala(ne, meta, (int)tope_eval);
 			bool distinto = !r.ok || r.moves != res.moves || r.distintos != res.distintos || fabs(valor(r) - valor(res)) > 0.5;
 			if (rol == "trampolin") distinto = !r.ok || r.moves >= res.moves + ahorro_min;
 			if (!distinto && r.ok && (rol == "agrietado" || rol == "hielo")) {   // (su efecto no siempre cambia el largo: cambia cuánto pesa cada decisión)
@@ -1755,6 +1763,67 @@ static int especializar_main(int argc, char** argv) {
 	for (size_t i = 0; i < ganancias.size(); i++) { snprintf(buf, sizeof(buf), "%s%.0f", i ? "," : "", ganancias[i]); js += buf; }
 	js += "]}";
 	printf("%s\n", js.c_str());
+	return 0;
+}
+
+// --revisar: ¿cada especial de la sala es necesario? Vuelve común cada unidad (un bloque; una línea de hielo entera) y mira si cambia el resultado
+// (largo, bloques distintos, valor, o la fracción de movimientos letales; el trampolín: sin solución o mucho más largo).
+static int revisar_main(int argc, char** argv) {
+	Estado e0; int meta, tope;
+	leer_sala(e0, meta, tope);
+	int tope_eval = (int)arg_largo(argc, argv, "tope", 100000);
+	int ahorro_min = (int)arg_largo(argc, argv, "salto", 18);
+	Resolucion res = resolver_sala(e0, meta, tope_eval);
+	if (!res.ok) { printf("{\"ok\":false,\"error\":\"no se resuelve\"}\n"); return 0; }
+	auto valor = [&](const Resolucion& r) { return r.moves + 3.0 * r.agarres + 12.0 * r.distintos; };
+	auto frac_de = [&](const Estado& e, const Resolucion& r) {
+		int leg = 0, let = 0;
+		riesgo(e, meta, r.acc, 4000, leg, let);
+		return leg > 0 ? (double)let / leg : 0.0;
+	};
+	Sim t; cargar(t, e0, meta);
+	vector<vector<int>> unidades;
+	vector<int> tipos;
+	unordered_set<int> hecho;
+	for (int i : t.cel) {
+		int k = t.g[i];
+		if (k == H || k == S || k == C || k == K || es_bomba(k)) { unidades.push_back({i}); tipos.push_back(k); }
+		else if (k == I && !hecho.count(i)) {   // una línea de hielo: las celdas de hielo pegadas (mismo nivel, de a una por lado)
+			vector<int> comp, cola = {i};
+			hecho.insert(i);
+			while (!cola.empty()) {
+				int c = cola.back(); cola.pop_back();
+				comp.push_back(c);
+				const int dxs[4] = {1, -1, 0, 0}, dzs[4] = {0, 0, 1, -1};
+				for (int q = 0; q < 4; q++) {
+					int x = ix(c) + dxs[q], z = iz(c) + dzs[q];
+					if (abs(x) > 8 || abs(z) > 8) continue;
+					int n = idx(x, iy(c), z);
+					if (t.g[n] == I && !hecho.count(n)) { hecho.insert(n); cola.push_back(n); }
+				}
+			}
+			unidades.push_back(comp); tipos.push_back(I);
+		}
+	}
+	double f0 = frac_de(e0, res);
+	int necesarias = 0;
+	string det = "[";
+	for (size_t u = 0; u < unidades.size(); u++) {
+		Sim v; cargar(v, e0, meta);
+		for (int c : unidades[u]) v.g[c] = N;
+		Estado ne; guardar(v, ne);
+		Resolucion r = resolver_sala(ne, meta, tope_eval);
+		bool distinto;
+		if (tipos[u] == K) distinto = !r.ok || r.moves >= res.moves + ahorro_min;
+		else {
+			distinto = !r.ok || r.moves != res.moves || r.distintos != res.distintos || fabs(valor(r) - valor(res)) > 0.5;
+			if (!distinto && r.ok && fabs(frac_de(ne, r) - f0) >= 0.005) distinto = true;
+		}
+		if (distinto) necesarias++;
+		det += string(u ? "," : "") + (distinto ? "true" : "false");
+	}
+	det += "]";
+	printf("{\"ok\":true,\"unidades\":%d,\"necesarias\":%d,\"detalle\":%s}\n", (int)unidades.size(), necesarias, det.c_str());
 	return 0;
 }
 
@@ -1816,5 +1885,6 @@ int main(int argc, char** argv) {
 	if (argc > 1 && string(argv[1]) == "--minimo") return minimo_main(argc, argv);
 	if (argc > 1 && string(argv[1]) == "--conocido") return conocido_main(argc, argv);
 	if (argc > 1 && string(argv[1]) == "--especializar") return especializar_main(argc, argv);
+	if (argc > 1 && string(argv[1]) == "--revisar") return revisar_main(argc, argv);
 	return resolver_main();
 }
