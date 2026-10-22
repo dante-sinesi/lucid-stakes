@@ -14,7 +14,7 @@ static func world_pos(c: Vector3i) -> Vector3:
 
 
 ## Arma los bloques bajo `parent` (se borra lo que había). `t` es un Motor. `encendidos`: celdas de checkpoint con el farolito prendido.
-static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := true) -> void:
+static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := true, con_jugador := true, omitir_p := false) -> void:
 	RoomView.register_globals()
 	for ch in parent.get_children():
 		parent.remove_child(ch)
@@ -22,6 +22,8 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 	var meta := float(maxi(t.meta, 1))
 	for c in t.bloques:
 		var letra: String = t.bloques[c]
+		if omitir_p and letra == "p":
+			continue   # (en la torre la entrada de una sala es la salida de la anterior: se dibuja una sola vez)
 		var kind: int = KIND_DE_LETRA.get(letra.substr(0, 1), 0)
 		if letra.begins_with("b"):
 			kind = 2   # bomba (con la mecha pegada: "b7")
@@ -47,6 +49,13 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		if letra.length() >= 2 and letra[0] == "b":
 			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador))
 			parent.add_child(_zona(c))
+	if con_jugador:
+		parent.add_child(_figura_jugador(t))
+	if mostrar_referencia:
+		parent.add_child(_referencia())
+
+
+static func _figura_jugador(t) -> MeshInstance3D:
 	var p := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(0.42, 0.78, 0.42)
@@ -60,9 +69,7 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 	var pc: Vector3i = t.jugador
 	p.position = Vector3(pc.x + 0.5, pc.y + 0.39, pc.z + 0.5)
 	p.name = "jugador"
-	parent.add_child(p)
-	if mostrar_referencia:
-		parent.add_child(_referencia())
+	return p
 
 
 ## La zona de una bomba: una esfera roja translúcida (radio² 5) alrededor del bloque; mientras el jugador está adentro corre la mecha.

@@ -43,3 +43,9 @@ Reglas en `docs/torre_salas_reglas.md`. Código aislado del juego en `salas_nuev
 ## Salas mixtas y paquete de salas
 - Mixtas (`herramientas/mixtas_biblioteca.py`): cadena de especializaciones sobre una sala base, `--revisar` comprueba que cada especial (o línea de hielo) siga siendo necesario. Cantidad por altura: 1 + (pisos - 3) // 9 (8x3 de 21 a 24 pisos: hasta 3). Las salas de más de 10 pisos se resuelven por lonjas (no exacto) y tardan minutos por paso.
 - Paquete (`herramientas/armar_paquete.py` -> `bibliotecas/paquete_salas.jsonl`): base + los seis roles + mixtas, sin repetidas, con id, categoría y nivel por complejidad. 878 salas, todas con el camino verificado en el motor de GDScript (`tests/test_salas_nuevas.gd`, 0 fallos). Se rearma cuando llegan más mixtas altas.
+
+## Torre jugable (prototipo, `herramientas\torre_salas_nuevas.bat`)
+- `salas_nuevas/torre.gd` (lógica: armado y partida) + `torre_juego.gd` / `torre.tscn` (escena) + `tests/test_torre_salas_nuevas.gd`. Aislado del juego: usa el Motor de salas nuevas y el paquete de salas (`bibliotecas/paquete_salas.jsonl`).
+- Armado: 6 salas con la curva fácil -> pesadilla (las dos primeras de bloques comunes); cada sala se gira o espeja (8 simetrías del anillo, el motor es simétrico) para que su entrada caiga en la celda de salida de la anterior, y se comprueba su camino en el motor. La salida de cada sala deja siempre una continuación posible.
+- Partida: temporizador de movimientos (mínimo conocido × 1,9 / 1,6 / 1,4 / 1,25 + 10 / 8 / 6 / 5 según nivel; provisorio), al agotarse o caer se pierde una vida y la sala vuelve a empezar virgen; 3 vidas; al llegar a la salida la sala anterior cae.
+- Prueba: 20 torres de 6 salas se completan solas con los caminos guardados (0 muertes).
