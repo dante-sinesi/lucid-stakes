@@ -35,6 +35,8 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 			estado_modelo = BlockModels.State.DEFUSED
 		if letra == "p" or letra == "f":   # los checkpoint (entrada común, salida fija) son dorados con su farolito
 			tint = Color(1.9, 1.55, 0.55)
+		if kind == 2:   # la bola oscura de la bomba se pierde contra el fondo con el color de la altura: se la aclara
+			tint = Color(3.2, 3.2, 3.4) if letra != "d" else Color(2.2, 2.4, 2.2)
 		var m := MeshInstance3D.new()
 		m.mesh = BlockModels.mesh_for(model, estado_modelo, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
 		m.material_override = RoomView.material(tint, kind == 1)
@@ -44,6 +46,7 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 			parent.add_child(_farolito(c, encendidos.has(c)))
 		if letra.length() >= 2 and letra[0] == "b":
 			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador))
+			parent.add_child(_zona(c))
 	var p := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(0.42, 0.78, 0.42)
@@ -60,6 +63,36 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 	parent.add_child(p)
 	if mostrar_referencia:
 		parent.add_child(_referencia())
+
+
+## La zona de una bomba: una esfera roja translúcida (radio² 5) alrededor del bloque; mientras el jugador está adentro corre la mecha.
+static func _zona(c: Vector3i) -> MeshInstance3D:
+	var sp := SphereMesh.new()
+	sp.radius = sqrt(5.0)
+	sp.height = sqrt(5.0) * 2.0
+	var mi := MeshInstance3D.new()
+	mi.mesh = sp
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 0.15, 0.1, 0.16)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mi.material_override = mat
+	mi.position = Vector3(c.x + 0.5, c.y + 0.5, c.z + 0.5)
+	# el centro: una bolita brillante que se ve aunque otros bloques la tapen (la bomba suele quedar metida en la pila)
+	var nucleo := MeshInstance3D.new()
+	var ns := SphereMesh.new()
+	ns.radius = 0.2
+	ns.height = 0.4
+	nucleo.mesh = ns
+	var nm := StandardMaterial3D.new()
+	nm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	nm.albedo_color = Color(1.0, 0.55, 0.1)
+	nm.no_depth_test = true
+	nm.render_priority = 10
+	nucleo.material_override = nm
+	mi.add_child(nucleo)
+	return mi
 
 
 ## La cuenta de una bomba: un número grande flotando arriba (rojo si el jugador está dentro de su zona y la mecha corre).
