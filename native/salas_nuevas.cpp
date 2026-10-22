@@ -1366,6 +1366,100 @@ static int conocido_main(int argc, char** argv) {
 	return 0;
 }
 
+// Celdas (del estado inicial) de los bloques que el jugador mueve a lo largo de un camino: la identidad viaja con el bloque.
+static vector<int> celdas_movidas(const Estado& e0, int meta, const vector<int>& acc) {
+	Sim r;
+	cargar(r, e0, meta);
+	r.track = true;
+	r.ids.assign(NC, 0);
+	for (int i = 0; i < NC; i++) if (r.g[i] != NONE) r.ids[i] = (int16_t)i;
+	vector<uint8_t> movido(NC, 0);
+	for (int a : acc) {
+		r.actuar(DIRS[a % 4].x, DIRS[a % 4].z, a / 4);
+		if (a / 4 == 1) for (auto& m : r.mov_jugador) { int id = (uint16_t)r.ids[m.second]; if (id < NC) movido[id] = 1; }
+	}
+	vector<int> out;
+	for (int i = 0; i < NC; i++) if (movido[i]) out.push_back(i);
+	return out;
+}
+
+static string arg_texto(int argc, char** argv, const char* clave, const string& def) {
+	string k = string(clave) + "=";
+	for (int i = 2; i < argc; i++) { string a = argv[i]; if (a.rfind(k, 0) == 0) return a.substr(k.size()); }
+	return def;
+}
+
+// --especializar rol=pesado [tipo=3x3] [max=4] [ganancia=2] [tope=200000] [wd=12] [seed=1]: segundo paso sobre una sala ya generada (texto por la entrada).
+// Pesado: un bloque que la solución MOVÍA se vuelve pesado (no se puede mover); se vuelve a resolver con el solucionador exacto y se acepta si la sala sigue teniendo
+// solución y el valor (pasos + 3 agarres + wd bloques distintos) sube al menos `ganancia`. Se repite mientras cada pesado nuevo sume. La cantidad sale sola.
+static int especializar_main(int argc, char** argv) {
+	Estado e0; int meta, tope;
+	leer_sala(e0, meta, tope);
+	string rol = arg_texto(argc, argv, "rol", "pesado");
+	string tipo = arg_texto(argc, argv, "tipo", "3x3");
+	int maximo = (int)arg_largo(argc, argv, "max", 4);
+	double ganancia = (double)arg_largo(argc, argv, "ganancia", 2);
+	long tope_eval = arg_largo(argc, argv, "tope", 200000);
+	double wd = (double)arg_largo(argc, argv, "wd", 12);
+	mt19937_64 rng((unsigned long long)arg_largo(argc, argv, "seed", 1));
+	Kind especial = H;
+	if (rol != "pesado") { printf("{\"ok\":false,\"error\":\"rol no implementado\"}\n"); return 0; }
+	Resolucion base = resolver(e0, meta, (int)tope_eval);
+	if (!base.ok) { printf("{\"ok\":false,\"error\":\"la sala base no se resolvió\"}\n"); return 0; }
+	auto valor = [&](const Resolucion& r) { return r.moves + 3.0 * r.agarres + wd * r.distintos; };
+	Estado actual = e0;
+	Resolucion res = base;
+	vector<int> elegidos;
+	vector<double> ganancias;
+	for (int ronda = 0; ronda < maximo; ronda++) {
+		vector<int> cand = celdas_movidas(actual, meta, res.acc);
+		shuffle(cand.begin(), cand.end(), rng);
+		double mejor_ganancia = -1e9;
+		int mejor_celda = -1;
+		Resolucion mejor_res;
+		for (int c : cand) {
+			Sim t;
+			cargar(t, actual, meta);
+			if (t.g[c] != N) continue;   // (sólo se vuelven pesados los comunes: no la entrada ni la salida)
+			t.g[c] = especial;
+			Estado ne; guardar(t, ne);
+			Resolucion r = resolver(ne, meta, (int)tope_eval);
+			if (!r.ok) continue;   // (no puede dejar la sala sin solución)
+			double g = valor(r) - valor(res);
+			if (g > mejor_ganancia) { mejor_ganancia = g; mejor_celda = c; mejor_res = r; }
+		}
+		if (mejor_celda < 0 || mejor_ganancia < ganancia) break;
+		Sim t;
+		cargar(t, actual, meta);
+		t.g[mejor_celda] = especial;
+		guardar(t, actual);
+		res = mejor_res;
+		elegidos.push_back(mejor_celda);
+		ganancias.push_back(mejor_ganancia);
+	}
+	// prueba de necesidad: cada pesado vuelto común tiene que cambiar el resultado (acortar el camino o bajar el valor)
+	int necesarios = 0;
+	for (int c : elegidos) {
+		Sim t;
+		cargar(t, actual, meta);
+		t.g[c] = N;
+		Estado ne; guardar(t, ne);
+		Resolucion r = resolver(ne, meta, (int)tope_eval);
+		if (!r.ok || valor(r) < valor(res)) necesarios++;
+	}
+	Metricas mt;
+	medir(actual, meta, res.acc, 60000, mt);
+	Param P; P.tipo = tipo; P.h = meta;
+	string js = sala_json(P, actual, res, -1, true, mt);
+	js.pop_back();   // (se saca la llave final para agregar los campos de la especialización)
+	js += ",\"especiales\":{\"h\":" + to_string((int)elegidos.size()) + "},\"necesarios\":" + to_string(necesarios) + ",\"ganancias\":[";
+	char buf[64];
+	for (size_t i = 0; i < ganancias.size(); i++) { snprintf(buf, sizeof(buf), "%s%.0f", i ? "," : "", ganancias[i]); js += buf; }
+	js += "]}";
+	printf("%s\n", js.c_str());
+	return 0;
+}
+
 static int generar_main(int argc, char** argv) {
 	Param P;
 	for (int i = 2; i < argc; i++) {
@@ -1423,5 +1517,6 @@ int main(int argc, char** argv) {
 	if (argc > 1 && string(argv[1]) == "--medir") return medir_main(argc, argv);
 	if (argc > 1 && string(argv[1]) == "--minimo") return minimo_main(argc, argv);
 	if (argc > 1 && string(argv[1]) == "--conocido") return conocido_main(argc, argv);
+	if (argc > 1 && string(argv[1]) == "--especializar") return especializar_main(argc, argv);
 	return resolver_main();
 }
