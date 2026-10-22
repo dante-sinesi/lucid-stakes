@@ -28,12 +28,9 @@ func _init() -> void:
 		escena.accion(Vector3i(int(cam0[i][0]), 0, int(cam0[i][1])), int(cam0[i][2]))
 	await _frames(20)
 	await _foto(pref + "_3_checkpoint.png")
-	# vista de toda la torre
-	var altura := float(t.total_pisos())
-	escena.cam.look_at_from_position(Vector3(5.5, altura * 0.5, 5.5) + Vector3(0, 0, 1) * (altura * 1.3), Vector3(5.5, altura * 0.5, 5.5), Vector3.UP)
-	for n in escena.estaticas:
-		if n != null and is_instance_valid(n):
-			n.visible = true
+	# vista de toda la torre (la tecla V del juego)
+	escena.panorama = true
+	escena._refrescar()
 	await _foto(pref + "_4_torre.png")
 	print("listo")
 	quit(0)

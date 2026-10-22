@@ -142,9 +142,14 @@ static func _referencia() -> MeshInstance3D:
 		for seg in [[Vector3(i, 0, 0), Vector3(i, 0, 11)], [Vector3(0, 0, i), Vector3(11, 0, i)]]:
 			var a: Vector3 = seg[0]
 			var b: Vector3 = seg[1]
-			# se dibuja sólo lo que toca el anillo (no el vacío del medio)
-			var vac := (i >= 3 and i <= 8)
-			if vac and false:
+			# se dibuja sólo lo que toca el anillo: el vacío de 5 x 5 del medio (celdas 3 a 7) queda sin grilla
+			if i >= 4 and i <= 7:
+				var uno := Vector3(a.x if a.x == b.x else 3.0, 0, a.z if a.z == b.z else 3.0)
+				var dos := Vector3(a.x if a.x == b.x else 8.0, 0, a.z if a.z == b.z else 8.0)
+				im.surface_add_vertex(a)
+				im.surface_add_vertex(uno)
+				im.surface_add_vertex(dos)
+				im.surface_add_vertex(b)
 				continue
 			im.surface_add_vertex(a)
 			im.surface_add_vertex(b)

@@ -18,6 +18,7 @@ var vivo: Node3D            # la sala actual, dibujada con su estado
 var texto_hud: Label
 var texto_aviso: Label
 var _aviso_id := 0
+var panorama := false      # V: se ve la torre entera desde afuera
 
 
 func _ready() -> void:
@@ -86,8 +87,16 @@ func _refrescar() -> void:
 		n.visible = i > t.indice   # la actual se dibuja viva; las de abajo ya cayeron
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
 	Vista.poblar(vivo, t.motor, t.encendidos, true)
-	Vista.camara_detras(cam, t.motor, 6.8, 3.2, 1.8)
-	cam.global_translate(Vector3(0, int(t.sala_actual().off), 0))
+	if panorama:
+		var alto := float(t.total_pisos())
+		var centro := Vector3(5.5, alto * 0.5, 5.5)
+		cam.look_at_from_position(centro + Vector3(0, 0.0, 1.0) * (alto * 1.25 + 8.0) + Vector3(0, alto * 0.1, 0), centro, Vector3.UP)
+		for i in estaticas.size():
+			if estaticas[i] != null and is_instance_valid(estaticas[i]):
+				estaticas[i].visible = i >= t.indice
+	else:
+		Vista.camara_detras(cam, t.motor, 6.8, 3.2, 1.8)
+		cam.global_translate(Vector3(0, int(t.sala_actual().off), 0))
 	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), t.vidas]
 
 
@@ -119,6 +128,10 @@ func _input(ev: InputEvent) -> void:
 	var k: int = (ev as InputEventKey).keycode
 	if k == KEY_ESCAPE:
 		get_tree().quit()
+		return
+	if k == KEY_V:
+		panorama = not panorama
+		_refrescar()
 		return
 	if k == KEY_R:
 		semilla = (semilla * 7 + 13) % 1000000
