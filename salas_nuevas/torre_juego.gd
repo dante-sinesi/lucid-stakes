@@ -2,8 +2,9 @@ extends Node3D
 ## Prototipo jugable de la torre de salas sin núcleo (aislado del juego actual). Arma una torre de salas del paquete (salas_nuevas/torre.gd) y se juega
 ## desde atrás del personaje.
 ## Se ve como en el juego: cámara isométrica ortogonal que sigue al personaje (por defecto el gatito) y se puede girar.
-## Teclas: WASD o flechas mueven (W es la dirección que más sube en la pantalla), Shift + dirección agarra (empuja o tira), Espacio + dirección se cuelga,
-## Q / E giran la cámara, + / - el zoom, V alterna la vista de toda la torre, R arma otra torre, Esc sale.
+## Teclas: WASD mueve (W es la dirección que más sube en la pantalla), Shift + dirección agarra (empuja o tira), Espacio + dirección se cuelga.
+## Cámara (como en el juego): arrastrar con el mouse gira e inclina, la rueda acerca y aleja, las flechas giran e inclinan, Q / E vuelven al ángulo isométrico y giran 90°,
+## + / - el zoom, V alterna la vista de toda la torre. R arma otra torre, Esc sale.
 ## Variables de entorno: SN_PAQUETE (archivo .jsonl, por defecto bibliotecas/paquete_salas.jsonl), SN_SEMILLA (para repetir una torre), SN_SALAS (cuántas salas),
 ## SN_PERSONAJE (gato, perro, conejo, dante o gaby).
 
@@ -15,6 +16,12 @@ const Characters := preload("res://scripts/characters.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 
 const PITCH := -35.264        # ángulo isométrico (el del juego)
+const PITCH_MIN := -86.0
+const PITCH_MAX := 80.0
+const MOUSE_SENS := 0.28      # grados por píxel
+const ARROW_SPEED := 110.0    # grados por segundo con las flechas
+const ZOOM_FACTOR := 1.1
+const TOP_VIEW_PITCH := -52.0 # desde este ángulo (mirando desde arriba) se ocultan las salas de arriba, que taparían al personaje
 const STEP_TIME := 0.14
 
 var t                     # la Torre
@@ -24,6 +31,7 @@ var cam: Camera3D
 var pivot: Node3D            # la cámara cuelga de un pivote que gira (yaw) y sigue al personaje
 var pitch_node: Node3D
 var yaw_target := 45.0
+var cam_pitch := PITCH
 var zoom := 9.0
 var gato: Node3D             # el personaje
 var gato_nodo: Node3D        # su posición y orientación
@@ -45,7 +53,7 @@ func _ready() -> void:
 	pivot.rotation_degrees.y = yaw_target
 	add_child(pivot)
 	pitch_node = Node3D.new()
-	pitch_node.rotation_degrees.x = PITCH
+	pitch_node.rotation_degrees.x = cam_pitch
 	pivot.add_child(pitch_node)
 	cam = Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -126,6 +134,8 @@ func _refrescar(animar := false) -> void:
 		for i in estaticas.size():
 			if estaticas[i] != null and is_instance_valid(estaticas[i]):
 				estaticas[i].visible = i >= t.indice
+	else:
+		_ocultar_arriba()
 	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), t.vidas]
 
 
@@ -163,10 +173,12 @@ func _poner_camara(animar: bool) -> void:
 		_camara_tween = create_tween().set_parallel(true)
 		_camara_tween.tween_property(pivot, "position", foco, 0.25).set_trans(Tween.TRANS_SINE)
 		_camara_tween.tween_property(pivot, "rotation_degrees:y", yaw_target, 0.25).set_trans(Tween.TRANS_SINE)
+		_camara_tween.tween_property(pitch_node, "rotation_degrees:x", cam_pitch, 0.25).set_trans(Tween.TRANS_SINE)
 		_camara_tween.tween_property(cam, "size", tam, 0.25).set_trans(Tween.TRANS_SINE)
 	else:
 		pivot.position = foco
 		pivot.rotation_degrees.y = yaw_target
+		pitch_node.rotation_degrees.x = cam_pitch
 		cam.size = tam
 
 
@@ -181,7 +193,52 @@ func _aviso(msg: String, segundos := 2.2) -> void:
 		texto_aviso.text = ""
 
 
+## Gira (x) e inclina (y) la cámara según un desplazamiento en píxeles del mouse (o las flechas).
+func orbitar(rel: Vector2) -> void:
+	yaw_target -= rel.x * MOUSE_SENS
+	cam_pitch = clampf(cam_pitch - rel.y * MOUSE_SENS, PITCH_MIN, PITCH_MAX)
+	if _camara_tween != null and _camara_tween.is_valid():
+		_camara_tween.kill()
+	pivot.rotation_degrees.y = yaw_target
+	pitch_node.rotation_degrees.x = cam_pitch
+	_ocultar_arriba()
+
+
+func acercar(factor: float) -> void:
+	zoom = clampf(zoom * factor, 6.0, 36.0)
+	if not panorama:
+		cam.size = zoom
+
+
+## Mirando desde arriba, las salas que están sobre el personaje lo taparían: se ocultan.
+func _ocultar_arriba() -> void:
+	var desde_arriba := cam_pitch <= TOP_VIEW_PITCH and not panorama
+	for i in estaticas.size():
+		var n = estaticas[i]
+		if n != null and is_instance_valid(n):
+			n.visible = i > t.indice and not desde_arriba
+
+
+func _process(delta: float) -> void:
+	if t == null or pivot == null:
+		return
+	var ax := int(Input.is_key_pressed(KEY_RIGHT)) - int(Input.is_key_pressed(KEY_LEFT))
+	var ay := int(Input.is_key_pressed(KEY_DOWN)) - int(Input.is_key_pressed(KEY_UP))
+	if ax != 0 or ay != 0:
+		orbitar(Vector2(ax, ay) * ARROW_SPEED * delta / MOUSE_SENS)
+
+
 func _input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.pressed:
+		if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
+			acercar(1.0 / ZOOM_FACTOR)
+		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			acercar(ZOOM_FACTOR)
+		return
+	if ev is InputEventMouseMotion:
+		if (ev.button_mask & (MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT | MOUSE_BUTTON_MASK_MIDDLE)) != 0 and pivot != null:
+			orbitar(ev.relative)
+		return
 	if not (ev is InputEventKey) or not ev.pressed:
 		return
 	var k: int = (ev as InputEventKey).keycode
@@ -198,26 +255,28 @@ func _input(ev: InputEvent) -> void:
 		semilla = (semilla * 7 + 13) % 1000000
 		_nueva_torre()
 		return
-	if k == KEY_Q or k == KEY_E:
-		yaw_target += 90.0 if k == KEY_Q else -90.0
+	if k == KEY_Q or k == KEY_E:   # (como en el juego: vuelve al ángulo isométrico y gira 90° desde la diagonal más cercana)
+		var base := roundf((yaw_target - 45.0) / 90.0) * 90.0 + 45.0
+		yaw_target = base + (90.0 if k == KEY_Q else -90.0)
+		cam_pitch = PITCH
 		_poner_camara(true)
+		_ocultar_arriba()
 		return
 	if k == KEY_EQUAL or k == KEY_PLUS or k == KEY_KP_ADD or k == KEY_MINUS or k == KEY_KP_SUBTRACT:
-		zoom = clampf(zoom * (0.9 if k == KEY_EQUAL or k == KEY_PLUS or k == KEY_KP_ADD else 1.1), 6.0, 36.0)
-		_poner_camara(false)
+		acercar(0.9 if k == KEY_EQUAL or k == KEY_PLUS or k == KEY_KP_ADD else 1.1)
 		return
 	if t == null or t.salas.is_empty():
 		return
 	var sx := 0
 	var sy := 0
 	match k:
-		KEY_UP, KEY_W:
+		KEY_W:
 			sx = 1; sy = 1
-		KEY_RIGHT, KEY_D:
+		KEY_D:
 			sx = 1; sy = -1
-		KEY_DOWN, KEY_S:
+		KEY_S:
 			sx = -1; sy = -1
-		KEY_LEFT, KEY_A:
+		KEY_A:
 			sx = -1; sy = 1
 	if sx == 0:
 		return
