@@ -1389,9 +1389,45 @@ static string arg_texto(int argc, char** argv, const char* clave, const string& 
 	return def;
 }
 
-// --especializar rol=pesado [tipo=3x3] [max=4] [ganancia=2] [tope=200000] [wd=12] [seed=1]: segundo paso sobre una sala ya generada (texto por la entrada).
-// Pesado: un bloque que la solución MOVÍA se vuelve pesado (no se puede mover); se vuelve a resolver con el solucionador exacto y se acepta si la sala sigue teniendo
-// solución y el valor (pasos + 3 agarres + wd bloques distintos) sube al menos `ganancia`. Se repite mientras cada pesado nuevo sume. La cantidad sale sola.
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Especialización por propósito (ver docs/plan_generador_especiales.md): segundo paso sobre una sala ya generada.
+//   --especializar rol=pesado|pinchos|agrietado|hielo|trampolin [tipo=3x3] [max=4] [ganancia=2] [tope=200000] [wd=12] [seed=1]   (la sala por la entrada, en texto)
+// Cada rol pone el especial donde le cambia el paso más barato a la solución, vuelve a resolver con el solucionador exacto, y sólo lo acepta si cumple su papel
+// (ver `acepta`); al final cada especial pasa la prueba de necesidad (volverlo común cambia el resultado).
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+struct Uso {
+	vector<int> movidas;   // celdas (del estado inicial) de los bloques que el jugador movió
+	vector<int> pisadas;   // celdas (del estado inicial) de los bloques sobre los que estuvo parado
+	int saltos = 0;        // acciones en las que el jugador subió 3 o más pisos de golpe (catapulta)
+	int deslizamientos = 0;   // acciones en las que algo se movió 2 o más celdas de golpe (hielo)
+};
+
+static Uso usos_del_camino(const Estado& e0, int meta, const vector<int>& acc) {
+	Uso u;
+	Sim r;
+	cargar(r, e0, meta);
+	r.track = true;
+	r.ids.assign(NC, 0);
+	for (int i = 0; i < NC; i++) if (r.g[i] != NONE) r.ids[i] = (int16_t)i;
+	vector<uint8_t> mov(NC, 0), pis(NC, 0);
+	for (int a : acc) {
+		int py0 = r.py, px0 = r.px, pz0 = r.pz;
+		r.actuar(DIRS[a % 4].x, DIRS[a % 4].z, a / 4);
+		if (r.py - py0 >= 3) u.saltos++;
+		bool desliza = max(abs(r.px - px0), abs(r.pz - pz0)) >= 2;
+		if (a / 4 == 1) for (auto& m : r.mov_jugador) {
+			int id = (uint16_t)r.ids[m.second];
+			if (id < NC) mov[id] = 1;
+			if (abs(ix(m.second) - ix(m.first)) + abs(iz(m.second) - iz(m.first)) >= 2) desliza = true;
+		}
+		if (desliza) u.deslizamientos++;
+		if (!r.colgando() && r.hay(r.px, r.py - 1, r.pz)) { int id = (uint16_t)r.ids[idx(r.px, r.py - 1, r.pz)]; if (id < NC) pis[id] = 1; }
+	}
+	for (int i = 0; i < NC; i++) { if (mov[i]) u.movidas.push_back(i); if (pis[i]) u.pisadas.push_back(i); }
+	return u;
+}
+
 static int especializar_main(int argc, char** argv) {
 	Estado e0; int meta, tope;
 	leer_sala(e0, meta, tope);
@@ -1402,58 +1438,158 @@ static int especializar_main(int argc, char** argv) {
 	long tope_eval = arg_largo(argc, argv, "tope", 200000);
 	double wd = (double)arg_largo(argc, argv, "wd", 12);
 	mt19937_64 rng((unsigned long long)arg_largo(argc, argv, "seed", 1));
-	Kind especial = H;
-	if (rol != "pesado") { printf("{\"ok\":false,\"error\":\"rol no implementado\"}\n"); return 0; }
+	auto error = [&](const char* msg) { printf("{\"ok\":false,\"error\":\"%s\"}\n", msg); return 0; };
+	Kind especial; char letra;
+	if (rol == "pesado") { especial = H; letra = 'h'; }
+	else if (rol == "pinchos") { especial = S; letra = 's'; }
+	else if (rol == "agrietado") { especial = C; letra = 'c'; }
+	else if (rol == "hielo") { especial = I; letra = 'i'; }
+	else if (rol == "trampolin") { especial = K; letra = 'k'; }
+	else return error("rol desconocido");
 	Resolucion base = resolver(e0, meta, (int)tope_eval);
-	if (!base.ok) { printf("{\"ok\":false,\"error\":\"la sala base no se resolvió\"}\n"); return 0; }
+	if (!base.ok) return error("la sala base no se resolvió");
 	auto valor = [&](const Resolucion& r) { return r.moves + 3.0 * r.agarres + wd * r.distintos; };
+	// riesgo barato: movimientos letales a lo largo del camino (para pinchos, agrietado y hielo)
+	auto letales_de = [&](const Estado& e, const Resolucion& r, int& legales) {
+		int leg = 0, let = 0;
+		riesgo(e, meta, r.acc, 4000, leg, let);   // (tope chico por hijo: lo que no se resuelve enseguida no se cuenta como letal)
+		legales = leg;
+		return let;
+	};
 	Estado actual = e0;
 	Resolucion res = base;
-	vector<int> elegidos;
+	vector<int> elegidos;      // celdas (en el estado de partida) de los especiales
 	vector<double> ganancias;
+	int legales0 = 0;
+	int letales_actual = (rol == "pesado" || rol == "trampolin") ? 0 : letales_de(actual, res, legales0);
+	double frac_actual = legales0 > 0 ? (double)letales_actual / legales0 : 0.0;
 	for (int ronda = 0; ronda < maximo; ronda++) {
-		vector<int> cand = celdas_movidas(actual, meta, res.acc);
+		Uso uso = usos_del_camino(actual, meta, res.acc);
+		vector<int> cand = (rol == "pesado" || rol == "hielo") ? uso.movidas : uso.pisadas;
+		if (rol == "hielo") for (int c : uso.pisadas) cand.push_back(c);
+		sort(cand.begin(), cand.end());
+		cand.erase(unique(cand.begin(), cand.end()), cand.end());
 		shuffle(cand.begin(), cand.end(), rng);
-		double mejor_ganancia = -1e9;
+		double mejor_puntaje = -1e9;
 		int mejor_celda = -1;
 		Resolucion mejor_res;
+		Estado mejor_estado;
+		double mejor_frac = frac_actual;
+		int con_riesgo = 0;   // cuántos candidatos se evaluaron con el riesgo (es lo caro): como mucho 5 por ronda
 		for (int c : cand) {
+			if (con_riesgo >= 5 && (rol == "agrietado" || rol == "hielo")) break;
 			Sim t;
 			cargar(t, actual, meta);
-			if (t.g[c] != N) continue;   // (sólo se vuelven pesados los comunes: no la entrada ni la salida)
+			if (t.g[c] != N) continue;   // (sólo se cambian los comunes: no la entrada, la salida ni otro especial)
 			t.g[c] = especial;
 			Estado ne; guardar(t, ne);
 			Resolucion r = resolver(ne, meta, (int)tope_eval);
-			if (!r.ok) continue;   // (no puede dejar la sala sin solución)
+			static int c_prob = 0, c_sinsol = 0;
+			c_prob++;
+			if (!r.ok) { c_sinsol++; if (getenv("SN_LOG") && c_prob % 10 == 0) fprintf(stderr, "  candidatos %d, sin solución %d\n", c_prob, c_sinsol); continue; }   // no puede dejar la sala sin solución
 			double g = valor(r) - valor(res);
-			if (g > mejor_ganancia) { mejor_ganancia = g; mejor_celda = c; mejor_res = r; }
+			double puntaje = g;
+			double frac = frac_actual;
+			if (rol == "pinchos") {
+				if (g < ganancia) continue;   // los pinchos tienen que obligar a rodear: la solución tiene que costar más
+			} else if (rol == "pesado") {
+				if (g < ganancia) continue;
+			} else if (rol == "agrietado") {
+				// que cada decisión pese: sube la fracción de movimientos letales a lo largo del camino
+				con_riesgo++;
+				int leg = 0; int let = letales_de(ne, r, leg);
+				frac = leg > 0 ? (double)let / leg : 0.0;
+				puntaje = (frac - frac_actual) * 100.0;
+				if (puntaje < 0.5) continue;
+			} else if (rol == "hielo") {
+				// que la solución USE un deslizamiento (transporte) y que haya algún resbalón letal más que antes
+				Uso u2 = usos_del_camino(ne, meta, r.acc);
+				if (u2.deslizamientos < 1) continue;
+				con_riesgo++;
+				int leg = 0; int let = letales_de(ne, r, leg);
+				frac = leg > 0 ? (double)let / leg : 0.0;
+				if (frac <= frac_actual) continue;
+				puntaje = 10.0 * u2.deslizamientos + (frac - frac_actual) * 100.0;
+			} else if (rol == "trampolin") {
+				Uso u2 = usos_del_camino(ne, meta, r.acc);
+				if (u2.saltos < 1) continue;   // la solución tiene que saltar
+				puntaje = 100.0 - (valor(res) - valor(r));   // (se prefiere el salto que MENOS ahorra: el más tardío, para que el camino hasta el trampolín siga costando)
+			}
+			if (puntaje > mejor_puntaje) { mejor_puntaje = puntaje; mejor_celda = c; mejor_res = r; mejor_estado = ne; mejor_frac = frac; }
 		}
-		if (mejor_celda < 0 || mejor_ganancia < ganancia) break;
-		Sim t;
-		cargar(t, actual, meta);
-		t.g[mejor_celda] = especial;
-		guardar(t, actual);
+		if (mejor_celda < 0) break;
+		actual = mejor_estado;
 		res = mejor_res;
+		frac_actual = mejor_frac;
 		elegidos.push_back(mejor_celda);
-		ganancias.push_back(mejor_ganancia);
+		ganancias.push_back(mejor_puntaje);
+		if (rol == "trampolin") {
+			// para que el salto sea NECESARIO: mientras la sala se resuelva sin el trampolín (con la catapulta vuelta un común), se le saca un bloque
+			// que usaba ESE camino de escalera, siempre que con el trampolín siga teniendo solución
+			for (int vuelta = 0; vuelta < 20; vuelta++) {
+				Sim ta; cargar(ta, actual, meta);
+				for (int i : ta.cel) if (ta.g[i] == K) ta.g[i] = N;
+				Estado sin_k; guardar(ta, sin_k);
+				Resolucion rn = resolver(sin_k, meta, (int)tope_eval);
+				if (!rn.ok) break;   // sin el trampolín no se resuelve: es necesario
+				Uso un = usos_del_camino(sin_k, meta, rn.acc);
+				vector<int> quitables;
+				for (int c : un.pisadas) if (ta.g[c] == N) quitables.push_back(c);
+				for (int c : un.movidas) if (ta.g[c] == N) quitables.push_back(c);
+				sort(quitables.begin(), quitables.end());
+				quitables.erase(unique(quitables.begin(), quitables.end()), quitables.end());
+				shuffle(quitables.begin(), quitables.end(), rng);
+				bool quito = false;
+				for (int c : quitables) {
+					Sim t; cargar(t, actual, meta);
+					t.g[c] = NONE; t.cel.clear(); for (int i = 0; i < t.lim; i++) if (t.g[i] != NONE) t.cel.push_back(i);
+					if (!estable(t)) continue;
+					Estado ne; guardar(t, ne);
+					Resolucion r = resolver(ne, meta, (int)tope_eval);
+					if (!r.ok) continue;
+					actual = ne; res = r; quito = true;
+					break;
+				}
+				if (!quito) break;
+			}
+			break;   // (un trampolín por sala)
+		}
 	}
-	// prueba de necesidad: cada pesado vuelto común tiene que cambiar el resultado (acortar el camino o bajar el valor)
+	if (elegidos.empty()) return error("ningún especial cumplió su papel");
+	// prueba de necesidad: cada especial vuelto común tiene que cambiar el resultado
 	int necesarios = 0;
-	for (int c : elegidos) {
-		Sim t;
-		cargar(t, actual, meta);
-		t.g[c] = N;
-		Estado ne; guardar(t, ne);
-		Resolucion r = resolver(ne, meta, (int)tope_eval);
-		if (!r.ok || valor(r) < valor(res)) necesarios++;
+	{
+		Estado ref = actual;
+		for (int idx0 : elegidos) {
+			// (la celda de partida puede haber cambiado de lugar si el bloque se movía: se busca por tipo)
+			(void)idx0;
+		}
+		Sim t; cargar(t, actual, meta);
+		vector<int> celdas;
+		for (int i : t.cel) if (t.g[i] == especial) celdas.push_back(i);
+		for (int c : celdas) {
+			Sim u; cargar(u, actual, meta);
+			u.g[c] = N;
+			Estado ne; guardar(u, ne);
+			Resolucion r = resolver(ne, meta, (int)tope_eval);
+			bool distinto = !r.ok || r.moves != res.moves || r.distintos != res.distintos || fabs(valor(r) - valor(res)) > 0.5;
+			if (rol == "trampolin") distinto = !r.ok || r.moves > res.moves + 3;
+			if (!distinto && r.ok && (rol == "agrietado" || rol == "hielo")) {   // (su efecto no siempre cambia el largo: cambia cuánto pesa cada decisión)
+				int leg = 0; int let = letales_de(ne, r, leg);
+				double f = leg > 0 ? (double)let / leg : 0.0;
+				if (fabs(f - frac_actual) >= 0.005) distinto = true;
+			}
+			if (distinto) necesarios++;
+		}
+		if (necesarios < (int)celdas.size()) return error("hay especiales decorativos");
 	}
 	Metricas mt;
 	medir(actual, meta, res.acc, 60000, mt);
 	Param P; P.tipo = tipo; P.h = meta;
 	string js = sala_json(P, actual, res, -1, true, mt);
-	js.pop_back();   // (se saca la llave final para agregar los campos de la especialización)
-	js += ",\"especiales\":{\"h\":" + to_string((int)elegidos.size()) + "},\"necesarios\":" + to_string(necesarios) + ",\"ganancias\":[";
+	js.pop_back();
 	char buf[64];
+	js += ",\"rol\":\"" + rol + "\",\"especiales\":{\"" + string(1, letra) + "\":" + to_string((int)elegidos.size()) + "},\"necesarios\":" + to_string(necesarios) + ",\"ganancias\":[";
 	for (size_t i = 0; i < ganancias.size(); i++) { snprintf(buf, sizeof(buf), "%s%.0f", i ? "," : "", ganancias[i]); js += buf; }
 	js += "]}";
 	printf("%s\n", js.c_str());
