@@ -1738,7 +1738,7 @@ func _bomb_ticking(delta: float) -> void:
 
 ## Traduce una diagonal de pantalla (sx derecha, sy arriba) a la dirección de grilla más cercana.
 func _dir_for_screen(sx: float, sy: float) -> Vector3i:
-	var d := KeyDirs.dir_for(yaw_target, sx, sy)   # ver key_dirs.gd: W es la dirección que más sube en la pantalla
+	var d := KeyDirs.dir_for(nueva.yaw_target if nueva != null else yaw_target, sx, sy)   # ver key_dirs.gd: W es la dirección que más sube en la pantalla
 	return Vector3i(d.x, 0, d.y)
 
 
