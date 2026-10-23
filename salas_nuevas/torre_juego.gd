@@ -4,7 +4,7 @@ extends Node3D
 ## Se ve como en el juego: cámara isométrica ortogonal que sigue al personaje (por defecto el gatito) y se puede girar.
 ## Teclas: WASD mueve (W es la dirección que más sube en la pantalla), Shift + dirección agarra (empuja o tira), Espacio + dirección se cuelga.
 ## Cámara (como en el juego): arrastrar con el mouse gira e inclina, la rueda acerca y aleja, las flechas giran e inclinan, Q / E vuelven al ángulo isométrico y giran 90°,
-## + / - el zoom, V alterna la vista de toda la torre. R arma otra torre, Esc sale.
+## + / - el zoom, Tab alterna la vista de toda la torre. R arma otra torre, Esc sale.
 ## Variables de entorno: SN_PAQUETE (archivo .jsonl, por defecto bibliotecas/paquete_salas.jsonl), SN_SEMILLA (para repetir una torre), SN_SALAS (cuántas salas),
 ## SN_PERSONAJE (gato, perro, conejo, dante o gaby).
 

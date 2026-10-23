@@ -1,63 +1,85 @@
-# Torre de salas sin núcleo sólido: reglas propuestas (para revisar, sin código)
+# Torre de salas sin núcleo: las reglas (versión implementada)
 
-Rama de diseño: `diseno/torre-salas-sin-nucleo`. Nace de lo conversado tras archivar el cilindro (`experimento/cilindro`, ver `docs/progreso_cilindro.md`).
-Todo lo de acá es propuesta hasta que el usuario lo confirme. Segunda versión, con las correcciones del usuario.
+Descripción exacta de lo que hace el juego hoy con la torre nueva (rama `feature/recuperar-torre-vieja`). Cada regla dice dónde vive en el código. Lo que todavía no está o es provisorio va marcado como **(provisorio)** o **(pendiente)**.
+Antes de esta versión el documento era una propuesta; la historia de las decisiones está en `docs/progreso_salas_nuevas.md`.
 
 ## 1. La torre
 
-- Un anillo de 11x11 alrededor de un **vacío de 5x5** (sin núcleo sólido, sin suelo). El vacío existe para que no se pueda puentear por el medio.
-- Las salas se apilan hacia arriba, **cada una en su propio tramo de altura** (dos salas nunca comparten altura). Una sala empieza abajo y termina algo más arriba.
-- Tamaños de sala: 3x3 (esquina), 5x3 (un lado) y 8x3 (un lado más una esquina). Altura máxima = cantidad de celdas de la huella: 9, 15 y 24.
-- La sala se crea dentro de su huella, pero **para resolverla se puede usar todo el espacio libre** del anillo a esa altura y el vacío del medio.
+- Un **anillo de 11 x 11 celdas con un vacío de 5 x 5** en el medio (celdas 3 a 7 en x y en z). Sin piso y sin núcleo: lo que cae por debajo del nivel 1 se pierde. `Torre.es_anillo`, `LADO = 11`.
+- La torre es una **pila de salas**, cada una en su propio tramo de altura, que **da vueltas al anillo** siempre hacia el mismo lado. Una sala mide 3x3 (esquina), 5x3 (lado) o 8x3 (lado más una esquina) y su altura máxima es la cantidad de celdas de su huella: 9, 15 y 24. `Torre.armar`.
+- **Encadenado:** la salida de una sala (un bloque "f", el ancla) es la misma celda que la entrada de la siguiente (un bloque "p", un nivel más arriba de ella). Para que eso pase, cada sala se **gira o espeja** (las 8 simetrías del cuadrado: el motor es simétrico) y se **desliza** por el anillo hasta que su entrada cae en la salida de la anterior. La huella tiene que quedar dentro del anillo, sin pisar el vacío. `Torre.girar`, `Torre.mover`, `_extender`.
+- **Espiral:** cada sala nueva tiene que avanzar, alrededor del centro del anillo, entre 12° y 150° en el mismo sentido que la anterior (el sentido se sortea al armar la torre). Si no hay manera, se arma sin esa condición.
+- **La sala de arriba cuenta:** al elegir una sala, el camino de la sala de abajo se vuelve a comprobar con los bloques de la nueva (hasta 6 niveles por encima de la salida) como obstáculos fijos. Si taparían el camino, esa colocación se descarta. Mientras se juega, esos bloques están en el motor (tipo "f", no se dibujan dos veces). `Torre.obstaculos_de`, `Motor.agregar_obstaculos`.
+- Nunca se repite una sala en la misma torre. Las dos primeras salas son de bloques comunes.
 
-## 2. Sostén (una sola cadena para toda la torre)
+## 2. Sostén
 
-- Dos bloques se tocan por cara o por arista horizontal (14 vecinos); la propagación es simétrica.
-- **Hay un único bloque fijo: el portal de salida de la torre** (arriba de todo). Está anclado; todo lo demás está anclado sólo si toca, en cadena, a un bloque anclado.
-- Lo que no está anclado cae en línea recta hasta apoyarse en otro bloque sostenido; si no hay nada, se pierde. No hay suelo.
-- Los "bloques de salida" de cada sala son **bloques comunes** (se pueden mover): conceptualmente son el final de una sala y el comienzo de la siguiente, en la práctica nada los distingue. Una sala se sostiene a través de su bloque de salida, que a su vez se sostiene de la sala siguiente, y así hasta el portal.
-- **La reacción en cadena no se frena en la sala**: si un movimiento afecta al bloque de salida, éste también cae, y la caída puede seguir hacia abajo por toda la torre.
+- Dos bloques se tocan por **cara o por arista horizontal** (14 vecinos); la propagación es simétrica. `Reglas.VECINOS`.
+- **En toda sala hay un único bloque fijo: su salida ("f").** Está anclado y no se mueve. Todo lo demás está anclado sólo si toca, en cadena, a un bloque anclado.
+- Lo que no está anclado **cae en línea recta** hasta apoyarse en algo sostenido; si no hay nada, se pierde (desaparece). Un bloque que cae sobre el jugador se queda ahí hasta que éste se mueva. `Reglas.asentar`.
+- Mientras se juega una sala, las salas de arriba son decorado anclado: nada de lo que pasa en la actual las toca. Al llegar a la salida, **la sala anterior cae**.
 
-## 2b. Forma de una sala (reglas de diseño, por pedido del usuario)
-- **Todos los bloques de la sala empiezan dentro de su huella** (3x3, 5x3 u 8x3). Durante el juego se pueden sacar de ahí, pero la sala se arma adentro.
-- **La entrada y la salida son puntos externos y opuestos de la huella**: en el 3x3, esquinas o bordes lejanos entre sí; en el 5x3 y el 8x3, una en cada punta. Así las salas se pueden concatenar.
-- **El checkpoint de la salida es el bloque fijo de la sala** (el ancla): no existe ningún otro bloque fijo. El de entrada es un checkpoint común.
-- **Los niveles de la entrada y de la salida están limpios**: a esa altura sólo está el checkpoint, para que no choquen con los bloques de las salas de al lado (que comparten esa altura por el checkpoint).
+## 3. Movimientos (`salas_nuevas/motor.gd`)
 
-## 3. Movimientos
+Todos gastan **un movimiento** (si salen bien); los que no salen bien no gastan nada y avisan por qué.
 
-Los del juego actual (caminar, trepar, empujar y tirar de a un bloque o fila de hasta 3, colgarse, avanzar colgado por el borde y doblar esquinas), más:
-- **Colgado, se avanza hacia bloques que tienen otro encima** (se agarra de su costado; no se puede trepar ahí).
+- **Caminar:** a la celda de al lado si hay bloque debajo; baja un escalón si el siguiente escalón está apoyado; sube un bloque si hay uno adelante y hay lugar arriba (de la celda y de donde estás). Sin bloque debajo ni a un escalón: "Borde".
+- **Empujar y tirar (mantener la tecla de empujar):** empuja el bloque de adelante (una fila de hasta **3 bloques** siempre que la celda de más allá esté libre y ninguno sea fijo ni pesado). Un bloque de **hielo** empujado solo se desliza hasta chocar o salir de la huella. Tira del bloque de atrás hacia donde estabas; si adelante hay un escalón más abajo, se baja; si adelante no hay piso, el bloque viene y el jugador queda **colgado** del bloque donde estaba parado. Empujar sin nada que empujar ni tirar es un paso común.
+- **Colgarse (mantener la tecla de colgarse y una dirección):** hacia un borde sin piso; no se puede si se está sobre hielo.
+- **Colgado:** la dirección hacia el bloque trepa; la contraria (o la tecla de colgarse) suelta; las demás avanzan por el borde y doblan esquinas (hacia adentro, también hacia bloques que tienen otro encima, y hacia afuera). No se puede agarrar de un bloque de hielo.
+- **Deshacer:** deshace el último movimiento de la sala (con la claridad que se había juntado y la cuenta de movimientos). Lo que hizo un consumible no se deshace. No se puede en los escenarios sin deshacer (Sin piedad). `Torre.deshacer`.
 
-## 4. Temporizador, checkpoint y muerte
+## 4. Bloques
 
-- El temporizador cuenta **movimientos, no tiempo**. Cada sala tiene un máximo de movimientos; **al agotarse cae la sala entera** (todos sus bloques) y, si el jugador sigue en ella, cae con ella: muere. No hay filas que desaparezcan de a una, así que el temporizador no toca el material mientras se juega.
-- **El solucionador manda, el temporizador obedece:** el solucionador da el mínimo de movimientos de la sala y el máximo se calcula sobre eso: una etapa temprana deja más movimientos de más, una avanzada menos. El temporizador nunca condiciona al solucionador (y como no borra filas, no cambia qué caminos existen).
-- **Checkpoint:** al llegar al bloque de salida de una sala (el comienzo de la siguiente), **toda la sala anterior cae** y el temporizador arranca de cero con los movimientos máximos de la sala actual.
-- **Caer al vacío es morir**, por cualquier motivo: quedar colgado sobre el vacío, perder la plataforma por el temporizador, mover el último bloque que sostenía lo que pisabas, etc.
-- **Al morir se pierde una vida y se vuelve al checkpoint** con la torre reconstruida virgen **desde la sala en la que se entró** (la sala ya pasada ya no existe ni importa).
-- **Bloques de checkpoint:** el bloque de salida de cada sala (el comienzo de la siguiente) lleva un farolito que se prende al llegar: marca que el checkpoint está activado.
-- Todas las salas tienen la misma tensión: ni siquiera la primera tiene suelo.
+| Letra | Bloque | Qué hace |
+|---|---|---|
+| n | Común | Se pisa, se empuja, se tira |
+| p / f | Checkpoint de entrada / de salida | Dorados. El de salida es el ancla fijo de la sala (se gana parado sobre él, un nivel más arriba) |
+| h | Pesado | De hierro: no se empuja ni se tira, pero se trepa |
+| i | Hielo | Al llegar parado sobre él se sigue resbalando en la dirección del movimiento (hasta 40 celdas); si se sale de la huella se pierde la sala; no se agarra uno de su borde |
+| c | Agrietado | De arenisca: se rompe al bajarse de él |
+| t | Trampa | Parece común; al quedar parado encima se desarma y cae (con el jugador si abajo hay otro bloque) |
+| s | Pinchos | Quedar parado encima pierde la sala; se empuja y se tira como uno común |
+| k | Catapulta (trampolín) | Al llegar parado encima, sube 4 celdas (más hasta 2 buscando agarre) y queda colgado del costado de un bloque que tenga el borde de arriba libre; sólo hacia arriba |
+| b7 / d | Bomba con mecha / desactivada | La mecha (el número) baja **1 por acción mientras el jugador está dentro de su zona** (celdas con dx²+dy²+dz² ≤ 5); fuera se congela. Al llegar a 0 explota y se pierde la sala. Pararse encima la desactiva ("d", queda como un común); si cae fuera de la huella se pierde. Ganar en el mismo movimiento gana a la explosión |
 
-## 5. Qué es una buena sala (para medir)
+Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada especial está en la sala por un propósito comprobado: si se lo cambia por un bloque común, cambia el camino o cuánto pesa cada movimiento (`docs/plan_generador_especiales.md`).
 
-- Con bloques básicos (por ahora sin hielo, pesados, agrietados, trampas, pinchos, catapultas ni bombas).
-- **Bloques distintos movidos:** como mínimo 3 o 4 por cada 3 pisos (lo que pide Catherine). No cuenta empujar el mismo bloque en fila.
-- Caminos alternativos **dentro de la misma sala**: una forma menos óptima de resolverla (por ejemplo, la diferencia entre el camino óptimo y el mejor cuando se prohíbe un bloque clave del óptimo).
-- Cuántos movimientos legales dejan la sala sin solución (el riesgo).
+## 5. Temporizador, muerte y vidas
 
-## 6. Cómo se verificaría (ideas, sin implementar)
+- **Temporizador de movimientos por sala:** el mínimo conocido de la sala × 1,9 / 1,6 / 1,4 / 1,25 + 10 / 8 / 6 / 5 movimientos, según su nivel (fácil / media / difícil / pesadilla). **(provisorio)** `Torre.max_movimientos`.
+  - Madrugada lo multiplica por 1,25; Aire extra suma 4; Freno suma 5 y Reloj de arena 10 (sólo a la sala actual); Pies ligeros y Aire de más suman 1 por mejora; Paso firme hace que trepar y bajar un piso no gaste. `Torre.max_mov`.
+  - Los últimos 5 movimientos se ven como un número sobre el personaje (rojo con 3 o menos). Ganar en el último movimiento gana al temporizador.
+- **Perder una sala:** caer al vacío, quedar sobre pinchos, explotar una bomba, agotar los movimientos o (Sin piedad) pasarse del último movimiento en falso. El personaje se cae dando vueltas (con toda la sala si se acabaron los movimientos) y aparece la **pantalla de derrota** con *Reintentar (−1 vida)* y *Salir al menú principal* (R o Enter reintenta). Reintentar vuelve al **checkpoint** de la sala con la sala **virgen**, y recién entonces cuesta la vida (el Tótem lo hace gratis). La claridad que se juntó en ese intento se pierde. Sin vidas, el run termina. `Torre._morir`, `main._torre_nueva_murio`, `request_restart`.
+- **Segundo aliento:** una vez por torre vuelve a empezar la sala sin perder la vida.
+- **Reintentar la torre entera** (tecla de reintentar o desde la pausa): vuelve a la primera sala y cuesta una vida. Guardar y continuar también empieza la torre desde la primera sala (si se había muerto y no reintentado, cuenta como reintento).
+- Cada torre empieza con la pantalla de **dados** del tabernero (con "Empezar" ya habilitado).
 
-- **Contrato de empalme:** como las salas ya no son independientes, cada sala se verifica con un bloque de salida anclado por un "ancla de verificación": bloques fijos que representan lo que toca ese bloque en la sala de arriba. Si el jugador lo mueve, deja de estar anclado y puede caer, igual que en la torre real. La sala siguiente hace lo mismo con su bloque de llegada (que es el de salida de ésta) y sus propios bloques como sostén.
-- **3x3:** análisis exhaustivo hacia atrás desde la sala resuelta (distancia exacta de todos los estados alcanzables).
-- **5x3 y 8x3, primera fase:** resolución por lonjas de 5 pisos con el jugador al centro (dos filas hacia arriba y dos hacia abajo). Sirve para saber que la sala **se puede resolver**; se guarda como siempre. Hasta el mínimo exacto, el camino de la lonja es una cota superior y se usa para el máximo de movimientos con margen de sobra.
-- **Segunda fase (más adelante):** un ejecutable aparte, con un árbol de búsqueda optimizado, que busque el mínimo real de cada sala ya guardada y corrija el máximo de movimientos.
-- Los trampolines (catapulta) quedan fuera por ahora.
-- La biblioteca de salas actual (`data/salas.rooms`) se hizo con otras reglas (pilar de hierro, sostén direccional): hay que regenerarla.
+## 6. Checkpoints y Farolín
 
-## 7. Pendiente de definir
+- Al llegar a la salida de una sala, el bloque queda como entrada de la siguiente y la sala anterior cae. **Farolín está sentado, apoyado en un tronquito, en una esquina del próximo checkpoint**, mirando al centro del cubo (la esquina con menos bloques al lado). Al llegar dice cuántos checkpoints faltan, contando el portal ("Buen comienzo, faltan 6", "Ya casi: la siguiente es la última").
+- El último checkpoint es el **cubo-portal** luminoso del juego. Llegar a él termina la torre: la claridad pasa al run y sigue el casino (o el final del juego en la etapa 15).
 
-- Dónde queda el bloque de salida dentro de la huella y qué anclas de verificación lo sostienen.
-- Cuántos movimientos de margen por etapa (la tabla de dificultad).
-- Si el bloque de salida (checkpoint) cae con el resto de la sala cuando se agota el temporizador, o es lo único que queda en pie para el jugador que ya llegó.
-- Qué altura máxima real tiene cada tamaño de sala una vez que el temporizador esté en juego.
+## 7. Claridad (`salas_nuevas/cosecha.gd`, las mismas reglas de la torre vieja)
+
+- Pisar un bloque o colgarse de él lo **purifica** y da su claridad: común 1, hielo 2, agrietado 2, pesado 2, trampa 2, pinchos 3, catapulta 3, bomba 5, checkpoint 1.
+- **Racha:** cada acción que purifica algo nuevo sube la racha; una que no purifica nada la corta. Multiplicador = 1 + 0,5 × (racha − 1), con tope ×4 (Racha larga ×6, Racha imparable ×8; Mano de oro de a 1,0).
+- **Cosecha:** Cosecha ×1,5, Cosecha doble ×2 y la Poción de cosecha ×2 se multiplican. Pies de luz +1, Pies de oro +2 y Midas +3 por bloque; Buen ojo duplica los especiales; Escalador +2 por piso nuevo; Empuje rentable +1 por bloque movido.
+- La claridad de una sala queda **asegurada** al llegar a su checkpoint; si se pierde la sala, se pierde la del intento. Farolín cobra el peaje en la puerta del casino, como siempre.
+
+## 8. Etapas
+
+- **Largo:** 5 salas en la etapa 1 hasta 14 en la 15 (`Torre.salas_de_etapa`).
+- **Dificultad:** `p = 0,6 × (etapa − 1)/14 + 0,4 × (sala/(n − 1))`; <0,2 fácil · <0,4 fácil o media · <0,6 media · <0,75 media o difícil · <0,9 difícil · el resto difícil o pesadilla. Si no hay sala del nivel que toca se acepta de otro.
+- **Especiales habilitados:** hielo en la etapa 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, trampolín 8. (Todavía no hay salas con trampa.)
+- Las salas salen del paquete `data/salas_torre.jsonl` (`herramientas/armar_paquete.py`): 1208 salas de 4 a 23 pisos. Las de más de 10 pisos se resolvieron por lonjas: su camino es válido pero puede no ser el más corto.
+
+## 9. Escenarios y pruebas
+
+- **Sin piedad:** cada sala permite 2 movimientos en falso (3 con Margen de error). Un movimiento es "en falso" si después faltan **más** pasos para salir de la sala (lo mide el solucionador nativo en un hilo). El siguiente pierde la sala. No se puede deshacer.
+- **Pruebas** (cada 3 etapas): funcionan Sin ayudas, Todo o nada, Sin racha y el multiplicador de claridad. **(pendiente)** Niebla, Oscuridad y Lluvia de meteoritos.
+- **Tutorial:** las seis primeras lecciones son de bloques armados a mano (la torre vieja); la última, "Una torre de verdad", es una torre nueva de 2 salas.
+
+## 10. Controles
+
+Los del juego (`Controls`): movimiento, empujar, colgarse, deshacer, reintentar, consumibles, cámara, vista isométrica, zoom, profundidad y pausa, con teclado, mando y reasignaciones. Tab muestra la torre entera. La **ayuda de profundidad** (tecla "profundidad") aclara lo que está más cerca de la cámara que el personaje y oscurece lo lejano; en su tercer modo, además, los bloques que tapan al personaje se vuelven una malla calada.
