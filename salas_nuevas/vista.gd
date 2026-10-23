@@ -34,7 +34,7 @@ static func _material_brillo(tint: Color, ice: bool, glow: Color, energia: float
 
 ## `aspecto_juego`: los bloques se ven como en el juego: corruptos (oscuros, violetas) hasta que el jugador los pisa o se cuelga de ellos, y entonces se purifican
 ## (el color de la etapa y una luz suave); las bombas activas brillan en rojo.
-static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := true, con_jugador := true, omitir_p := false, aspecto_juego := false) -> void:
+static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := true, con_jugador := true, omitir_p := false, aspecto_juego := false, omitir_f := false) -> void:
 	RoomView.register_globals()
 	for ch in parent.get_children():
 		parent.remove_child(ch)
@@ -45,7 +45,9 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		if t.obstaculos.has(c):
 			continue   # (es de la sala de arriba: la torre la dibuja con su sala)
 		if omitir_p and letra == "p":
-			continue   # (en la torre la entrada de una sala es la salida de la anterior: se dibuja una sola vez)
+			continue
+		if omitir_f and letra == "f":
+			continue   # (el bloque de salida de la torre es el cubo-portal, que dibuja la escena)   # (en la torre la entrada de una sala es la salida de la anterior: se dibuja una sola vez)
 		var kind: int = KIND_DE_LETRA.get(letra.substr(0, 1), 0)
 		if letra.begins_with("b"):
 			kind = 2   # bomba (con la mecha pegada: "b7")

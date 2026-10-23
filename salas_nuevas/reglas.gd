@@ -43,6 +43,7 @@ static func asentar(bloques: Dictionary, jugador := Vector3i(-999, -999, -999), 
 	var quietos := {}
 	var caidos := 0
 	var perdidos := 0
+	var perdidas: Array = []   # [celda de la que cayeron, tipo] de lo que se perdió (para animar cómo se hunde)
 	var guard := 0
 	while guard < 400:
 		guard += 1
@@ -84,4 +85,5 @@ static func asentar(bloques: Dictionary, jugador := Vector3i(-999, -999, -999), 
 				quietos[s] = true
 		else:
 			perdidos += 1
-	return {"bloques": b, "caidos": caidos, "perdidos": perdidos}
+			perdidas.append([s, tipo])
+	return {"bloques": b, "caidos": caidos, "perdidos": perdidos, "perdidas": perdidas}

@@ -5,6 +5,9 @@ func _init() -> void:
 	root.add_child(main)
 	await create_timer(1.0).timeout
 	main.start_game()
+	await create_timer(0.5).timeout
+	main.dice.auto_start = true   # (los dados de la pantalla de carga: se aprieta Empezar para pasar)
+	main.dice.set_ready(true)
 	await create_timer(1.2).timeout
 	var n = main.nueva
 	n.pivot.position = n.farolin.position + Vector3(0, 0.3, 0)

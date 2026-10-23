@@ -35,6 +35,7 @@ var cosecha = Cosecha.new()   # la claridad de la torre (ver cosecha.gd)
 var etapa := 0                # 0: curva fija de prueba; si no, la etapa del run (sube la dificultad y se habilitan los especiales de a poco)
 var externo := false          # las vidas son las del run (las lleva el juego): morir reinicia la sala y avisa, pero no resta
 var perks := {}               # boosts del run
+var mov_run := 0              # movimientos de más en cada sala por mejoras permanentes del run (Aire de más, Pies ligeros)
 var mov_extra := 0            # movimientos de más para la sala actual (Freno, Reloj de arena)
 var aliento_usado := false    # Segundo aliento: una vez por torre
 var muerta := false           # (con las vidas del run) se perdió la sala y espera a que el juego decida: reintentar o salir
@@ -403,7 +404,7 @@ func max_mov() -> int:
 		m *= 1.25
 	if perks.has("aire_extra"):
 		m += 4.0
-	return int(ceil(m)) + mov_extra
+	return int(ceil(m)) + mov_extra + mov_run
 
 
 func _entrar(i: int) -> void:

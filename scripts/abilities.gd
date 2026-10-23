@@ -15,7 +15,7 @@ const ALL: Array[Dictionary] = [
 
 ## Habilidades ya diseñadas cuyo escenario todavía no se puede jugar: no se pueden ganar, así que no aparecen en el juego. Al habilitar el escenario se pasan a ALL.
 const PENDING: Array[Dictionary] = [
-	{"id": "pies_ligeros", "name": "Pies ligeros", "desc": "La fila de abajo cae 1 movimiento más tarde."},
+	{"id": "pies_ligeros", "name": "Pies ligeros", "desc": "Cada sala tiene 1 movimiento más."},
 	{"id": "bolsillo_sonador", "name": "Bolsillo de soñador", "desc": "Un lugar más para consumibles."},
 	{"id": "segunda_oportunidad", "name": "Segunda oportunidad", "desc": "Reintentar la torre cuesta 15 % menos."},
 	{"id": "fuerza_bruta", "name": "Fuerza bruta", "desc": "Puedes empujar y tirar de los bloques pesados.", "perk": "fuerza_bruta"},

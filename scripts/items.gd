@@ -1,6 +1,6 @@
 extends RefCounted
 ## Catálogo de premios del casino: boosts (mejoras que duran el run), consumibles (se gastan) y bolsas de claridad.
-## Los efectos están implementados en TowerLogic (apply_perks para los boosts, use_item para los consumibles).
+## Los efectos están implementados en TowerLogic (torre vieja: apply_perks para los boosts, use_item para los consumibles) y en salas_nuevas/torre.gd y cosecha.gd (torre nueva).
 ##
 ## Los premios se agrupan en niveles (Tier): cuanto más difícil la apuesta, mejor el nivel. `value` es el valor de
 ## cada premio en "claridad equivalente" y sirve para balancear la ruleta (ver Roulette.expected_ratio); las bolsas de
@@ -12,9 +12,9 @@ enum Type { BOOST, CONSUMABLE, CLARITY }
 const ALL: Array[Dictionary] = [
 	# ---- épicos: sólo boosts (muy poderosos) ----
 	{"id": "segundo_aliento", "name": "Segundo aliento", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 640,
-		"desc": "Una vez por etapa, si caes al vacío vuelves a la última plataforma firme."},
+		"desc": "Una vez por torre, si pierdes una sala vuelves a empezarla sin perder la vida."},
 	{"id": "madrugada", "name": "Madrugada", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 620,
-		"desc": "La fila de abajo cae al doble de lento durante toda la etapa."},
+		"desc": "Cada sala tiene un 25 % más de movimientos."},
 	{"id": "luz_propia", "name": "Luz propia", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 600,
 		"desc": "Al pisar un bloque también se purifican los vecinos."},
 	{"id": "mano_de_oro", "name": "Mano de oro", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 620,
@@ -23,7 +23,7 @@ const ALL: Array[Dictionary] = [
 	{"id": "pies_de_luz", "name": "Pies de luz", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 200,
 		"desc": "Purificar un bloque da +1 de claridad."},
 	{"id": "paso_firme", "name": "Paso firme", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220,
-		"desc": "Trepar y bajar escalones no cuenta para la caída de la fila base."},
+		"desc": "Trepar y bajar un piso no cuenta como movimiento de la sala."},
 	{"id": "reflejos", "name": "Reflejos", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 200,
 		"desc": "Las cuentas de las bombas empiezan 3 movimientos más altas."},
 	{"id": "bolsillo_hondo", "name": "Bolsillo hondo", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 200, "stack": true,
@@ -34,13 +34,13 @@ const ALL: Array[Dictionary] = [
 		"desc": "El tope del multiplicador de racha sube de ×4 a ×6."},
 	# ---- comunes: boosts y consumibles ----
 	{"id": "aire_extra", "name": "Aire extra", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 100,
-		"desc": "La fila de abajo cae 1 movimiento más tarde."},
+		"desc": "Cada sala tiene 4 movimientos más."},
 	{"id": "ojo_de_hielo", "name": "Ojo de hielo", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 90,
 		"desc": "Al resbalar por el hielo te frenas una celda antes."},
 	{"id": "ahorro", "name": "Ahorro", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 110,
 		"desc": "Cada etapa arrancas con 20 de claridad."},
 	{"id": "freno", "name": "Freno", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 100,
-		"desc": "Pausa la caída de la fila base durante 5 movimientos."},
+		"desc": "Suma 5 movimientos a la sala en la que estás."},
 	{"id": "desarmar", "name": "Desarmar", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90,
 		"desc": "Desactiva una bomba a la vista."},
 	# ---- conversores: uno por tipo de bloque; se elige con el mouse el bloque que se cambia ----
@@ -113,7 +113,7 @@ const ALL: Array[Dictionary] = [
 	{"id": "baraja_de_racha", "name": "Baraja de racha", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90,
 		"desc": "La racha pasa a ×4 ya."},
 	{"id": "reloj_de_arena", "name": "Reloj de arena", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 95,
-		"desc": "Pausa la caída de la fila base durante 10 movimientos."},
+		"desc": "Suma 10 movimientos a la sala en la que estás."},
 	# del casino (docs/diseno.md §49): sirven en las mesas, no en la torre
 	{"id": "mano_23", "name": "Mano de 23", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 640,
 		"desc": "En el blackjack el tope es 23 en vez de 21: te plantas o te pasas recién después."},

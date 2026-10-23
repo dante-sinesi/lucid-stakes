@@ -126,6 +126,23 @@ func _init() -> void:
 	main.nueva.accion(Vector3i(int(c2[0][0]), 0, int(c2[0][1])), int(c2[0][2]))
 	await _frames(2)
 	_ok(main.run_over, "sin vidas, morir termina el run")
+	# los dados de la pantalla de carga: al empezar cada torre nueva se ofrecen y "Empezar" está habilitado
+	var main3 = load("res://scenes/main.tscn").instantiate()
+	main3.test_mode = true
+	main3.quick_portal = true
+	main3.test_mode_jobs = false
+	root.add_child(main3)
+	await _frames(4)
+	main3.dice_always = true
+	main3.dice.auto_start = false   # (en las pruebas los dados se cierran solos: acá se dejan abiertos para comprobar que se ofrecen)
+	main3.start_game()
+	await _frames(6)
+	_ok(main3.dice.visible and main3.nueva == null, "al empezar la torre nueva se abren los dados de la pantalla de carga (la torre espera)")
+	main3.dice.auto_start = true
+	main3.dice.set_ready(true)   # (se aprieta "Empezar")
+	await _frames(10)
+	_ok(not main3.dice.visible and main3.nueva != null, "al cerrar los dados empieza la torre")
+	main3.queue_free()
 	# la última lección del tutorial ('Una torre de verdad') es una torre nueva chica (2 salas)
 	var main2 = load("res://scenes/main.tscn").instantiate()
 	main2.test_mode = true

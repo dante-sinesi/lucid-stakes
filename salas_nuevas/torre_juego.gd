@@ -17,6 +17,8 @@ const KeyDirs := preload("res://scripts/key_dirs.gd")
 const Controls := preload("res://scripts/controls.gd")
 const Falsos := preload("res://salas_nuevas/falsos.gd")
 const Farolin := preload("res://scripts/farolin.gd")
+const Efectos := preload("res://salas_nuevas/efectos.gd")
+const Loc := preload("res://scripts/loc.gd")
 const Profile := preload("res://scripts/profile.gd")     # (el personaje y los cosméticos que eligió el jugador)
 const Graphics := preload("res://scripts/graphics.gd")   # (las teclas y el mando del juego, con sus reasignaciones: el mando entra como teclas, ver pad_bridge.gd)
 
@@ -34,6 +36,8 @@ signal checkpoint_alcanzado(faltan: int, total: int)   ## se llegó a la salida 
 signal torre_completa                ## se llegó al portal
 signal murio(motivo: String)         ## se perdió una vida (el juego descuenta la del run); la sala ya volvió a empezar
 signal accion_hecha                  ## después de cada acción que salió bien (el juego actualiza su HUD)
+signal ganancia(texto: String, cantidad: int)   ## la claridad que dio la última acción (el juego muestra el cartel "+N claridad")
+signal profundidad_pedida            ## se apretó la tecla de la ayuda de profundidad
 signal falsos_cambiaron(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool)   ## Sin piedad: lo que quedan de movimientos en falso en la sala
 signal deshacer_pedido               ## se apretó deshacer (el juego decide si se puede en este escenario)
 signal reintentar_pedido             ## se apretó reintentar la torre
@@ -63,10 +67,18 @@ var en_juego := false      # se juega dentro del juego (main.gd): vidas, clarida
 var etapa := 0
 var n_salas_fijo := 0         # >0: cuántas salas tiene la torre (el tutorial); si no, las que le tocan a la etapa
 var boosts: Array = []
+var mov_run := 0             # movimientos de más por sala (mejoras permanentes del run)
 var vidas_fn := Callable()   # () -> int: las vidas del run
 var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
 var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario no los usa)
 var falsos = null              # el medidor (falsos.gd)
+var efectos                    # sonidos y efectos visuales de las acciones (efectos.gd)
+var player_node: Node3D        # (para el juice: el personaje)
+var cam_zoom: float:           # (para el juice: el zoom actual)
+	get:
+		return zoom
+var portal: Node3D             # el cubo-portal del final de la torre (lo arma el juego); si no hay, el bloque de salida de la última sala es un bloque dorado común
+var _rastro_pendiente: Array = []   # las celdas por las que pasó el personaje en la última acción (saltos y deslizamientos se animan celda por celda)
 var farolin: Node3D            # Farolín espera en el próximo checkpoint (sólo en ése)
 var faro_modelo: Node3D        # (su modelo, sentado)
 var faro_tronco: Node3D        # (el tronquito en el que se apoya)
@@ -125,6 +137,9 @@ func _ready() -> void:
 	tronco.position = Vector3(0.0, 0.065, -0.17)   # (detrás de Farolín, atravesado)
 	tronco.rotation_degrees.z = 90.0
 	pivote.add_child(tronco)
+	player_node = gato_nodo
+	efectos = Efectos.new(self)
+	efectos.juice.body = gato
 	contador = Label3D.new()
 	contador.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	contador.no_depth_test = true
@@ -188,6 +203,7 @@ func _nueva_torre() -> void:
 		t = Torre.armar(paquete, semilla, n_salas_fijo if n_salas_fijo > 0 else Torre.salas_de_etapa(etapa), true, etapa)
 		t.externo = true
 		t.aplicar_boosts(boosts)
+		t.mov_run = mov_run
 	else:
 		t = Torre.armar(paquete, semilla, n_salas)
 	if t.salas.is_empty():
@@ -197,8 +213,9 @@ func _nueva_torre() -> void:
 		var nodo := Node3D.new()
 		add_child(nodo)
 		nodo.position = Vector3(0, int(t.salas[i].off), 0)
-		Vista.poblar(nodo, Vista.motor_de(t.salas[i].d), {}, false, false, true, true)
+		Vista.poblar(nodo, Vista.motor_de(t.salas[i].d), {}, false, false, true, true, portal != null and i == t.salas.size() - 1)
 		estaticas.append(nodo)
+	_poner_portal()
 	_refrescar()
 	if not en_juego:
 		_aviso("Torre %d: %d salas, %d pisos" % [semilla, t.salas.size(), t.total_pisos()], 3.0)
@@ -211,7 +228,7 @@ func _refrescar(animar := false) -> void:
 			continue
 		n.visible = i > t.indice   # la actual se dibuja viva; las de abajo ya cayeron
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
-	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
+	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true, portal != null and t.indice == t.salas.size() - 1)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
 	_poner_gato(animar)
 	_poner_camara(animar)
 	if panorama:
@@ -226,6 +243,17 @@ func _refrescar(animar := false) -> void:
 	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d   ·   Claridad %d%s" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), (int(vidas_fn.call()) if vidas_fn.is_valid() else t.vidas), t.cosecha.claridad(), ("  (racha ×%.1f)" % t.cosecha.streak_mult(t.cosecha.streak)) if t.cosecha.streak > 1 else ""]
 
 
+## El cubo-portal sobre el bloque de salida de la última sala.
+func _poner_portal() -> void:
+	if portal == null or t == null or t.salas.is_empty():
+		return
+	var ultima: Dictionary = t.salas[t.salas.size() - 1]
+	var s: Vector2i = Torre.salida_xz(ultima.d)
+	if portal.get_parent() == null:
+		add_child(portal)
+	portal.position = Vector3(s.x + 0.5, int(ultima.off) + int(ultima.d.meta) + 0.5, s.y + 0.5)
+
+
 ## Dónde están los pies del personaje (colgado, el cuerpo se arrima al bloque del que se agarra).
 func _pos_gato() -> Vector3:
 	var j: Vector3i = t.motor.jugador
@@ -237,7 +265,20 @@ func _poner_gato(animar: bool) -> void:
 	var destino := _pos_gato()
 	if _paso_tween != null and _paso_tween.is_valid():
 		_paso_tween.kill()
-	if animar:
+	var rastro := _rastro_pendiente
+	_rastro_pendiente = []
+	if animar and rastro.size() > 2:   # un salto, un deslizamiento o una caída: se anima celda por celda, para que se vea cómo sube, avanza y cae
+		var off := float(int(t.sala_actual().off))
+		var pts: Array[Vector3] = [gato_nodo.position]
+		for i in range(1, rastro.size()):
+			var c: Vector3i = rastro[i]
+			pts.append(Vector3(c.x + 0.5, c.y + off, c.z + 0.5))
+		pts[pts.size() - 1] = destino   # (al final, colgado o parado)
+		var seg := minf(0.07, 0.6 / float(pts.size() - 1))
+		_paso_tween = create_tween()
+		_paso_tween.tween_method(func(k: float) -> void: gato_nodo.position = _punto_en(pts, k), 0.0, 1.0, seg * float(pts.size() - 1))
+		Characters.step_anim(gato, STEP_TIME)
+	elif animar:
 		_paso_tween = create_tween()
 		_paso_tween.tween_property(gato_nodo, "position", destino, STEP_TIME)
 		Characters.step_anim(gato, STEP_TIME)
@@ -245,6 +286,13 @@ func _poner_gato(animar: bool) -> void:
 		gato_nodo.position = destino
 	var cara: Vector3i = t.motor.colgado if t.motor.colgado != Vector3i.ZERO else mira
 	gato_nodo.rotation.y = atan2(cara.x, cara.z)
+
+
+## El punto de la poligonal a lo largo de k (0 = el primero, 1 = el último).
+func _punto_en(pts: Array[Vector3], k: float) -> Vector3:
+	var u := clampf(k, 0.0, 1.0) * float(pts.size() - 1)
+	var i := mini(int(u), pts.size() - 2)
+	return pts[i].lerp(pts[i + 1], u - i)
 
 
 func _poner_camara(animar: bool) -> void:
@@ -351,7 +399,9 @@ func _ocultar_arriba() -> void:
 func _process(delta: float) -> void:
 	if t == null or pivot == null:
 		return
-	if en_juego and puede_jugar.is_valid() and not puede_jugar.call():
+	var activa: bool = not (en_juego and puede_jugar.is_valid() and not puede_jugar.call())
+	efectos.proceso(delta, activa)
+	if not activa:
 		return
 	var ax := int(Controls.held("camara_derecha")) - int(Controls.held("camara_izquierda"))
 	var ay := int(Controls.held("camara_abajo")) - int(Controls.held("camara_arriba"))
@@ -381,7 +431,10 @@ func _input(ev: InputEvent) -> void:
 	if k == KEY_ESCAPE and not en_juego:   # (dentro del juego Esc abre la pausa del juego)
 		get_tree().quit()
 		return
-	if k == KEY_V:
+	if accion_id == "profundidad":   # la ayuda de profundidad es del juego (main.gd)
+		profundidad_pedida.emit()
+		return
+	if k == KEY_TAB:   # la vista de toda la torre
 		panorama = not panorama
 		_refrescar(true)
 		return
@@ -439,13 +492,30 @@ func _input(ev: InputEvent) -> void:
 
 ## Una acción del jugador (también la usan las pruebas).
 func accion(dir: Vector3i, modo: int) -> Dictionary:
+	var motor_antes = t.motor
+	var antes_y: int = motor_antes.jugador.y
+	var off_antes := float(int(t.sala_actual().off))
 	var r: Dictionary = t.actuar(dir, modo)
 	mira = dir
 	if not r.ok:
 		_aviso(str(r.msg), 1.4)
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
+	_rastro_pendiente = motor_antes.rastro
 	_procesar(r)
+	efectos.sonido(motor_antes, modo, antes_y)   # (el motor de antes guarda lo que pasó en la acción, aunque la sala haya cambiado)
+	efectos.visuales(motor_antes, antes_y, off_antes)
+	if str(r.evento) == "torre":
+		efectos.juice.gold_burst(portal.position if portal != null else gato_nodo.position)
+		efectos.juice.zoom_punch(0.05)
+	if t.cosecha.last_gain > 0 and str(r.evento) != "muerte" and str(r.evento) != "fin":   # el cartel "+N claridad" (con la racha y la cosecha)
+		var mult: float = t.cosecha.streak_mult(t.cosecha.streak)
+		var texto := Loc.f("+%d claridad", [t.cosecha.last_gain])
+		if t.cosecha.streak >= 2:
+			texto += Loc.f("   racha ×%.1f", [mult])
+		if t.cosecha.harvest_mult() > 1.0:
+			texto += Loc.f("   cosecha ×%.1f", [t.cosecha.harvest_mult()])
+		ganancia.emit(texto, t.cosecha.last_gain)
 	if falsos != null:
 		var ev := str(r.evento)
 		if ev == "":

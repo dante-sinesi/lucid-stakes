@@ -32,6 +32,17 @@ var pasos := 0
 var ids := {}            # la identidad de cada bloque (celda -> número): sigue al bloque cuando lo empujan o cae
 var sig_id := 0
 var obstaculos := {}      # celdas de la sala de arriba que están en el alcance de ésta: bloques fijos (tipo "f") que no se dibujan acá (la torre los dibuja con su sala)
+var ultimos_movidos: Array = []        # celdas donde quedaron los bloques que movió la última acción (empujar, tirar)
+var tipo_agarre := ""                  # "push" o "pull" si la última acción movió un bloque
+var trampa_rota := false               # la última acción rompió una trampa
+var resbalo := false                   # la última acción terminó resbalando por hielo
+var salto := false                     # la última acción fue un salto de catapulta
+var desarmo := false                   # la última acción desactivó una bomba
+var exploto := false                   # la última acción hizo explotar una bomba
+var celda_explosion := Vector3i.ZERO
+var caidos_fuera: Array = []           # [celda, tipo] de los bloques que se perdieron en la última acción
+var ultimas_celdas_purificadas: Array = []   # celdas de los bloques que se purificaron en la última acción
+var rastro: Array = []                 # las celdas por las que pasó el jugador en la última acción (saltos, deslizamientos y caídas se animan celda por celda)
 var luz_propia := false  # boost Luz propia: también se purifican los vecinos de lo que se pisa
 var ultimos_purificados: Array = []   # las letras de los bloques que se purificaron en la última acción (para la claridad)
 var agarro := false      # en la última acción se movió un bloque (empujar o tirar)
@@ -105,6 +116,16 @@ func actuar(d: Vector3i, modo: Modo = Modo.MOVER) -> Dictionary:
 		return {"ok": false, "msg": ""}
 	ultimos_purificados = []
 	agarro = false
+	ultimos_movidos = []
+	tipo_agarre = ""
+	trampa_rota = false
+	resbalo = false
+	salto = false
+	desarmo = false
+	exploto = false
+	caidos_fuera = []
+	ultimas_celdas_purificadas = []
+	rastro = [jugador]
 	var grieta := NINGUNA   # el agrietado sobre el que estabas al empezar la acción
 	if colgado == Vector3i.ZERO and tipo_en(jugador + DOWN) == "c":
 		grieta = jugador + DOWN
@@ -279,6 +300,7 @@ func _llegar(d: Vector3i) -> void:
 
 
 func _resbalar(d: Vector3i) -> void:
+	resbalo = true
 	for _i in LIMITE_RESBALON:
 		var t := jugador + d
 		if bloques.has(t):
@@ -289,6 +311,7 @@ func _resbalar(d: Vector3i) -> void:
 			jugador = Vector3i(t.x, maxi(t.y - 3, -3), t.z)
 			return
 		jugador = t
+		rastro.append(jugador)
 		if tipo_en(jugador + DOWN) != "i":
 			return
 
@@ -302,6 +325,8 @@ func _lanzar(d: Vector3i) -> void:
 		jugador = c
 	if jugador == origen:
 		return
+	salto = true
+	rastro.append(jugador)
 	var tope := jugador.y
 	for _i in ALCANCE_CATAPULTA:
 		var arriba := Vector3i(jugador.x, tope + 1, jugador.z)
@@ -322,6 +347,8 @@ func _mover(de: Vector3i, a: Vector3i) -> void:
 	bloques.erase(de)
 	bloques[a] = tipo
 	agarro = true
+	ultimos_movidos.append(a)
+	tipo_agarre = "pull" if a == jugador else "push"   # (al tirar, el bloque llega a la celda donde estabas)
 	if ids.has(de):
 		ids[a] = ids[de]
 		ids.erase(de)
@@ -350,6 +377,8 @@ func _despues(grieta: Vector3i) -> void:
 			continue
 		var mecha := int(tp.substr(1)) - 1
 		if mecha <= 0:
+			exploto = true
+			celda_explosion = c
 			perdido = true
 			motivo = "Explotó una bomba"
 			return
@@ -363,6 +392,8 @@ func _asentar() -> void:
 		guardia += 1
 		var r := Reglas.asentar(bloques, jugador, ids)
 		bloques = r.bloques
+		for p in r.perdidas:
+			caidos_fuera.append(p)
 		var antes := jugador
 		var antes_colgado := colgado
 		_asentar_jugador()
@@ -383,8 +414,10 @@ func _asentar_jugador() -> void:
 			perdido = true
 			motivo = "Caíste al vacío"
 			jugador += Vector3i(0, -3, 0)
+			rastro.append(jugador)
 			return
 		jugador += DOWN
+		rastro.append(jugador)
 
 
 ## Purifica esas celdas (consumibles). Devuelve las letras de los bloques que se purificaron.
@@ -408,6 +441,7 @@ func _purificar() -> void:
 		if bloques.has(k) and ids.has(k) and not purificados.has(ids[k]):
 			purificados[ids[k]] = true
 			ultimos_purificados.append(str(bloques[k]))
+			ultimas_celdas_purificadas.append(k)
 
 
 ## Trampa (se desarma al pisarla y cae con ella) y pinchos (se pierde).
@@ -418,9 +452,11 @@ func _peligros() -> void:
 		var k := tipo_en(jugador + DOWN)
 		if k.length() >= 2 and k[0] == "b":
 			bloques[jugador + DOWN] = "d"   # pararse encima de una bomba la desactiva (queda como un bloque común)
+			desarmo = true
 			return
 		if k == "t":
 			bloques.erase(jugador + DOWN)
+			trampa_rota = true
 			_asentar()
 		elif k == "s":
 			perdido = true

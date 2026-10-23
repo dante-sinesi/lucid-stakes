@@ -468,12 +468,24 @@ func _torre_nueva_activa() -> bool:
 
 
 ## Arma y empieza la torre nueva de la etapa (o la vuelve a empezar con la misma semilla).
-func _torre_nueva_arrancar(s: int) -> void:
+func _torre_nueva_arrancar(s: int, con_dados := false) -> void:
 	cancel_targeting()
 	if lost_screen != null:
 		lost_screen.hide_screen()
 	_torre_nueva_cerrar(false)
 	seed_value = s
+	# Los dados del tabernero de la pantalla de carga (son parte del juego): la torre nueva se arma al instante, pero al empezar cada torre se ofrecen igual, con "Empezar" ya habilitado.
+	if con_dados and dice_always and not _loading_dice_done and not in_menu:
+		var mi_epoca := epoch
+		generating = true   # (así un guardado en este momento es el de "cargando la torre": no se repiten el casino ni los dados)
+		dice.open()
+		_maybe_dice_intro()
+		dice.set_ready(true)
+		while dice.visible:
+			await get_tree().process_frame
+		generating = false
+		if mi_epoca != epoch or in_menu or run_over:
+			return
 	trial = run.trial_at(stage_number) if not training else {}
 	profile = Gen.profile_for_stage(stage_number, trial, run.scenario())
 	run.stage = stage_number
@@ -511,6 +523,7 @@ func _torre_nueva_arrancar(s: int) -> void:
 	nueva.semilla = s
 	nueva.etapa = stage_number
 	nueva.boosts = perks
+	nueva.mov_run = run.collapse_bonus   # (Pies ligeros y la mejora Aire de más: movimientos de más en cada sala)
 	var permitidos := 0   # Sin piedad: movimientos en falso por sala
 	if not training:
 		permitidos = int(run.scenario().get("mistakes", 0))
@@ -528,6 +541,9 @@ func _torre_nueva_arrancar(s: int) -> void:
 	nueva.accion_hecha.connect(_torre_nueva_accion)
 	nueva.falsos_cambiaron.connect(_torre_nueva_falsos)
 	nueva.aviso.connect(func(texto: String): _flash(Loc.t(texto)))
+	nueva.ganancia.connect(_flash_gain)
+	nueva.profundidad_pedida.connect(func(): _set_depth_mode((depth_mode + 1) % 3))
+	nueva.portal = _cubo_portal_nuevo()
 	nueva.deshacer_pedido.connect(undo_move)
 	nueva.reintentar_pedido.connect(request_restart)
 	add_child(nueva)
@@ -539,6 +555,18 @@ func _torre_nueva_arrancar(s: int) -> void:
 	_loading_dice_done = false
 	save_game()
 	_announce_trial()
+
+
+## El cubo-portal del final de la torre nueva (el mismo del juego de siempre: luminoso, con bordes dorados y las ondas arriba), siempre encendido (Farolín cobra en el casino).
+func _cubo_portal_nuevo() -> Node3D:
+	goal_mat = ShaderMaterial.new()
+	goal_mat.shader = PORTAL_SHADER
+	goal_mat.set_shader_parameter("col_a", Color(0.95, 0.78, 0.3))
+	goal_mat.set_shader_parameter("col_b", Color(1.0, 0.93, 0.6))
+	goal_mat.set_shader_parameter("col_c", Color(1.0, 1.0, 0.92))
+	goal_mat.set_shader_parameter("cells", Vector2(5.0, 5.0))
+	goal_mat.set_shader_parameter("lit", 1.0)
+	return _make_goal_cube()
 
 
 ## Saca la escena de la torre nueva (y, si se pide, devuelve la cámara del juego).
@@ -642,7 +670,7 @@ func new_tower(s: int) -> void:
 	if generating:
 		return
 	if _torre_nueva_activa():
-		_torre_nueva_arrancar(s)
+		await _torre_nueva_arrancar(s, true)
 		return
 	generating = true
 	seed_value = s
@@ -1647,9 +1675,11 @@ func _process(delta: float) -> void:
 	_bomb_ticking(delta)
 	_pulse_bomb_zones(delta)
 	_arrow_camera(delta)
-	if cam == null or player_node == null:
+	var camara: Camera3D = nueva.cam if nueva != null else cam   # (la ayuda de profundidad sigue a la cámara y al personaje de la torre que se está jugando)
+	var personaje: Node3D = nueva.gato_nodo if nueva != null else player_node
+	if camara == null or personaje == null:
 		return
-	var v: Vector3 = cam.global_transform.affine_inverse() * player_node.global_position
+	var v: Vector3 = camara.global_transform.affine_inverse() * personaje.global_position
 	RenderingServer.global_shader_parameter_set("depth_focus", -v.z)
 	RenderingServer.global_shader_parameter_set("focus_view", v)
 
