@@ -76,6 +76,7 @@ var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite ca
 var falsos = null              # el medidor (falsos.gd)
 var _bloques_antes := {}      # id de cada bloque de la sala viva -> dónde se dibujó la última vez (para ver cómo se mueven)
 var _sala_dibujada := -1
+var _rastro_muerte: Array = []   # el camino de la última acción (si ésta termina en derrota se anima antes de caer)
 var _tweens_derrota: Array = []   # las animaciones de la derrota en marcha (al reintentar se cortan)
 var _cayendo := false   # la animación de la derrota está en marcha: la cámara no sigue al personaje que cae
 var _pos_previa := Vector3.ZERO   # dónde estaba el personaje antes de la última acción (la caída de la derrota arranca de ahí)
@@ -229,7 +230,7 @@ func _refrescar(animar := false) -> void:
 		n.visible = i > t.indice   # la actual se dibuja viva; las de abajo ya cayeron
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
 	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true, portal != null and t.indice == t.salas.size() - 1)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
-	_animar_bloques(animar)
+	_animar_bloques(animar or t.muerta)
 	_poner_gato(animar)
 	_poner_camara(animar)
 	if panorama:
@@ -553,6 +554,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
 	_rastro_pendiente = motor_antes.rastro
+	_rastro_muerte = motor_antes.rastro.duplicate()
 	_procesar(r)
 	efectos.sonido(motor_antes, modo, antes_y)   # (el motor de antes guarda lo que pasó en la acción, aunque la sala haya cambiado)
 	efectos.visuales(motor_antes, antes_y, off_antes)
@@ -610,6 +612,7 @@ func _procesar(r: Dictionary) -> void:
 func _falsos_agotados() -> void:
 	if t == null or t.terminada or t.perdida:
 		return
+	_rastro_muerte = []
 	var r: Dictionary = t.forzar_muerte("Tercer movimiento en falso")
 	_procesar(r)
 	if falsos != null:
@@ -618,27 +621,51 @@ func _falsos_agotados() -> void:
 
 
 ## La animación de perder: el personaje se cae dando vueltas (y, si se acabaron los movimientos, la sala entera se derrumba con él) y la cámara tiembla.
-func animar_derrota(motivo: String) -> void:
+## Devuelve cuántos segundos dura el movimiento que causó la derrota (el juego espera ese tiempo antes de mostrar la pantalla de derrota, para que se vea por qué se perdió).
+func animar_derrota(motivo: String) -> float:
 	const LENTO := 2.0   # las animaciones de muerte van a la mitad de velocidad
 	if _paso_tween != null and _paso_tween.is_valid():
 		_paso_tween.kill()
-	if _pos_previa != Vector3.ZERO and not motivo.contains("movimientos"):
-		gato_nodo.position = _pos_previa   # (si cayó la plataforma o el piso, se lo ve caer desde donde estaba parado)
 	gato_nodo.visible = true
+	var off := float(int(t.sala_actual().off))
+	var pts: Array[Vector3] = []
+	if _pos_previa != Vector3.ZERO:
+		pts.append(_pos_previa)   # (se ve el movimiento que hizo: el paso hasta el borde, la caída del piso...)
+		for i in range(1, _rastro_muerte.size()):
+			var c: Vector3i = _rastro_muerte[i]
+			pts.append(Vector3(c.x + 0.5, c.y + off, c.z + 0.5))
+	_rastro_muerte = []
+	var previo := 0.0
+	_tweens_derrota = []
+	if pts.size() > 1:
+		gato_nodo.position = pts[0]
+		var seg := 0.14
+		previo = seg * float(pts.size() - 1) + 0.35   # (y una pausa para ver dónde quedó)
+		var mov := create_tween()
+		mov.tween_method(func(k: float) -> void: gato_nodo.position = _punto_en(pts, k), 0.0, 1.0, seg * float(pts.size() - 1))
+		Characters.step_anim(gato, seg)
+		_tweens_derrota.append(mov)
+	get_tree().create_timer(previo).timeout.connect(_caer_derrota.bind(motivo, LENTO))
+	return previo
+
+
+func _caer_derrota(motivo: String, lento: float) -> void:
+	if t == null or not t.muerta:
+		return   # (ya se reintentó)
 	_cayendo = true
 	var tw := create_tween().set_parallel(true)
-	_tweens_derrota = [tw]
-	tw.tween_property(gato_nodo, "position:y", gato_nodo.position.y - 14.0, 1.4 * LENTO).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(gato_nodo, "rotation:x", gato_nodo.rotation.x + TAU * 1.5, 1.4 * LENTO)
-	tw.tween_property(gato_nodo, "rotation:z", gato_nodo.rotation.z + TAU * 0.75, 1.4 * LENTO)
+	_tweens_derrota.append(tw)
+	tw.tween_property(gato_nodo, "position:y", gato_nodo.position.y - 14.0, 1.4 * lento).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(gato_nodo, "rotation:x", gato_nodo.rotation.x + TAU * 1.5, 1.4 * lento)
+	tw.tween_property(gato_nodo, "rotation:z", gato_nodo.rotation.z + TAU * 0.75, 1.4 * lento)
 	if motivo.contains("movimientos"):   # (se acabó el tiempo: cae la sala entera)
-		tw.tween_property(vivo, "position:y", vivo.position.y - 30.0, 1.6 * LENTO).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(vivo, "position:y", vivo.position.y - 30.0, 1.6 * lento).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	var temblor := create_tween()   # (el temblor mueve el encuadre de la cámara, no el pivote que la sigue)
 	for i in 8:
-		temblor.tween_property(cam, "h_offset", randf_range(-0.12, 0.12), 0.04 * LENTO)
-		temblor.parallel().tween_property(cam, "v_offset", randf_range(-0.12, 0.12), 0.04 * LENTO)
-	temblor.tween_property(cam, "h_offset", 0.0, 0.05 * LENTO)
-	temblor.parallel().tween_property(cam, "v_offset", 0.0, 0.05 * LENTO)
+		temblor.tween_property(cam, "h_offset", randf_range(-0.12, 0.12), 0.04 * lento)
+		temblor.parallel().tween_property(cam, "v_offset", randf_range(-0.12, 0.12), 0.04 * lento)
+	temblor.tween_property(cam, "h_offset", 0.0, 0.05 * lento)
+	temblor.parallel().tween_property(cam, "v_offset", 0.0, 0.05 * lento)
 	_tweens_derrota.append(temblor)
 
 

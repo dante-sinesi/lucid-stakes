@@ -670,25 +670,30 @@ func _torre_nueva_murio(motivo: String) -> void:
 	_log_sala_nueva()
 	_log_torre_nueva("muerta", motivo)
 	if training:   # (tutorial: no hay vidas; la sala vuelve a empezar sola después de la caída)
-		nueva.animar_derrota(motivo)
+		var previo_t: float = nueva.animar_derrota(motivo)
 		Sfx.play("lose")
-		await get_tree().create_timer(2.4).timeout
+		await get_tree().create_timer(previo_t + 2.4).timeout
 		if nueva != null:
 			nueva.reiniciar_sala()
 		return
 	if trial.get("no_retry", false) or not run.can_revive():   # (el run termina: antes se ve caer al personaje y se dice por qué murió)
 		var razon: String = Loc.f("Fallaste la prueba «%s»: %s.", [Loc.t(trial.name), Loc.t(motivo).to_lower()]) if trial.get("no_retry", false) else (Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
-		nueva.animar_derrota(motivo)
+		var previo: float = nueva.animar_derrota(motivo)
 		juice.flash(Color(0.8, 0.1, 0.15), 0.4, 0.6)
 		Sfx.play("lose")
 		_flash(Loc.t(motivo))
 		var mi_epoca := epoch
-		await get_tree().create_timer(3.2 if not test_mode else 0.1).timeout
+		await get_tree().create_timer(previo + 3.2 if not test_mode else 0.1).timeout
 		if mi_epoca == epoch and not in_menu and not run_over:
 			end_run(false, razon)
 		return
 	# se cae, y aparece la pantalla de derrota (Reintentar -1 vida o salir al menú)
-	nueva.animar_derrota(motivo)
+	var previo: float = nueva.animar_derrota(motivo)
+	var mi_epoca := epoch
+	if previo > 0.0 and not test_mode:   # primero se ve el movimiento que hizo perder; recién después sigue la caída y la pantalla de derrota
+		await get_tree().create_timer(previo).timeout
+		if mi_epoca != epoch or nueva == null or nueva.t == null or not nueva.t.muerta:
+			return
 	juice.flash(Color(0.8, 0.1, 0.15), 0.4, 0.6)
 	Sfx.play("lose")
 	var libre: bool = run.consumables.has("totem") and not run.item_blocked("totem")   # (con un Tótem el reintento no cuesta la vida)
