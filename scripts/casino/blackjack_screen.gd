@@ -23,7 +23,6 @@ const Controls := preload("res://scripts/entrada/controls.gd")
 signal resolved
 signal closed
 
-const SUIT_ICONS: Array[String] = ["cubo", "hielo", "bomba", "sol"]
 const DEAL_STEP := 0.32   # pausa entre carta y carta
 
 var run

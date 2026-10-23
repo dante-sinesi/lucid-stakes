@@ -22,7 +22,7 @@ Decisiones abiertas: cuántos entran en la primera tanda y si van al casino como
 
 ## Cosas del juego a revisar
 
-- El tinte de los bloques por etapa (los purificados son siempre azules) y la ayuda de profundidad con la cámara de la torre.
+- Los bloques ya no se aclaran con la etapa (solo el fondo y la luz): decidir si se retoma. Revisar también la ayuda de profundidad con la cámara de la torre.
 - La ayuda de texto de los menús no menciona WASD.
 - Música: decidir tempo, volumen y si se agrega percusión (se probaron variantes al 90, 80 y 70 % sin preferencia clara: `herramientas/musica/render_estaciones.py --tempo=0.8 --solo-previa`).
 - Calibrar la economía con partidas reales (`economia.md`).

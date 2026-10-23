@@ -46,7 +46,7 @@ func _init() -> void:
 				"income_ceil": RunState.income_ceil = v
 				"hill_power": RunState.hill_power = v
 			tuned.append("%s=%s" % [pair[0], OS.get_environment(pair[0])])
-	if OS.get_environment("CLARIDAD") != "":   # (torre nueva) multiplicador global de la claridad de la torre
+	if OS.get_environment("CLARIDAD") != "":   # multiplicador global de la claridad de la torre
 		var Cosecha = load("res://torre/cosecha.gd")
 		Cosecha.mult_global = float(OS.get_environment("CLARIDAD"))
 		tuned.append("CLARIDAD=" + OS.get_environment("CLARIDAD"))
@@ -75,7 +75,7 @@ func _init() -> void:
 	var false_deaths := 0
 	var attempts_total := 0
 	var per := {}   # etapa -> {n, income, toll, before, attempts, boosts, first_ok}
-	var por_nivel := {}   # (torre nueva) nivel de sala -> {n, perdidas, movs, max, pasos}
+	var por_nivel := {}   # nivel de sala -> {n, perdidas, movs, max, pasos}
 	var builds := {}
 	var t0 := Time.get_ticks_msec()
 	for r in runs:

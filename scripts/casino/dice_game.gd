@@ -38,7 +38,6 @@ const DICE := 5
 const ROLL_TIME := 1.5       # segundos que ruedan los dados antes de empezar a mostrarse
 const REVEAL_STEP := 0.6     # segundos entre un dado y el siguiente
 const RESULT_TIME := 1.6     # cuánto se queda el resultado antes del próximo tiro
-const DIE := 30.0            # lado de un dado, en píxeles
 const SLOT := 150.0          # separación entre dados
 const SHIFT := 0.0           # (antes el juego se corría a la izquierda para dejar lugar al botón "Empezar": ahora ocupa todo el ancho y se sigue con Espacio o Enter)
 
@@ -207,10 +206,6 @@ func _init() -> void:
 
 func is_open() -> bool:
 	return visible
-
-
-func set_status(text: String) -> void:
-	status_label.text = text
 
 
 ## Abre el minijuego: una predicción nueva y 3 tiradas para cumplirla.

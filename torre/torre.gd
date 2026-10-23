@@ -17,10 +17,9 @@ static var aceptados := 0
 const VIDAS := 3
 ## Niveles de dificultad que admite cada sala de la torre (la curva sube de a poco); las dos primeras son de bloques comunes (se aprende a jugar).
 const CURVA := [["facil"], ["facil", "media"], ["media"], ["media", "dificil"], ["dificil"], ["dificil", "pesadilla"]]
-## En qué etapa se habilita cada tipo de bloque especial (como en la torre vieja: hielo 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, trampolín 8).
+## En qué etapa se habilita cada tipo de bloque especial (hielo 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, trampolín 8).
 const ETAPA_ESPECIAL := {"i": 2, "h": 3, "c": 4, "t": 5, "s": 6, "b": 7, "k": 8}
 const ETAPAS := 15
-const DIFICULTADES := ["facil", "media", "dificil", "pesadilla"]
 ## Cómo corre la dificultad del run la curva de niveles de las salas: p' = p * a + b (p va de 0 a 1 a lo largo de las 15 etapas). Fácil no pasa de salas medias; Pesadilla arranca en medias y termina en pesadillas.
 const PENDIENTE_DIFICULTAD := {"facil": [0.55, 0.0], "media": [1.0, 0.0], "dificil": [0.75, 0.25], "pesadilla": [0.5, 0.5]}
 ## Cuánto cambia el margen de movimientos de cada sala (el que pasa del mínimo).
@@ -140,12 +139,6 @@ static func huella(d: Dictionary) -> Rect2i:
 		z0 = mini(z0, int(b[2]))
 		z1 = maxi(z1, int(b[2]))
 	return Rect2i(x0, z0, x1 - x0 + 1, z1 - z0 + 1)
-
-
-## Celdas de huella que comparten dos salas (una sala que sigue por el mismo lado del anillo comparte mucho; doblar la esquina, sólo la esquina).
-static func solape(a: Rect2i, b: Rect2i) -> int:
-	var c := a.intersection(b)
-	return c.size.x * c.size.y if c.has_area() else 0
 
 
 ## ¿El camino de la sala (ya girada) llega a la salida en el motor? (se comprueba al armar, por si alguna simetría cambia el resultado)
@@ -436,7 +429,7 @@ static func desde_salas(salas_d: Array, etapa_run := 0, dificultad_run := "media
 	return t
 
 
-## Una torre nueva con las mismas salas (el bot arma un banco de torres una vez y juega copias; las salas no se modifican al jugar).
+## Una copia de la torre con las mismas salas (el bot arma un banco de torres una vez y juega copias; las salas no se modifican al jugar).
 static func copia(o):
 	var t = load("res://torre/torre.gd").new()
 	t.salas = o.salas
@@ -459,7 +452,7 @@ func sala_actual() -> Dictionary:
 	return salas[indice]
 
 
-## Los boosts del run (los de la caída de la fila de abajo pasan al temporizador de movimientos de cada sala).
+## Los boosts del run que actúan sobre el temporizador de movimientos de cada sala.
 func aplicar_boosts(ids: Array) -> void:
 	perks = {}
 	for id in ids:
@@ -604,7 +597,7 @@ func deshacer() -> bool:
 	return true
 
 
-## Un consumible del run. Devuelve { ok, msg }. No gasta un movimiento. Los que no tienen sentido en la torre nueva (o todavía no están) devuelven ok = false y no se gastan.
+## Un consumible del run. Devuelve { ok, msg }. No gasta un movimiento. Los que no tienen sentido en la torre (o todavía no están) devuelven ok = false y no se gastan.
 func usar_item(id: String) -> Dictionary:
 	if terminada or perdida or muerta:
 		return {"ok": false, "msg": ""}
@@ -661,4 +654,4 @@ func _usar_item(id: String) -> Dictionary:
 				return {"ok": false, "msg": "No hay bombas para desarmar"}
 			motor.bloques[mejor] = "d"
 			return {"ok": true, "msg": "Bomba desarmada"}
-	return {"ok": false, "msg": "Todavía no funciona en la torre nueva"}
+	return {"ok": false, "msg": "Todavía no funciona en la torre"}

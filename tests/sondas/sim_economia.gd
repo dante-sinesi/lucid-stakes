@@ -1,5 +1,5 @@
 extends SceneTree
-## Simulación de la economía casino + torre + Farolín (docs/diseno.md §46). Un run de 15 etapas por jugador simulado; se comparan curvas del precio de Farolín.
+## Simulación de la economía casino + torre + Farolín (docs/economia.md). Un run de 15 etapas por jugador simulado; se comparan curvas del precio de Farolín.
 ## Ejecutar: godot --headless --path . -s tests/sondas/sim_economia.gd   (variables: RUNS=4000, SEED=1, SKILL=1.0 habilidad del jugador, CURVES="actual,exp,ingreso,poly")
 ##
 ## Qué es medido y qué es supuesto:

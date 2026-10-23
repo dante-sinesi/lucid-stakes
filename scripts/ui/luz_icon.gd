@@ -157,18 +157,6 @@ static func _add_face(verts: PackedVector3Array, cols: PackedColorArray, quad: P
 		cols.append(col)
 
 
-## Un cubito con sus caras visibles (arriba, derecha, izquierda), un poco achicadas hacia el centro para dejar la junta.
-static func _voxel(ci: CanvasItem, o: Vector2, a: Vector2, b: Vector2, c: Vector2, col: Color, faces: int, gap: float) -> void:
-	var center := o + (a + b + c) * 0.5 + Vector2(0, 0)
-	var f := 1.0 - gap / maxf(a.length(), 1.0)
-	if faces & 1:
-		ci.draw_colored_polygon(_shrink([o + c, o + a + c, o + a + b + c, o + b + c], center, f), col.lightened(0.28))
-	if faces & 2:
-		ci.draw_colored_polygon(_shrink([o + a, o + a + b, o + a + b + c, o + a + c], center, f), col)
-	if faces & 4:
-		ci.draw_colored_polygon(_shrink([o + b, o + a + b, o + a + b + c, o + b + c], center, f), col.darkened(0.3))
-
-
 static func _shrink(pts: Array, center: Vector2, f: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var mid := Vector2.ZERO

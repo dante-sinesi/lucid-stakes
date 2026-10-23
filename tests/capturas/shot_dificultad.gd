@@ -1,5 +1,5 @@
 extends SceneTree
-## Captura del selector de dificultad y de la pantalla de derrota con las teclas nuevas. Uso: GAME_SANDBOX=1 godot --path . -s tests/capturas/shot_dificultad.gd -- PREFIJO
+## Captura del selector de dificultad y de la pantalla de derrota. Uso: GAME_SANDBOX=1 godot --path . -s tests/capturas/shot_dificultad.gd -- PREFIJO
 const Profile := preload("res://scripts/datos/profile.gd")
 func _init() -> void:
 	var pref: String = OS.get_cmdline_user_args()[0]

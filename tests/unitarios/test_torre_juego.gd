@@ -1,5 +1,5 @@
 extends SceneTree
-## La torre nueva dentro del juego (main.gd): arranque, victoria con claridad al run, muertes con las vidas del run, consumibles y guardado.
+## La torre dentro del juego (main.gd): arranque, victoria con claridad al run, muertes con las vidas del run, consumibles y guardado.
 ## Uso: GAME_SANDBOX=1 godot --headless --path . -s tests/unitarios/test_torre_juego.gd
 const Scenarios := preload("res://scripts/datos/scenarios.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
@@ -15,7 +15,6 @@ func _jugar_sala(main, k: int) -> void:
 	for a in main.torre.t.salas[k].d.camino:
 		main.torre.accion(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
 func _init() -> void:
-	OS.set_environment("GAME_TORRE_NUEVA", "1")
 	Profile.path = "user://test_profile_tn.json"
 	Profile.reset()
 	var main = load("res://scenes/main.tscn").instantiate()
@@ -38,10 +37,10 @@ func _init() -> void:
 	main.request_restart()   # (el botón Reintentar)
 	_ok(main.run.lives == vidas0 - 1 and main.torre.t.indice == 0 and main.torre.t.movs == 0 and not main.torre.t.muerta and not main.lost_screen.visible, "Reintentar resta una vida del run y reinicia la sala (%d vidas)" % main.run.lives)
 	main.torre.t.salas[0].max_mov = 999
-	# el personaje y los cosméticos del perfil son los de la torre nueva (no siempre el gatito)
+	# el personaje y los cosméticos del perfil son los de la torre (no siempre el gatito)
 	Profile.select_character("dante")
 	main._torre_arrancar(3)
-	_ok(main.torre.gato != null and Profile.character() == "dante" and main.torre.gato.get_child_count() > 3, "la torre nueva usa el personaje elegido (dante) con su modelo")
+	_ok(main.torre.gato != null and Profile.character() == "dante" and main.torre.gato.get_child_count() > 3, "la torre usa el personaje elegido (dante) con su modelo")
 	var ref_grilla = main.torre.vivo.get_node_or_null("referencia")
 	_ok(ref_grilla == null, "dentro del juego no se dibuja la grilla blanca de prueba")
 	Profile.select_character("gato")
@@ -115,7 +114,7 @@ func _init() -> void:
 	_ok(main.run.claridad > claridad0, "la claridad de la torre pasó al run (%d -> %d)" % [claridad0, main.run.claridad])
 	main.leave_casino()
 	await _frames(6)
-	_ok(main.stage_number == 2 and main.torre != null and main.torre.t.etapa == 2, "se sale del casino a la torre nueva de la etapa 2")
+	_ok(main.stage_number == 2 and main.torre != null and main.torre.t.etapa == 2, "se sale del casino a la torre de la etapa 2")
 	# guardado y continuar
 	main.save_game()
 	var data: Dictionary = main.SaveGame.read()
@@ -124,7 +123,7 @@ func _init() -> void:
 	main.run.scenario_id = "sin_piedad"
 	main._torre_arrancar(7)   # (una semilla fija: la prueba no depende del azar)
 	await _frames(3)
-	_ok(main.torre != null and main.torre.falsos != null and main.torre.falsos.permitidos == 2, "Sin piedad: la torre nueva trae el medidor con 2 falsos por sala")
+	_ok(main.torre != null and main.torre.falsos != null and main.torre.falsos.permitidos == 2, "Sin piedad: la torre trae el medidor con 2 falsos por sala")
 	main.torre.falsos.inline = true
 	main.torre.falsos.sala_nueva(main.torre.t.motor)
 	var vidas_sp: int = main.run.lives
@@ -158,7 +157,7 @@ func _init() -> void:
 	main3.dice.auto_start = false   # (en las pruebas los dados se cierran solos: acá se dejan abiertos para comprobar que se ofrecen)
 	main3.start_game()
 	await _frames(6)
-	_ok(main3.dice.visible and main3.torre == null, "al empezar la torre nueva se abren los dados de la pantalla de carga (la torre espera)")
+	_ok(main3.dice.visible and main3.torre == null, "al empezar la torre se abren los dados de la pantalla de carga (la torre espera)")
 	main3.dice.auto_start = true
 	main3.dice.set_ready(true)   # (se aprieta "Empezar")
 	await _frames(10)

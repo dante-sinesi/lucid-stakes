@@ -45,14 +45,6 @@ static func slot_for_option(i: int) -> int:
 	return [Slot.SOUTH, Slot.WEST, Slot.NORTH][clampi(i, 0, 2)]
 
 
-## La letra o el nombre del botón (para textos).
-static func name_of(slot: int) -> String:
-	var st := style()
-	if st == Style.PLAYSTATION:
-		return ["Cruz", "Cuadrado", "Triángulo", "Círculo"][slot]
-	return LETTERS[st][slot]
-
-
 ## Dibuja el ícono del botón centrado en `center`, de radio `r`.
 static func draw(ci: CanvasItem, center: Vector2, r: float, slot: int, dim := false) -> void:
 	var st := style()

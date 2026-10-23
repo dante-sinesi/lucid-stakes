@@ -23,4 +23,10 @@ Write-Host "== demo"
 & $godot --headless --path $root --export-release "Windows Demo" (Join-Path $out "demo\BalatroXCatherineDemo.exe") 2>&1 | Out-Null
 if (-not (Test-Path (Join-Path $out "demo\BalatroXCatherineDemo.exe"))) { throw "No se pudo exportar la demo" }
 
+# El solucionador nativo (lo usa Sin piedad para medir los movimientos en falso) va al lado del juego, en tools\: sin él ese escenario no castiga nada.
+if (Test-Path (Join-Path $root "tools\salas.exe")) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $out "tools") | Out-Null
+    Copy-Item (Join-Path $root "tools\salas.exe") (Join-Path $out "tools\salas.exe") -Force
+} else { Write-Warning "Falta tools\salas.exe (native\construir.bat): el juego exportado no podrá medir los movimientos en falso de Sin piedad" }
+
 Write-Host "Listo. Exportado en $out"

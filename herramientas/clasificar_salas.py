@@ -1,4 +1,4 @@
-"""Clasifica las salas nuevas por nivel de dificultad y tipo, y dice qué falta para llegar a la composición objetivo.
+"""Clasifica las salas por nivel de dificultad y tipo, y dice qué falta para llegar a la composición objetivo.
 
 Niveles por complejidad (bits): fácil < 60, media 60-110, difícil 110-180, pesadilla > 180.
 Composición objetivo (por defecto): 40% fácil, 30% media, 20% difícil, 10% pesadilla; y 40% 3x3, 35% 5x3, 25% 8x3.

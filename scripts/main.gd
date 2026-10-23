@@ -1,7 +1,7 @@
 extends Node3D
 ## La escena principal: el menú, el run (etapas, torre, casino, peaje), los menús de pausa y de fin, el tutorial y el guardado. La torre se juega en torre/torre_juego.gd.
 
-const TorreJuego := preload("res://torre/torre_juego.gd")   # la torre nueva (salas apiladas, sin núcleo): ver docs/reglas_torre.md
+const TorreJuego := preload("res://torre/torre_juego.gd")   # la torre (salas apiladas, sin núcleo): ver docs/reglas_torre.md
 const RunState := preload("res://scripts/datos/run_state.gd")
 const Controls := preload("res://scripts/entrada/controls.gd")
 const Graphics := preload("res://scripts/ui/graphics.gd")
@@ -62,7 +62,7 @@ const FINAL_STAGE := Stages.FINAL   # etapas del juego: al pasar la última se t
 ## Fondo y bloques se aclaran de una etapa a la siguiente (no dentro de una misma etapa).
 const BG_DARK := Color(0.05, 0.04, 0.09)
 const BG_LIGHT := Color(0.80, 0.84, 0.95)
-const AMBIENT_TOWER := 0.7        # luz ambiente de las torres (el aclarado por etapa va en el tinte de los bloques)
+const AMBIENT_TOWER := 0.7        # luz ambiente de las torres
 const AMBIENT_CASINO_EARLY := 1.0  # luz ambiente del casino en la primera etapa (una taberna en penumbra, pero que se lee)
 const AMBIENT_CASINO_LATE := 1.5   # luz ambiente del casino en la última etapa (el salón; el casino y el gran casino usan la luz cálida de abajo)
 const AMBIENT_COLOR_TOWER := Color(0.55, 0.55, 0.7)
@@ -79,7 +79,7 @@ var cam: Camera3D
 var _goal_mat: StandardMaterial3D
 const GOAL_TOP_LIFT := 0.52   # a qué altura (desde el centro del cubo de salida) va la losa de ondas de su cara de arriba
 var seed_value := 1
-var stage_number := 1      # etapa (1..15) que se genera: define dificultad, ritmo de caída y mecánicas
+var stage_number := 1      # etapa (1..15) que se genera: define la dificultad, el largo de la torre y las mecánicas
 var hud: Control              # texto de depuración (semilla, contadores...): sólo se ve con F2 en las compilaciones de desarrollo
 var debug_hud := false
 var stage_label: Control     # "Etapa 5/27" y el piso en que estás
@@ -92,8 +92,8 @@ var gain_label: Control
 var depth_mode := 1
 var run := RunState.new()   # estado del run: claridad, boosts, consumibles
 var casino                  # escena del casino mientras se está en él
-var torre = null            # la escena de la torre nueva mientras se juega una (en lugar de `logic` y los bloques de la torre vieja)
-var _movs_vistos := 0       # (torre nueva) movimientos de la sala que ya se sumaron al run
+var torre = null            # la escena de la torre mientras se juega una
+var _movs_vistos := 0       # movimientos de la sala que ya se sumaron al run
 var hud_layer: CanvasLayer
 var quick_portal := false   # pruebas: pasar al casino sin esperar
 var banked := false         # la claridad de esta torre ya se sumó al run
@@ -365,13 +365,13 @@ func _tower_music(stage: int) -> String:
 	return "pruebas" if not training and run != null and not run.trial_at(stage).is_empty() else "torre"
 
 
-## Arma y empieza la torre nueva de la etapa (o la vuelve a empezar con la misma semilla).
+## Arma y empieza la torre de la etapa (o la vuelve a empezar con la misma semilla).
 func _torre_arrancar(s: int, con_dados := false) -> void:
 	if lost_screen != null:
 		lost_screen.hide_screen()
 	_torre_cerrar(false)
 	seed_value = s
-	# Los dados del tabernero de la pantalla de carga (son parte del juego): la torre nueva se arma al instante, pero al empezar cada torre se ofrecen igual, con "Empezar" ya habilitado.
+	# Los dados del tabernero de la pantalla de carga (son parte del juego): la torre se arma al instante, pero al empezar cada torre se ofrecen igual, con "Empezar" ya habilitado.
 	if con_dados and dice_always and not _loading_dice_done and not in_menu:
 		var mi_epoca := epoch
 		generating = true   # (así un guardado en este momento es el de "cargando la torre": no se repiten el casino ni los dados)
@@ -456,7 +456,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	_descubrir_bloques()
 
 
-## El cubo-portal del final de la torre nueva (el mismo del juego de siempre: luminoso, con bordes dorados y las ondas arriba), siempre encendido (Farolín cobra en el casino).
+## El cubo-portal del final de la torre (el mismo del juego de siempre: luminoso, con bordes dorados y las ondas arriba), siempre encendido (Farolín cobra en el casino).
 func _cubo_portal() -> Node3D:
 	goal_mat = ShaderMaterial.new()
 	goal_mat.shader = PORTAL_SHADER
@@ -468,7 +468,7 @@ func _cubo_portal() -> Node3D:
 	return _make_goal_cube()
 
 
-## Saca la escena de la torre nueva (y, si se pide, devuelve la cámara del juego).
+## Saca la escena de la torre (y, si se pide, devuelve la cámara del juego).
 func _torre_cerrar(devolver_camara: bool) -> void:
 	if torre != null:
 		torre.queue_free()
@@ -503,7 +503,7 @@ func _torre_falsos(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: b
 			_flash(Loc.f("¡Sin salida! Movimiento en falso %d de %d", [cuenta, permitidos]) if sin_salida else Loc.f("¡Movimiento en falso! %d de %d", [cuenta, permitidos]))
 
 
-## La telemetría de la torre nueva (local, nada se envía): un evento "sala" por cada sala que termina (superada o perdida) y uno "torre" por intento.
+## La telemetría de la torre (local, nada se envía): un evento "sala" por cada sala que termina (superada o perdida) y uno "torre" por intento.
 func _log_sala() -> void:
 	if training or tutorial_index >= 0 or torre == null or torre.t == null or torre.t.ultima_sala.is_empty():
 		return
@@ -547,7 +547,7 @@ func _descubrir_bloques() -> void:
 	dialogue.show_lines(lines, Story.SPEAKER, true, true)   # (el cuadro es bloqueante: el jugador no se mueve hasta que termina)
 
 
-## Llegó al portal de la torre nueva: la claridad pasa al run y sigue el casino (o el final).
+## Llegó al portal de la torre: la claridad pasa al run y sigue el casino (o el final).
 func _torre_ganada() -> void:
 	_log_sala()
 	_log_torre("ganada", "")
@@ -585,7 +585,7 @@ func _torre_ganada() -> void:
 	enter_casino()
 
 
-## Se perdió una vida en la torre nueva (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
+## Se perdió una vida en la torre (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
 func _torre_murio(motivo: String) -> void:
 	_log_sala()
 	_log_torre("muerta", motivo)
@@ -681,19 +681,13 @@ func restart() -> void:
 	_torre_arrancar(seed_value)
 
 
-var _continuar_sala := 0    # (al continuar una partida guardada en la torre nueva: el checkpoint donde se quedó)
+var _continuar_sala := 0    # (al continuar una partida guardada en la torre: el checkpoint donde se quedó)
 var _continuar_banco := 0
 
 
 ## 0 en la primera etapa y 1 en la última: cuánto se aclararon el fondo y los bloques.
 func stage_tone() -> float:
 	return clampf(float(stage_number - 1) / float(FINAL_STAGE - 1), 0.0, 1.0)
-
-
-## Los bloques corruptos y los especiales traen colores oscuros en el modelo: se los aclara con la etapa.
-func _stage_tint() -> Color:
-	var k := lerpf(1.0, 1.9, stage_tone())
-	return Color(k, k, k)
 
 
 func _apply_stage_look() -> void:
@@ -801,7 +795,7 @@ func _register_globals() -> void:
 	if _globals_registered:
 		return
 	_globals_registered = true
-	Engine.set_meta("globales_de_bloques", true)   # (room_view.gd, que usa la torre nueva, no los registra otra vez)
+	Engine.set_meta("globales_de_bloques", true)   # (room_view.gd, que usa la torre, no los registra otra vez)
 	for spec in [["depth_focus", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0],
 			["depth_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, DEPTH_STRENGTH],
 			["xray_radius", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0],
@@ -858,7 +852,7 @@ func _flash(msg: String) -> void:
 	_toast_tween.tween_property(toast, "modulate:a", 0.0, 1.4)
 
 
-## El HUD con la torre nueva: la etapa, la claridad del run más la de la torre, lo que cobrará Farolín, las vidas y las barras de boosts y consumibles.
+## El HUD con la torre: la etapa, la claridad del run más la de la torre, lo que cobrará Farolín, las vidas y las barras de boosts y consumibles.
 func _refresh_torre() -> void:
 	stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, Demo.shown_final(FINAL_STAGE), " *" if not trial.is_empty() else ""])
 	stage_label.visible = false   # (la etapa y el peaje se ven en el menú de pausa; el HUD muestra los movimientos de la sala)
@@ -1027,7 +1021,6 @@ func _check_keys_complete() -> void:
 		return
 	if Tutorial.lessons()[tutorial_index].get("complete", "") == "keys" and key_hint.all_done():
 		_torre_ganada()
-
 
 
 ## Aviso de los personajes que se acaban de desbloquear.
@@ -1644,9 +1637,6 @@ func _tutorial_next() -> void:
 
 # --- boosts y consumibles en la torre -------------------------------------------------------------------------------
 
-func _item_name(id: String) -> String:
-	return Items.get_item(id).get("name", id)
-
 
 ## Las barras de ítems se atan al run (cada partida nueva trae un RunState nuevo).
 func _bind_bars() -> void:
@@ -1691,8 +1681,6 @@ func _on_dev_command(line: String) -> void:
 	var out := DevCommands.execute(line, self)
 	if out != "" and dev_console != null:
 		dev_console.print_line(out)
-
-
 
 
 ## Comando tower: una partida nueva en la etapa y el escenario que se pida (sin pagar la entrada), con la semilla opcional. Funciona desde el menú principal y desde el juego.
@@ -1773,8 +1761,6 @@ func dev_goto_casino(stage: int) -> String:
 	_torre_cerrar(true)
 	enter_casino(true)   # (true: no se suma de nuevo la claridad de la torre)
 	return "Casino de la etapa %d" % stage
-
-
 
 
 ## Comando set_luz: deja la Luz del perfil en `n` (no baja de 0) y actualiza las pantallas que la muestran.

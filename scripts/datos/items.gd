@@ -125,11 +125,6 @@ const ALL: Array[Dictionary] = [
 const CASINO_USABLE: Array[String] = ["vida_extra", "soborno", "doble_o_nada", "ficha_gratis", "rayos_x"]
 
 
-## ¿Se usa solo (no se aprieta su tecla)?
-static func is_passive(id: String) -> bool:
-	return bool(get_item(id).get("passive", false))
-
-
 static func get_item(id: String) -> Dictionary:
 	for it in ALL:
 		if it.id == id:

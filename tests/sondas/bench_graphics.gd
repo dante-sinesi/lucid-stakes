@@ -9,7 +9,7 @@ func _init() -> void:
 	main.quit_game_override = true
 	root.add_child(main)
 	for i in 20: await process_frame
-	main.dev_lab("")
+	main.dev_tower(1)
 	for i in 60: await process_frame
 	Settings.set_value("vsync", false)
 	for p in ["alta", "media", "baja", "minimo"]:

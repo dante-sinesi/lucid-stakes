@@ -1,6 +1,6 @@
 extends RefCounted
 ## Dibuja una sala de la torre sin núcleo (un estado de torre/motor.gd) con los modelos de bloques del juego y pone la cámara DETRÁS del jugador.
-## Lo usan el Estudio de salas nuevas y las capturas. Todo es 3D bajo un nodo padre; la cámara la maneja quien llama (o `camara_detras`).
+## Lo usan el Estudio de salas y las capturas. Todo es 3D bajo un nodo padre; la cámara la maneja quien llama (o `camara_detras`).
 
 const BlockModels := preload("res://scripts/personajes/block_models.gd")
 const Escena := preload("res://torre/escena.gd")

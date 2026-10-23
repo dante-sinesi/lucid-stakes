@@ -1,5 +1,5 @@
 extends SceneTree
-## Revisa una biblioteca de salas nuevas: cada sala tiene sus bloques coherentes (un solo fijo, dos checkpoint, todo anclado al empezar, el jugador parado
+## Revisa una biblioteca de salas: cada sala tiene sus bloques coherentes (un solo fijo, dos checkpoint, todo anclado al empezar, el jugador parado
 ## sobre el de entrada) y su camino, jugado en el motor de GDScript, llega a la salida en los pasos que dice. Con EXACTO=1 también comprueba con el
 ## solucionador nativo que no haya un camino más corto (sólo salas de 9 pisos o menos).
 ## Uso: GAME_SANDBOX=1 SALAS_ARCHIVO=biblioteca.jsonl [EXACTO=1] godot --headless --path . -s tests/unitarios/test_paquete_salas.gd

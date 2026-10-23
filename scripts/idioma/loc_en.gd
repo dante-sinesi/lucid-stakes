@@ -20,7 +20,6 @@ const MENUS := {
 	# --- pausa ---
 	"Pausa": "Paused",
 	"Reintentar la torre": "Retry the tower",
-	"Reintentar la torre (−%d)": "Retry the tower (−%d)",
 	"Reintentar (no en esta prueba)": "Retry (not in this trial)",
 	"Volver al menú principal": "Back to main menu",
 	"Abandonar partida": "Abandon game",

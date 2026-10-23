@@ -1,5 +1,5 @@
 extends SceneTree
-## Captura de la pantalla de derrota de la torre nueva. Uso: ... -s tests/capturas/shot_derrota.gd -- PREFIJO
+## Captura de la pantalla de derrota de la torre. Uso: ... -s tests/capturas/shot_derrota.gd -- PREFIJO
 func _init() -> void:
 	var pref: String = OS.get_cmdline_user_args()[0]
 	var main = load("res://scenes/main.tscn").instantiate()

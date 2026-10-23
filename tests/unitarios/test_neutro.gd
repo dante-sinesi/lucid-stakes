@@ -21,12 +21,13 @@ func _init() -> void:
 	var rx_word := RegEx.create_from_string("(?<![A-Za-zñÑáéíóúüÁÉÍÓÚ])[A-Za-zñÑáéíóúüÁÉÍÓÚ]+(?:ás|és|ís|á|é|í)(?![A-Za-zñÑáéíóúüÁÉÍÓÚ])|(?<![A-Za-zñÑáéíóúüÁÉÍÓÚ])(?:vos|Vos)(?![A-Za-zñÑáéíóúüÁÉÍÓÚ])")
 	var files := 0
 	var found := {}
-	for f in DirAccess.get_files_at("res://scripts"):
-		if not f.ends_with(".gd"):
-			continue
+	var rutas: Array[String] = []
+	_listar("res://scripts", rutas)
+	_listar("res://torre", rutas)
+	for f in rutas:
 		files += 1
 		var n := 0
-		for line in FileAccess.get_file_as_string("res://scripts/" + f).split("\n"):
+		for line in FileAccess.get_file_as_string(f).split("\n"):
 			n += 1
 			for lit in rx_lit.search_all(line):
 				for w in rx_clitic.search_all(lit.get_string()):
@@ -46,6 +47,15 @@ func _init() -> void:
 	check(found.is_empty(), "no queda voseo en los textos (%d palabras)" % found.size())
 	print("tests del español neutro terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
+
+
+## Los .gd de una carpeta y de todas sus subcarpetas.
+func _listar(dir: String, out: Array[String]) -> void:
+	for f in DirAccess.get_files_at(dir):
+		if f.ends_with(".gd"):
+			out.append(dir + "/" + f)
+	for d in DirAccess.get_directories_at(dir):
+		_listar(dir + "/" + d, out)
 
 
 ## ¿Es un imperativo de vos (mirá, elegí, volvé, tené...)? Las formas en -á/-é/-í de otros usos (qué, sé, está, mí, así) ya están en ALLOWED; estas son las que sí cuentan.

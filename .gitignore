@@ -12,19 +12,9 @@ tests/_*.gd
 tests/_*.jsonl
 
 build/
-docs/.obsidian/
 
 # Salas generadas (las fuentes del paquete de salas y lo que sale de los generadores no se versionan: viaja data/salas_torre.jsonl)
 bibliotecas/
 capturas/
-biblioteca/
-biblioteca_*/
-biblioteca_*.jsonl
-audio_prueba/
 
-# Copia de la biblioteca anterior que deja el generador al sumar salas
-data/*.rooms.bak
-
-# Rondas del generador
-data/salas/
 tests/resultados.txt

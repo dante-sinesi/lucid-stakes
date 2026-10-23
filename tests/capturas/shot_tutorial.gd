@@ -1,5 +1,5 @@
 extends SceneTree
-## Captura las lecciones del tutorial con el motor de la torre. Uso: GAME_SANDBOX=1 godot --path . -s tests/capturas/shot_tutorial_nuevo.gd -- PREFIJO
+## Captura las lecciones del tutorial con el motor de la torre. Uso: GAME_SANDBOX=1 godot --path . -s tests/capturas/shot_tutorial.gd -- PREFIJO
 const Profile := preload("res://scripts/datos/profile.gd")
 func _init() -> void:
 	var pref: String = OS.get_cmdline_user_args()[0]

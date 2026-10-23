@@ -49,11 +49,6 @@ func _layout() -> void:
 	desc_label.y_offset = size.y - 70.0
 
 
-## ¿Se ve ahora? (visible y no del todo desvanecido)
-func is_shown() -> bool:
-	return visible and modulate.a > 0.01
-
-
 ## Empieza la torre con una prueba: aparece, se queda y se desvanece lento.
 func play(trial_name: String, trial_desc: String) -> void:
 	title_label.text = Loc.t("Prueba")

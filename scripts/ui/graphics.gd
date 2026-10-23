@@ -24,10 +24,6 @@ const CHOICES := {
 	"aa": [0, 2, 4],
 	"fps_cap": [30, 60, 144, 0],
 }
-const CHOICE_NAMES := {
-	"off": "Sin sombras", "hard": "Sombras duras", "soft": "Sombras suaves",
-	"none": "Sin partículas", "few": "Pocas", "all": "Todas",
-}
 
 static var applies := 0   # las pruebas cuentan cuántas veces se puso en marcha
 

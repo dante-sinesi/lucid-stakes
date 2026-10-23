@@ -196,10 +196,6 @@ func pay_voluntary_retry() -> bool:
 	return true
 
 
-func can_voluntary_retry() -> bool:
-	return not permadeath() and lives > 0
-
-
 ## Anota un reintento de la torre. Después de morir, el Tótem (si lo tenés) lo hace gratis y sin gastar una vida; si no, cuesta una vida.
 func note_retry(dead := false) -> void:
 	retries += 1

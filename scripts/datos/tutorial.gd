@@ -30,7 +30,7 @@ static func count() -> int:
 	return lessons().size()
 
 
-## La sala de la lección i, en el formato de las salas de la torre (null en la torre de verdad, que arma main.gd con el generador de siempre).
+## La sala de la lección i, en el formato de las salas de la torre (null en la última lección, la torre de verdad, que se arma con la biblioteca de salas).
 static func sala(i: int):
 	var l: Dictionary = lessons()[i]
 	if l.has("generated"):

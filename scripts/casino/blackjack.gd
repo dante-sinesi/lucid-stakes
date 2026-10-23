@@ -13,7 +13,6 @@ const Rules := preload("res://scripts/casino/casino_rules.gd")
 enum Phase { IDLE, PLAYER, DONE }
 enum Outcome { NONE, BLACKJACK, WIN, PUSH, LOSE, BUST }
 
-const RANK_NAMES: Array[String] = ["", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 const SUITS := 4
 
 var run

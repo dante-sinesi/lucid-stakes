@@ -40,8 +40,6 @@ signal roulette_opened
 signal changed   ## el run cambió (se jugó una tirada): hay que guardar
 signal story_message(text: String)   ## en el modo historia (tutorial): algo que el tabernero tiene para decir
 signal toll_talk   ## se llegó a la puerta de salida (o se habló con Farolín): el juego muestra su diálogo con las salidas (toll_dialog)
-signal redo_tower   ## se eligió rehacer la torre: se pierde una vida y se vuelve a subir la misma
-signal gave_up   ## se eligió abandonar (sin vidas y sin pagar): se termina el run
 signal keeper_talk(lines: Array)   ## se habló con el tabernero: lo que dice (el juego lo muestra en el cuadro de diálogo)
 
 const STEP_TIME := 0.14

@@ -14,7 +14,6 @@ const Loc := preload("res://scripts/idioma/loc.gd")
 const ModelLib := preload("res://scripts/personajes/model_lib.gd")
 
 enum State { CORRUPT, PURE, DEFUSED }
-const CORE := 9  # tipo extra para el bloque fijo del centro (los demás son los de TowerLogic.Kind)
 const N := 5
 const VARIANTS := 4   # diseños automáticos por tipo de bloque (el 0 es el de siempre)
 const VOXEL := 0.96 / N  # el cubo del juego mide 0.96
@@ -196,11 +195,8 @@ static func _full_color(kind: int, x: int, y: int, z: int, defused: bool, varian
 				return null
 			var s := 0.3 + n + (0.0 if edges < 2 else -0.08) - (0.06 if vr == 3 else 0.0)
 			return Color(s, s, s + 0.08)
-		_:  # core: piedra gris con esquinas rotas
-			if edges == 3 and _h(x, y, z, 7 + variant) < 0.6:
-				return null
-			var v := 0.36 + (_h(x, y, z, 3 + variant * 37) - 0.4) * 0.3 - (0.06 if edges == 2 else 0.0)
-			return Color(v, v, v + 0.06)
+		_:
+			return null
 
 
 ## Los minibloques de un modelo: {Vector3i: Color}.

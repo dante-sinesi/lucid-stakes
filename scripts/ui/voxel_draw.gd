@@ -12,7 +12,6 @@ const PLATE := Color(0.13, 0.07, 0.22)
 const PLATE_HOVER := Color(0.22, 0.12, 0.34)
 const CORRUPT_A := Color(0.38, 0.10, 0.54)
 const CORRUPT_B := Color(0.64, 0.22, 0.80)
-const VOID := Color(0.04, 0.02, 0.07)
 
 ## Corrupción por defecto de la interfaz (se puede cambiar según la etapa).
 static var default_corruption := 0.45

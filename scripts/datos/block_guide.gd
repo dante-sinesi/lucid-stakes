@@ -37,31 +37,12 @@ const ALL: Array[Dictionary] = [
 ]
 
 
-static func get_block(id: String) -> Dictionary:
-	for b in ALL:
-		if b.id == id:
-			return b
-	return {}
-
-
 ## El bloque de la guía de un tipo de bloque del juego ({} si no hay).
 static func for_kind(kind: int) -> Dictionary:
 	for b in ALL:
 		if b.kind == kind:
 			return b
 	return {}
-
-
-static func discovered(id: String) -> bool:
-	return Profile.has_block(id)
-
-
-static func count_discovered() -> int:
-	var n := 0
-	for b in ALL:
-		if Profile.has_block(b.id):
-			n += 1
-	return n
 
 
 ## Los bloques todavía no descubiertos entre las letras de bloque de una sala (las del motor: n, h, i, c, t, s, k, b7...): [{guía}], uno por tipo y en el orden de la guía.

@@ -1,5 +1,5 @@
 extends SceneTree
-## El filtro por cubos especiales del Estudio de salas nuevas. Uso: GAME_SANDBOX=1 SALAS_ARCHIVO=bibliotecas/paquete_salas.jsonl godot --headless --path . -s tests/unitarios/test_filtro_estudio.gd
+## El filtro por cubos especiales del Estudio de salas. Uso: GAME_SANDBOX=1 SALAS_ARCHIVO=bibliotecas/paquete_salas.jsonl godot --headless --path . -s tests/unitarios/test_filtro_estudio.gd
 var fallos := 0
 func _ok(c: bool, m: String) -> void:
 	print(("ok  " if c else "FALLA ") + m)

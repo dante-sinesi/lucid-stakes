@@ -1,6 +1,6 @@
 extends RefCounted
 ## Escenarios: como los mazos de Balatro, pero cada vez que querés jugar uno hay que pagar su entrada con Luz. La Pesadilla (el juego
-## de siempre) es gratis; el resto cambia las reglas del run: qué bloques abundan, el ritmo, el casino o la economía, qué pruebas
+## de siempre) es gratis; el resto cambia las reglas del run: qué bloques abundan, el casino o la economía, qué pruebas
 ## salen (y con eso, qué habilidades persistentes se pueden ganar) y cuánta Luz paga (más cuanto más difícil).
 ## Un escenario es {id, name, desc, entry (Luz), luz_mult, pool (pruebas que pueden salir), abilities (las habilidades persistentes que se pueden ganar al escapar en este escenario),
 ## casino_tier (-1 = el de la etapa), price_mult (precio de la ficha), lives, permadeath, no_totem, no_extra_life, mistakes, no_undo}.
@@ -35,7 +35,7 @@ const ALL: Array[Dictionary] = [
 		"abilities": ["mecha_larga"],
 		"pool": ["sin_ayudas"]},
 	{"id": "relojeria", "name": "Relojería", "entry": 25, "luz_mult": 1.8,
-		"desc": "La fila de abajo siempre cae rápido, pero la ficha de la ruleta es más barata.",
+		"desc": "Cada sala da menos movimientos, pero la ficha de la ruleta es más barata.",
 		"abilities": ["pies_ligeros"],
 		"pool": ["todo_o_nada", "sin_racha"],
 		"price_mult": 0.75},

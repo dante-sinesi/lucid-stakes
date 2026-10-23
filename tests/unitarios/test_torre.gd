@@ -1,5 +1,5 @@
 extends SceneTree
-## La torre de salas nuevas (torre/torre.gd): armado encadenado, partida completa con el camino de cada sala, temporizador, muertes y fin.
+## La torre (torre/torre.gd): armado encadenado, partida completa con el camino de cada sala, temporizador, muertes y fin.
 ## Uso: GAME_SANDBOX=1 [SALAS_PAQUETE=archivo.jsonl] godot --headless --path . -s tests/unitarios/test_torre.gd
 const Torre := preload("res://torre/torre.gd")
 

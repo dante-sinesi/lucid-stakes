@@ -1,4 +1,4 @@
-# Un trabajador del generador de salas nuevas: recorre una lista de (tipo, altura) y para cada una arma la configuración con fórmulas y corre tools\salas.exe
+# Un trabajador del generador de salas: recorre una lista de (tipo, altura) y para cada una arma la configuración con fórmulas y corre tools\salas.exe
 # hasta la hora de fin. Lo lanza herramientas\generar_salas.ps1 (no hace falta correrlo a mano).
 param([string]$Prefijo, [int]$Indice, [string]$Fin, [string]$Tipos, [int]$NivelFijo = 0, [int]$HMax = 99, [switch]$PorDemanda, [string]$Exe = 'tools\salas.exe', [int]$Giro = 0)
 Set-Location (Join-Path $PSScriptRoot "..")

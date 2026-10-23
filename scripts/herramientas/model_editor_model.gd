@@ -5,7 +5,6 @@ extends RefCounted
 const ModelLib := preload("res://scripts/personajes/model_lib.gd")
 const BlockModels := preload("res://scripts/personajes/block_models.gd")
 
-const KINDS := ["bloque", "cosmetico", "personaje"]
 const SLOTS := ["gorro", "prenda"]
 const RARITIES := ["comun", "raro", "epico"]
 const REQUIRED_PARTS := ["cuerpo", "pata_i", "pata_d", "brazo_i", "brazo_d"]
@@ -176,10 +175,6 @@ func _push_undo() -> void:
 		_undo.pop_front()
 	_redo.clear()
 	dirty = true
-
-
-func can_undo() -> bool:
-	return not _undo.is_empty()
 
 
 func can_redo() -> bool:

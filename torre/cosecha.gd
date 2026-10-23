@@ -1,5 +1,5 @@
 extends RefCounted
-## La claridad de la torre nueva: las mismas reglas de la torre vieja (scripts/tower_logic.gd: CLARITY, racha, multiplicador, boosts de cosecha), sobre el motor nuevo.
+## La claridad de la torre: valor por bloque, racha, multiplicador y boosts de cosecha.
 ## Pisar un bloque (o colgarse de él) lo purifica y da su claridad por la racha; una acción que no purifica nada nuevo corta la racha.
 ## La claridad que se junta en una sala se asegura al llegar a su checkpoint: si se muere, se pierde la de ese intento (y la racha) y la sala empieza de nuevo.
 
@@ -10,7 +10,7 @@ const STREAK_STEP := 0.5
 const STREAK_MAX_MULT := 4.0
 const CLIMB_BONUS := 2   # Escalador: claridad por cada piso nuevo
 const PUSH_BONUS := 1    # Empuje rentable: claridad por cada bloque que se empuja o tira
-## Claridad que da purificar cada tipo de bloque (la letra del bloque en el motor nuevo).
+## Claridad que da purificar cada tipo de bloque (la letra del bloque en el motor).
 const CLARIDAD := {"n": 1, "i": 2, "d": 5, "k": 3, "c": 2, "h": 2, "t": 2, "s": 3, "p": 1, "f": 1}
 
 var perks := {}              # boosts del run: id -> true
@@ -106,7 +106,7 @@ func despues_de_accion(nuevos: Array, agarro: bool, piso: int) -> int:
 	return ganado
 
 
-## Un consumible que purifica de golpe (Imán de luz, Lluvia de luz): da la claridad con la racha (no la corta si no purifica nada, como en la torre vieja).
+## Un consumible que purifica de golpe (Imán de luz, Lluvia de luz): da la claridad con la racha (no la corta si no purifica nada).
 func extra(letras: Array) -> int:
 	if letras.is_empty():
 		return 0

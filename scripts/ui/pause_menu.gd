@@ -19,7 +19,7 @@ var column: VBoxContainer
 var center: CenterContainer
 var options: Control
 var hints
-var info: VBoxContainer   # a la izquierda: la etapa y el peaje (la torre nueva no los muestra en el HUD)
+var info: VBoxContainer   # a la izquierda: la etapa y el peaje (la torre no los muestra en el HUD)
 
 
 func _init() -> void:

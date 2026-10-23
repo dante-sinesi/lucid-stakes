@@ -1,5 +1,5 @@
 extends SceneTree
-## Prueba del Estudio de salas nuevas sin ventana: abre una biblioteca, crea una sala, la resuelve con el solucionador nativo, edita y guarda.
+## Prueba del Estudio de salas sin ventana: abre una biblioteca, crea una sala, la resuelve con el solucionador nativo, edita y guarda.
 ## GAME_SANDBOX=1 SALAS_ARCHIVO=ruta.jsonl godot --headless --path . -s tests/unitarios/test_estudio.gd
 
 

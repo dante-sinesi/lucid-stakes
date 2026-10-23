@@ -209,21 +209,6 @@ func total_width() -> float:
 	return maxf(w - GAP, 0.0)
 
 
-## Dónde está cada tecla de la frase (rectángulos en el espacio del control), por id (con mando, las cuatro direcciones de un stick comparten el mismo rectángulo).
-func key_rects() -> Dictionary:
-	var rects := {}
-	var x := (size.x - total_width()) * 0.5
-	for it in items():
-		var w := _item_width(it)
-		if it.has("stick"):
-			for id in it.ids:
-				rects[id] = Rect2(x, 18.0, w, KEY_H)
-		elif it.has("key"):
-			rects[it.key] = Rect2(x, 18.0, w, KEY_H)
-		x += w + GAP
-	return rects
-
-
 func _draw() -> void:
 	if not visible or pieces.is_empty():
 		return

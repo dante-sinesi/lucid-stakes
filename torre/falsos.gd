@@ -1,5 +1,5 @@
 extends RefCounted
-## Movimientos en falso en la torre nueva (el escenario "Sin piedad"): en cada sala, un movimiento es "en falso" si después de hacerlo faltan MÁS pasos para salir de la sala
+## Movimientos en falso en la torre (el escenario "Sin piedad"): en cada sala, un movimiento es "en falso" si después de hacerlo faltan MÁS pasos para salir de la sala
 ## que antes de hacerlo (según el solucionador nativo exacto, desde el estado de la sala). Explorar un callejón, empujar un bloque que no ayuda o dejar la sala sin salida cuentan;
 ## volver sobre los pasos no se castiga dos veces. Cada sala permite `permitidos` en falso; el siguiente se cuenta como `agotado` (la sala se pierde como si se hubiera caído).
 ## El solucionador corre en un hilo aparte (un trabajo por movimiento, en orden); el resultado vuelve al juego unos instantes después. En las pruebas, `inline` lo resuelve en el momento.
@@ -77,6 +77,8 @@ func _enviar(motor, contar: bool) -> void:
 
 ## Cuántos pasos faltan para salir de la sala desde ese estado: -1 si no se pudo medir (se acabó el tope), SIN_SALIDA si no hay salida.
 func _distancia(motor) -> int:
+	if not Nat.disponible():   # (sin el ejecutable nativo no se puede medir: nunca se castiga)
+		return -1
 	var r: Dictionary = Nat.resolver(motor, TOPE)
 	if bool(r.ok):
 		return int(r.moves)

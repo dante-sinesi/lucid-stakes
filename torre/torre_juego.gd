@@ -1,5 +1,5 @@
 extends Node3D
-## Prototipo jugable de la torre de salas sin núcleo (aislado del juego actual). Arma una torre de salas del paquete (torre/torre.gd) y se juega
+## Prototipo jugable de la torre (aislado del juego actual). Arma una torre de salas del paquete (torre/torre.gd) y se juega
 ## desde atrás del personaje.
 ## Se ve como en el juego: cámara isométrica ortogonal que sigue al personaje (por defecto el gatito) y se puede girar.
 ## Teclas: WASD mueve (W es la dirección que más sube en la pantalla), Shift + dirección agarra (empuja o tira), Espacio + dirección se cuelga.
@@ -455,7 +455,7 @@ func _process(delta: float) -> void:
 				camara_usada.emit(id)
 
 
-## Con la mitad de los movimientos de la sala gastados o más, los bloques de la sala tiemblan (cada uno a su modo, como la fila de abajo de la torre vieja): casi nada al principio y cada vez más fuerte hacia el límite.
+## Con la mitad de los movimientos de la sala gastados o más, los bloques de la sala tiemblan (cada uno a su modo): casi nada al principio y cada vez más fuerte hacia el límite.
 func _temblar() -> void:
 	var amp := 0.0
 	if en_juego and not t.muerta and not t.terminada and not _cayendo:

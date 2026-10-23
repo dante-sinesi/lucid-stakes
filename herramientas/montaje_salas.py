@@ -1,4 +1,4 @@
-"""Arma una hoja con los cuadros de capturas de una sala nueva (cuadros de tests/shot_salas_nuevas.gd).
+"""Arma una hoja con los cuadros de capturas de una sala (cuadros de tests/capturas/shot_estudio.gd).
 La cámara es fija, así que se recorta a la caja que contiene la sala en TODOS los cuadros (la misma para todos): las salas altas, que son angostas, se
 muestran en columnas verticales y las bajas en una grilla de 3 columnas, siempre lo más grandes que entran.
 Uso: python herramientas/montaje_salas.py SALIDA.png PREFIJO INDICE_SALA CUADROS "titulo" """

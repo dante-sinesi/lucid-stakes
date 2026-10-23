@@ -1,5 +1,5 @@
 extends SceneTree
-## Capturas del Estudio de salas nuevas, desde detrás del jugador. Uso:
+## Capturas del Estudio de salas, desde detrás del jugador. Uso:
 ##   GAME_SANDBOX=1 SALAS_ARCHIVO=archivo.jsonl godot --path . --rendering-driver opengl3 --resolution 1600x900 -s tests/capturas/shot_estudio.gd -- PREFIJO [SALA=0] [CUADROS=5]
 ## Escribe PREFIJO_<sala>_<cuadro>_vista.png (la vista 3D sola, desde atrás del jugador) y PREFIJO_<sala>_ui.png (el estudio entero en el cuadro 0).
 

@@ -1,4 +1,4 @@
-// Motor y solucionador de la torre de salas sin núcleo en C++ (port de torre/motor.gd + reglas.gd + solucionador.gd).
+// Motor y solucionador de la torre en C++ (port de torre/motor.gd + reglas.gd + solucionador.gd).
 // Uso: salas.exe < entrada.txt   (formato abajo)  ->  salida por stdout.
 //
 // Entrada (texto, una cosa por línea):
@@ -11,7 +11,7 @@
 //   RESULT ok MOVES EXPANDIDOS NODOS AGARRES DISTINTOS
 //   PATH dx dz modo ...     (modo 0 mover, 1 agarrar, 2 colgar)
 //   o  RESULT fail EXPANDIDOS NODOS  /  RESULT budget ...
-// Compilar: g++ -O2 -std=c++17 -static -o ../tools/cilindro.exe cilindro.cpp
+// Compilar: native\construir.bat (g++ -O3 -std=c++17 -static -o tools/salas.exe native/salas.cpp)
 #include <array>
 #include <cstdint>
 #include <cstdio>

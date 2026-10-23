@@ -7,7 +7,7 @@ const RunState := preload("res://scripts/datos/run_state.gd")
 const Roulette := preload("res://scripts/casino/roulette.gd")
 const Showcase := preload("res://scripts/casino/showcase.gd")
 const Items := preload("res://scripts/datos/items.gd")
-const Torre := preload("res://torre/torre.gd")   # la torre nueva (salas apiladas): el bot la juega siguiendo el camino mínimo de cada sala
+const Torre := preload("res://torre/torre.gd")   # la torre (salas apiladas): el bot la juega siguiendo el camino mínimo de cada sala
 
 const FINAL_STAGE := 15
 ## Los premios que busca el bot, de más a menos querido (la política de las partidas "con build").

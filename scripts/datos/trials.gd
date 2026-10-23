@@ -20,9 +20,6 @@ const CATALOG := {
 	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true},
 }
 
-## Sorteo por defecto (el de La Pesadilla).
-const DEFAULT_POOL: Array[String] = ["sin_ayudas", "todo_o_nada", "sin_racha"]
-
 
 static func stages() -> Array[int]:
 	var out: Array[int] = []
@@ -31,10 +28,6 @@ static func stages() -> Array[int]:
 		out.append(s)
 		s += EVERY
 	return out
-
-
-static func is_trial_stage(stage: int) -> bool:
-	return stage >= FIRST_STAGE and stage <= Stages.FINAL and (stage - FIRST_STAGE) % EVERY == 0
 
 
 ## Sortea las pruebas de una partida: {etapa: id}. Nunca repite la misma prueba dos veces seguidas.

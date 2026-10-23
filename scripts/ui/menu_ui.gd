@@ -13,7 +13,6 @@ const SUBTITLE := "Escapa de la pesadilla, una torre a la vez"
 ## Créditos del juego.
 const CREDITS_GAME := "Diseño y desarrollo: Dante Jorge Sinesi, Argentina\nArte, música y sonido: Dante Jorge Sinesi\n\nGracias por jugar."
 
-const BG := Color(0.05, 0.03, 0.09)
 const GOLD := Draw.GOLD
 
 

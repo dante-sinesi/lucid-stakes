@@ -3,7 +3,7 @@ extends RefCounted
 ## con las pruebas de jugadores reales (cuántos mueren en cada torre, qué compran, cuánto sobra en cada casino). En Opciones hay un botón que abre la carpeta
 ## para que el jugador pueda mandar el archivo si quiere.
 ##   torre      {stage, outcome ("ganada"|"muerta"|"reintento"), seconds, moves, claridad, retries, lives, cause}
-##   sala       {stage, resultado ("ganada"|"perdida"), causa, indice, total, id, nivel, tipo, pisos, categoria, pasos_minimos, movs, max_mov, muertes_previas, segundos, claridad, lives}   (la torre nueva: una por sala)
+##   sala       {stage, resultado ("ganada"|"perdida"), causa, indice, total, id, nivel, tipo, pisos, categoria, pasos_minimos, movs, max_mov, muertes_previas, segundos, claridad, lives}   (la torre: una por sala)
 ##   casino     {stage, claridad_in, claridad_out, lives, boosts}
 ##   peaje      {stage, price, claridad, choice ("pagar"|"rehacer"|"abandonar"|"cancelar")}
 ##   run_fin    {victory, stage, towers, trials, earned, lives}

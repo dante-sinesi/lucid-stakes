@@ -1,5 +1,5 @@
 extends SceneTree
-## La claridad de la torre nueva (torre/cosecha.gd y su uso en torre.gd). Uso: GAME_SANDBOX=1 godot --headless --path . -s tests/unitarios/test_cosecha.gd
+## La claridad de la torre (torre/cosecha.gd y su uso en torre.gd). Uso: GAME_SANDBOX=1 godot --headless --path . -s tests/unitarios/test_cosecha.gd
 const Torre := preload("res://torre/torre.gd")
 const Cosecha := preload("res://torre/cosecha.gd")
 var fallos := 0

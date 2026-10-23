@@ -21,7 +21,7 @@ func check(cond: bool, label: String) -> void:
 ## Los (tipo, estado) que existen: todos tienen corrupto y purificado; la bomba tiene activa (CORRUPT) y desactivada.
 func models() -> Array:
 	var res: Array = []
-	for k in [NORMAL, ICE, CAT, 4, 5, 6, 7, BM.CORE]:
+	for k in [NORMAL, ICE, CAT, 4, 5, 6, 7]:
 		res.append([k, BM.State.CORRUPT])
 		res.append([k, BM.State.PURE])
 	res.append([BOMB, BM.State.CORRUPT])
@@ -79,14 +79,14 @@ func _init() -> void:
 	check(signature(BM.mesh_for(ICE, BM.State.CORRUPT)) == before, "construir el mismo modelo dos veces da lo mismo")
 
 	# Corrupto = irregular: menos minibloques que el purificado (salvo la bomba activa, que conserva su forma).
-	for k in [NORMAL, ICE, CAT, 4, 5, 6, 7, BM.CORE]:
+	for k in [NORMAL, ICE, CAT, 4, 5, 6, 7]:
 		check(BM.voxel_count(k, BM.State.CORRUPT) < BM.voxel_count(k, BM.State.PURE), "tipo %d: el corrupto tiene menos minibloques que el purificado" % k)
 	check(BM.voxel_count(BOMB, BM.State.CORRUPT) == BM.voxel_count(BOMB, BM.State.DEFUSED), "la bomba activa y la desactivada tienen la misma forma")
 	check(signature(BM.mesh_for(BOMB, BM.State.CORRUPT)) != signature(BM.mesh_for(BOMB, BM.State.DEFUSED)), "pero la desactivada tiene otros colores")
 
 	# La cara de arriba se tiene que poder pisar: casi completa en los bloques que se usan de piso.
 	var area := BM.N * BM.N
-	for k in [NORMAL, ICE, CAT, 4, 5, 6, BM.CORE]:   # (los pinchos no se pisan: no se pide cara de arriba)
+	for k in [NORMAL, ICE, CAT, 4, 5, 6]:   # (los pinchos no se pisan: no se pide cara de arriba)
 		check(BM.top_coverage(k, BM.State.PURE) >= area * 2 / 3, "tipo %d purificado: la cara de arriba esta casi completa (%d de %d)" % [k, BM.top_coverage(k, BM.State.PURE), area])
 		check(BM.top_coverage(k, BM.State.CORRUPT) >= 9, "tipo %d corrupto: el centro de la cara de arriba se conserva (%d)" % [k, BM.top_coverage(k, BM.State.CORRUPT)])
 

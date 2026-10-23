@@ -1,5 +1,5 @@
 extends SceneTree
-## Captura del cubo-portal del final de la torre nueva (se salta a la última sala). Uso: ... -s tests/capturas/shot_portal.gd -- ARCHIVO.png
+## Captura del cubo-portal del final de la torre (se salta a la última sala). Uso: ... -s tests/capturas/shot_portal.gd -- ARCHIVO.png
 func _init() -> void:
 	var main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)

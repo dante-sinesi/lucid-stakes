@@ -1,5 +1,5 @@
 extends SceneTree
-## Prueba del modo de jugar del Estudio de salas nuevas: juega el camino más corto con las funciones de acción del Estudio, llega al checkpoint; luego se agotan
+## Prueba del modo de jugar del Estudio de salas: juega el camino más corto con las funciones de acción del Estudio, llega al checkpoint; luego se agotan
 ## los movimientos y se pierde una vida. GAME_SANDBOX=1 SALAS_ARCHIVO=archivo.jsonl godot --headless --path . -s tests/unitarios/test_juego_torre.gd
 
 

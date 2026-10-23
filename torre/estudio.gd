@@ -1,5 +1,5 @@
 extends Control
-## Estudio de las salas nuevas (torre sin núcleo, ver docs/reglas_torre.md): abre una biblioteca de salas (jsonl de tools/salas.exe), las muestra
+## Estudio de salas (ver docs/reglas_torre.md): abre una biblioteca de salas (jsonl de tools/salas.exe), las muestra
 ## desde detrás del jugador (o en diagonal), reproduce su camino más corto cuadro por cuadro, deja corregirlas (poner y sacar bloques, bloque checkpoint,
 ## bloque fijo, mover el jugador), las resuelve de nuevo con el solucionador nativo y guarda la biblioteca.
 ## Archivo: variable de entorno SALAS_ARCHIVO, o bibliotecas/salas.jsonl.
@@ -82,7 +82,7 @@ func _armar_interfaz() -> void:
 	izq.custom_minimum_size = Vector2(300, 0)
 	raiz.add_child(izq)
 	var titulo := Label.new()
-	titulo.text = "Salas nuevas (torre sin núcleo)"
+	titulo.text = "Estudio de salas"
 	izq.add_child(titulo)
 	# filtro por los tipos de cubos especiales que incluye la sala
 	var rotulo := Label.new()
@@ -180,7 +180,7 @@ func _armar_interfaz() -> void:
 	der.add_child(_boton("Resolver de nuevo (solucionador nativo)", resolver_ahora))
 	der.add_child(_boton("Jugar esta sala (J)", alternar_juego))
 	var ayuda := Label.new()
-	ayuda.text = "Para probar la sala: flechas o WASD mueven (relativo a la cámara), Shift + dirección empuja o tira, Espacio + dirección se cuelga, Q/E giran la cámara, R reinicia, Esc sale. Si te caés, la sala vuelve a empezar."
+	ayuda.text = "Para probar la sala: flechas o WASD mueven (relativo a la cámara), Shift + dirección empuja o tira, Espacio + dirección se cuelga, Q/E giran la cámara, R reinicia, Esc sale. Si caes, la sala vuelve a empezar."
 	ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD
 	der.add_child(ayuda)
 	timer = Timer.new()
@@ -544,7 +544,7 @@ func _entrada_vista(ev: InputEvent) -> void:
 
 func _clic(pos: Vector2) -> void:
 	if actual < 0 or paso != 0:
-		_estado("Para editar, volvé al cuadro 0 de la sala.")
+		_estado("Para editar, vuelve al cuadro 0 de la sala.")
 		return
 	var t = cuadros[0]
 	var mira := Mira.new()
@@ -645,7 +645,7 @@ func alternar_juego() -> void:
 	if actual < 0:
 		return
 	jugando = true
-	_reiniciar_sala("Probá la sala: llegá al checkpoint de arriba.")
+	_reiniciar_sala("Prueba la sala: llega al checkpoint de arriba.")
 
 
 func _reiniciar_sala(msg: String) -> void:
@@ -720,7 +720,7 @@ func _tecla_juego(ev: InputEventKey) -> void:
 
 func _accion_juego(dir: Vector3i, modo) -> void:
 	if juego.ganado:
-		_estado("¡Ya llegaste! Reiniciá con R o salí con Esc.")
+		_estado("¡Ya llegaste! Reinicia con R o sal con Esc.")
 		return
 	var r: Dictionary = juego.actuar(dir, modo)
 	if not r.ok:

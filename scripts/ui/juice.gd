@@ -87,25 +87,6 @@ func land(fell: int) -> void:
 		add_shake(clampf(0.05 * fell, 0.05, 0.3))
 
 
-func tumble() -> void:
-	if body == null:
-		return
-	if _body_tween:
-		_body_tween.kill()
-	_body_tween = body.create_tween().set_parallel(true)
-	_body_tween.tween_property(body, "rotation:z", 1.6, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_body_tween.tween_property(body, "scale", Vector3(1.2, 0.5, 1.2), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
-
-func reset_body() -> void:
-	if body == null:
-		return
-	if _body_tween:
-		_body_tween.kill()
-	body.scale = Vector3.ONE
-	body.rotation = Vector3.ZERO
-
-
 # ---- partículas ---------------------------------------------------------------------------------------------------
 
 ## Una nubecita de cubitos que sale hacia los costados desde `pos`.
@@ -166,13 +147,6 @@ func settle(node: Node3D) -> void:
 	node.scale = Vector3(1.07, 0.93, 1.07)
 	node.create_tween().tween_property(node, "scale", Vector3.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	dust(node.position + Vector3(0, -0.45, 0), 4, 0.6)
-
-
-## Un bloque que cae al vacío da vueltas mientras se hunde.
-func spin_fall(node: Node3D) -> void:
-	var tw := node.create_tween().set_parallel(true)
-	tw.tween_property(node, "rotation:x", randf_range(-1.5, 1.5), 0.8)
-	tw.tween_property(node, "rotation:z", randf_range(-1.5, 1.5), 0.8)
 
 
 # ---- pantalla e interfaz --------------------------------------------------------------------------------------------

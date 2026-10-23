@@ -1,5 +1,5 @@
 extends RefCounted
-## Reglas de sostén de la torre de salas sin núcleo (ver docs/reglas_torre.md). Módulo aislado: no usa el motor viejo.
+## Reglas de sostén de la torre (ver docs/reglas_torre.md).
 ## Los bloques son un Dictionary { Vector3i: tipo }. Un bloque "f" es fijo (el portal de la torre o, al verificar una sala suelta, el bloque
 ## que representa lo que toca el bloque de salida en la sala de arriba). No hay suelo: lo que no está anclado cae y, si no encuentra apoyo, se pierde.
 

@@ -1,5 +1,5 @@
 extends SceneTree
-## Capturas del juego real (main.tscn) con la torre nueva: al empezar y a mitad de la primera sala. Uso: GAME_SANDBOX=1 GAME_TORRE_NUEVA=1 godot --path . --rendering-driver opengl3 --resolution 1280x720 -s tests/capturas/shot_torre_juego.gd -- PREFIJO
+## Capturas del juego real (main.tscn) con la torre: al empezar y a mitad de la primera sala. Uso: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1280x720 -s tests/capturas/shot_torre_juego.gd -- PREFIJO
 func _init() -> void:
 	var pref: String = OS.get_cmdline_user_args()[0]
 	var main = load("res://scenes/main.tscn").instantiate()

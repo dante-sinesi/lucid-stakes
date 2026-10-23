@@ -5,7 +5,6 @@ extends CanvasLayer
 signal command_entered(line: String)
 signal toggled(open: bool)
 
-const MAX_HISTORY := 8
 
 var panel: Control
 var output: RichTextLabel

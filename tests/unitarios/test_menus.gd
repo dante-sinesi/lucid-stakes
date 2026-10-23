@@ -122,25 +122,19 @@ func test_stage_look() -> void:
 	while main.generating or main.torre == null:
 		await process_frame
 	main.stage_number = 1
-	check(is_equal_approx(main.stage_tone(), 0.0) and main._stage_tint().is_equal_approx(Color.WHITE), "etapa 1: tono 0 y tinte neutro")
+	check(is_equal_approx(main.stage_tone(), 0.0), "etapa 1: tono 0")
 	main.stage_number = 15
 	check(is_equal_approx(main.stage_tone(), 1.0), "etapa 15: tono 1")
 	var lum := func(c: Color) -> float: return c.get_luminance()
 	var prev := -1.0
 	var bgs_ok := true
-	var tint_ok := true
-	var prev_tint := 0.0
 	for st in range(1, 16):
 		main.stage_number = st
 		main._apply_stage_look()
 		var l: float = lum.call(main.env.background_color)
 		bgs_ok = bgs_ok and l > prev
 		prev = l
-		var tl: float = main._stage_tint().r
-		tint_ok = tint_ok and tl > prev_tint
-		prev_tint = tl
 	check(bgs_ok, "el fondo es mas claro en cada etapa que en la anterior")
-	check(tint_ok, "el tinte de los bloques es mas claro en cada etapa")
 	# Dentro de una misma etapa el fondo no cambia aunque se suba.
 	main.stage_number = 8
 	main._apply_stage_look()

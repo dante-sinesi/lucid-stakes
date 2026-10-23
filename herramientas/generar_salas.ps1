@@ -1,4 +1,4 @@
-# Genera salas nuevas (torre sin núcleo) con varias copias de tools\salas.exe a la vez y las deja en bibliotecas\sn_corridas\<prefijo>_N.jsonl
+# Genera salas con varias copias de tools\salas.exe a la vez y las deja en bibliotecas\sn_corridas\<prefijo>_N.jsonl
 # (después: herramientas\juntar_salas.ps1 las junta sin repetir en bibliotecas\salas.jsonl).
 # Uso: powershell -ExecutionPolicy Bypass -File herramientas\generar_salas.ps1 [-Minutos 30] [-Copias 6] [-Prefijo lote] [-Tipos 3x3,5x3,8x3] [-NivelFijo 1] [-HMax 10]
 # (-NivelFijo: genera sólo ese nivel de dificultad, de 1 tutorial a 5 pesadilla; -HMax: altura máxima;

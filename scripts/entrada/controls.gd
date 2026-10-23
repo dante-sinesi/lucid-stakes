@@ -15,7 +15,6 @@ const AXIS_RX := 2
 const AXIS_RY := 3
 const AXIS_LT := 4
 const AXIS_RT := 5
-const DEADZONE := 0.5
 
 ## Reasignables. key: tecla por defecto; pad: lista de entradas del mando por defecto ({"button": n} o {"axis": n, "sign": ±1}).
 const ACTIONS: Array[Dictionary] = [

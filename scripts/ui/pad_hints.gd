@@ -229,10 +229,3 @@ func add_extra(item: Dictionary) -> void:
 	set_items(_base_items)
 
 
-## Apaga o enciende un ítem (por posición) sin rearmar la barra.
-func set_dim(i: int, dim: bool) -> void:
-	if i < 0 or i >= _icons.size() or _icons[i].dim == dim:
-		return
-	_icons[i].dim = dim
-	_icons[i].queue_redraw()
-	_labels[i].color = Color(0.5, 0.46, 0.55) if dim else Color(0.9, 0.86, 1.0)

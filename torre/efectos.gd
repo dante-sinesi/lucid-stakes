@@ -1,5 +1,5 @@
 extends RefCounted
-## Los sonidos y los efectos visuales de las acciones en la torre nueva: lo que hacía main.gd con la torre vieja (`_action_sound`, el juice, `_play_purify`, `_play_explosion`,
+## Los sonidos y los efectos visuales de las acciones en la torre (sonido de cada acción, purificar, explosión,
 ## el tic-tac de las bombas y los bloques que caen al vacío). Lee de la escena (`torre_juego.gd`) y del Motor lo que pasó en la última acción (`Motor.agarro`, `tipo_agarre`,
 ## `trampa_rota`, `resbalo`, `salto`, `desarmo`, `exploto`, `caidos_fuera`, `ultimas_celdas_purificadas`, `rastro`).
 
