@@ -41,12 +41,10 @@ func _juego() -> void:
 	main.toll_in_tests = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	main.in_menu = false
-	main.logic.lost = true
-	main.logic.lost_reason = "Caíste"
-	main._log_tower("muerta")
+	main.nueva.perder("Caíste")
 	main.enter_casino(true)
 	main.casino.cell = main.casino.lay.exit
 	main.casino.step(Vector2i(0, -1))

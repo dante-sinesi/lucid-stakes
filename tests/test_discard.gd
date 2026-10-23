@@ -36,7 +36,7 @@ func test_run() -> void:
 	check(run.discard("boost", 7) == "" and run.boosts == ["aire_extra"], "un lugar vacío no hace nada")
 	# un boost que agranda las barras no se tira si lo demás ya no entra
 	var full := RunState.new()
-	full.boosts.assign(["mente_abierta", "aire_extra", "reflejos", "ahorro", "ojo_de_hielo", "paso_firme", "pies_de_luz"])   # 7: 5 + 2 de Mente abierta
+	full.boosts.assign(["mente_abierta", "aire_extra", "reflejos", "ahorro", "madrugada", "paso_firme", "pies_de_luz"])   # 7: 5 + 2 de Mente abierta
 	check(full.boosts.size() == full.boost_capacity(), "(7 boosts con la barra ampliada)")
 	check(full.discard_error("boost", 0) != "" and full.discard("boost", 0) == "" and full.boosts.size() == 7, "no se tira Mente abierta si los demás dejarían de entrar")
 	check(full.discard_error("boost", 1) == "", "otros boosts sí")
@@ -49,7 +49,7 @@ func test_run() -> void:
 func test_bar() -> void:
 	var run := RunState.new()
 	run.boosts.assign(["aire_extra"])
-	run.consumables.assign(["freno", "escudo"])
+	run.consumables.assign(["freno", "desarmar"])
 	var layer := CanvasLayer.new()
 	root.add_child(layer)
 	var bar := ItemBar.new()
@@ -60,21 +60,21 @@ func test_bar() -> void:
 	await process_frame
 	# el clic derecho pide confirmación
 	bar.slots[0].discard.emit()
-	check(bar._prompt != null and run.consumables == ["freno", "escudo"], "el clic derecho pregunta antes de tirar (todavía no se tiró)")
+	check(bar._prompt != null and run.consumables == ["freno", "desarmar"], "el clic derecho pregunta antes de tirar (todavía no se tiró)")
 	bar._prompt.no_button.pressed.emit()
 	await process_frame
-	check(bar._prompt == null and run.consumables == ["freno", "escudo"] and got.is_empty(), "Cancelar no tira nada")
+	check(bar._prompt == null and run.consumables == ["freno", "desarmar"] and got.is_empty(), "Cancelar no tira nada")
 	bar.ask_discard(1)
 	bar._prompt.yes_button.pressed.emit()
 	await process_frame
-	check(run.consumables == ["freno"] and got == [[ItemBar.Kind.CONSUMABLE, "escudo"]] and bar.slots[1].is_empty(), "Tirar saca el ítem, la barra se actualiza y avisa")
+	check(run.consumables == ["freno"] and got == [[ItemBar.Kind.CONSUMABLE, "desarmar"]] and bar.slots[1].is_empty(), "Tirar saca el ítem, la barra se actualiza y avisa")
 	check(bar._prompt == null, "y se cierra la pregunta")
 	# sin ítem en el casillero no pasa nada
 	bar.slots[3].discard.emit()
 	check(bar._prompt == null, "un casillero vacío no pregunta")
 	# un boost que no se puede tirar: la pregunta lo dice y no deja confirmar
 	var full := RunState.new()
-	full.boosts.assign(["mente_abierta", "aire_extra", "reflejos", "ahorro", "ojo_de_hielo", "paso_firme", "pies_de_luz"])
+	full.boosts.assign(["mente_abierta", "aire_extra", "reflejos", "ahorro", "madrugada", "paso_firme", "pies_de_luz"])
 	var bar2 := ItemBar.new()
 	layer.add_child(bar2)
 	bar2.setup(full, ItemBar.Kind.BOOST, false)

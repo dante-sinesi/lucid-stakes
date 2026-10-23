@@ -2,8 +2,6 @@ extends SceneTree
 ## Pruebas de guardar y continuar: serializacion de torres y del run, archivo de guardado y el flujo completo en el juego.
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_save.gd
 
-const Gen := preload("res://scripts/tower_gen.gd")
-const TowerLogic := preload("res://scripts/tower_logic.gd")
 const RunState := preload("res://scripts/run_state.gd")
 const SaveGame := preload("res://scripts/save_game.gd")
 const Items := preload("res://scripts/items.gd")
@@ -20,10 +18,10 @@ func check(cond: bool, label: String) -> void:
 func _init() -> void:
 	SaveGame.path = "user://test_save.json"
 	SaveGame.delete()
-	test_tower_roundtrip()
 	test_run_roundtrip()
 	test_file()
 	await test_flow_tower()
+	await test_checkpoint()
 	await test_flow_casino()
 	await test_death_saves()
 	await test_end_deletes()
@@ -43,26 +41,8 @@ func make_main() -> Node:
 
 func wait_tower(main: Node) -> void:
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
-
-
-func test_tower_roundtrip() -> void:
-	var r := Gen.generate_stage(3, 4, 0.5, {"tries": 6, "climb": 0.5, "max_states": 2000})
-	check(r.ok, "se genera una torre chica")
-	var a = r.logic
-	var json := JSON.stringify(a.to_dict())
-	var b = TowerLogic.from_dict(JSON.parse_string(json))
-	check(a.blocks == b.blocks and a.positions == b.positions and a.fixed == b.fixed, "mismos bloques, ids y fijos")
-	check(a.kind_of == b.kind_of and a.bomb_timer == b.bomb_timer, "mismos tipos y cuentas de bomba")
-	check(a.size == b.size and a.goal_y == b.goal_y and a.goal_cell == b.goal_cell and a.goal_block == b.goal_block and a.player == b.player, "misma meta y punto de partida")
-	check(a.collapse_every == b.collapse_every and a.moves_to_collapse == b.moves_to_collapse and a.floor_y == b.floor_y and a._next_id == b._next_id, "misma caida de la fila de abajo")
-	check(a.row_platforms == b.row_platforms and a.platform_row == b.platform_row, "mismas plataformas por fila (para la pista)")
-	check(a.zob == b.zob, "misma huella del estado")
-	var s = b.clone()
-	for act in r.path:
-		s.try_action(act.dir, act.mode)
-	check(s.won and not s.lost, "el camino de la torre generada gana sobre la torre guardada y cargada")
 
 
 func test_run_roundtrip() -> void:
@@ -112,20 +92,18 @@ func test_flow_tower() -> void:
 	# Continuar sin haber empezado: misma torre y sin costo
 	a.run.claridad = 300
 	a.save_game()
-	var blocks_a: Dictionary = a.stage_start.blocks.duplicate()
-	var goal_a: int = a.stage_start.goal_block
+	var blocks_a: Array = a.nueva.t.salas[0].d.bloques.duplicate(true)
 	var c := make_main()
 	await wait_tower(c)   # genera su propia torre y guarda; reescribimos el guardado de A para continuar desde ahi
 	a.save_game()
 	c.continue_game()
-	check(c.stage_start.blocks == blocks_a and c.stage_start.goal_block == goal_a, "continuar vuelve a la misma torre")
+	check(c.nueva.t.salas[0].d.bloques == blocks_a, "continuar vuelve a la misma torre")
 	check(c.run.claridad == 300 and c.run.retries == 0, "si el intento no habia empezado, continuar no cuesta nada")
 	check(not c.in_menu and c.hud_layer.visible and c.casino == null, "se vuelve al juego en la torre")
 	# Primer movimiento: el intento ya empezo -> se guarda como 'sucio'
 	a.run.stage = 1
-	for dir in TowerLogic.DIRS:   # el primer movimiento valido
-		if not a.attempt_dirty and not a.busy:
-			a._apply(dir, 0)
+	var cam: Array = a.nueva.t.salas[0].d.camino   # (el primer paso del camino de la sala)
+	a.nueva.accion(Vector3i(int(cam[0][0]), 0, int(cam[0][1])), int(cam[0][2]))
 	check(a.attempt_dirty and SaveGame.read().dirty == true, "al primer movimiento el guardado queda marcado como intento empezado")
 	# Continuar con el intento empezado cuenta como un reintento
 	var d := make_main()
@@ -133,7 +111,7 @@ func test_flow_tower() -> void:
 	a.save_game()
 	d.continue_game()
 	check(d.run.retries == 1 and d.run.tower_retries == 1 and d.run.claridad == 275, "continuar con el intento empezado cuesta un reintento (25)")
-	check(d.logic.moves_made == 0, "...y la torre empieza de cero")
+	check(d.nueva.t.movs == 0, "...y la torre empieza de cero")
 	# Sin claridad para ese reintento: el run termina
 	a.run.claridad = 0
 	a.save_game()
@@ -143,7 +121,6 @@ func test_flow_tower() -> void:
 	e.continue_game()
 	check(e.run_over and e.run_end.visible and not SaveGame.exists(), "si no alcanza para pagar el reintento al continuar, el run termina (y se borra el guardado)")
 	for m in [a, c, d, e]:
-		m._cancel_jobs()
 		m.queue_free()
 	await process_frame
 	SaveGame.delete()
@@ -158,9 +135,8 @@ func test_death_saves() -> void:
 	a.save_game()
 	check(SaveGame.read().dead == false, "vivo: el guardado no dice que murió")
 	var lives_before: int = a.run.lives
-	a.logic.lost = true
-	a.logic.lost_reason = "Caíste al vacío"
-	await a._on_anim_done()
+	a.nueva.perder("Caíste al vacío")
+	await process_frame
 	check(SaveGame.read().dead == true and a.lost_screen.visible, "al morir se guarda al instante, marcando la muerte")
 	check(a.run.lives == lives_before, "(la vida se gasta recién al continuar o reintentar)")
 	var b := make_main()
@@ -168,7 +144,7 @@ func test_death_saves() -> void:
 	a.save_game()
 	b.continue_game()
 	check(b.run.lives == lives_before - 1 and b.run.retries == 1, "salir sin reintentar y continuar: ya costó una vida")
-	check(not b.logic.lost and SaveGame.read().dead == false, "y la torre empieza de cero (vivo)")
+	check(not b.nueva.t.muerta and SaveGame.read().dead == false, "y la torre empieza de cero (vivo)")
 	# Sin vidas ni Tótem: al continuar el run termina
 	a.run.lives = 0
 	a.save_game()
@@ -184,8 +160,30 @@ func test_death_saves() -> void:
 	d.notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
 	check(SaveGame.exists(), "al cerrar la ventana (Alt + F4) se guarda")
 	for m in [a, b, c, d]:
-		m._cancel_jobs()
 		m.queue_free()
+	await process_frame
+	SaveGame.delete()
+
+
+## Al continuar, la torre se retoma en el checkpoint de la última sala superada, con la claridad asegurada hasta ahí.
+func test_checkpoint() -> void:
+	var a := make_main()
+	await wait_tower(a)
+	a.run.claridad = 100
+	for paso in a.nueva.t.salas[0].d.camino:   # se supera la primera sala
+		a.nueva.accion(Vector3i(int(paso[0]), 0, int(paso[1])), int(paso[2]))
+	check(a.nueva.t.indice == 1, "se superó la primera sala")
+	var banco: int = a.nueva.t.cosecha.banco
+	a.save_game()
+	check(int(SaveGame.read().get("sala", -1)) == 1 and int(SaveGame.read().get("banco", -1)) == banco, "el guardado dice en qué checkpoint estás y cuánta claridad ya es tuya")
+	var b := make_main()
+	await wait_tower(b)
+	a.save_game()
+	b.continue_game()
+	check(b.nueva.t.indice == 1 and b.nueva.t.cosecha.banco == banco and b.nueva.t.movs == 0, "continuar retoma en el último checkpoint, con la claridad asegurada")
+	check(b.nueva.t.salas[0].d.bloques == a.nueva.t.salas[0].d.bloques, "y es la misma torre")
+	a.queue_free()
+	b.queue_free()
 	await process_frame
 	SaveGame.delete()
 
@@ -194,9 +192,8 @@ func test_flow_casino() -> void:
 	var a := make_main()
 	await wait_tower(a)
 	a.run.claridad = 400
-	a.logic.claridad = 20
-	a.logic.won = true
-	await a._on_anim_done()
+	a.nueva.t.cosecha.sala = 20
+	await a._torre_nueva_ganada()
 	check(a.casino != null and SaveGame.read().phase == "casino" and int(SaveGame.read().run.claridad) == 420, "al entrar al casino se guarda con la claridad ya sumada")
 	# cada tirada de la ruleta se guarda al resolverse (antes de la animacion)
 	a.casino.quick = true
@@ -218,6 +215,9 @@ func test_flow_casino() -> void:
 	b.continue_game()
 	check(b.casino != null and b.run.claridad == saved_claridad and b.stage_number == stage_saved and b.run.towers_cleared == a.run.towers_cleared, "continuar vuelve al casino con el mismo run")
 	check(b.run.towers_cleared == 1, "sin volver a sumar la torre superada")
+	b.dice_always = true   # (los dados de la pantalla de carga: mientras están abiertos se guarda "cargando la torre")
+	b.dice.fast = false
+	b.dice.auto_start = false
 	b.casino.quick = true
 	b.casino.cell = b.casino.lay.exit
 	b.casino.step(Vector2i(0, -1))
@@ -226,14 +226,25 @@ func test_flow_casino() -> void:
 	var c := make_main()   # cerrar el juego ahora y volver: continúa la carga de la torre siguiente, no el casino
 	await wait_tower(c)
 	SaveGame.write(loading)   # (lo que había en disco al cerrar el juego justo después de pagar)
+	c.dice_always = true
+	c.dice.fast = false
+	c.dice.auto_start = false
 	c.continue_game()
 	check(c.casino == null and c.stage_number == stage_saved + 1 and c.generating, "continuar después de pagar sigue la torre siguiente (sin volver al casino)")
-	while b.generating or c.generating:
+	b.dice.auto_start = true   # (se juegan los dados solos para seguir)
+	c.dice.auto_start = true
+	for m in [b, c]:
+		m.dice.set_ready(true)
+	var guardia := 0
+	while (b.generating or c.generating) and guardia < 3000:
+		for m in [b, c]:
+			if m.dice.visible and m.dice.can_throw():
+				m.dice.throw_dice()
 		await process_frame
-	check(b.stage_number == stage_saved + 1 and b.logic != null, "al salir del casino empieza la etapa siguiente")
-	check(c.logic != null and c.stage_number == stage_saved + 1, "la partida continuada llega a la torre siguiente")
+		guardia += 1
+	check(b.stage_number == stage_saved + 1 and b.nueva != null, "al salir del casino empieza la etapa siguiente")
+	check(c.nueva != null and c.stage_number == stage_saved + 1, "la partida continuada llega a la torre siguiente")
 	for m in [a, b, c]:
-		m._cancel_jobs()
 		m.queue_free()
 	await process_frame
 	SaveGame.delete()
@@ -268,10 +279,9 @@ func test_menu_button() -> void:
 	check(SaveGame.exists() and a.main_menu.buttons["continuar"].visible and a.main_menu.buttons["continuar"].text.contains("etapa %d" % a.stage_number), "al volver al menu aparece Continuar con la etapa")
 	check(a.main_menu.buttons["continuar"].primary and not a.main_menu.buttons["nueva"].primary, "Continuar pasa a ser el boton principal")
 	a.main_menu.buttons["continuar"].pressed.emit()
-	check(not a.in_menu and a.logic != null, "Continuar vuelve al juego")
+	check(not a.in_menu and a.nueva != null, "Continuar vuelve al juego")
 	a.end_run(false)
 	a.open_main_menu()
 	check(not a.main_menu.buttons["continuar"].visible and a.main_menu.buttons["nueva"].primary, "sin guardado no hay Continuar")
-	a._cancel_jobs()
 	a.queue_free()
 	await process_frame

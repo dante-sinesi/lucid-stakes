@@ -3,11 +3,11 @@ extends SceneTree
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/test_models.gd
 
 const BM := preload("res://scripts/block_models.gd")
-const TowerLogic := preload("res://scripts/tower_logic.gd")
-const NORMAL := TowerLogic.Kind.NORMAL
-const ICE := TowerLogic.Kind.ICE
-const BOMB := TowerLogic.Kind.BOMB
-const CAT := TowerLogic.Kind.CATAPULT
+const Tipos := preload("res://salas_nuevas/tipos.gd")
+const NORMAL := Tipos.Kind.NORMAL
+const ICE := Tipos.Kind.ICE
+const BOMB := Tipos.Kind.BOMB
+const CAT := Tipos.Kind.CATAPULT
 
 var fails := 0
 

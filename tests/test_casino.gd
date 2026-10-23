@@ -46,27 +46,28 @@ func test_items() -> void:
 		ids[it.id] = true
 		ok = ok and (it.type == Items.Type.CLARITY and it.has("mult") or it.has("value"))
 	check(ok, "cada premio tiene id unico, nombre, descripcion, peso y valor (o multiplicador)")
-	check(Items.by_tier(Items.Tier.EPICO).size() == 11 and Items.by_tier(Items.Tier.RARO).size() == 23, "11 premios epicos y 23 raros (el catálogo creció con los boosts de ganancia y los del casino)")
+	check(Items.by_tier(Items.Tier.EPICO).size() == 11 and Items.by_tier(Items.Tier.RARO).size() == 22, "11 premios epicos y 22 raros (el catálogo sin los premios que ya no existen)")
 	var epic_boosts := true
 	for it in Items.by_tier(Items.Tier.EPICO):
 		epic_boosts = epic_boosts and (it.type == Items.Type.BOOST or it.type == Items.Type.CLARITY)
 	check(epic_boosts, "los premios epicos son boosts o bolsas grandes de claridad")
 	check(Items.get_item("aire_extra").name == "Aire extra" and Items.get_item("no_existe").is_empty(), "get_item busca por id")
-	# Los conversores: uno por tipo de bloque (el Resorte convierte en catapulta)
-	var cat := Items.get_item("conv_catapulta")
-	check(cat.type == Items.Type.CONSUMABLE and cat.desc.contains("catapulta") and Items.needs_target("conv_catapulta"), "existe el conversor de catapulta (se elige el bloque con el mouse)")
 	# el valor medio sube con el nivel
 	check(Items.mean_value(Items.Tier.CONSUMIBLE, 50) < Items.mean_value(Items.Tier.COMUN, 50) \
 			and Items.mean_value(Items.Tier.COMUN, 50) < Items.mean_value(Items.Tier.RARO, 50) \
 			and Items.mean_value(Items.Tier.RARO, 50) < Items.mean_value(Items.Tier.EPICO, 50), "los niveles valen mas cuanto mas altos")
-	# el sorteo respeta los pesos: la bolsa de luz (peso 6 de 10) sale ~60 %
+	# el sorteo respeta los pesos: la bolsa de luz sale según su peso entre los consumibles baratos
+	var peso_total := 0.0
+	for it in Items.by_tier(Items.Tier.CONSUMIBLE):
+		peso_total += float(it.weight)
+	var esperado: float = 6.0 / peso_total
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var bags := 0
 	for i in 4000:
 		if Items.pick(Items.Tier.CONSUMIBLE, rng).id == "bolsa_de_luz":
 			bags += 1
-	check(absf(bags / 4000.0 - 0.6) < 0.03, "el sorteo respeta los pesos (bolsa de luz %.3f, esperado 0.6)" % (bags / 4000.0))
+	check(absf(bags / 4000.0 - esperado) < 0.03, "el sorteo respeta los pesos (bolsa de luz %.3f, esperado %.3f)" % [bags / 4000.0, esperado])
 	for t in 4:
 		var pick := Items.pick(t, rng)
 		check(pick.tier == t, "pick(%d) devuelve un premio de ese nivel" % t)
@@ -81,7 +82,7 @@ func test_run_state() -> void:
 	check(r.claridad == 85, "gain suma y no acepta negativos")
 	var boost := Items.get_item("aire_extra")
 	check(r.take(boost) and r.has_boost("aire_extra") and not r.take(boost), "un boost se guarda una vez y no se repite")
-	for id in ["ojo_de_hielo", "ahorro", "pies_de_luz", "paso_firme"]:
+	for id in ["madrugada", "ahorro", "pies_de_luz", "paso_firme"]:
 		r.take(Items.get_item(id))
 	check(r.boosts.size() == r.boost_capacity() and not r.has_room_for(Items.get_item("racha_larga")), "hay un maximo de %d boosts" % r.boost_capacity())
 	for i in r.consumable_capacity():
@@ -167,7 +168,7 @@ func test_roulette_resolve() -> void:
 
 	# premio que no entra: se convierte en claridad (la mitad de su valor)
 	r = rich_run()
-	for id in ["aire_extra", "ojo_de_hielo", "ahorro", "pies_de_luz", "paso_firme"]:
+	for id in ["aire_extra", "madrugada", "ahorro", "pies_de_luz", "paso_firme"]:
 		r.take(Items.get_item(id))
 	var full := Roulette.resolve(r, Roulette.Bet.PLENO, [1], rng, 1)  # un boost epico sin lugar
 	check(full.won and full.converted and r.boosts.size() == r.boost_capacity(), "sin lugar para boosts el premio no se guarda")

@@ -7,7 +7,7 @@ const ModelLib := preload("res://scripts/model_lib.gd")
 const BlockModels := preload("res://scripts/block_models.gd")
 const Characters := preload("res://scripts/characters.gd")
 const Cosmetics := preload("res://scripts/cosmetics.gd")
-const TowerLogic := preload("res://scripts/tower_logic.gd")
+const Tipos := preload("res://salas_nuevas/tipos.gd")
 
 const BLOCK_KINDS: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7, 9]
 
@@ -27,7 +27,7 @@ static func blocks() -> Array:
 	for kind in BLOCK_KINDS:
 		for v in BlockModels.VARIANTS:
 			out.append(block_record(kind, v, "pure", BlockModels._voxels(kind, BlockModels.State.PURE, v)))
-			if kind == TowerLogic.Kind.BOMB:
+			if kind == Tipos.Kind.BOMB:
 				out.append(block_record(kind, v, "defused", BlockModels._voxels(kind, BlockModels.State.DEFUSED, v)))
 	return out
 

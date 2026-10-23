@@ -7,7 +7,7 @@ extends Control
 const Vista := preload("res://salas_nuevas/vista.gd")
 const Motor := preload("res://salas_nuevas/motor.gd")
 const Nat := preload("res://salas_nuevas/nativo.gd")
-const RoomView := preload("res://scripts/room_view.gd")
+const Escena := preload("res://salas_nuevas/escena.gd")
 const Reglas := preload("res://salas_nuevas/reglas.gd")
 
 
@@ -135,7 +135,7 @@ func _armar_interfaz() -> void:
 	contenedor.add_child(vp)
 	var mundo := Node3D.new()
 	vp.add_child(mundo)
-	RoomView.add_lighting(mundo)
+	Escena.add_lighting(mundo)
 	bloques_nodo = Node3D.new()
 	mundo.add_child(bloques_nodo)
 	cam = Camera3D.new()
@@ -454,7 +454,7 @@ func _poner_camara() -> void:
 	else:
 		# cámara libre: gira y se acerca a gusto del usuario, siempre mirando al personaje
 		var objetivo := Vector3(t.jugador.x + 0.5, t.jugador.y + 0.9, t.jugador.z + 0.5)
-		RoomView.place_camera(cam, objetivo, yaw, pitch, dist)
+		Escena.place_camera(cam, objetivo, yaw, pitch, dist)
 		cam.fov = 60.0
 
 
@@ -549,7 +549,7 @@ func _clic(pos: Vector2) -> void:
 	var t = cuadros[0]
 	var mira := Mira.new()
 	mira.blocks = t.bloques
-	var r := RoomView.pick_face(cam, pos, mira)
+	var r := Escena.pick_face(cam, pos, mira)
 	var d: Dictionary = salas[actual]
 	var hit: Vector3i = r.hit
 	var prev: Vector3i = r.prev

@@ -20,7 +20,6 @@ func _init() -> void:
 	await test_goto_end()
 	await test_goto_casino()
 	await test_tower()
-	await test_idea()
 	await test_hud()
 	await test_set_luz()
 	await test_console()
@@ -39,7 +38,7 @@ func make_main() -> Node:
 
 func wait_tower(main: Node) -> void:
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 
 
@@ -51,10 +50,10 @@ func test_commands() -> void:
 	check(DevCommands.execute("", main) == "" and DevCommands.execute("  ", main) == "", "una linea vacia no hace nada")
 	check(DevCommands.execute("cualquier_cosa", main).contains("desconocido"), "un comando desconocido avisa")
 	check(DevCommands.execute("set_claridad", main).contains("Uso") and DevCommands.execute("set_claridad abc", main).contains("Uso"), "set_claridad sin numero (o con letras) muestra el uso")
-	main.logic.claridad = 30
+	main.nueva.t.cosecha.sala = 30
 	main.run.claridad = 0
 	check(DevCommands.execute("set_claridad 1000", main).contains("1000") and main.run.claridad == 970 and main.clarity_counter.value == 1000, "set_claridad 1000: el HUD muestra 1000 en total")
-	check(DevCommands.execute("set_claridad 10", main).contains("10") and main.run.claridad == 0 and main.logic.claridad == 10 and main.clarity_counter.value == 10, "se puede restar: set_claridad 10 baja la claridad")
+	check(DevCommands.execute("set_claridad 10", main).contains("10") and main.run.claridad == 0 and main.nueva.t.cosecha.claridad() == 10 and main.clarity_counter.value == 10, "se puede restar: set_claridad 10 baja la claridad")
 	DevCommands.execute("set_claridad -50", main)
 	check(main.clarity_counter.value == 0 and main.run.claridad == 0, "la claridad no baja de 0")
 	check(DevCommands.execute("give freno", main).contains("Freno") and main.run.consumables == ["freno"] and main.left_bar.slots[0].item_id == "freno", "give freno: el consumible aparece en la barra")
@@ -71,13 +70,12 @@ func test_commands() -> void:
 func test_goto_end() -> void:
 	var main := make_main()
 	await wait_tower(main)
-	main.logic.claridad = 40
+	main.nueva.t.cosecha.sala = 40
 	main.run.claridad = 100
-	check(not main.logic.won and main.casino == null, "al empezar se esta en la torre")
+	check(main.nueva != null and main.casino == null, "al empezar se esta en la torre")
 	var msg := DevCommands.execute("goto_end", main)
-	check(msg.contains("portal") and main.logic.won, "goto_end te lleva al portal y se gana la torre")
+	check(msg.contains("portal"), "goto_end te lleva al portal y se gana la torre")
 	check(main.casino != null and main.run.claridad == 140, "...y entras al casino con la claridad de la torre sumada (100 + 40)")
-	check(main.logic.player.y >= main.logic.goal_y, "el jugador quedo a la altura de la meta")
 	check(DevCommands.execute("goto_end", main).contains("casino"), "en el casino goto_end avisa que ya estas ahi")
 	check(DevCommands.execute("set_claridad 777", main).contains("777") and main.run.claridad == 777 and main.casino.clarity_counter.value == 777, "en el casino set_claridad cambia la claridad y el contador")
 	main.casino.open_roulette()
@@ -99,13 +97,13 @@ func test_console() -> void:
 	f1.pressed = true
 	main._unhandled_input(f1)
 	check(main.console_open and main.dev_console.is_open(), "F1 abre la consola")
-	var moves_before: int = main.logic.moves_made
+	var moves_before: int = main.nueva.t.movs
 	var d := InputEventKey.new()
 	d.keycode = KEY_D
 	d.pressed = true
 	main._unhandled_input(d)
 	await process_frame
-	check(main.logic.moves_made == moves_before and not main.busy, "con la consola abierta las teclas de juego no mueven al personaje")
+	check(main.nueva.t.movs == moves_before, "con la consola abierta las teclas de juego no mueven al personaje")
 	main.dev_console._on_submit("set_claridad 500")
 	check(main.clarity_counter.value == 500 and main.dev_console.output.get_parsed_text().contains("Claridad = 500") and main.dev_console.history == ["set_claridad 500"], "un comando escrito se ejecuta, muestra su respuesta y queda en el historial")
 	main.dev_console._on_submit("help")
@@ -133,7 +131,7 @@ func test_release() -> void:
 	main._unhandled_input(f2)
 	check(not main.debug_hud and not main.hud.visible, "F2 no muestra los textos de depuracion en una compilacion release")
 	check(DevCommands.execute("set_claridad 99999", main).contains("no está disponible") and main.run.claridad == 0, "los comandos no hacen nada")
-	check(DevCommands.execute("goto_end", main).contains("no está disponible") and not main.logic.won, "ni goto_end")
+	check(DevCommands.execute("goto_end", main).contains("no está disponible") and main.nueva != null and main.casino == null, "ni goto_end")
 	check(DevCommands.execute("goto_casino 20", main).contains("no está disponible") and main.casino == null, "ni goto_casino")
 	check(DevCommands.execute("set_luz 500", main).contains("no está disponible") and Profile.luz() != 500, "ni set_luz")
 	main.queue_free()
@@ -154,31 +152,13 @@ func test_tower() -> void:
 	check(Profile.luz() == 0 or Profile.luz() == int(Profile.luz()), "no se paga la entrada")
 	while main.generating:
 		await process_frame
-	check((main.seed_value - 4242) % 100003 == 0 and main.logic != null and main.hud_layer.visible, "con la semilla pedida y la torre generada")
-	var blocks_a: Dictionary = main.stage_start.blocks.duplicate()
+	check((main.seed_value - 4242) % 100003 == 0 and main.nueva != null and main.hud_layer.visible, "con la semilla pedida y la torre generada")
+	var blocks_a: Array = main.nueva.t.salas[0].d.bloques.duplicate(true)
 	DevCommands.execute("tower 4 sin_piedad 4242", main)
 	while main.generating:
 		await process_frame
-	check(main.stage_start.blocks == blocks_a, "la misma semilla da la misma torre")
+	check(main.nueva.t.salas[0].d.bloques == blocks_a, "la misma semilla da la misma torre")
 	check(DevCommands.execute("torre 2", main).contains("pesadilla") and main.run.scenario_id == "pesadilla", "sin escenario: La Pesadilla (también desde el juego)")
-	main._cancel_jobs()
-	main.queue_free()
-	await process_frame
-
-
-## El comando idea: un tramo armado por una idea de las torres, desde el menú principal.
-func test_idea() -> void:
-	var main := make_main()
-	await wait_tower(main)
-	main.open_main_menu()
-	check(DevCommands.execute("idea", main).contains("Uso") and DevCommands.execute("idea nada", main).contains("No se pudo") and DevCommands.execute("idea pared_pinchos x", main).contains("semilla"), "sin nombre, con una idea que no existe o con una semilla rara explica qué pasa")
-	var msg := DevCommands.execute("idea pared_pinchos 21", main)
-	check(msg.contains("Pared de pinchos") and msg.contains("semilla 21") and msg.contains("capa 1") and not main.in_menu, "arranca una partida con el esquema de la instancia")
-	while main.generating:
-		await process_frame
-	check(main.logic != null and main.logic.goal_y == 5 and main.solution.size() >= 7 and main.custom_tower.is_empty(), "la partida usa el tramo armado (4 pisos) y no el generador")
-	check(not main.dice.visible and main.logic.collapse_every >= 1000000, "sin dados al empezar y sin caída de la fila de abajo")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 
@@ -201,10 +181,9 @@ func test_goto_casino() -> void:
 	main.casino.step(Vector2i(0, -1))
 	while main.generating:
 		await process_frame
-	check(main.casino == null and main.stage_number == 15 and main.logic != null, "salir del casino de la etapa 15 no pasa de la 15")
+	check(main.casino == null and main.stage_number == 15 and main.nueva != null, "salir del casino de la etapa 15 no pasa de la 15")
 	main.open_main_menu()
 	check(DevCommands.execute("goto_casino 5", main).contains("Empieza"), "en el menu pide empezar una partida")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 
@@ -240,7 +219,7 @@ func test_hud() -> void:
 	# Lo que si ve el jugador: etapa y claridad (la racha sólo sale en el cartel de ganancia; la cuenta de la fila de abajo ya no se muestra)
 	check(main.stage_label.text.contains("Etapa") and not main.stage_label.text.contains("Piso"), "se ve la etapa, sin el piso")
 	check(main.hud_panel.get("streak_label") == null, "la racha no está en la ventana de la partida: sólo sale en el cartel de ganancia")
-	main.logic.streak = 3
+	main.nueva.t.cosecha.streak = 3
 	main._refresh()
 	# Casino: sin textos de ayuda
 	main.enter_casino()
@@ -251,7 +230,6 @@ func test_hud() -> void:
 		if l.visible and (str(l.text).contains("WASD") or str(l.text).contains("Esc") or str(l.text).contains("Empuja") or str(l.text).contains("Chocar")):
 			cbad = str(l.text)
 	check(cbad == "", "el casino no muestra textos de ayuda (%s)" % cbad)
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 
@@ -279,6 +257,5 @@ func test_set_luz() -> void:
 	Profile._loaded_from = ""
 	check(Profile.luz() == 7, "la Luz queda guardada en el perfil")
 	Profile.reset()
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame

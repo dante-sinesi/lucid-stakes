@@ -14,10 +14,12 @@ const VFont := preload("res://scripts/voxel_font.gd")
 const Controls := preload("res://scripts/controls.gd")
 const PadGlyph := preload("res://scripts/pad_glyph.gd")
 const Loc := preload("res://scripts/loc.gd")
-const TowerLogic := preload("res://scripts/tower_logic.gd")
 
 signal completed
 
+const MODO_MOVER := 0
+const MODO_AGARRAR := 1
+const MODO_COLGAR := 2
 const KEY_H := 50.0     # alto de una tecla
 const KEY_W := 50.0     # ancho de una tecla común
 const GAP := 12.0
@@ -102,20 +104,20 @@ func all_done() -> bool:
 	return true
 
 
-## El jugador movió con `action` (una de las de movimiento) con el modo `use_mode` (TowerLogic.Mode) y salió bien: se doran las teclas que cuentan.
+## El jugador movió con `action` (una de las de movimiento) con el modo `use_mode` (0 caminar, 1 empujar o tirar, 2 colgarse) y salió bien: se doran las teclas que cuentan.
 func note(action: String, use_mode: int, grab_kind := "") -> void:
 	if mode == "" or mode == "camera" or not MOVES.has(action):
 		return
 	match mode:
 		"move":
-			if use_mode != TowerLogic.Mode.MOVE:
+			if use_mode != MODO_MOVER:
 				return
 		"grab", "push", "pull":
-			if use_mode != TowerLogic.Mode.GRAB or (mode != "grab" and grab_kind != mode):   # (empujar y tirar son distintos: cada lección pide el suyo)
+			if use_mode != MODO_AGARRAR or (mode != "grab" and grab_kind != mode):   # (empujar y tirar son distintos: cada lección pide el suyo)
 				return
 			_gild("empujar")
 		"hang":
-			if use_mode != TowerLogic.Mode.HANG:
+			if use_mode != MODO_COLGAR:
 				return
 			_gild("colgarse")
 	_gild(action)

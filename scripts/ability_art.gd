@@ -22,9 +22,6 @@ const ART := {
 	"racha_firme": {   # una llama
 		"pal": {"o": Color(1.0, 0.45, 0.1), "y": Color(1.0, 0.8, 0.2), "w": Color(1.0, 1.0, 0.8)},
 		"rows": ["....o....", "...oo....", "..ooyo...", "..oyyoo..", ".ooyyyoo.", ".oyywyyo.", ".oyywwyo.", "..oyyyo..", "...ooo..."]},
-	"fuerza_bruta": {   # un bloque de hierro y una flecha que lo empuja
-		"pal": {"g": Color(0.45, 0.5, 0.62), "h": Color(0.82, 0.87, 0.96), "a": Color(1.0, 0.6, 0.15)},
-		"rows": [".........", "..ggggg..", ".gghhhgg.", "agghhhhgg", "aaghhhhgg", "agghhhhgg", ".gghhhgg.", "..ggggg..", "........."]},
 	"corazon": {   # una vida (el contador de vidas): un corazón
 		"pal": {"r": Color(0.92, 0.16, 0.27), "h": Color(1.0, 0.62, 0.68), "d": Color(0.62, 0.06, 0.16)},
 		"rows": ["..rr.rr..", ".rhrrrrr.", "rhrrrrrrr", "rrrrrrrrr", "rrrrrrrrr", ".rrrrrrd.", "..rrrrd..", "...rdd...", "....d...."]},

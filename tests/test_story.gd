@@ -37,7 +37,7 @@ func make_main() -> Node:
 
 func wait_tower(main: Node) -> void:
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 
 
@@ -161,11 +161,10 @@ func test_intro_flow() -> void:
 	# la puerta de atras empieza las lecciones
 	main.casino.cell = main.casino.lay.exit
 	main.casino.step(Vector2i(0, -1))
-	while main.generating or main.logic == null or main.tutorial_index != 0:
+	while main.generating or main.nueva == null or main.tutorial_index != 0:
 		await process_frame
 	check(main.casino == null and main.story_kind == "" and main.tutorial_index == 0 and main.hud_layer.visible, "al cruzar la puerta empiezan las lecciones")
 	check(main.dialogue.is_active() and main.dialogue.blocking and main.dialogue.any_key and str(main.dialogue.lines[0]) == Story.lesson_say("moverse"), "y la primera la explica el tabernero")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	# Si el cuadro se salta con Esc, igual hay que ir a la puerta
@@ -176,7 +175,6 @@ func test_intro_flow() -> void:
 	check(not main.casino.input_locked and main.casino._arrow != null, "saltear la historia tambien deja ir a la puerta")
 	main.open_main_menu()   # volver al menu desde la taberna lo limpia todo
 	check(main.in_menu and main.casino == null and not main.dialogue.is_active() and main.story_kind == "" and not main.training, "volver al menu desde la taberna sale del tutorial")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 
@@ -190,8 +188,7 @@ func test_lessons_and_outro() -> void:
 		check(main.dialogue.is_active() and main.dialogue.blocking and str(main.dialogue.lines[0]) == Story.lesson_say(Tutorial.lessons()[i].id), "la leccion %d la dice el tabernero" % (i + 1))
 	# Despues de la ultima, el cierre en el salon de piedra
 	await main.start_tutorial(Tutorial.count() - 1, true)
-	main.logic.won = true
-	await main._on_anim_done()
+	await main._torre_nueva_ganada()
 	check(main.story_kind == "outro" and main.casino != null and main.casino.story and main.casino.lay.tier == 1 and main.casino.input_locked, "el cierre es en el salon de piedra")
 	check(main.dialogue.blocking and main.dialogue.lines.size() == Story.outro().size(), "con todo lo que el tabernero tiene para explicar")
 	var seen_icons := {}
@@ -214,6 +211,5 @@ func test_lessons_and_outro() -> void:
 		main.dialogue.advance()
 		guard += 1
 	check(main.in_menu and main.casino == null and main.tutorial_index == -1 and not main.training, "al terminar el peaje de práctica se vuelve al menu")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame

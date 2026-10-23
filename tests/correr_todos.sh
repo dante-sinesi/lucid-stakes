@@ -6,7 +6,8 @@ cd "$(dirname "$0")/.."
 GODOT="tools/Godot_v4.7.2-stable_win64_console.exe"
 TIEMPO=${TIEMPO:-900}
 export GAME_SANDBOX=1
-export SN_LIB=${SN_LIB:-data/salas_torre.jsonl}   # (las pruebas de la biblioteca de salas necesitan saber cuál mirar)
+cp data/salas_torre.jsonl tests/_paquete_prueba.jsonl   # (las pruebas del Estudio guardan salas: se les da una copia, nunca el paquete del juego)
+export SN_LIB=${SN_LIB:-tests/_paquete_prueba.jsonl}   # (las pruebas de la biblioteca de salas necesitan saber cuál mirar)
 SALIDA=tests/resultados.txt
 : > "$SALIDA"
 malas=0
@@ -22,5 +23,6 @@ for f in tests/test_*.gd; do
   else estado="FALLA"; malas=$((malas+1)); fi
   echo "$estado | $n | $fall | $malos" | tee -a "$SALIDA"
 done
+rm -f tests/_paquete_prueba.jsonl
 echo "pruebas con problemas: $malas" | tee -a "$SALIDA"
 [ "$malas" = "0" ]

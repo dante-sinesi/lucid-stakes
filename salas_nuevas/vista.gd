@@ -3,7 +3,7 @@ extends RefCounted
 ## Lo usan el Estudio de salas nuevas y las capturas. Todo es 3D bajo un nodo padre; la cámara la maneja quien llama (o `camara_detras`).
 
 const BlockModels := preload("res://scripts/block_models.gd")
-const RoomView := preload("res://scripts/room_view.gd")
+const Escena := preload("res://salas_nuevas/escena.gd")
 const Reglas := preload("res://salas_nuevas/reglas.gd")
 
 const KIND_DE_LETRA := {"n": 0, "i": 1, "c": 4, "h": 5, "t": 6, "s": 7, "k": 3, "p": 0, "f": 0}
@@ -22,7 +22,7 @@ static func _material_brillo(tint: Color, ice: bool, glow: Color, energia: float
 	var key := "%s|%s|%s|%.2f" % [tint.to_html(), str(ice), glow.to_html(), energia]
 	if not _mats_glow.has(key):
 		var mat := ShaderMaterial.new()
-		mat.shader = RoomView.BLOCK_SHADER
+		mat.shader = Escena.BLOCK_SHADER
 		mat.set_shader_parameter("roughness_value", 0.15 if ice else 0.8)
 		mat.set_shader_parameter("tint", tint)
 		mat.set_shader_parameter("glow_color", glow)
@@ -35,7 +35,7 @@ static func _material_brillo(tint: Color, ice: bool, glow: Color, energia: float
 ## `aspecto_juego`: los bloques se ven como en el juego: corruptos (oscuros, violetas) hasta que el jugador los pisa o se cuelga de ellos, y entonces se purifican
 ## (el color de la etapa y una luz suave); las bombas activas brillan en rojo.
 static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := true, con_jugador := true, omitir_p := false, aspecto_juego := false, omitir_f := false) -> void:
-	RoomView.register_globals()
+	Escena.register_globals()
 	for ch in parent.get_children():
 		parent.remove_child(ch)
 		ch.queue_free()
@@ -89,7 +89,7 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 						glow = Color(1.0, 0.95, 0.7)
 						energia = 0.12
 		m.mesh = BlockModels.mesh_for(model, estado_modelo, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
-		m.material_override = _material_brillo(tint, kind == 1, glow, energia) if energia > 0.0 else RoomView.material(tint, kind == 1)
+		m.material_override = _material_brillo(tint, kind == 1, glow, energia) if energia > 0.0 else Escena.material(tint, kind == 1)
 		m.position = world_pos(c)
 		parent.add_child(m)
 		if letra.length() >= 2 and letra[0] == "b":

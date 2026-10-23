@@ -84,7 +84,7 @@ func test_main() -> void:
 	main.quick_portal = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	check(main.lives_hud != null and main.lives_hud.lives == 3 and main.lives_hud.visible, "el juego tiene el contador de vidas a la vista")
 	# Vida extra: sólo si hay menos de 3
@@ -101,21 +101,18 @@ func test_main() -> void:
 	main.run.claridad = 1000
 	main.run.consumables.clear()
 	main.run.lives = 3
-	main.logic.lost = true
-	main.logic.lost_reason = "Caíste al vacío"
+	main.nueva.perder("Caíste al vacío")
 	main.request_restart()
-	check(main.run.lives == 2 and not main.run_over and not main.logic.lost, "morir y reintentar cuesta una vida")
+	check(main.run.lives == 2 and not main.run_over and not main.nueva.t.muerta, "morir y reintentar cuesta una vida")
 	check(main.lives_hud.lives == 2, "y el contador se actualiza")
 	# reintentar sin morir (desde la pausa) también cuesta una vida
 	main.request_restart()
 	check(main.run.lives == 1, "un reintento voluntario cuesta una vida")
 	# sin vidas, morir termina la partida
 	main.run.lives = 0
-	main.logic.lost = true
-	main.logic.lost_reason = "Caíste al vacío"
-	main.request_restart()
+	main.nueva.perder("Caíste al vacío")
+	await create_timer(0.4).timeout   # (en las pruebas la caída espera 0,1 s antes de terminar la partida)
 	check(main.run_over and main.run.lives == 0, "sin vidas, al morir se termina la partida")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	# en el tutorial no hay vidas
@@ -126,7 +123,6 @@ func test_main() -> void:
 	t.start_tutorial(0, true)
 	await process_frame
 	check(not t.lives_hud.visible, "en el tutorial no se ven las vidas")
-	t._cancel_jobs()
 	t.queue_free()
 	await process_frame
 
@@ -153,7 +149,10 @@ func test_compromiso() -> void:
 	var scn := Scenarios.get_scenario("compromiso")
 	check(scn.id == "compromiso" and scn.entry > 0 and scn.lives == 1 and scn.permadeath and scn.no_totem and scn.no_extra_life, "existe el escenario Compromiso: una vida, sin segundas oportunidades, sin Tótems ni Vidas extra")
 	check(Scenarios.ability_ids(scn) == ["corazon_extra"], "y da el Corazón extra")
-	var a := Abilities.get_ability("corazon_extra")
+	var a := {}
+	for x in Abilities.PENDING:   # (todavía no se puede ganar: está entre las pendientes)
+		if x.id == "corazon_extra":
+			a = x
 	check(not a.is_empty() and a.desc.contains("4"), "el Corazón extra existe (4 corazones)")
 	# en un escenario común el Corazón extra suma un corazón; en Compromiso sigue siendo una sola vida
 	var run := RunState.new()
@@ -199,7 +198,7 @@ func test_compromiso_main() -> void:
 	main.quick_portal = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	# el contador se adapta a la cantidad de corazones
 	main.run = RunState.new()
@@ -217,11 +216,9 @@ func test_compromiso_main() -> void:
 	main.use_consumable_slot(0)
 	check(main.run.lives == 1 and main.run.consumables.size() == 2, "la Vida extra no funciona (y no se gasta)")
 	main.run.claridad = 1000
-	main.logic.lost = true
-	main.logic.lost_reason = "Caíste al vacío"
-	main.request_restart()
+	main.nueva.perder("Caíste al vacío")
+	await create_timer(0.4).timeout
 	check(main.run_over, "morir en Compromiso termina la partida (con Tótem y todo)")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	Profile.reset()

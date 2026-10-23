@@ -1,6 +1,6 @@
 extends RefCounted
 ## Catálogo de premios del casino: boosts (mejoras que duran el run), consumibles (se gastan) y bolsas de claridad.
-## Los efectos están implementados en TowerLogic (torre vieja: apply_perks para los boosts, use_item para los consumibles) y en salas_nuevas/torre.gd y cosecha.gd (torre nueva).
+## Los efectos están implementados en salas_nuevas/torre.gd (los movimientos, los consumibles) y salas_nuevas/cosecha.gd (la claridad).
 ##
 ## Los premios se agrupan en niveles (Tier): cuanto más difícil la apuesta, mejor el nivel. `value` es el valor de
 ## cada premio en "claridad equivalente" y sirve para balancear la ruleta (ver Roulette.expected_ratio); las bolsas de
@@ -35,47 +35,20 @@ const ALL: Array[Dictionary] = [
 	# ---- comunes: boosts y consumibles ----
 	{"id": "aire_extra", "name": "Aire extra", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 100,
 		"desc": "Cada sala tiene 4 movimientos más."},
-	{"id": "ojo_de_hielo", "name": "Ojo de hielo", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 90,
-		"desc": "Al resbalar por el hielo te frenas una celda antes."},
 	{"id": "ahorro", "name": "Ahorro", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 110,
 		"desc": "Cada etapa arrancas con 20 de claridad."},
 	{"id": "freno", "name": "Freno", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 100,
 		"desc": "Suma 5 movimientos a la sala en la que estás."},
 	{"id": "desarmar", "name": "Desarmar", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90,
 		"desc": "Desactiva una bomba a la vista."},
-	# ---- conversores: uno por tipo de bloque; se elige con el mouse el bloque que se cambia ----
-	{"id": "conv_roca", "name": "Polvo de roca", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
-		"desc": "Convierte cualquier bloque en roca (un bloque común). Se elige con el mouse."},
-	{"id": "conv_hielo", "name": "Escarcha", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
-		"desc": "Convierte cualquier bloque en hielo. Se elige con el mouse."},
-	{"id": "conv_agrietado", "name": "Grieta", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
-		"desc": "Convierte cualquier bloque en uno agrietado (se rompe al bajarte de él). Se elige con el mouse."},
-	{"id": "conv_trampa", "name": "Cebo", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
-		"desc": "Convierte cualquier bloque en una trampa (se desarma al pisarla). Se elige con el mouse."},
-	{"id": "conv_pinchos", "name": "Espinas", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 0.4, "value": 60, "target": true,
-		"desc": "Convierte cualquier bloque en pinchos (no se pueden pisar). Se elige con el mouse."},
-	{"id": "conv_pesado", "name": "Plomo", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90, "target": true,
-		"desc": "Convierte cualquier bloque en uno pesado (no se empuja ni se tira). Se elige con el mouse."},
-	{"id": "conv_bomba", "name": "Pólvora", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90, "target": true,
-		"desc": "Convierte cualquier bloque en una bomba con cuenta de 6. Se elige con el mouse."},
-	{"id": "conv_catapulta", "name": "Resorte", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 100, "target": true,
-		"desc": "Convierte cualquier bloque en una catapulta. Se elige con el mouse."},
 	# ---- otros consumibles ----
-	{"id": "escudo", "name": "Escudo", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 110, "passive": true,
-		"desc": "Si explota una bomba, no te afecta; el escudo se rompe. Se gasta solo."},
-	{"id": "doble_salto", "name": "Doble salto", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 110,
-		"desc": "Tu próximo salto sube 2 bloques en vez de 1."},
 	{"id": "totem", "name": "Tótem", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200, "passive": true,
 		"desc": "Si mueres, reintentas la torre sin costo (ni claridad ni una vida). Se gasta solo."},
 	{"id": "vida_extra", "name": "Vida extra", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 220,
 		"desc": "Te da una vida más. Sólo se puede usar si tienes menos de 3."},
-	{"id": "teletransporte", "name": "Teletransporte", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 190, "target": true,
-		"desc": "Elige con el mouse un bloque a 5 cubos o menos de ti y apareces encima."},
 	# ---- consumibles baratos y bolsas de claridad ----
 	{"id": "bolsa_de_luz", "name": "Bolsa de luz", "type": Type.CLARITY, "tier": Tier.CONSUMIBLE, "weight": 6, "mult": 1.4,
 		"desc": "Devuelve 1,4 veces lo que pagaste por la ficha, en claridad."},
-	{"id": "ancla_chica", "name": "Ancla chica", "type": Type.CONSUMABLE, "tier": Tier.CONSUMIBLE, "weight": 2, "value": 70,
-		"desc": "Un bloque de tu elección no cae aunque pierda sus vecinos (una etapa)."},
 	# ---- los que disparan la ganancia (docs/diseno.md §47): sin ellos no se pasa de la etapa 8 (la pared de Farolín, §46) ----
 	# épicos
 	{"id": "cosecha_doble", "name": "Cosecha doble", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 650,
@@ -150,11 +123,6 @@ const ALL: Array[Dictionary] = [
 
 ## Consumibles que se pueden usar dentro del casino (los demás sólo en la torre).
 const CASINO_USABLE: Array[String] = ["vida_extra", "soborno", "doble_o_nada", "ficha_gratis", "rayos_x"]
-
-
-## ¿El consumible se usa eligiendo un bloque con el mouse?
-static func needs_target(id: String) -> bool:
-	return bool(get_item(id).get("target", false))
 
 
 ## ¿Se usa solo (no se aprieta su tecla)?

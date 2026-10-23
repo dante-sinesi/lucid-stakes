@@ -212,7 +212,7 @@ func test_limits() -> void:
 	m = make(500)
 	s = m[0]
 	var run = m[1]
-	for id in ["aire_extra", "ojo_de_hielo", "ahorro", "pies_de_luz", "paso_firme"]:
+	for id in ["aire_extra", "madrugada", "ahorro", "pies_de_luz", "paso_firme"]:
 		run.take(Items.get_item(id))
 	s.forced_pocket = 4
 	s.toggle_pocket(4)

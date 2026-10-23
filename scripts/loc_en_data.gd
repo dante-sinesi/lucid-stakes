@@ -32,8 +32,6 @@ const TABLE := {
 	"El tope del multiplicador de racha sube de ×4 a ×6.": "The streak multiplier cap rises from ×4 to ×6.",
 	"Aire extra": "Extra air",
 	"La fila de abajo cae 1 movimiento más tarde.": "The bottom row falls 1 move later.",
-	"Ojo de hielo": "Ice eye",
-	"Al resbalar por el hielo te frenas una celda antes.": "When sliding on ice you stop one cell sooner.",
 	"Ahorro": "Savings",
 	"Cada etapa arrancas con 20 de claridad.": "You start every stage with 20 clarity.",
 	"Freno": "Brake",
@@ -46,8 +44,6 @@ const TABLE := {
 	"Devuelve 1,4 veces lo que pagaste por la ficha, en claridad.": "Returns 1.4 times what you paid for the chip, in clarity.",
 	"Hielo a roca": "Ice to rock",
 	"Convierte un bloque de hielo cercano en un bloque normal.": "Turns a nearby ice block into a normal block.",
-	"Ancla chica": "Small anchor",
-	"Un bloque de tu elección no cae aunque pierda sus vecinos (una etapa).": "A block of your choice doesn't fall even if it loses its neighbors (one stage).",
 	# --- habilidades (abilities.gd) ---
 	"Mente despejada": "Clear mind",
 	"Empiezas cada run con +25 de claridad.": "You start every run with +25 clarity.",
@@ -58,8 +54,6 @@ const TABLE := {
 	"Segunda oportunidad": "Second chance",
 	"Reintentar la torre cuesta 15 % menos.": "Retrying the tower costs 15% less.",
 	"Racha firme": "Firm streak",
-	"Fuerza bruta": "Brute force",
-	"Puedes empujar y tirar de los bloques pesados.": "You can push and pull heavy blocks.",
 	"Mecha larga": "Long fuse",
 	# --- pruebas (trials.gd) ---
 	"Niebla": "Fog",

@@ -21,8 +21,6 @@ func _init() -> void:
 	await test_lost_menu()
 	await test_end_screen()
 	await test_stats()
-	await test_prefetch()
-	await test_prefetch_ahead()
 	print("tests del run terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -37,7 +35,7 @@ func make_main() -> Node:
 
 func wait_tower(main: Node) -> void:
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 
 
@@ -73,14 +71,12 @@ func test_restart_flow() -> void:
 	main.run.lives = 2
 	main.run.claridad = 25
 	# al perder (morir no cuesta claridad: el costo ya es la vida) se puede reintentar aunque no quede claridad
-	main.logic.lost = true
-	main.logic.lost_reason = "Caíste al vacío"
-	main._on_anim_done()
+	main.nueva.perder("Caíste al vacío")
 	check(main.lost_screen.visible and main.lost_screen.title_label.text == "Caíste al vacío", "al perder aparece la pantalla de derrota con el motivo")
-	check(main.lost_screen.retry_button.text == "Reintentar" and main.lost_screen.hint_label.text == "", "después de morir el botón es Reintentar, sin costo de claridad, aunque no alcance la claridad")
+	check(main.lost_screen.retry_button.text.begins_with("Reintentar") and main.lost_screen.hint_label.text == "", "después de morir el botón es Reintentar, sin costo de claridad, aunque no alcance la claridad")
 	var lives_before: int = main.run.lives
 	main.lost_screen.retry_button.pressed.emit()
-	check(not main.run_over and main.run.claridad == 25 and main.run.lives == lives_before - 1 and not main.logic.lost, "reintentar después de morir no cobra claridad: cuesta una vida")
+	check(not main.run_over and main.run.claridad == 25 and main.run.lives == lives_before - 1 and not main.nueva.t.muerta, "reintentar después de morir no cobra claridad: cuesta una vida")
 	main.queue_free()
 	await process_frame
 	# aviso con claridad suficiente
@@ -88,14 +84,11 @@ func test_restart_flow() -> void:
 	await wait_tower(main)
 	main.run.stage = 1
 	main.run.claridad = 500
-	main.logic.lost = true
-	main.logic.lost_reason = "Caíste al vacío"
-	main._on_anim_done()
-	check(main.lost_screen.visible and main.lost_screen.retry_button.text == "Reintentar" and main.lost_screen.menu_button.text == "Salir al menú principal", "al perder se muestran los botones Reintentar y Salir al menu")
+	main.nueva.perder("Caíste al vacío")
+	check(main.lost_screen.visible and main.lost_screen.retry_button.text.begins_with("Reintentar") and main.lost_screen.menu_button.text == "Salir al menú principal", "al perder se muestran los botones Reintentar y Salir al menu")
 	main.lost_screen.retry_button.pressed.emit()
-	check(not main.lost_screen.visible and main.run.claridad == 500 and main.run.retries == 1 and not main.logic.lost, "Reintentar con el boton no cobra claridad, vuelve a empezar y esconde la pantalla")
+	check(not main.lost_screen.visible and main.run.claridad == 500 and main.run.retries == 1 and not main.nueva.t.muerta, "Reintentar con el boton no cobra claridad, vuelve a empezar y esconde la pantalla")
 	# entrenamiento: gratis
-	main.logic.lost = false
 	main._set_training(true)
 	main.run.claridad = 0
 	main.run.retries = 0
@@ -168,7 +161,6 @@ func test_end_screen() -> void:
 	r.retries = 3
 	r.moves = 987
 	r.boosts.assign(["freno_inexistente"])
-	check(RunState.rows_for(1) == 50 and RunState.rows_for(8) == 75 and RunState.rows_for(15) == 100 and RunState.rows_for(4) < RunState.rows_for(5), "las torres crecen con la etapa: de 50 filas en la etapa 1 a 100 en la 15")
 	var rows := RunEnd.summary_rows(r, false)
 	check(rows[0] == ["Etapa alcanzada", "7 / 15", false] and rows[1][1] == "6" and rows[2][1] == "1234" and rows[3][1] == "300" and rows[4][1] == "450" and rows[5][1] == "3" and rows[6][1] == "987", "el resumen trae etapa, torres, claridad, ruleta, reintentos y movimientos")
 	check(RunEnd.summary_rows(r, true)[0][1] == "15 / 15", "si escapaste figura 15 / 15")
@@ -194,7 +186,6 @@ func test_end_screen() -> void:
 	main.difficulty_screen._open_t = -10.0   # (La Pesadilla pregunta la dificultad primero)
 	main.difficulty_screen._choose("media")
 	check(not main.in_menu and main.stage_number == 1 and main.run.retries == 0 and not main.run_over, "elegir un escenario arranca un run nuevo desde la etapa 1")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 
@@ -203,62 +194,13 @@ func test_stats() -> void:
 	var main := make_main()
 	await wait_tower(main)
 	check(main.run.moves == 0 and main.run.towers_cleared == 0, "al empezar las estadisticas estan en cero")
-	for d in [Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(-1, 0, 0), Vector3i(0, 0, -1)]:   # (la torre es al azar: se prueba hasta que alguna direccion sea valida)
-		main._apply(d, 0)
-		if main.run.moves >= 1:
-			break
+	var cam: Array = main.nueva.t.salas[0].d.camino   # (el primer paso del camino de la sala)
+	main.nueva.accion(Vector3i(int(cam[0][0]), 0, int(cam[0][1])), int(cam[0][2]))
 	await process_frame
 	check(main.run.moves >= 1, "cada movimiento valido suma a las estadisticas")
-	main.logic.claridad = 60
-	main.logic.won = true
-	await main._on_anim_done()
+	main.nueva.t.cosecha.sala = 60
+	await main._torre_nueva_ganada()
 	check(main.run.towers_cleared == 1 and main.run.claridad_earned == 60, "al pasar la torre suma torres superadas y la claridad juntada")
-	main.queue_free()
-	await process_frame
-
-
-## La torre siguiente se genera de antemano: ya al entrar al casino hay una generación en curso (o terminada) para la etapa siguiente.
-func test_prefetch() -> void:
-	var main := make_main()
-	main.test_mode_jobs = true
-	await wait_tower(main)
-	check(not main._find_job(main.stage_number + 1).is_empty(), "al estar lista la torre ya se genera la siguiente")
-	main._cancel_jobs()
-	check(main._find_job(main.stage_number + 1).is_empty(), "(sin generaciones pendientes)")
-	main.enter_casino()
-	check(not main._find_job(main.stage_number + 1).is_empty(), "al entrar al casino se asegura que la torre siguiente se este generando")
-	var job: Dictionary = main._find_job(main.stage_number + 1)
-	main.enter_casino()   # no duplica
-	check(main._jobs.size() == 1 and main._find_job(main.stage_number + 1) == job, "no se lanza dos veces la misma generacion")
-	main.leave_casino()   # usa la generacion ya hecha (o la espera): no empieza de cero
-	while main.generating:
-		await process_frame
-	check(main.logic != null and main.stage_number == 7, "al cruzar el portal se usa la torre que ya venia generandose")
-	main._cancel_jobs()
-	main.queue_free()
-	await process_frame
-
-
-## Con anticipación: terminada la torre de la etapa siguiente se empieza la de dos etapas adelante (un trabajo por vez, y nunca más de dos por delante).
-func test_prefetch_ahead() -> void:
-	var main := make_main()
-	main.test_mode_jobs = true
-	await wait_tower(main)
-	var st: int = main.stage_number
-	check(not main._find_job(st + 1).is_empty() and main._find_job(st + 2).is_empty(), "al empezar la etapa sólo se genera la siguiente")
-	main._prefetch_next_stage()
-	check(main._find_job(st + 2).is_empty(), "mientras una sigue generándose no se arranca otra encima")
-	var first: Dictionary = main._find_job(st + 1)
-	while main._job_alive(first):
-		await process_frame
-	main._prefetch_next_stage()
-	check(not main._find_job(st + 2).is_empty(), "al terminar la siguiente se empieza la de dos etapas adelante")
-	var second: Dictionary = main._find_job(st + 2)
-	while main._job_alive(second):
-		await process_frame
-	main._prefetch_next_stage()
-	check(main._find_job(st + 3).is_empty() and main._jobs.size() == 2, "nunca más de dos torres por delante")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 
@@ -269,9 +211,7 @@ func test_lost_menu() -> void:
 	await wait_tower(main)
 	main.run.stage = 1
 	main.run.claridad = 500
-	main.logic.lost = true
-	main.logic.lost_reason = "Caíste al vacío"
-	main._on_anim_done()
+	main.nueva.perder("Caíste al vacío")
 	check(main.lost_screen.visible, "al perder aparece la pantalla de derrota")
 	main.lost_screen.menu_button.pressed.emit()
 	check(main.in_menu and not main.lost_screen.visible, "Salir al menu principal vuelve al menu y esconde la pantalla")

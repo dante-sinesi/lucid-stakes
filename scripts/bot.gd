@@ -1,11 +1,9 @@
 extends RefCounted
-## El bot que juega el juego para sacar estadísticas de balance (docs/bot.md): sube las torres siguiendo el camino mínimo que trae el generador (con titubeos y muertes según su habilidad),
-## juega el casino con una política (qué premio busca, cuándo rota la vitrina, cuándo compra en la tienda) y le paga a Farolín. Usa las reglas reales (TowerLogic, RunState, Roulette, Showcase),
-## sin ventanas ni animaciones. Las torres salen de un banco (tests/bot_banco.gd) porque generarlas lleva de 10 a 45 segundos cada una.
+## El bot que juega el juego para sacar estadísticas de balance (docs/bot.md): sube las torres siguiendo el camino mínimo de cada sala (con titubeos y muertes según su habilidad),
+## juega el casino con una política (qué premio busca, cuándo rota la vitrina, cuándo compra en la tienda) y le paga a Farolín. Usa las reglas reales (Torre, RunState, Roulette, Showcase),
+## sin ventanas ni animaciones. Las torres se arman con el paquete de salas (armarlas lleva unos 0,3 s cada una).
 
-const TowerLogic := preload("res://scripts/tower_logic.gd")
 const RunState := preload("res://scripts/run_state.gd")
-const RoomLib := preload("res://scripts/room_lib.gd")
 const Roulette := preload("res://scripts/roulette.gd")
 const Showcase := preload("res://scripts/showcase.gd")
 const Items := preload("res://scripts/items.gd")
@@ -37,84 +35,13 @@ static func default_config() -> Dictionary:
 
 # --- una torre -----------------------------------------------------------------------------------------------------------------
 
-## Titubeo: una ida y vuelta que no cambia nada pero gasta tiempo de la caída (como en Metrics.survival).
-static func _hesitate(lg) -> void:
-	lg.trail.clear()   # (dos movimientos de ida y vuelta: no cambian nada pero gastan tiempo de la caída y cortan la racha; se simulan sin clonar la torre)
-	lg.last_grab = ""
-	lg._after_action()
-	lg._after_action()
-
-
-## La sala (por posición en la lista) donde está parado el jugador.
-static func _room_of(rooms: Array, y: int) -> int:
-	var idx := 0
-	for i in rooms.size():
-		if int(rooms[i].ey) <= y:
-			idx = i
-	return idx
-
-
-## Sube una torre una vez. {won, died, claridad (la que juntó en este intento), moves, used (consumibles gastados)}.
-static func play_tower(entry: Dictionary, run, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictionary:
-	var lg = TowerLogic.from_dict(entry.tower)
-	lg.track_purify = true
-	lg.apply_perks(run.boosts)
-	lg.collapse_every = int(entry.tower.collapse_every)
-	lg.moves_to_collapse = int(entry.tower.moves_to_collapse)
-	var skill: float = maxf(float(cfg.skill), 0.05)
-	var stage: int = run.stage
-	var die_p: float = clampf(lerpf(float(cfg.die_first), float(cfg.die_last), float(stage - 1) / float(FINAL_STAGE - 1)) / skill, 0.0, 0.95)
-	var path: Array = entry.path
-	var n := path.size()
-	var died_at := -1
-	if rng.randf() < die_p:   # se muere en algún punto del camino (más probable cerca del final de cada sala: acá, al azar)
-		died_at = rng.randi_range(int(n * 0.2), n - 1)
-	var hes_p: float = float(cfg.hesitate) / skill
-	var used := 0
-	var rooms: Array = entry.get("rooms", [])   # (las salas de la torre: Sin piedad cuenta los falsos por sala)
-	var allowed := int(cfg.get("mistakes", 0)) if not rooms.is_empty() else 0
-	var false_counts := {}
-	for i in n:
-		if i == died_at:
-			return {"won": false, "died": true, "claridad": int(lg.claridad * 0.4), "moves": i, "used": used}
-		if i == 0 and run.consumables.has("pocion_de_cosecha"):
-			if lg.use_item("pocion_de_cosecha").ok:
-				run.use_consumable("pocion_de_cosecha")
-				used += 1
-		if i == n / 2:   # a la mitad se tiran los que dan claridad de golpe
-			for id in ["baraja_de_racha", "lluvia_de_luz", "iman_de_luz"]:
-				if run.consumables.has(id) and lg.use_item(id).ok:
-					run.use_consumable(id)
-					used += 1
-		if lg.moves_to_collapse <= 2:
-			for id in ["reloj_de_arena", "freno"]:
-				if run.consumables.has(id) and lg.use_item(id).ok:
-					run.use_consumable(id)
-					used += 1
-					break
-		if rng.randf() < hes_p:
-			_hesitate(lg)
-			if allowed > 0:   # (en Sin piedad cada titubeo es un movimiento en falso de la sala donde está: al pasar el límite se pierde la torre)
-				var room := _room_of(rooms, lg.player.y)
-				false_counts[room] = int(false_counts.get(room, 0)) + 1
-				if int(false_counts[room]) > allowed:
-					return {"won": false, "died": true, "false_death": true, "claridad": int(lg.claridad * 0.4), "moves": i, "used": used}
-		if lg.lost:
-			return {"won": false, "died": true, "claridad": int(lg.claridad * 0.4), "moves": i, "used": used}
-		var r: Dictionary = lg.try_action(path[i].dir, path[i].mode)
-		if lg.lost or not r.ok:
-			return {"won": false, "died": true, "claridad": int(lg.claridad * 0.4), "moves": i, "used": used}
-	return {"won": lg.won, "died": not lg.won, "claridad": lg.claridad, "moves": n, "used": used}
-
-
-
-# --- la torre nueva ---------------------------------------------------------------------------------------------------------------
+# --- la torre ---------------------------------------------------------------------------------------------------------------------
 
 ## Qué tan fácil o difícil le sale al bot cada nivel de sala (multiplica la probabilidad de perderla).
 const PESO_NIVEL := {"facil": 0.5, "media": 1.0, "dificil": 1.6, "pesadilla": 2.4}
 
 
-## Un banco de torres nuevas (armarlas lleva unos 0,3 s cada una): {etapa: [Torre]}. Cada partida juega una copia (`Torre.copia`).
+## Un banco de torres (armarlas lleva unos 0,3 s cada una): {etapa: [Torre]}. Cada partida juega una copia (`Torre.copia`).
 static func arm_bank(paquete: Array, rng: RandomNumberGenerator, per_stage: int) -> Dictionary:
 	var bank := {}
 	for s in range(1, FINAL_STAGE + 1):
@@ -179,12 +106,12 @@ static func _jugar_sala(t, run, rng: RandomNumberGenerator, cfg: Dictionary, p_s
 	return false
 
 
-## Sube una torre nueva entera. Una sala perdida se reintenta (cuesta una vida del run). {won, died, ended, claridad, moves, lives_lost, room_deaths, attempts, rooms: [...], used}.
-static func play_tower_nueva(entry, run, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictionary:
+## Sube una torre entera. Una sala perdida se reintenta (cuesta una vida del run). {won, died, ended, claridad, moves, lives_lost, room_deaths, attempts, rooms: [...], used}.
+static func play_tower(entry, run, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictionary:
 	var t = Torre.copia(entry)
 	t.externo = true
 	t.aplicar_boosts(run.boosts)
-	t.mov_run = run.collapse_bonus
+	t.mov_run = run.movs_extra
 	var skill: float = maxf(float(cfg.skill), 0.05)
 	var stage: int = run.stage
 	var p_torre: float = lerpf(float(cfg.die_first), float(cfg.die_last), float(stage - 1) / float(FINAL_STAGE - 1)) / skill
@@ -216,8 +143,8 @@ static func play_tower_nueva(entry, run, rng: RandomNumberGenerator, cfg: Dictio
 			"attempts": 1 + room_deaths, "rooms": rooms, "used": estado.used, "false_death": estado.get("false_death", false)}
 
 
-## Un run entero con las torres nuevas (`bank`: {etapa: [Torre]}, ver arm_bank). Mismo formato de resumen que run_one, más lo de las salas.
-static func run_one_nueva(bank: Dictionary, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictionary:
+## Un run entero (`bank`: {etapa: [Torre]}, ver arm_bank). Devuelve el resumen: etapa alcanzada, si ganó, vidas perdidas, lo que armó y, por etapa, lo que pasó (incluidas las salas).
+static func run_one(bank: Dictionary, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictionary:
 	var run = RunState.new()
 	var per_stage: Array = []
 	var lives_lost := 0
@@ -232,7 +159,7 @@ static func run_one_nueva(bank: Dictionary, rng: RandomNumberGenerator, cfg: Dic
 		var rec := {"stage": st, "income": 0, "attempts": 0, "toll": run.toll_after_discounts(RunState.toll_for(st)), "claridad_before": run.claridad, "boosts": run.boosts.size(), "rooms": []}
 		var cleared := false
 		while not cleared:
-			var res := play_tower_nueva(entry, run, rng, cfg)
+			var res := play_tower(entry, run, rng, cfg)
 			rec.attempts += int(res.attempts)
 			rec.rooms.append_array(res.rooms)
 			lives_lost += int(res.lives_lost)
@@ -353,81 +280,4 @@ static func pay_toll(run) -> bool:
 
 # --- un run ----------------------------------------------------------------------------------------------------------------------
 
-## Juega un run entero con las torres del banco (`bank`: {etapa: [entradas]}). Devuelve el resumen: {stage, won, lives_lost, towers, build, per_stage: [...]}.
-static func run_one(bank: Dictionary, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictionary:
-	var run = RunState.new()
-	var per_stage: Array = []
-	var lives_lost := 0
-	var reached := 0
-	var ended := false
-	for s in range(1, FINAL_STAGE + 1):
-		run.stage = s
-		var pool: Array = bank.get(s, [])
-		if pool.is_empty():
-			break
-		var entry: Dictionary = pool[rng.randi_range(0, pool.size() - 1)]
-		var rec := {"stage": s, "income": 0, "attempts": 0, "toll": run.toll_after_discounts(RunState.toll_for(s)), "claridad_before": run.claridad, "boosts": run.boosts.size()}
-		var cleared := false
-		while not cleared:
-			rec.attempts += 1
-			var res := play_tower(entry, run, rng, cfg)
-			if res.get("false_death", false):
-				rec["false_deaths"] = int(rec.get("false_deaths", 0)) + 1
-			if res.died:
-				run.gain(int(res.claridad))
-				if not run.can_revive():
-					ended = true
-					break
-				run.note_retry(true)
-				lives_lost += 1
-				continue
-			run.gain(int(res.claridad))
-			rec.income += int(res.claridad)
-			var cs := casino(run, rng, cfg)
-			rec["plays"] = int(rec.get("plays", 0)) + int(cs.plays)
-			rec["bought"] = int(rec.get("bought", 0)) + int(cs.bought)
-			if pay_toll(run):
-				cleared = true
-			else:
-				if not run.can_revive():
-					ended = true
-					break
-				run.note_retry(true)
-				lives_lost += 1
-		rec["claridad_after"] = run.claridad
-		per_stage.append(rec)
-		if ended:
-			break
-		reached = s
-	return {"stage": reached, "won": reached >= FINAL_STAGE and not ended, "lives_lost": lives_lost, "build": run.boosts.duplicate(), "per_stage": per_stage}
-
-
 # --- el banco de torres ----------------------------------------------------------------------------------------------------
-
-## Una línea del banco: la torre y su camino.
-static func entry_line(stage: int, seed_value: int, res: Dictionary) -> String:
-	return JSON.stringify({"stage": stage, "seed": seed_value, "tower": res.logic.to_dict(), "path": RoomLib.path_string(res.path), "rooms": res.get("rooms", [])})
-
-
-static func load_bank(dir: String) -> Dictionary:
-	var bank := {}
-	for f in DirAccess.get_files_at(dir):
-		if not f.ends_with(".jsonl"):
-			continue
-		var fa := FileAccess.open(dir.path_join(f), FileAccess.READ)
-		if fa == null:
-			continue
-		while not fa.eof_reached():
-			var line := fa.get_line().strip_edges()
-			if line == "":
-				continue
-			var j := JSON.new()
-			if j.parse(line) != OK or typeof(j.data) != TYPE_DICTIONARY:
-				continue
-			var d: Dictionary = j.data
-			var st := int(d.stage)
-			if not bank.has(st):
-				bank[st] = []
-			bank[st].append({"stage": st, "seed": int(d.seed), "tower": d.tower, "path": RoomLib.parse_path(str(d.path)), "rooms": d.get("rooms", [])})
-		fa.close()
-	return bank

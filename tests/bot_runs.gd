@@ -1,6 +1,6 @@
 extends SceneTree
-## Juega muchos runs con el bot (scripts/bot.gd) sobre el banco de torres y muestra las estadísticas de balance.
-## Variables: BANK (bibliotecas/torres), RUNS (200), SEED (1), SKILL (1.0), SPEND (0.8), FREE (0, jugadas gratis por visita), ROT (3, rotaciones de la vitrina), OUT (archivo .jsonl con cada run).
+## Juega muchos runs con el bot (scripts/bot.gd) sobre torres armadas con el paquete de salas y muestra las estadísticas de balance.
+## Variables: TOWERS (10, torres armadas por etapa), CLARIDAD (multiplicador de la claridad), RUNS (200), SEED (1), SKILL (1.0), SPEND (0.8), FREE (0, jugadas gratis por visita), ROT (3, rotaciones de la vitrina), OUT (archivo .jsonl con cada run).
 const Bot := preload("res://scripts/bot.gd")
 const RunState := preload("res://scripts/run_state.gd")
 const Roulette := preload("res://scripts/roulette.gd")
@@ -11,20 +11,15 @@ func _env(name: String, def: String) -> String:
 
 
 func _init() -> void:
-	var vieja := OS.get_environment("VIEJA") != ""   # VIEJA=1: las torres del banco de la torre vieja (tests/bot_banco.gd); si no, la torre nueva
-	var bank := {}
+	var Torre = load("res://salas_nuevas/torre.gd")
 	var rng_banco := RandomNumberGenerator.new()
 	rng_banco.seed = int(_env("SEED", "1")) * 7919
-	if vieja:
-		bank = Bot.load_bank(_env("BANK", "bibliotecas/torres"))
-	else:
-		var Torre = load("res://salas_nuevas/torre.gd")
-		bank = Bot.arm_bank(Torre.cargar_paquete_del_juego(), rng_banco, int(_env("TOWERS", "10")))   # TOWERS: torres armadas por etapa
+	var bank: Dictionary = Bot.arm_bank(Torre.cargar_paquete_del_juego(), rng_banco, int(_env("TOWERS", "10")))   # TOWERS: torres armadas por etapa
 	var have := 0
 	for s in bank:
 		have += bank[s].size()
 	if have == 0:
-		print("no hay torres en el banco: correr tests/bot_banco.gd (o que esté el paquete de salas)")
+		print("no hay torres: falta el paquete de salas")
 		quit(1)
 		return
 	var runs := int(_env("RUNS", "200"))

@@ -21,13 +21,11 @@ func _init() -> void:
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.test_mode = true
 	main.quick_portal = true
-	main.test_mode_jobs = false
 	root.add_child(main)
 	await _frames(4)
 	main.start_game()
 	await _frames(4)
 	_ok(main.nueva != null and main.nueva.t != null and main.nueva.t.salas.size() >= 5, "al empezar el run hay una torre nueva de %d salas" % (main.nueva.t.salas.size() if main.nueva != null and main.nueva.t != null else 0))
-	_ok(main.logic == null and main.stage_number == 1, "la etapa 1 no usa la lógica vieja")
 	_ok(main.nueva.t.externo and main.nueva.t.etapa == 1, "las vidas son las del run y la torre sabe su etapa")
 	var vidas0: int = main.run.lives
 	# muerte: se acaban los movimientos de la sala 1 -> pierde una vida del run y la sala vuelve a empezar
@@ -121,7 +119,7 @@ func _init() -> void:
 	# guardado y continuar
 	main.save_game()
 	var data: Dictionary = main.SaveGame.read()
-	_ok(str(data.get("phase", "")) == "tower" and bool(data.get("nueva", false)), "el guardado marca la torre nueva")
+	_ok(str(data.get("phase", "")) == "tower" and data.has("sala"), "el guardado marca la torre y la sala")
 	# Sin piedad: los movimientos en falso de la sala (el solucionador nativo mide cuántos pasos faltan)
 	main.run.scenario_id = "sin_piedad"
 	main._torre_nueva_arrancar(7)   # (una semilla fija: la prueba no depende del azar)
@@ -154,7 +152,6 @@ func _init() -> void:
 	var main3 = load("res://scenes/main.tscn").instantiate()
 	main3.test_mode = true
 	main3.quick_portal = true
-	main3.test_mode_jobs = false
 	root.add_child(main3)
 	await _frames(4)
 	main3.dice_always = true
@@ -171,7 +168,6 @@ func _init() -> void:
 	var main2 = load("res://scenes/main.tscn").instantiate()
 	main2.test_mode = true
 	main2.quick_portal = true
-	main2.test_mode_jobs = false
 	root.add_child(main2)
 	await _frames(4)
 	var Tut = load("res://scripts/tutorial.gd")

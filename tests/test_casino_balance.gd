@@ -122,7 +122,7 @@ func test_flow() -> void:
 	main.quick_portal = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	check(not main.casino_balance, "en las pruebas el balance está apagado: salir pasa directo")
 	main.casino_balance = true   # (acá sí se prueba)
@@ -139,13 +139,11 @@ func test_flow() -> void:
 	await process_frame
 	check(main.balance_layer == null and main.casino == null and main.stage_number == stage_before + 1, "Continuar sigue a la torre siguiente")
 	# abandonar con el balance abierto lo cierra
-	main._cancel_jobs()
 	main.enter_casino()
 	main.leave_casino()
 	check(main.balance_layer != null, "(otra vez el balance)")
 	main.end_run(false, "")
 	check(main.balance_layer == null, "terminar el run cierra el balance")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 

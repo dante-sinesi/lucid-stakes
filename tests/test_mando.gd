@@ -112,7 +112,7 @@ func _init() -> void:
 	main.test_mode = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	main.in_menu = false
 	main.pause_game()
@@ -155,7 +155,6 @@ func _init() -> void:
 		await process_frame
 	await _tap(JOY_BUTTON_B)
 	check(not paused, "B cierra la pausa")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	print("tests del mando terminados, fallos: ", fails)

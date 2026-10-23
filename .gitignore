@@ -9,6 +9,7 @@ tools/*.exe
 # Capturas y archivos temporales de las pruebas
 *.tmp
 tests/_*.gd
+tests/_*.jsonl
 
 build/
 docs/.obsidian/

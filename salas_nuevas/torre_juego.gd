@@ -11,7 +11,7 @@ extends Node3D
 const Torre := preload("res://salas_nuevas/torre.gd")
 const Vista := preload("res://salas_nuevas/vista.gd")
 const Motor := preload("res://salas_nuevas/motor.gd")
-const RoomView := preload("res://scripts/room_view.gd")
+const Escena := preload("res://salas_nuevas/escena.gd")
 const Characters := preload("res://scripts/characters.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const Controls := preload("res://scripts/controls.gd")
@@ -35,6 +35,8 @@ const STEP_TIME := 0.14
 signal checkpoint_alcanzado(faltan: int, total: int)   ## se llegó a la salida de una sala (la anterior cae): cuántos checkpoints faltan (contando el portal) de cuántas salas
 signal torre_completa                ## se llegó al portal
 signal murio(motivo: String)         ## se perdió una vida (el juego descuenta la del run); la sala ya volvió a empezar
+signal movimiento_hecho(accion: String, modo: int, agarre: String)   ## el jugador movió con una tecla de movimiento y salió bien (modo: 0 caminar, 1 empujar o tirar, 2 colgarse; agarre: "push", "pull" o "")
+signal camara_usada(accion: String)   ## se movió la cámara con una de las teclas de cámara (el tutorial las dora)
 signal accion_hecha                  ## después de cada acción que salió bien (el juego actualiza su HUD)
 signal ganancia(texto: String, cantidad: int)   ## la claridad que dio la última acción (el juego muestra el cartel "+N claridad")
 signal profundidad_pedida            ## se apretó la tecla de la ayuda de profundidad
@@ -69,6 +71,7 @@ var n_salas_fijo := 0         # >0: cuántas salas tiene la torre (el tutorial);
 var boosts: Array = []
 var sala_inicial := 0           # >0: la torre empieza en el checkpoint de esa sala (continuar una partida guardada)
 var banco_inicial := 0          # la claridad asegurada hasta ese checkpoint
+var salas_fijas: Array = []         # las salas de una lección del tutorial (en lugar de armar la torre con el paquete)
 var dificultad := "media"       # la dificultad del run (fácil, media, difícil o pesadilla)
 var mov_run := 0             # movimientos de más por sala (mejoras permanentes del run)
 var vidas_fn := Callable()   # () -> int: las vidas del run
@@ -78,6 +81,7 @@ var falsos = null              # el medidor (falsos.gd)
 var _dur_empuje := 0.0          # lo que dura el movimiento de los bloques de la última acción (lo que cae por perder apoyo empieza después)
 var _bloques_antes := {}      # id de cada bloque de la sala viva -> dónde se dibujó la última vez (para ver cómo se mueven)
 var _sala_dibujada := -1
+var ultimo_agarre := ""          # "push" o "pull" si la última acción movió un bloque
 var _rastro_muerte: Array = []   # el camino de la última acción (si ésta termina en derrota se anima antes de caer)
 var _tweens_derrota: Array = []   # las animaciones de la derrota en marcha (al reintentar se cortan)
 var _cayendo := false   # la animación de la derrota está en marcha: la cámara no sigue al personaje que cae
@@ -96,9 +100,9 @@ var _temblando := false      # la sala tiembla cuando quedan la mitad de los mov
 
 
 func _ready() -> void:
-	RoomView.register_globals()
+	Escena.register_globals()
 	if not en_juego:
-		RoomView.add_lighting(self)   # (dentro del juego se usa su luz)
+		Escena.add_lighting(self)   # (dentro del juego se usa su luz)
 	pivot = Node3D.new()
 	pivot.rotation_degrees.y = yaw_target
 	add_child(pivot)
@@ -201,7 +205,10 @@ func _nueva_torre() -> void:
 	estaticas.clear()
 	var n_salas := int(OS.get_environment("SN_SALAS")) if OS.get_environment("SN_SALAS") != "" else 8
 	if en_juego:
-		t = Torre.armar(paquete, semilla, n_salas_fijo if n_salas_fijo > 0 else Torre.salas_de_etapa(etapa), true, etapa, dificultad)
+		if not salas_fijas.is_empty():
+			t = Torre.desde_salas(salas_fijas, etapa, dificultad)
+		else:
+			t = Torre.armar(paquete, semilla, n_salas_fijo if n_salas_fijo > 0 else Torre.salas_de_etapa(etapa), true, etapa, dificultad)
 		t.externo = true
 		t.aplicar_boosts(boosts)
 		t.mov_run = mov_run
@@ -443,6 +450,9 @@ func _process(delta: float) -> void:
 	var ay := int(Controls.held("camara_abajo")) - int(Controls.held("camara_arriba"))
 	if ax != 0 or ay != 0:
 		orbitar(Vector2(ax, ay) * ARROW_SPEED * delta / MOUSE_SENS)
+		for id in ["camara_derecha", "camara_izquierda", "camara_abajo", "camara_arriba"]:
+			if Controls.held(id):
+				camara_usada.emit(id)
 
 
 ## Con la mitad de los movimientos de la sala gastados o más, los bloques de la sala tiemblan (cada uno a su modo, como la fila de abajo de la torre vieja): casi nada al principio y cada vez más fuerte hacia el límite.
@@ -546,7 +556,9 @@ func _input(ev: InputEvent) -> void:
 		modo = Motor.Modo.COLGAR
 	if t.motor.colgado != Vector3i.ZERO and dir == -t.motor.colgado and modo != Motor.Modo.COLGAR:
 		return   # colgado, la única forma de soltarse de la cornisa es la tecla de colgarse (la barra): la dirección contraria no hace nada
-	accion(dir, modo)
+	var r: Dictionary = accion(dir, modo)
+	if r.ok:
+		movimiento_hecho.emit(accion_id, modo, ultimo_agarre)
 
 
 ## Una acción del jugador (también la usan las pruebas).
@@ -562,6 +574,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
 	_rastro_pendiente = motor_antes.rastro
+	ultimo_agarre = motor_antes.tipo_agarre
 	_rastro_muerte = motor_antes.rastro.duplicate()
 	_procesar(r)
 	efectos.sonido(motor_antes, modo, antes_y)   # (el motor de antes guarda lo que pasó en la acción, aunque la sala haya cambiado)
@@ -623,12 +636,18 @@ func _procesar(r: Dictionary) -> void:
 func _falsos_agotados() -> void:
 	if t == null or t.terminada or t.perdida:
 		return
-	_rastro_muerte = []
-	var r: Dictionary = t.forzar_muerte("Tercer movimiento en falso")
-	_procesar(r)
+	perder("Tercer movimiento en falso")
 	if falsos != null:
 		falsos.sala_nueva(t.motor)
 		falsos_cambiaron.emit(falsos.quedan(), falsos_permitidos, false, false)
+
+
+## Se pierde la sala por un motivo que no es un movimiento (Sin piedad, las pruebas): igual que caerse, sin camino que animar.
+func perder(motivo: String) -> void:
+	if t == null or t.terminada or t.perdida:
+		return
+	_rastro_muerte = []
+	_procesar(t.forzar_muerte(motivo))
 
 
 ## La animación de perder: el personaje se cae dando vueltas (y, si se acabaron los movimientos, la sala entera se derrumba con él) y la cámara tiembla.

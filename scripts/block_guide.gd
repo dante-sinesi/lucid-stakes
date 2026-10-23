@@ -1,14 +1,14 @@
 extends RefCounted
-## Los avisos de bloque nuevo: qué es cada tipo de bloque. Un bloque se descubre la primera vez que el jugador llega a la altura de una fila que lo contiene
-## (no alcanza con que exista en la torre): en ese momento el juego frena y el tabernero explica sus características (`say`). Lo descubierto se guarda
+## Los avisos de bloque nuevo: qué es cada tipo de bloque. Un bloque se descubre la primera vez que el jugador entra a una sala que lo tiene: en ese momento el juego frena
+## y el tabernero explica sus características (`say`). Lo descubierto se guarda
 ## en el perfil (ver profile.gd). (La pantalla "Guía de bloques" del menú se eliminó: sólo quedan estos avisos.)
 
-const TowerLogic := preload("res://scripts/tower_logic.gd")
+const Tipos := preload("res://salas_nuevas/tipos.gd")
 const Profile := preload("res://scripts/profile.gd")
 
-const K := TowerLogic.Kind
+const K := Tipos.Kind
 
-## id, tipo de bloque (TowerLogic.Kind), nombre, descripción de la guía y lo que dice el tabernero al descubrirlo.
+## id, tipo de bloque (Tipos.Kind), nombre, descripción de la guía y lo que dice el tabernero al descubrirlo.
 const ALL: Array[Dictionary] = [
 	{"id": "normal", "kind": K.NORMAL, "name": "Bloque corrupto",
 		"desc": "Se pisa, se empuja y se tira. Al pisarlo se purifica y da claridad; si encadenas pisadas nuevas, la racha la multiplica.",
@@ -64,15 +64,15 @@ static func count_discovered() -> int:
 	return n
 
 
-## Los bloques todavía no descubiertos que la torre `logic` tiene a la altura del jugador o por debajo (fila alcanzada): [{guía}], uno por tipo.
-## Una fila se alcanza cuando el jugador está parado a su altura o más arriba (la celda del bloque es más baja que la del jugador).
-static func newly_reached(logic) -> Array:
+## Los bloques todavía no descubiertos entre las letras de bloque de una sala (las del motor: n, h, i, c, t, s, k, b7...): [{guía}], uno por tipo y en el orden de la guía.
+static func newly_in_room(letters: Array) -> Array:
 	var out: Array = []
 	var seen := {}
-	for cell in logic.blocks:
-		if cell.y >= logic.player.y:
+	for l in letters:
+		var letra := str(l).substr(0, 1)
+		if not Tipos.DE_LETRA.has(letra):
 			continue
-		var info := for_kind(logic.kind_at(cell))
+		var info := for_kind(Tipos.DE_LETRA[letra])
 		if info.is_empty() or seen.has(info.id) or Profile.has_block(info.id):
 			continue
 		seen[info.id] = true

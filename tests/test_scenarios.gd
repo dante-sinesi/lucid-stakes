@@ -10,7 +10,7 @@ const Trials := preload("res://scripts/trials.gd")
 const RunState := preload("res://scripts/run_state.gd")
 const Roulette := preload("res://scripts/roulette.gd")
 const Room := preload("res://scripts/casino_room.gd")
-const TowerLogic := preload("res://scripts/tower_logic.gd")
+const Tipos := preload("res://salas_nuevas/tipos.gd")
 
 var fails := 0
 
@@ -41,14 +41,13 @@ func make_main() -> Node:
 	main.test_mode = true
 	main.quick_portal = true
 	main.tower_rows = 3
-	main.test_mode_jobs = false
 	root.add_child(main)
 	return main
 
 
 func wait_tower(main: Node) -> void:
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 
 
@@ -57,7 +56,7 @@ func test_catalog() -> void:
 	var ids := {}
 	for s in Scenarios.ALL:
 		ids[s.id] = true
-		check(s.name != "" and s.desc != "" and s.luz_mult >= 1.0 and s.pool.size() >= 4, "el escenario %s trae nombre, descripcion, multiplicador y un sorteo de pruebas" % s.id)
+		check(s.name != "" and s.desc != "" and s.luz_mult >= 1.0 and s.pool.size() >= 1, "el escenario %s trae nombre, descripcion, multiplicador y un sorteo de pruebas" % s.id)
 		if s.id != "pesadilla":
 			check(s.entry > 0, "%s se paga con Luz" % s.id)
 	check(ids.size() == Scenarios.ALL.size() and Scenarios.ALL.size() >= 6, "hay varios escenarios distintos (%d)" % Scenarios.ALL.size())
@@ -65,8 +64,8 @@ func test_catalog() -> void:
 	# Mas dificiles pagan mas Luz
 	check(Scenarios.get_scenario("relojeria").luz_mult > Scenarios.get_scenario("ruinas").luz_mult, "los escenarios mas dificiles pagan mas Luz")
 	# Cada escenario permite ganar habilidades que le son propias
-	check(Scenarios.ability_ids(Scenarios.get_scenario("ruinas")).has("fuerza_bruta") and not Scenarios.ability_ids(Scenarios.get_scenario("pesadilla")).has("fuerza_bruta"), "la fuerza bruta sólo se gana en Ruinas")
-	check(Scenarios.ability_ids(Scenarios.get_scenario("ruinas")).has("fuerza_bruta") and Scenarios.ability_ids(Scenarios.get_scenario("polvorin")).has("mecha_larga"), "cada escenario tiene su habilidad exclusiva")
+	check(Scenarios.ability_ids(Scenarios.get_scenario("polvorin")).has("mecha_larga") and not Scenarios.ability_ids(Scenarios.get_scenario("pesadilla")).has("mecha_larga"), "la mecha larga sólo se gana en Ruinas")
+	check(Scenarios.ability_ids(Scenarios.get_scenario("compromiso")).has("corazon_extra") and Scenarios.ability_ids(Scenarios.get_scenario("polvorin")).has("mecha_larga"), "cada escenario tiene su habilidad exclusiva")
 
 
 func test_profile() -> void:
@@ -117,12 +116,12 @@ func test_award() -> void:
 	check(Profile.luz() == 0, "mientras hay habilidades por ganar no se da Luz")
 	var done := Profile.award_scenario_ability("pesadilla", rng)
 	check(done.ability == "" and done.luz == Profile.ABILITY_LUZ and Profile.luz() == Profile.ABILITY_LUZ, "cuando ya las tiene todas, da Luz (%d)" % Profile.ABILITY_LUZ)
-	var ruinas := Profile.award_scenario_ability("ruinas", rng)
-	check(ruinas.ability == "fuerza_bruta" and Profile.has_ability("fuerza_bruta"), "cada escenario da las suyas (Ruinas, la fuerza bruta)")
-	var again := Profile.award_scenario_ability("ruinas", rng)
-	check(again.ability == "" and again.luz == int(round(Profile.ABILITY_LUZ * 1.5)), "y la Luz de reemplazo escala con el escenario")
+	var polvorin := Profile.award_scenario_ability("polvorin", rng)
+	check(polvorin.ability == "mecha_larga" and Profile.has_ability("mecha_larga"), "cada escenario da las suyas (Polvorín, la mecha larga)")
+	var again := Profile.award_scenario_ability("polvorin", rng)
+	check(again.ability == "" and again.luz == int(round(Profile.ABILITY_LUZ * 1.6)), "y la Luz de reemplazo escala con el escenario")
 	check(Profile.award_scenario_ability("tutorial", rng) == {"ability": "", "luz": 0}, "el tutorial no da nada")
-	check(Scenarios.scenarios_for_ability("fuerza_bruta").size() == 1 and Scenarios.scenarios_for_ability("fuerza_bruta")[0].id == "ruinas", "se sabe en qué escenario se gana cada una")
+	check(Scenarios.scenarios_for_ability("mecha_larga").size() == 1 and Scenarios.scenarios_for_ability("mecha_larga")[0].id == "polvorin", "se sabe en qué escenario se gana cada una")
 	Profile.reset()
 
 
@@ -133,32 +132,9 @@ func test_abilities_effects() -> void:
 	check(not Profile.grant_ability("pies_ligeros") and Profile.owned_abilities().size() == 4, "una habilidad se gana una sola vez")
 	var run := RunState.new()
 	Profile.apply_to_run(run)
-	check(run.claridad == 25 and run.collapse_bonus == 1 and run.meta_consumable_slots == 1 and is_equal_approx(run.restart_discount, 0.15), "las habilidades se aplican al empezar el run")
+	check(run.claridad == 25 and run.movs_extra == 1 and run.meta_consumable_slots == 1 and is_equal_approx(run.restart_discount, 0.15), "las habilidades se aplican al empezar el run")
 	check(run.consumable_capacity() == RunState.BASE_CONSUMABLES + 1 and run.restart_cost() == int(round(25 * 0.85)), "Bolsillo de soñador y Segunda oportunidad: un lugar mas y reintentos 15 % mas baratos")
-	check(RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict()))).collapse_bonus == 1, "los efectos se guardan con el run")
-	# Habilidades de la torre
-	var K := TowerLogic.Kind
-	var base := func(perk: String) -> RefCounted:
-		var t := TowerLogic.new()
-		t.size = Vector2i(5, 5)
-		t.goal_y = 99
-		t.collapse_every = 1000
-		t.moves_to_collapse = 1000
-		for x in 5:
-			for z in 5:
-				t.add_block(Vector3i(x, 0, z))
-		t.add_block(Vector3i(3, 1, 2), false, K.HEAVY)
-		t.add_block(Vector3i(0, 0, 2), false, K.ICE)
-		t.player = Vector3i(2, 1, 2)
-		t.apply_perks([perk] if perk != "" else [])
-		return t
-	var t0 = base.call("")
-	check(not t0.try_action(Vector3i(1, 0, 0), TowerLogic.Mode.GRAB).ok, "sin Fuerza bruta no se empuja un pesado")
-	var t1 = base.call("fuerza_bruta")
-	check(t1.try_action(Vector3i(1, 0, 0), TowerLogic.Mode.GRAB).ok and t1.blocks.has(Vector3i(4, 1, 2)), "con Fuerza bruta si")
-	var streak := TowerLogic.new()
-	streak.apply_perks(["sin_racha"])
-	check(streak.streak_mult(6) == 1.0, "la prueba Sin racha deja el multiplicador en 1")
+	check(RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict()))).movs_extra == 1, "los efectos se guardan con el run")
 	Profile.reset()
 
 
@@ -194,9 +170,8 @@ func test_flow() -> void:
 	Profile.save()
 	main.start_game("relojeria")
 	check(main.run.scenario_id == "relojeria" and Profile.luz() == 75 and is_equal_approx(main.run.price_mult, 0.75), "con Luz se entra: se cobra la entrada y rigen las reglas")
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
-	check(main.profile.pace == "fast", "Relojeria: todas las etapas son rapidas")
 	var pool: Array = Scenarios.get_scenario("relojeria").pool
 	var all_in_pool := true
 	for st in main.run.trial_schedule:
@@ -214,7 +189,6 @@ func test_flow() -> void:
 	run2.scenario_id = "polvorin"
 	run2.price_mult = 1.0
 	check(RunState.from_dict(JSON.parse_string(JSON.stringify(run2.to_dict()))).scenario_id == "polvorin", "el escenario se guarda con el run")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	Profile.reset()
@@ -358,7 +332,6 @@ func test_screens() -> void:
 			luz_costs += 1
 		stack.append_array(n.get_children())
 	check(luz_costs > 0, "los escenarios de pago muestran su costo con el sol")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	Profile.reset()

@@ -152,18 +152,16 @@ func test_flow_with_tower() -> void:
 	main.test_mode = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	main.quick_portal = true
 	main.stage_number = 4
-	main.logic.claridad = 33
-	main.logic.won = true
-	await main._on_anim_done()
+	main.nueva.t.cosecha.sala = 33
+	await main._torre_nueva_ganada()
 	check(main.casino != null, "ganar en el portal lleva al casino")
 	check(main.run.claridad == 33 and main.run.stage == 4, "la claridad de la torre pasa al run")
 	check(not main.hud_layer.visible and main.casino.cam.current, "en el casino se oculta el HUD de la torre y manda la camara del casino")
-	main.logic.won = true
-	await main._on_anim_done()
+	await main._torre_nueva_ganada()
 	check(main.run.claridad == 33, "la claridad no se suma dos veces")
 	main.casino.quick = true
 	main.casino.step(Vector2i(-1, 0))
@@ -175,7 +173,7 @@ func test_flow_with_tower() -> void:
 	check(main.casino == null and main.hud_layer.visible and main.stage_number == 5, "el portal del casino vuelve a la torre, una etapa mas")
 	while main.generating:
 		await process_frame
-	check(main.logic != null and not main.logic.won and main.cam.current, "se genera la torre siguiente y vuelve la camara de la torre")
+	check(main.nueva != null and main.nueva.t.indice == 0 and main.nueva.cam.current, "se genera la torre siguiente y vuelve la camara de la torre")
 	main.queue_free()
 
 

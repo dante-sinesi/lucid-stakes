@@ -119,7 +119,7 @@ func test_menu() -> void:
 	Demo.forced = 1
 	var main := _make_main()
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	main.open_main_menu()
 	var mm = main.main_menu
@@ -138,7 +138,6 @@ func test_menu() -> void:
 	check(str(cs.info_label.text).contains("versión completa"), "idem con un personaje bloqueado")
 	cs.set_tab("ropa")
 	check(cs.tiles["remera"].owned and cs.tiles["capa"].owned and not cs.tiles["armadura"].owned, "prendas: remera y capa; el resto con ?")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	Demo.forced = 0
@@ -176,7 +175,7 @@ func test_end() -> void:
 	Demo.forced = 1
 	var main := _make_main()
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	main.in_menu = false
 	main.stage_number = 1
@@ -219,14 +218,13 @@ func test_end() -> void:
 	main._on_dialogue_chosen(1)
 	await process_frame
 	check(main.demo_end.visible and str(main.demo_end.title.text).contains("Fin de la demo"), "abandonar en la demo termina con la pantalla de fin de la demo")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	# con la demo apagada, pagar en el casino de la etapa 6 sigue con la torre 7
 	Demo.forced = 0
 	var main2 := _make_main()
 	await process_frame
-	while main2.generating or main2.logic == null:
+	while main2.generating or main2.nueva == null:
 		await process_frame
 	main2.in_menu = false
 	main2.stage_number = 6
@@ -240,6 +238,5 @@ func test_end() -> void:
 	main2._on_dialogue_chosen(0)
 	await process_frame
 	check(not main2.demo_end.visible and not main2.run_over and main2.stage_number == 7, "sin la demo, pagar en el casino de la etapa 6 sigue con la torre 7")
-	main2._cancel_jobs()
 	main2.queue_free()
 	await process_frame

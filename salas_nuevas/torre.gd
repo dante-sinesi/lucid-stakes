@@ -422,6 +422,20 @@ static func vueltas(t) -> float:
 	return total / TAU
 
 
+## Una torre con salas ya armadas (las lecciones del tutorial): `salas_d` son salas en el formato del paquete; no se encadenan ni se colocan en el anillo y no tienen temporizador.
+static func desde_salas(salas_d: Array, etapa_run := 0, dificultad_run := "media"):
+	var t = load("res://salas_nuevas/torre.gd").new()
+	t.etapa = etapa_run
+	t.dificultad = dificultad_run
+	var off := 0
+	for d in salas_d:
+		t.salas.append({"d": d, "id": int(d.get("id", 0)), "off": off, "max_mov": 99999})
+		off += int(d.meta) - 1
+	if not t.salas.is_empty():
+		t._entrar(0)
+	return t
+
+
 ## Una torre nueva con las mismas salas (el bot arma un banco de torres una vez y juega copias; las salas no se modifican al jugar).
 static func copia(o):
 	var t = load("res://salas_nuevas/torre.gd").new()

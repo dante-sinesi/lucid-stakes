@@ -28,8 +28,6 @@ const ICONS := {
 		"....o....", "...oao...", "..oaao...", ".oaabao..", ".oabbbao.", "oaabbbaao", "oaabbbaao", ".oaabaao.", "..ooooo.."]},
 	"aire_extra": {"a": Color(0.85, 0.92, 1.0), "rows": [
 		".........", "...ooo...", "..oaaao..", ".oaaaaaoo", "oaaaaaaao", "oaaaaaaao", ".ooooooo.", ".........", "........."]},
-	"ojo_de_hielo": {"a": Color(0.45, 0.80, 1.0), "w": Color(0.95, 0.97, 1.0), "rows": [
-		".........", "..ooooo..", ".owwwwwo.", "owwaaawwo", "owwaoawwo", "owwaaawwo", ".owwwwwo.", "..ooooo..", "........."]},
 	"ahorro": {"a": Color(1.0, 0.82, 0.25), "b": Color(0.78, 0.55, 0.12), "rows": [
 		".........", "..ooooo..", ".oaaaaao.", ".obbbbbo.", ".oaaaaao.", ".obbbbbo.", ".oaaaaao.", "..ooooo..", "........."]},
 	"bolsillo_hondo": {"a": Color(0.62, 0.42, 0.22), "b": Color(1.0, 0.82, 0.25), "rows": [
@@ -39,38 +37,13 @@ const ICONS := {
 	# ---- consumibles ----
 	"freno": {"a": Color(0.95, 0.30, 0.30), "rows": [
 		".........", ".ooo.ooo.", ".oao.oao.", ".oao.oao.", ".oao.oao.", ".oao.oao.", ".oao.oao.", ".ooo.ooo.", "........."]},
-	# ---- conversores (un cubo con la marca de cada tipo) ----
-	"conv_roca": {"a": Color(0.62, 0.58, 0.55), "b": Color(0.42, 0.40, 0.40), "rows": [
-		"ooooooooo", "oaaaaaaao", "oaabaaaao", "oaaaaabao", "oabaaaaao", "oaaaabaao", "oaabaaaao", "oaaaaaaao", "ooooooooo"]},
-	"conv_hielo": {"a": Color(0.50, 0.82, 1.0), "w": Color(0.96, 0.99, 1.0), "rows": [
-		"ooooooooo", "oaaaaawwo", "oaaaawwao", "oaaawwaao", "oaawwaaao", "oawwaaaao", "owwaaaaao", "oaaaaaaao", "ooooooooo"]},
-	"conv_agrietado": {"a": Color(0.66, 0.52, 0.36), "rows": [
-		"ooooooooo", "oaaaoaaao", "oaaoaaaao", "oaaaoaaao", "oaaaaoooo", "oaaaaaaoo", "oaaaaoaao", "oaaaoaaao", "ooooooooo"]},
-	"conv_trampa": {"a": Color(0.88, 0.72, 0.36), "b": Color(0.42, 0.30, 0.14), "rows": [
-		"ooooooooo", "oabababao", "obabababo", "oabababao", "obabababo", "oabababao", "obabababo", "oabababao", "ooooooooo"]},
-	"conv_pinchos": {"a": Color(0.74, 0.74, 0.80), "b": Color(0.45, 0.45, 0.52), "rows": [
-		"....o.o..", "...oao.o.", "..oaaoaoo", ".oaaaoaao", "oaaaaaaao", "oabbabbao", "oaaaaaaao", "oabbabbao", "ooooooooo"]},
-	"conv_pesado": {"a": Color(0.36, 0.36, 0.44), "w": Color(0.72, 0.72, 0.80), "rows": [
-		"ooooooooo", "owaaaaawo", "oaaaaaaao", "oaaaaaaao", "oaaaaaaao", "oaaaaaaao", "oaaaaaaao", "owaaaaawo", "ooooooooo"]},
-	"conv_bomba": {"a": Color(0.24, 0.24, 0.30), "b": Color(0.98, 0.35, 0.20), "rows": [
-		"ooooooooo", "oaaaaaabo", "oaaaaabbo", "oaaooaaao", "oaoaaoaao", "oaoaaoaao", "oaaooaaao", "oaaaaaaao", "ooooooooo"]},
-	"conv_catapulta": {"a": Color(0.45, 0.85, 0.40), "b": Color(0.95, 0.95, 0.80), "rows": [
-		"ooooooooo", "oaaaabaao", "oaaabbbao", "oaabbbbbo", "oaaaabaao", "oaaaabaao", "oaaaabaao", "oaaaaaaao", "ooooooooo"]},
 	# ---- otros consumibles ----
-	"escudo": {"a": Color(0.55, 0.70, 0.92), "b": Color(1.0, 0.82, 0.25), "rows": [
-		".ooooooo.", "oaaaaaaao", "oabbbbbao", "oabaaabao", "oabaaabao", ".oabbbao.", "..oabao..", "...oao...", "....o...."]},
-	"doble_salto": {"a": Color(1.0, 0.90, 0.30), "b": Color(0.75, 0.55, 0.15), "rows": [
-		"....o....", "...oao...", "..oaaao..", "....a....", "...oao...", "..oaaao..", "....a....", "..obbbo..", ".ooooooo."]},
 	"totem": {"a": Color(0.62, 0.40, 0.20), "b": Color(1.0, 0.82, 0.25), "rows": [
 		"..ooooo..", ".oaaaaao.", ".oabaabo.", ".oaaaaao.", "..ooooo..", ".oabbbao.", ".oaaaaao.", ".oabbbao.", "..ooooo.."]},
 	"vida_extra": {"a": Color(0.92, 0.16, 0.27), "w": Color(1.0, 0.7, 0.75), "rows": [
 		".oo...oo.", "oaaoooaao", "oawaaaaao", "oaaaaaaao", "oaaaaaaao", ".oaaaaao.", "..oaaao..", "...oao...", "....o...."]},
-	"teletransporte": {"a": Color(0.68, 0.42, 1.0), "b": Color(0.97, 0.93, 1.0), "rows": [
-		".ooooooo.", "oaaaaaaao", "oabbbbbao", "oabaaabao", "oabaaabao", "oabaaabao", "oabbbbbao", "oaaaaaaao", ".ooooooo."]},
 	"desarmar": {"a": Color(0.35, 0.33, 0.40), "b": Color(0.95, 0.30, 0.20), "w": Color(0.80, 0.80, 0.90), "rows": [
 		".....bb..", "....b....", "..ooooo..", ".oaaaaao.", "oaawaaaao", "oaaaaaaao", "oaaaaaaao", ".oaaaaao.", "..ooooo.."]},
-	"ancla_chica": {"a": Color(0.55, 0.70, 0.85), "b": Color(1.0, 0.82, 0.25), "rows": [
-		"....o....", "...oao...", "....o....", ".ooooooo.", "....a....", "o...a...o", "oa..a..ao", ".oaaaaao.", "..ooooo.."]},
 	# ---- los que disparan la ganancia (docs/diseno.md §47) ----
 	"cosecha_doble": {"a": Color(1.00, 0.82, 0.25), "b": Color(0.85, 0.50, 0.10), "rows": [
 		"..ooooo..", ".oaaaaao.", "oaabbbaao", "oaabaaaao", "oaabbaaao", "oaaaabaao", "oaabbbaao", ".oaaaaao.", "..ooooo.."]},

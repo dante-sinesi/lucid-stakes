@@ -9,9 +9,8 @@ func _init() -> void:
 	main.test_mode = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
-	main._cancel_jobs()
 	for i in 12:   # una ganancia cada ~0,3 s, durante unos 3,6 s (más que lo que dura un desvanecer)
 		main._flash_gain("+%d x1.%d" % [i + 5, i])
 		var t0 := Time.get_ticks_msec()

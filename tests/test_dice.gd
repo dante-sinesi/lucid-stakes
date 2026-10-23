@@ -44,7 +44,7 @@ func make_main() -> Node:
 
 func wait_tower(main: Node) -> void:
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 
 
@@ -295,7 +295,6 @@ func test_main() -> void:
 		if not info4.has("cosmetic_name"):
 			no_cosmetic += 1
 	check(no_cosmetic > 20 and no_cosmetic < 40, "con 4 aciertos el cosmetico sale solo a veces (%d de 40 sin cosmetico)" % no_cosmetic)
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	Profile.reset()
@@ -311,129 +310,32 @@ func _play_out(d) -> void:
 		guard += 1
 
 
-## La pantalla de carga: aparece si la generacion tarda, se cierra cuando la torre esta lista, y nunca se ve si es instantanea.
+## La pantalla de carga: al empezar cada torre aparecen los dados del tabernero (con Empezar habilitado al terminar las tiradas) y Empezar entra a la torre.
 func test_loading_screen() -> void:
 	var main := make_main()
 	await wait_tower(main)
 	main.dice.fast = false
 	main.dice.auto_start = false   # como en el juego de verdad: hay que apretar Empezar
-	# Una generacion lenta (simulada con un hilo que espera)
-	var th := Thread.new()
-	th.start(func() -> Dictionary:
-		OS.delay_msec(1900)
-		return {"ok": true})
-	var job := {"stage": 3, "thread": th, "t0": Time.get_ticks_msec(), "done": false}
-	var was_open := false
-	var first_frame_open := false
-	var banner_empty := true
-	var button_gray_while_loading_visible := false
-	main._await_job(job)   # (sin esperar: lo vamos mirando cuadro a cuadro)
-	var frames := 0
-	while th.is_alive() and frames < 600:
+	main.dice_always = true
+	main.new_tower(4242)   # (sin esperar: se mira cuadro a cuadro)
+	for i in 6:
 		await process_frame
-		frames += 1
-		banner_empty = banner_empty and main.banner.text == ""
-		if main.dice.visible:
-			was_open = true
-			if frames <= 3:
-				first_frame_open = true
-			button_gray_while_loading_visible = button_gray_while_loading_visible or main.dice.start_button.visible
-	check(was_open and first_frame_open, "si hay que esperar, se abre directo con los dados (a los pocos cuadros)")
-	check(banner_empty, "sin ningun cartel de Generando la torre antes ni durante: sólo los dados")
-	check(not button_gray_while_loading_visible, "mientras se juegan las tiradas no hay botón Empezar: jugar es obligatorio")
-	# La torre esta lista: el minijuego NO se cierra solo y Empezar sigue sin aparecer hasta terminar las tiradas
-	for i in 20:
-		await process_frame
-	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.visible, "con la torre lista, Empezar no aparece mientras queden tiradas")
-	check(main.dice.status_label.text == "", "los dados no muestran ningún aviso de la torre")
+	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.visible, "al empezar la torre se abren los dados y hay que jugarlos (todavía no hay botón Empezar)")
+	check(main.banner.text == "" and main.dice.status_label.text == "", "sin ningún cartel de la torre: sólo los dados")
 	main.dice.request_close()
 	check(main.dice.visible and not main.dice.closing, "no se puede saltear el juego")
 	await _play_out(main.dice)
-	check(main.dice.start_button.visible and not main.dice.start_button.disabled and not main.dice.start_button.get_node("espiral").visible, "terminadas las tiradas, con la torre lista: Empezar listo para apretar")
-	check(main.dice.start_button.text == "Empezar" and main.dice.start_button.position.x + main.dice.start_button.size.x > 0.0, "el boton dice Empezar")
+	check(main.dice.start_button.visible and not main.dice.start_button.disabled and not main.dice.start_button.get_node("espiral").visible, "terminadas las tiradas: Empezar listo para apretar")
+	check(main.dice.start_button.text == "Empezar" and main.dice.start_button.position.x + main.dice.start_button.size.x > 0.0, "el botón dice Empezar")
 	main.dice.start_button.pressed.emit()
-	await process_frame
-	check(not main.dice.visible, "Empezar cierra y se sigue")
-	main._jobs.erase(job)
-	# Si las tiradas terminan antes de que la torre esté lista: Empezar aparece gris y con la espiral
-	var th3 := Thread.new()
-	th3.start(func() -> Dictionary:
-		OS.delay_msec(25000)
-		return {"ok": true})
-	var job3 := {"stage": 3, "thread": th3, "t0": Time.get_ticks_msec() - 2000, "done": false}   # (ya paso la demora: abre enseguida)
-	main._await_job(job3)
-	for i in 5:
+	for i in 4:
 		await process_frame
-	await _play_out(main.dice)
-	check(main.dice.visible and main.dice.start_button.visible and main.dice.start_button.disabled and main.dice.start_button.get_node("espiral").visible, "si la torre sigue generándose, Empezar aparece gris y con la espiral")
-	frames = 0
-	while th3.is_alive() and frames < 6000:
-		await process_frame
-		frames += 1
-	for i in 10:
-		await process_frame
-	check(main.dice.visible and not main.dice.start_button.disabled and not main.dice.start_button.get_node("espiral").visible, "cuando la torre se termina, Empezar se habilita")
-	main.dice.start_button.pressed.emit()
-	await process_frame
-	check(not main.dice.visible, "y al apretarlo se sigue")
-	main._jobs.erase(job3)
-	# La generacion usa varios hilos: gana la primera semilla que sale y frena a las demas
-	var job4: Dictionary = main._start_job(6, 4242)
-	check(job4.has("threads") and job4.threads.size() == main._gen_thread_count() and main._gen_thread_count() >= 1 and main._gen_thread_count() <= main.MAX_GEN_THREADS, "un trabajo de generacion usa varios hilos (%d)" % job4.threads.size())
-	var wait_frames := 0
-	while main._job_alive(job4) and wait_frames < 6000:
-		await process_frame
-		wait_frames += 1
-	var gen_res: Dictionary = main._job_join(job4)
-	main._jobs.erase(job4)
-	check(gen_res.ok and gen_res.logic != null and gen_res.logic.goal_y > 2, "sale una torre")
-	var seed_ok := false
-	for k in main._gen_thread_count():
-		seed_ok = seed_ok or gen_res.seed_used == 4242 + k * 7919
-	check(seed_ok, "con la semilla de uno de los hilos (%d)" % gen_res.seed_used)
-	check(job4.token[0] == true or job4.threads.size() == 1, "al salir una torre se frena a los otros hilos")
-	# Un testigo de cancelacion detiene la generacion de esa semilla (sin tocar la bandera global)
-	var Gen := preload("res://scripts/tower_gen.gd")
-	var stop_token := [true]
-	var stopped: Dictionary = Gen.generate_stage(7, 8, 0.4, {"tries": 4, "cancel_token": stop_token})
-	check(not stopped.ok and not Gen.cancel, "con el testigo en true la generacion se corta y la bandera global queda apagada")
-	# Con los dados siempre activos, una generacion instantanea los muestra igual (con Empezar habilitado)
-	main.dice_always = true
-	var th_fast := Thread.new()
-	th_fast.start(func() -> Dictionary: return {"ok": true})
-	var job_fast := {"stage": 3, "thread": th_fast, "t0": Time.get_ticks_msec(), "done": false}
-	OS.delay_msec(120)
-	main._await_job(job_fast)
-	for i in 6:
-		await process_frame
-	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.visible, "aunque la torre ya esté lista, los dados se ven siempre y hay que jugarlos")
-	await _play_out(main.dice)
-	check(main.dice.start_button.visible and not main.dice.start_button.disabled, "al terminar las tiradas se puede apretar Empezar")
-	main.dice.start_button.pressed.emit()
-	await process_frame
-	check(not main.dice.visible, "Empezar los cierra")
-	if th_fast.is_started():
-		th_fast.wait_to_finish()
-	main._jobs.erase(job_fast)
+	check(not main.dice.visible and main.nueva != null and main.nueva.semilla == 4242, "Empezar cierra los dados y se entra a la torre")
 	main.dice_always = false
-	# Una generacion instantanea (con los dados opcionales): ni se ve
-	var th2 := Thread.new()
-	th2.start(func() -> Dictionary: return {"ok": true})
-	var job2 := {"stage": 3, "thread": th2, "t0": Time.get_ticks_msec(), "done": false}
-	OS.delay_msec(120)
-	var saw := false
-	main._await_job(job2)
-	for i in 5:
-		await process_frame
-		saw = saw or main.dice.visible
-	check(not saw, "si la torre ya estaba generada no se ve el minijuego")
-	if th2.is_started():
-		th2.wait_to_finish()
-	# Volver al menu con los dados abiertos los cierra
+	# Volver al menú con los dados abiertos los cierra
 	main.dice.open()
 	main.open_main_menu()
-	check(not main.dice.visible, "volver al menu cierra los dados")
-	main._cancel_jobs()
+	check(not main.dice.visible, "volver al menú cierra los dados")
 	main.queue_free()
 	await process_frame
 
@@ -474,7 +376,6 @@ func test_cosmetics_screen() -> void:
 	check(Profile.equipped_outfit() == "", "'sin prenda' la saca")
 	cs.back.emit()
 	check(mm.main_center.visible and not cs.visible, "Volver regresa al menu")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	Profile.reset()

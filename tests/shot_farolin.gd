@@ -14,7 +14,6 @@ func _init() -> void:
 	main.in_menu = false
 	paused = false
 	main.main_menu.visible = false
-	main._cancel_jobs()
 	main.generating = false
 	main.stage_number = int(args[1]) if args.size() > 1 else 3
 	main.run.stage = main.stage_number

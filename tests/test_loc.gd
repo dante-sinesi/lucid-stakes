@@ -219,9 +219,9 @@ func test_in_game() -> void:
 	root.add_child(main)
 	await process_frame
 	Loc.set_lang("en")
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
-	var tr: Dictionary = Trials.for_stage({6: "niebla"}, 6)
+	var tr: Dictionary = Trials.for_stage({6: "sin_ayudas"}, 6)
 	main.trial = tr
 	main._announce_trial()
 	main._refresh()
@@ -233,9 +233,7 @@ func test_in_game() -> void:
 	main._refresh()
 	main.request_restart()
 	await process_frame
-	main.logic.try_action(Vector3i(1, 0, 0))
-	main.logic.try_action(Vector3i(0, 0, 1), 1)
-	main._flash(main.logic.perk_msg)
+	main._flash("Madrugada")
 	main.pause_game()
 	main.resume_game()
 	main.enter_casino()
@@ -250,7 +248,6 @@ func test_in_game() -> void:
 	main.start_tutorial()
 	for i in 30:
 		await process_frame
-	main._cancel_jobs()
 	var missing: Array = Loc.missing.keys()
 	if OS.get_environment("LOC_PRINT") != "":
 		for m in missing:

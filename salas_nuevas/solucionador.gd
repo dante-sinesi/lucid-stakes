@@ -36,7 +36,9 @@ static func _heuristica(t, hay_catapulta: bool) -> int:
 
 
 ## { ok, moves, path:[[dir, modo]], grabs (agarres), blocks (bloques distintos movidos), states }. tope = estados como mucho.
-static func resolver(inicial, tope := 200000) -> Dictionary:
+## `modos`: los modos de acción que se pueden usar (0 caminar, 1 empujar o tirar, 2 colgarse); sirve para comprobar que una técnica es imprescindible.
+## `prohibir`: "push" o "pull" para no poder empujar o no poder tirar.
+static func resolver(inicial, tope := 200000, modos := [0, 1, 2], prohibir := "") -> Dictionary:
 	var hay_k := false
 	for c in inicial.bloques:
 		if inicial.bloques[c] == "k":
@@ -65,11 +67,15 @@ static func resolver(inicial, tope := 200000) -> Dictionary:
 		for a in ACCIONES:
 			var d: Vector3i = a[0]
 			var m: int = a[1]
+			if not modos.has(m):
+				continue
 			if t.colgado != Vector3i.ZERO and m != 0:
 				continue
 			var s = t.duplicar()
 			var r: Dictionary = s.actuar(d, m)
 			if not r.ok or s.perdido:
+				continue
+			if prohibir != "" and s.tipo_agarre == prohibir:
 				continue
 			var k := clave(s)
 			var g: int = nodo.g + 1

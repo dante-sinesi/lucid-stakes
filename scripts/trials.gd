@@ -4,40 +4,24 @@ extends RefCounted
 ## cuántas etapas faltan. Cada prueba cambia una regla de la torre, paga más claridad, regala un boost al superarla y, la primera
 ## vez, da un regalo (ver `reward`). Las habilidades persistentes no salen de acá: se ganan por escenario (ver scenarios.gd).
 ##
-## Una prueba es un diccionario: {id, name, desc, pace ("" = el de la etapa), fog (sólo se ven
-## los pisos cercanos), dark (sólo se ven los bloques cercanos), no_items (sin consumibles), no_retry (sin reintentos: si caés se
-## termina el run), no_streak (la racha no sube el multiplicador), bias (sesgo del generador: ver TowerGen._bias)}.
+## Una prueba es un diccionario: {id, name, desc, no_items (sin consumibles), no_retry (sin reintentos: si caes se termina el run), no_streak (la racha no sube el multiplicador)}.
 ## `mult` (multiplicador de la claridad juntada) y `index` (0..4) se completan al sortear: las últimas pagan más.
 
 const Items := preload("res://scripts/items.gd")
 const Stages := preload("res://scripts/stages.gd")
-const TowerLogic := preload("res://scripts/tower_logic.gd")
 const Loc := preload("res://scripts/loc.gd")
-const K := TowerLogic.Kind
 
 const FIRST_STAGE := 3
 const EVERY := 3
-const FOG_ABOVE := 3        # pisos que se ven por encima del jugador con niebla
-const DARK_RADIUS := 4.5    # distancia (en celdas) hasta la que se ven los bloques en la oscuridad
 
 const CATALOG := {
-	"niebla": {"name": "Niebla", "desc": "Solo ves unos pocos pisos por encima de ti.", "fog": true},
-	"oscuridad": {"name": "Oscuridad", "desc": "Solo ves los bloques que tienes cerca.", "dark": true},
-	"prisa": {"name": "Prisa", "desc": "La fila de abajo cae mucho más rápido.", "pace": "fast"},
 	"sin_ayudas": {"name": "Sin ayudas", "desc": "No se pueden usar consumibles.", "no_items": true},
 	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caes, se termina el run.", "no_retry": true},
 	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true},
-	"hielo_total": {"name": "Hielo total", "desc": "La torre está llena de hielo.",
-			"bias": {"kinds": {K.ICE: 1.6}, "plat_ice": 0.35, "cap_bonus": 3}},
-	"quebradizo": {"name": "Quebradizo", "desc": "Casi todo se rompe al pisarlo o no se mueve.",
-			"bias": {"kinds": {K.CRACKED: 1.2, K.HEAVY: 0.8}, "cap_bonus": 3}},
-	"meteoritos": {"name": "Lluvia de meteoritos", "desc": "Cada vez que te mueves cae un meteorito y destruye un bloque (se marca antes). Nunca te cierra el camino.", "meteors": true},
-	"polvorin": {"name": "Polvorín", "desc": "La torre está llena de bombas.",
-			"bias": {"kinds": {K.BOMB: 1.2}, "cap_bonus": 2}},
 }
 
-## Sorteo por defecto (el de La Pesadilla): las pruebas que no necesitan un generador especial.
-const DEFAULT_POOL: Array[String] = ["niebla", "oscuridad", "prisa", "sin_ayudas", "todo_o_nada", "sin_racha", "meteoritos"]
+## Sorteo por defecto (el de La Pesadilla).
+const DEFAULT_POOL: Array[String] = ["sin_ayudas", "todo_o_nada", "sin_racha"]
 
 
 static func stages() -> Array[int]:
@@ -88,15 +72,6 @@ static func next_from(schedule: Dictionary, stage: int) -> Dictionary:
 		if st >= stage and schedule.has(st):
 			return {"stage": st, "trial": for_stage(schedule, st), "left": st - stage}
 	return {}
-
-
-## ¿Se ve el bloque en `pos` desde el jugador, con las reglas de visibilidad de la prueba?
-static func visible_from(trial: Dictionary, pos: Vector3i, player: Vector3i) -> bool:
-	if trial.get("fog", false) and pos.y > player.y + FOG_ABOVE:
-		return false
-	if trial.get("dark", false) and Vector3(pos - player).length() > DARK_RADIUS:
-		return false
-	return true
 
 
 ## Recompensa de superar una prueba: un boost de nivel raro (o épico en las últimas) que entre en el run; si no hay lugar, claridad.

@@ -20,15 +20,14 @@ func _init() -> void:
 	main.test_mode = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	main.training = false
-	main.run.trial_schedule = {3: "niebla"}
+	main.run.trial_schedule = {3: "sin_ayudas"}
 	check(main._tower_music(3) == "pruebas", "en una prueba suena el Invierno")
 	check(main._tower_music(2) == "torre" and main._tower_music(4) == "torre", "en las torres comunes suena el Verano")
 	main.training = true
 	check(main._tower_music(3) == "torre", "en el entrenamiento y el tutorial no hay pruebas")
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	print("tests de la música de las estaciones terminados, fallos: ", fails)

@@ -37,7 +37,7 @@ var dice_pending := {"luz": 0, "cosmetics": []}   # la Luz y los cosméticos que
 var dice_claridad := 0          # claridad ganada con los dados de la pantalla de carga (tiene tope por partida)
 var meta_consumable_slots := 0   # mejoras permanentes del Despertar (ver profile.gd)
 var restart_discount := 0.0
-var collapse_bonus := 0
+var movs_extra := 0               # movimientos de más en cada sala (Pies ligeros y la mejora Aire de más)
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
 var bonus_lives := 0       # corazones de más que dan las habilidades persistentes (Corazón extra)
 var lives := MAX_LIVES    # vidas: cuántas veces se puede reintentar después de morir (3 por partida, sin importar la etapa)
@@ -160,15 +160,6 @@ static func wall_toll() -> float:
 			break
 		t8 = 0.5 * (t8 + next)
 	return t8
-
-
-const TOWER_ROWS_FIRST := 50    # pisos de la torre de la etapa 1 (docs/diseno.md §48)
-const TOWER_ROWS_LAST := 100    # y de la etapa 15
-
-
-## Filas (pisos) de la torre de la etapa `stage`: de TOWER_ROWS_FIRST (50) en la etapa 1 a TOWER_ROWS_LAST (100) en la 15, de a poco (la torre crece con la dificultad; cuesta más generarla).
-static func rows_for(stage: int) -> int:
-	return TOWER_ROWS_FIRST + int(round(float(TOWER_ROWS_LAST - TOWER_ROWS_FIRST) * float(clampi(stage, 1, 15) - 1) / 14.0))
 
 
 ## La próxima prueba desde la etapa `from_stage`: {trial, left} ({} si no quedan); `left` son las etapas que faltan (0 = es la de `from_stage`).
@@ -355,7 +346,7 @@ func to_dict() -> Dictionary:
 	return {"stage": stage, "claridad": claridad, "boosts": boosts.duplicate(), "consumables": consumables.duplicate(),
 			"casino_spent": casino_spent, "casino_won": casino_won, "retries": retries, "tower_retries": tower_retries,
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
-			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "collapse_bonus": collapse_bonus,
+			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "movs_extra": movs_extra,
 			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
 			"vault": vault, "vault_stage": vault_stage, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
 
@@ -372,10 +363,13 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.stage = int(d.get("stage", 1))
 	r.claridad = int(d.get("claridad", 0))
 	for id in d.get("boosts", []):
-		r.boosts.append(str(id))
+		if not Items.get_item(str(id)).is_empty():   # (un boost que ya no existe se descarta de la partida guardada)
+			r.boosts.append(str(id))
 	for id in d.get("consumables", []):
 		var cid := str(id)
-		r.consumables.append({"hielo_a_roca": "conv_roca", "catapulta_de_bolsillo": "conv_catapulta"}.get(cid, cid))   # (consumibles que se reemplazaron)
+		if Items.get_item(cid).is_empty():
+			continue   # (un consumible que ya no existe: se descarta de la partida guardada)
+		r.consumables.append(cid)
 	r.casino_spent = int(d.get("casino_spent", 0))
 	r.casino_won = int(d.get("casino_won", 0))
 	r.retries = int(d.get("retries", 0))
@@ -387,7 +381,7 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.trials_cleared = int(d.get("trials_cleared", 0))
 	r.meta_consumable_slots = int(d.get("meta_consumable_slots", 0))
 	r.restart_discount = float(d.get("restart_discount", 0.0))
-	r.collapse_bonus = int(d.get("collapse_bonus", 0))
+	r.movs_extra = int(d.get("movs_extra", 0))
 	r.scenario_id = str(d.get("scenario_id", "pesadilla"))
 	r.dificultad = str(d.get("dificultad", "media"))
 	r.price_mult = float(d.get("price_mult", 1.0))

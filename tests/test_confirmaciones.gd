@@ -18,7 +18,7 @@ func _init() -> void:
 	main.test_mode = true
 	root.add_child(main)
 	await process_frame
-	while main.generating or main.logic == null:
+	while main.generating or main.nueva == null:
 		await process_frame
 	main.in_menu = false
 	main.run.claridad = 321
@@ -58,7 +58,6 @@ func _init() -> void:
 	main.pause_menu.set_restart(3, false, false)
 	check(main.pause_menu.buttons["reiniciar"].visible and main.pause_menu.buttons["reiniciar"].text.contains("vida"), "en la torre sí, y dice que cuesta una vida")
 	SaveGame.delete()   # (no se deja una partida guardada en el espacio de pruebas)
-	main._cancel_jobs()
 	main.queue_free()
 	await process_frame
 	print("tests de las confirmaciones terminados, fallos: ", fails)

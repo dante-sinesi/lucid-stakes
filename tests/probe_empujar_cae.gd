@@ -7,7 +7,6 @@ func _init() -> void:
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.test_mode = true
 	main.quick_portal = true
-	main.test_mode_jobs = false
 	root.add_child(main)
 	for i in 4:
 		await process_frame

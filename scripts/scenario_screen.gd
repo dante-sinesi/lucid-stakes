@@ -13,7 +13,7 @@ const Abilities := preload("res://scripts/abilities.gd")
 const Trials := preload("res://scripts/trials.gd")
 const ScenarioCard := preload("res://scripts/scenario_card.gd")
 const LuzCounter := preload("res://scripts/luz_counter.gd")
-const TowerLogic := preload("res://scripts/tower_logic.gd")
+const Tipos := preload("res://salas_nuevas/tipos.gd")
 const Loc := preload("res://scripts/loc.gd")
 const Demo := preload("res://scripts/demo.gd")
 
@@ -232,23 +232,10 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Reglas propias de un escenario, en frases (salen de sus campos).
 static func rule_lines(s: Dictionary) -> Array[String]:
 	var out: Array[String] = []
-	var bias: Dictionary = s.get("bias", {})
-	var kinds: Dictionary = bias.get("kinds", {})
-	var K := TowerLogic.Kind
-	if kinds.has(K.ICE) or float(bias.get("plat_ice", 0.0)) > 0.0:
-		out.append("Las torres tienen mucho más hielo, desde la primera etapa.")
-	if kinds.has(K.CRACKED) or kinds.has(K.HEAVY):
-		out.append("Abundan los bloques agrietados y los pesados.")
-	if kinds.has(K.BOMB):
-		out.append("Hay muchas más bombas.")
-	if str(s.get("pace", "")) == "fast":
-		out.append("La fila de abajo siempre cae rápido.")
 	if float(s.get("price_mult", 1.0)) < 1.0:
 		out.append(Loc.f("La ficha de la ruleta cuesta %d %% menos.", [int(round((1.0 - float(s.price_mult)) * 100.0))]))
 	if int(s.get("casino_tier", -1)) >= 0:
 		out.append("El casino es de lujo desde la primera etapa.")
-	if float(s.get("diff_offset", 0.0)) > 0.0:
-		out.append("Las torres son más difíciles.")
 	if int(s.get("mistakes", 0)) > 0:
 		out.append(Loc.f("Cada sala permite sólo %d movimientos en falso; al siguiente pierdes una vida.", [int(s.mistakes)]))
 	if bool(s.get("no_undo", false)):
