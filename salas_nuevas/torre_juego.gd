@@ -566,7 +566,9 @@ func _procesar(r: Dictionary) -> void:
 			_aviso("Segundo aliento: la sala vuelve a empezar y no pierdes la vida.", 3.0)
 		"fin":
 			_aviso("%s. Te quedaste sin vidas. Pulsa R para otra torre." % str(r.msg), 0.0)
-	_refrescar(str(r.evento) == "")   # (tras un checkpoint o una muerte el personaje aparece de golpe en su sitio)
+	if str(r.evento) == "checkpoint":
+		_rastro_pendiente = []   # (el camino es de la sala de abajo: el último paso hasta el checkpoint se anima en línea recta, y la cámara lo acompaña)
+	_refrescar(str(r.evento) == "" or str(r.evento) == "checkpoint")   # (tras una muerte el personaje aparece de golpe en su sitio)
 	accion_hecha.emit()
 
 
@@ -659,8 +661,31 @@ func _caer_sala(i: int) -> void:
 	var cae := Node3D.new()
 	add_child(cae)
 	cae.position = vivo.position
-	for h in vivo.get_children():   # los bloques vivos de la sala se pasan al nodo que cae, antes de que se redibuje la siguiente
-		h.reparent(cae, false)
-	var tw := create_tween()
-	tw.tween_property(cae, "position:y", cae.position.y - 40.0, 1.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_callback(cae.queue_free)
+	var centro := Vector3.ZERO   # el bloque de salida (donde se está parado) no cae: pasa a ser la entrada de la sala siguiente
+	var salida := Vector3.ZERO
+	for b in t.salas[i].d.bloques:
+		if str(b[3]) == "f":
+			salida = Vector3(int(b[0]) + 0.5, int(b[1]) + 0.5, int(b[2]) + 0.5)
+	centro = salida + Vector3(0, 1, 0)
+	var hijos := vivo.get_children()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var ultimo := 0.0
+	for h in hijos:   # los bloques vivos de la sala se pasan al nodo que cae, antes de que se redibuje la siguiente
+		var mi := h as Node3D
+		if mi == null:
+			continue
+		if mi.position.distance_to(salida) < 0.1:
+			continue   # (se queda en vivo y se redibuja con la sala nueva)
+		mi.reparent(cae, false)
+		# cada bloque cae a su modo: la caída se propaga desde donde estás, con demora, velocidad, giro y deriva propios
+		var d := mi.position.distance_to(centro)
+		var demora := d * 0.045 + rng.randf_range(0.0, 0.35)
+		var dur := rng.randf_range(1.1, 2.0)
+		var tw := mi.create_tween().set_parallel(true)
+		tw.tween_property(mi, "position:y", mi.position.y - 40.0, dur).set_delay(demora).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(mi, "position:x", mi.position.x + rng.randf_range(-0.8, 0.8), dur).set_delay(demora)
+		tw.tween_property(mi, "position:z", mi.position.z + rng.randf_range(-0.8, 0.8), dur).set_delay(demora)
+		tw.tween_property(mi, "rotation", Vector3(rng.randf_range(-1.6, 1.6), rng.randf_range(-1.0, 1.0), rng.randf_range(-1.6, 1.6)), dur).set_delay(demora).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		ultimo = maxf(ultimo, demora + dur)
+	get_tree().create_timer(ultimo + 0.2).timeout.connect(cae.queue_free)
