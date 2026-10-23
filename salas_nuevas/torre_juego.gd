@@ -74,6 +74,7 @@ var vidas_fn := Callable()   # () -> int: las vidas del run
 var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
 var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario no los usa)
 var falsos = null              # el medidor (falsos.gd)
+var _cayendo := false   # la animación de la derrota está en marcha: la cámara no sigue al personaje que cae
 var _pos_previa := Vector3.ZERO   # dónde estaba el personaje antes de la última acción (la caída de la derrota arranca de ahí)
 var efectos                    # sonidos y efectos visuales de las acciones (efectos.gd)
 var player_node: Node3D        # (para el juice: el personaje)
@@ -408,6 +409,9 @@ func _process(delta: float) -> void:
 		return
 	var activa: bool = not (en_juego and puede_jugar.is_valid() and not puede_jugar.call())
 	efectos.proceso(delta, activa)
+	if not panorama and not _cayendo:   # la cámara sigue siempre al personaje (también mientras camina o se desliza), aunque algo la haya movido
+		var foco := gato_nodo.position + Vector3(0, 0.5, 0)
+		pivot.position = pivot.position.lerp(foco, 1.0 - exp(-14.0 * delta))
 	if not activa:
 		return
 	var ax := int(Controls.held("camara_derecha")) - int(Controls.held("camara_izquierda"))
@@ -582,17 +586,19 @@ func animar_derrota(motivo: String) -> void:
 	if _pos_previa != Vector3.ZERO and not motivo.contains("movimientos"):
 		gato_nodo.position = _pos_previa   # (si cayó la plataforma o el piso, se lo ve caer desde donde estaba parado)
 	gato_nodo.visible = true
+	_cayendo = true
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(gato_nodo, "position:y", gato_nodo.position.y - 14.0, 1.4 * LENTO).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_property(gato_nodo, "rotation:x", gato_nodo.rotation.x + TAU * 1.5, 1.4 * LENTO)
 	tw.tween_property(gato_nodo, "rotation:z", gato_nodo.rotation.z + TAU * 0.75, 1.4 * LENTO)
 	if motivo.contains("movimientos"):   # (se acabó el tiempo: cae la sala entera)
 		tw.tween_property(vivo, "position:y", vivo.position.y - 30.0, 1.6 * LENTO).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	var base := pivot.position
-	var temblor := create_tween()
+	var temblor := create_tween()   # (el temblor mueve el encuadre de la cámara, no el pivote que la sigue)
 	for i in 8:
-		temblor.tween_property(pivot, "position", base + Vector3(randf_range(-0.12, 0.12), randf_range(-0.12, 0.12), randf_range(-0.12, 0.12)), 0.04 * LENTO)
-	temblor.tween_property(pivot, "position", base, 0.05 * LENTO)
+		temblor.tween_property(cam, "h_offset", randf_range(-0.12, 0.12), 0.04 * LENTO)
+		temblor.parallel().tween_property(cam, "v_offset", randf_range(-0.12, 0.12), 0.04 * LENTO)
+	temblor.tween_property(cam, "h_offset", 0.0, 0.05 * LENTO)
+	temblor.parallel().tween_property(cam, "v_offset", 0.0, 0.05 * LENTO)
 
 
 ## Volver a empezar la sala perdida (reintentar): se acomoda todo como al entrar a ella.
@@ -600,6 +606,9 @@ func reiniciar_sala() -> void:
 	if t == null:
 		return
 	t.reintentar_sala()
+	_cayendo = false
+	cam.h_offset = 0.0
+	cam.v_offset = 0.0
 	gato_nodo.rotation = Vector3.ZERO
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
 	if falsos != null:
