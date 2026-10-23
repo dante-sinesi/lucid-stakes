@@ -132,7 +132,7 @@ static func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, glow
 
 ## Farolín en 3D (unos 0,55 de alto, los pies en y = 0), mirando hacia +z: un farol de hierro con asa, la llama con ojos y sonrisa dentro del vidrio,
 ## bracitos y patitas. La llama titila (ver farolin_node.gd) y alumbra la sala con una luz cálida.
-static func build(v := -1) -> Node3D:
+static func build(v := -1, seated := false) -> Node3D:
 	var kind := variant if v < 0 else v
 	var r: Node3D = preload("res://scripts/farolin_node.gd").new()
 	r.name = "farolin"
@@ -193,4 +193,18 @@ static func build(v := -1) -> Node3D:
 	light.omni_range = 2.0
 	r.light = light
 	r.add_child(light)
+	if seated:
+		_sentar(r)
 	return r
+
+
+## Farolín sentado: el cuerpo baja y las patitas quedan estiradas hacia adelante (lo usa la torre: espera sentado en el próximo checkpoint).
+static func _sentar(r: Node3D) -> void:
+	var iron2 := Color(0.3, 0.27, 0.32)
+	for c in r.get_children():
+		if c is MeshInstance3D and (c as MeshInstance3D).position.y < 0.1:
+			c.queue_free()   # (las patitas de pie)
+		elif c is Node3D:
+			c.position.y -= 0.09   # (el farol, la cara y la luz)
+	_box(r, Vector3(-0.06, 0.03, 0.12), Vector3(0.06, 0.06, 0.2), iron2)
+	_box(r, Vector3(0.06, 0.03, 0.12), Vector3(0.06, 0.06, 0.2), iron2)

@@ -68,6 +68,8 @@ var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un di
 var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario no los usa)
 var falsos = null              # el medidor (falsos.gd)
 var farolin: Node3D            # Farolín espera en el próximo checkpoint (sólo en ése)
+var faro_modelo: Node3D        # (su modelo, sentado)
+var faro_tronco: Node3D        # (el tronquito en el que se apoya)
 var contador: Label3D          # los movimientos que quedan, sobre el personaje, cuando son pocos (no hay texto de depuración en el HUD)
 
 
@@ -100,9 +102,29 @@ func _ready() -> void:
 	var silueta := Characters.build(id_personaje, gorro, prenda, true)   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego)
 	silueta.visible = bool(Graphics.value("silhouette")) if en_juego else true
 	gato_nodo.add_child(silueta)
-	farolin = Farolin.build()
+	# Farolín espera sentado, apoyado en un tronquito, en una esquina del bloque de salida y mirando hacia el centro del cubo
+	farolin = Node3D.new()
 	farolin.visible = false
 	add_child(farolin)
+	var faro := Farolin.build(-1, true)
+	faro_modelo = faro
+	farolin.add_child(faro)
+	var pivote := Node3D.new()
+	faro_tronco = pivote
+	farolin.add_child(pivote)
+	var tronco := MeshInstance3D.new()
+	var cil := CylinderMesh.new()
+	cil.top_radius = 0.065
+	cil.bottom_radius = 0.065
+	cil.height = 0.36
+	tronco.mesh = cil
+	var corteza := StandardMaterial3D.new()
+	corteza.albedo_color = Color(0.42, 0.27, 0.13)
+	corteza.roughness = 1.0
+	tronco.material_override = corteza
+	tronco.position = Vector3(0.0, 0.065, -0.17)   # (detrás de Farolín, atravesado)
+	tronco.rotation_degrees.z = 90.0
+	pivote.add_child(tronco)
 	contador = Label3D.new()
 	contador.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	contador.no_depth_test = true
@@ -254,8 +276,26 @@ func _poner_farolin() -> void:
 	var sala: Dictionary = t.sala_actual()
 	var s: Vector2i = Torre.salida_xz(sala.d)
 	farolin.visible = s.x >= 0
-	farolin.position = Vector3(s.x + 0.5 + 0.3, int(sala.off) + int(sala.d.meta) + 1, s.y + 0.5 + 0.3)
-	farolin.rotation_degrees.y = yaw_target
+	var meta: int = int(sala.d.meta)
+	farolin.position = Vector3(s.x + 0.5, int(sala.off) + meta + 1, s.y + 0.5)
+	# se sienta en la esquina de la cara de arriba que tiene menos bloques al lado (la sala de arriba empieza justo ahí y lo taparía); a igualdad, la de atrás de la cámara
+	var mejor := Vector2i(-1, -1)
+	var mejor_puntaje := 1 << 20
+	for esq in [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]:
+		var p := 0
+		for nivel in [meta + 1, meta + 2]:
+			for celda in [Vector3i(s.x + esq.x, nivel, s.y), Vector3i(s.x, nivel, s.y + esq.y), Vector3i(s.x + esq.x, nivel, s.y + esq.y)]:
+				if t.motor.bloques.has(celda):
+					p += 1
+		if p < mejor_puntaje:
+			mejor_puntaje = p
+			mejor = esq
+	var ang := atan2(-float(mejor.x), -float(mejor.y))   # (de la esquina hacia el centro del cubo)
+	var pos := Vector3(0.27 * mejor.x, 0.0, 0.27 * mejor.y)
+	faro_modelo.position = pos
+	faro_modelo.rotation = Vector3(deg_to_rad(-10.0), ang, 0.0)   # (apenas echado hacia atrás, contra el tronco)
+	faro_tronco.position = pos
+	faro_tronco.rotation.y = ang
 
 
 ## Los últimos 5 movimientos de la sala se ven como un número sobre el personaje (rojo cuando quedan 3 o menos).
@@ -290,8 +330,6 @@ func orbitar(rel: Vector2) -> void:
 		_camara_tween.kill()
 	pivot.rotation_degrees.y = yaw_target
 	pitch_node.rotation_degrees.x = cam_pitch
-	if farolin != null:
-		farolin.rotation_degrees.y = yaw_target   # (sigue mirando hacia la cámara)
 	_ocultar_arriba()
 
 
