@@ -278,6 +278,31 @@ static func niveles_para(i: int, n: int, etapa_run: int) -> Array:
 	return ["dificil", "pesadilla"]
 
 
+## Las primeras torres enseñan: salas bajas, cortas y con un solo bloque que mover; después se suman pisos y bloques. Devuelve {pisos, pasos, distintos} máximos
+## (vacío = sin límite). La etapa 1 sube de a poco, y las etapas 2 a 4 son escalones más; desde la 5 manda sólo la curva de dificultad.
+static func limites_aprendizaje(etapa_run: int, i: int, n: int) -> Dictionary:
+	if etapa_run == 1:
+		if i < 2:
+			return {"pisos": 5, "pasos": 10, "distintos": 1}
+		if i < 4:
+			return {"pisos": 6, "pasos": 12, "distintos": 1}
+		return {"pisos": 7, "pasos": 15, "distintos": 2}
+	if etapa_run == 2:
+		return {"pisos": 8, "pasos": 16, "distintos": 2}
+	if etapa_run == 3:
+		return {"pisos": 11, "pasos": 20, "distintos": 3}
+	if etapa_run == 4:
+		return {"pisos": 15, "pasos": 28, "distintos": 4}
+	return {}
+
+
+## ¿Entra la sala en los límites de aprendizaje?
+static func dentro_de_limites(d: Dictionary, lim: Dictionary) -> bool:
+	if lim.is_empty():
+		return true
+	return int(d.get("pisos", int(d.meta) - 1)) <= int(lim.pisos) and int(d.pasos) <= int(lim.pasos) and int(d.get("distintos", 1)) <= int(lim.distintos)
+
+
 ## ¿Todos los especiales de la sala están habilitados en esa etapa?
 static func especiales_habilitados(d: Dictionary, etapa_run: int) -> bool:
 	for b in d.bloques:
@@ -304,6 +329,8 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 		if i < 2 and str(d.get("categoria", "base")) != "base":
 			continue   # (las dos primeras salas son de bloques comunes)
 		if int(ctx.etapa) > 0 and not especiales_habilitados(d, int(ctx.etapa)):
+			continue
+		if not dentro_de_limites(d, limites_aprendizaje(int(ctx.etapa), i, int(ctx.n))):
 			continue
 		orden.append(k)
 	# primero las del nivel que toca (mezcladas) y después las otras
