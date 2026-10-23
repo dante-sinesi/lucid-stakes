@@ -11,12 +11,20 @@ func _env(name: String, def: String) -> String:
 
 
 func _init() -> void:
-	var bank := Bot.load_bank(_env("BANK", "bibliotecas/torres"))
+	var vieja := OS.get_environment("VIEJA") != ""   # VIEJA=1: las torres del banco de la torre vieja (tests/bot_banco.gd); si no, la torre nueva
+	var bank := {}
+	var rng_banco := RandomNumberGenerator.new()
+	rng_banco.seed = int(_env("SEED", "1")) * 7919
+	if vieja:
+		bank = Bot.load_bank(_env("BANK", "bibliotecas/torres"))
+	else:
+		var Torre = load("res://salas_nuevas/torre.gd")
+		bank = Bot.arm_bank(Torre.cargar_paquete_del_juego(), rng_banco, int(_env("TOWERS", "10")))   # TOWERS: torres armadas por etapa
 	var have := 0
 	for s in bank:
 		have += bank[s].size()
 	if have == 0:
-		print("no hay torres en el banco: correr tests/bot_banco.gd")
+		print("no hay torres en el banco: correr tests/bot_banco.gd (o que esté el paquete de salas)")
 		quit(1)
 		return
 	var runs := int(_env("RUNS", "200"))
@@ -43,6 +51,10 @@ func _init() -> void:
 				"income_ceil": RunState.income_ceil = v
 				"hill_power": RunState.hill_power = v
 			tuned.append("%s=%s" % [pair[0], OS.get_environment(pair[0])])
+	if OS.get_environment("CLARIDAD") != "":   # (torre nueva) multiplicador global de la claridad de la torre
+		var Cosecha = load("res://salas_nuevas/cosecha.gd")
+		Cosecha.mult_global = float(OS.get_environment("CLARIDAD"))
+		tuned.append("CLARIDAD=" + OS.get_environment("CLARIDAD"))
 	if OS.get_environment("FICHA_BASE") != "":
 		Roulette.base_price = int(OS.get_environment("FICHA_BASE"))
 		tuned.append("FICHA_BASE=" + OS.get_environment("FICHA_BASE"))
@@ -68,10 +80,11 @@ func _init() -> void:
 	var false_deaths := 0
 	var attempts_total := 0
 	var per := {}   # etapa -> {n, income, toll, before, attempts, boosts, first_ok}
+	var por_nivel := {}   # (torre nueva) nivel de sala -> {n, perdidas, movs, max, pasos}
 	var builds := {}
 	var t0 := Time.get_ticks_msec()
 	for r in runs:
-		var res := Bot.run_one(bank, rng, cfg)
+		var res := Bot.run_one(bank, rng, cfg) if vieja else Bot.run_one_nueva(bank, rng, cfg)
 		wins += 1 if res.won else 0
 		for s in range(1, int(res.stage) + 1):
 			reach[s] += 1.0
@@ -89,6 +102,14 @@ func _init() -> void:
 			p.boosts += float(rec.boosts)
 			p.first_ok += 1.0 if int(rec.attempts) == 1 else 0.0
 			false_deaths += int(rec.get("false_deaths", 0))
+			for sala in rec.get("rooms", []):
+				var pn: Dictionary = por_nivel.get(sala.nivel, {"n": 0, "perdidas": 0, "movs": 0.0, "max": 0.0, "pasos": 0.0})
+				pn.n += 1
+				pn.perdidas += 0 if sala.ok else 1
+				pn.movs += float(sala.movs)
+				pn.max += float(sala.max_mov)
+				pn.pasos += float(sala.pasos)
+				por_nivel[sala.nivel] = pn
 			attempts_total += int(rec.attempts)
 		for b in res.build:
 			builds[b] = int(builds.get(b, 0)) + 1
@@ -110,6 +131,12 @@ func _init() -> void:
 		var p: Dictionary = per[s]
 		var n := float(p.n)
 		print("%5d %5d %8.0f %7.1f %19.0f %7.0f %9.2f %17.0f %%" % [s, p.n, p.income / n, p.boosts / n, p.before / n, p.toll / n, p.attempts / n, 100.0 * p.first_ok / n])
+	if not por_nivel.is_empty():
+		print("salas por nivel     salas  perdidas  movs/mínimo  movs/máximo   (supuestos del bot: ver docs/bot.md)")
+		for nv in ["facil", "media", "dificil", "pesadilla"]:
+			if por_nivel.has(nv):
+				var pn: Dictionary = por_nivel[nv]
+				print("%-18s %6d %8.1f %% %12.2f %12.2f" % [nv, pn.n, 100.0 * pn.perdidas / pn.n, pn.movs / maxf(pn.pasos, 1.0), pn.movs / maxf(pn.max, 1.0)])
 	var names: Array = builds.keys()
 	names.sort_custom(func(a, b): return builds[a] > builds[b])
 	var bl := "boosts más comunes al final:"

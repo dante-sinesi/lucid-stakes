@@ -38,6 +38,10 @@ var perks := {}               # boosts del run
 var mov_run := 0              # movimientos de más en cada sala por mejoras permanentes del run (Aire de más, Pies ligeros)
 var mov_extra := 0            # movimientos de más para la sala actual (Freno, Reloj de arena)
 var aliento_usado := false    # Segundo aliento: una vez por torre
+var movs_total := 0           # movimientos de toda la torre (incluidos los de los intentos perdidos)
+var muertes_sala := 0         # veces que se perdió la sala actual
+var t0_sala := 0              # cuándo empezó el intento actual de la sala (ms)
+var ultima_sala := {}         # lo que pasó en la última sala que terminó (superada o perdida): lo usa la telemetría
 var muerta := false           # (con las vidas del run) se perdió la sala y espera a que el juego decida: reintentar o salir
 var deshacer_pila: Array = []  # fotos de la sala actual antes de cada movimiento (para deshacer)
 const DESHACER_MAX := 600
@@ -374,6 +378,15 @@ static func vueltas(t) -> float:
 	return total / TAU
 
 
+## Una torre nueva con las mismas salas (el bot arma un banco de torres una vez y juega copias; las salas no se modifican al jugar).
+static func copia(o):
+	var t = load("res://salas_nuevas/torre.gd").new()
+	t.salas = o.salas
+	t.etapa = o.etapa
+	t._entrar(0)
+	return t
+
+
 # --- partida ---
 
 func total_pisos() -> int:
@@ -415,6 +428,7 @@ func _entrar(i: int) -> void:
 		motor.agregar_obstaculos(obstaculos_de(salas[i + 1].d, int(salas[i].d.meta)))
 	movs = 0
 	mov_extra = 0
+	t0_sala = Time.get_ticks_msec()
 	deshacer_pila.clear()
 	encendidos = {}
 	if perks.has("reflejos"):   # las bombas empiezan 3 movimientos más altas
@@ -443,8 +457,11 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 		deshacer_pila.pop_front()
 	if not (perks.has("paso_firme") and not motor.agarro and absi(motor.jugador.y - antes_y) == 1):   # Paso firme: trepar y bajar un piso no gasta movimiento
 		movs += 1
+	movs_total += 1
 	cosecha.despues_de_accion(motor.ultimos_purificados, motor.agarro, int(salas[indice].off) + motor.jugador.y)
 	if motor.ganado:
+		ultima_sala = _info_sala("ganada", "")
+		muertes_sala = 0
 		cosecha.asegurar()
 		for c in motor.bloques:
 			if str(motor.bloques[c]) == "f":
@@ -478,7 +495,18 @@ func forzar_muerte(motivo: String) -> Dictionary:
 	return _morir(motivo)
 
 
+## Lo que pasó en la sala actual (para la telemetría y el bot): cuál era, cuánto costó y cómo terminó.
+func _info_sala(resultado: String, causa: String) -> Dictionary:
+	var s: Dictionary = salas[indice]
+	var d: Dictionary = s.d
+	return {"resultado": resultado, "causa": causa, "indice": indice, "total": salas.size(), "id": int(s.id), "nivel": str(d.nivel), "tipo": str(d.tipo), "pisos": int(d.meta) - 1,
+		"categoria": str(d.get("categoria", "base")), "pasos_minimos": int(d.pasos), "movs": movs, "max_mov": max_mov(), "muertes_previas": muertes_sala,
+		"segundos": int((Time.get_ticks_msec() - t0_sala) / 1000), "claridad": cosecha.sala}
+
+
 func _morir(motivo: String) -> Dictionary:
+	ultima_sala = _info_sala("perdida", motivo)
+	muertes_sala += 1
 	cosecha.perder_intento()
 	if perks.has("segundo_aliento") and not aliento_usado:   # Segundo aliento: una vez por torre se vuelve a empezar la sala sin perder la vida
 		aliento_usado = true

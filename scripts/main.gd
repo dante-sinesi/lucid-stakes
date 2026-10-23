@@ -513,6 +513,7 @@ func _torre_nueva_arrancar(s: int, con_dados := false) -> void:
 	banked = false
 	attempt_dirty = false
 	_movs_vistos = 0
+	_attempt_t0 = Time.get_ticks_msec()
 	action_log.clear()
 	var perks: Array = run.boosts.duplicate()   # los boosts del run y las habilidades persistentes valen en cada torre
 	perks.append_array(Abilities.perks_for(Profile.owned_abilities()))
@@ -602,10 +603,28 @@ func _torre_nueva_falsos(quedan: int, permitidos: int, sin_salida: bool, hubo_fa
 			_flash(Loc.f("¡Sin salida! Movimiento en falso %d de %d", [cuenta, permitidos]) if sin_salida else Loc.f("¡Movimiento en falso! %d de %d", [cuenta, permitidos]))
 
 
+## La telemetría de la torre nueva (local, nada se envía): un evento "sala" por cada sala que termina (superada o perdida) y uno "torre" por intento.
+func _log_sala_nueva() -> void:
+	if training or lab_active or tutorial_index >= 0 or nueva == null or nueva.t == null or nueva.t.ultima_sala.is_empty():
+		return
+	var d: Dictionary = nueva.t.ultima_sala.duplicate()
+	d["stage"] = stage_number
+	d["lives"] = run.lives
+	Telemetry.log_event("sala", d)
+
+
+func _log_torre_nueva(resultado: String, causa: String) -> void:
+	if training or lab_active or tutorial_index >= 0 or nueva == null or nueva.t == null:
+		return
+	Telemetry.log_event("torre", {"stage": stage_number, "outcome": resultado, "seconds": int((Time.get_ticks_msec() - _attempt_t0) / 1000), "moves": nueva.t.movs_total,
+			"claridad": nueva.t.cosecha.claridad(), "retries": run.tower_retries, "lives": run.lives, "cause": causa, "sala": nueva.t.indice + 1, "salas": nueva.t.salas.size(), "torre_nueva": true})
+
+
 func _torre_nueva_checkpoint(faltan: int, total: int) -> void:
 	Sfx.play("item")
 	if nueva == null:
 		return
+	_log_sala_nueva()
 	_refresh()
 	if tutorial_index < 0 and not training and faltan >= 1:   # Farolín, que espera en cada checkpoint, dice cuánto falta
 		dialogue.show_lines([Farolin.checkpoint_line(faltan, total, total - faltan)], Farolin.SPEAKER, true, true)
@@ -613,6 +632,8 @@ func _torre_nueva_checkpoint(faltan: int, total: int) -> void:
 
 ## Llegó al portal de la torre nueva: la claridad pasa al run y sigue el casino (o el final).
 func _torre_nueva_ganada() -> void:
+	_log_sala_nueva()
+	_log_torre_nueva("ganada", "")
 	if training:   # (tutorial o entrenamiento: se festeja y se queda ahí, o pasa solo a la siguiente lección, como con la torre vieja)
 		if tutorial_index >= 0:
 			var idx := tutorial_index
@@ -644,6 +665,8 @@ func _torre_nueva_ganada() -> void:
 
 ## Se perdió una vida en la torre nueva (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
 func _torre_nueva_murio(motivo: String) -> void:
+	_log_sala_nueva()
+	_log_torre_nueva("muerta", motivo)
 	if training:   # (tutorial: no hay vidas; la sala vuelve a empezar sola después de la caída)
 		nueva.animar_derrota(motivo)
 		Sfx.play("lose")

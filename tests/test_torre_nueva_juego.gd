@@ -48,6 +48,17 @@ func _init() -> void:
 	_ok(ref_grilla == null, "dentro del juego no se dibuja la grilla blanca de prueba")
 	Profile.select_character("gato")
 	main._torre_nueva_arrancar(3)
+	# telemetría: una sala perdida deja su evento
+	var eventos: Array = main.Telemetry.read_all()
+	var salas_perdidas := 0
+	var torres_muertas := 0
+	for ev in eventos:
+		if str(ev.kind) == "sala" and str(ev.resultado) == "perdida":
+			salas_perdidas += 1
+			_ok(int(ev.max_mov) >= int(ev.movs) and str(ev.nivel) != "" and int(ev.total) >= 5, "el evento 'sala' trae el nivel, los movimientos y el total de salas")
+		if str(ev.kind) == "torre" and str(ev.outcome) == "muerta" and bool(ev.get("torre_nueva", false)):
+			torres_muertas += 1
+	_ok(salas_perdidas >= 1 and torres_muertas >= 1, "la telemetría anota la sala perdida y el intento de torre muerto")
 	# deshacer: vuelve el jugador, la cuenta de movimientos y la claridad
 	var cam1: Array = main.nueva.t.salas[0].d.camino
 	var pos0: Vector3i = main.nueva.t.motor.jugador

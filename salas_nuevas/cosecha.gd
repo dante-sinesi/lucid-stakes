@@ -3,6 +3,9 @@ extends RefCounted
 ## Pisar un bloque (o colgarse de él) lo purifica y da su claridad por la racha; una acción que no purifica nada nuevo corta la racha.
 ## La claridad que se junta en una sala se asegura al llegar a su checkpoint: si se muere, se pierde la de ese intento (y la racha) y la sala empieza de nuevo.
 
+## Multiplicador global de la claridad de la torre (balance: el bot lo prueba con la variable CLARIDAD de tests/bot_runs.gd; 1,0 = las reglas tal cual).
+static var mult_global := 1.0
+
 const STREAK_STEP := 0.5
 const STREAK_MAX_MULT := 4.0
 const CLIMB_BONUS := 2   # Escalador: claridad por cada piso nuevo
@@ -73,7 +76,7 @@ func claridad_de(letra: String) -> int:
 
 
 func _ganar(n: float) -> int:
-	var g := int(round(n * harvest_mult()))
+	var g := int(round(n * harvest_mult() * mult_global))
 	sala += g
 	last_gain += g
 	return g
