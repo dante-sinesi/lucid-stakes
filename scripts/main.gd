@@ -149,6 +149,7 @@ var depth_mode := 1
 var run := RunState.new()   # estado del run: claridad, boosts, consumibles
 var casino                  # escena del casino mientras se está en él
 var nueva = null            # la escena de la torre nueva mientras se juega una (en lugar de `logic` y los bloques de la torre vieja)
+var _movs_vistos := 0       # (torre nueva) movimientos de la sala que ya se sumaron al run
 var hud_layer: CanvasLayer
 var quick_portal := false   # pruebas: pasar al casino sin esperar
 var banked := false         # la claridad de esta torre ya se sumó al run
@@ -367,7 +368,7 @@ func _build_hud() -> void:
 	compass.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	compass.position = Vector2(-Compass.SPAN - 16, 10)
 	compass.size = Vector2(Compass.SPAN, Compass.SPAN)
-	compass.view_source = func(): return Vector2(pivot.rotation_degrees.y, pitch_node.rotation_degrees.x) if pivot != null else Vector2(45, PITCH_NORMAL)
+	compass.view_source = func(): return Vector2(nueva.pivot.rotation_degrees.y, nueva.pitch_node.rotation_degrees.x) if nueva != null and nueva.pivot != null else (Vector2(pivot.rotation_degrees.y, pitch_node.rotation_degrees.x) if pivot != null else Vector2(45, PITCH_NORMAL))
 	compass.dir_source = _dir_for_screen
 	layer.add_child(compass)
 	tutorial_label = _label(layer, 2.5, Color(1.0, 0.97, 0.85))
@@ -484,6 +485,7 @@ func _torre_nueva_arrancar(s: int) -> void:
 			Sfx.play("item")
 	run.tower_retries = 0
 	Music.play(_tower_music(stage_number))
+	_apply_stage_look()   # (el fondo y la luz se aclaran con la etapa)
 	if anim_tween:
 		anim_tween.kill()
 	busy = false
@@ -498,6 +500,7 @@ func _torre_nueva_arrancar(s: int) -> void:
 	undo_stack.clear()
 	banked = false
 	attempt_dirty = false
+	_movs_vistos = 0
 	action_log.clear()
 	var perks: Array = run.boosts.duplicate()   # los boosts del run y las habilidades persistentes valen en cada torre
 	perks.append_array(Abilities.perks_for(Profile.owned_abilities()))
@@ -551,6 +554,10 @@ func _torre_nueva_accion() -> void:
 	if nueva == null:   # (la última acción ganó la torre y la escena ya se sacó)
 		return
 	attempt_dirty = true
+	if nueva.t != null:   # (el "Movimientos" del resumen del run: sólo suman los movimientos nuevos, no lo que vuelve al deshacer o al empezar otra sala)
+		if nueva.t.movs > _movs_vistos:
+			run.moves += nueva.t.movs - _movs_vistos
+		_movs_vistos = nueva.t.movs
 	_refresh()
 
 
@@ -3570,6 +3577,7 @@ func save_game() -> void:
 		data["phase"] = "tower"
 		data["nueva"] = true
 		data["dirty"] = attempt_dirty
+		data["dead"] = nueva.t != null and nueva.t.muerta   # (murió y todavía no reintentó: al continuar cuenta como reintento después de morir)
 	else:
 		data["phase"] = "tower"
 		data["tower"] = stage_start.to_dict()
