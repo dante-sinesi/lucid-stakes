@@ -484,6 +484,15 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 
 ## La sala se pierde por algo que decide el juego (por ejemplo el último movimiento en falso de Sin piedad): cuenta como una muerte.
 ## Reintentar la sala perdida: vuelve a su checkpoint con la sala virgen.
+## Empieza en el checkpoint de la sala `i` (al continuar una partida guardada), con la claridad asegurada hasta ahí.
+func saltar_a_sala(i: int, banco: int) -> void:
+	if i <= 0 or i >= salas.size():
+		return
+	cosecha.banco = banco
+	cosecha.sala = 0
+	_entrar(i)
+
+
 func reintentar_sala() -> void:
 	muerta = false
 	_entrar(indice)

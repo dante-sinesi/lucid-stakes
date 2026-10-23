@@ -67,11 +67,14 @@ var en_juego := false      # se juega dentro del juego (main.gd): vidas, clarida
 var etapa := 0
 var n_salas_fijo := 0         # >0: cuántas salas tiene la torre (el tutorial); si no, las que le tocan a la etapa
 var boosts: Array = []
+var sala_inicial := 0           # >0: la torre empieza en el checkpoint de esa sala (continuar una partida guardada)
+var banco_inicial := 0          # la claridad asegurada hasta ese checkpoint
 var mov_run := 0             # movimientos de más por sala (mejoras permanentes del run)
 var vidas_fn := Callable()   # () -> int: las vidas del run
 var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
 var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario no los usa)
 var falsos = null              # el medidor (falsos.gd)
+var _pos_previa := Vector3.ZERO   # dónde estaba el personaje antes de la última acción (la caída de la derrota arranca de ahí)
 var efectos                    # sonidos y efectos visuales de las acciones (efectos.gd)
 var player_node: Node3D        # (para el juice: el personaje)
 var cam_zoom: float:           # (para el juice: el zoom actual)
@@ -204,6 +207,8 @@ func _nueva_torre() -> void:
 		t.externo = true
 		t.aplicar_boosts(boosts)
 		t.mov_run = mov_run
+		if sala_inicial > 0:
+			t.saltar_a_sala(sala_inicial, banco_inicial)
 	else:
 		t = Torre.armar(paquete, semilla, n_salas)
 	if t.salas.is_empty():
@@ -262,6 +267,8 @@ func _pos_gato() -> Vector3:
 
 
 func _poner_gato(animar: bool) -> void:
+	if en_juego and t.muerta:   # (perdió la sala: la animación de la derrota lleva al personaje; no se lo acomoda en su sitio)
+		return
 	var destino := _pos_gato()
 	if _paso_tween != null and _paso_tween.is_valid():
 		_paso_tween.kill()
@@ -495,6 +502,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 	var motor_antes = t.motor
 	var antes_y: int = motor_antes.jugador.y
 	var off_antes := float(int(t.sala_actual().off))
+	_pos_previa = gato_nodo.position
 	var r: Dictionary = t.actuar(dir, modo)
 	mira = dir
 	if not r.ok:
@@ -566,17 +574,23 @@ func _falsos_agotados() -> void:
 
 ## La animación de perder: el personaje se cae dando vueltas (y, si se acabaron los movimientos, la sala entera se derrumba con él) y la cámara tiembla.
 func animar_derrota(motivo: String) -> void:
+	const LENTO := 2.0   # las animaciones de muerte van a la mitad de velocidad
+	if _paso_tween != null and _paso_tween.is_valid():
+		_paso_tween.kill()
+	if _pos_previa != Vector3.ZERO and not motivo.contains("movimientos"):
+		gato_nodo.position = _pos_previa   # (si cayó la plataforma o el piso, se lo ve caer desde donde estaba parado)
+	gato_nodo.visible = true
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(gato_nodo, "position:y", gato_nodo.position.y - 14.0, 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(gato_nodo, "rotation:x", gato_nodo.rotation.x + TAU * 1.5, 1.4)
-	tw.tween_property(gato_nodo, "rotation:z", gato_nodo.rotation.z + TAU * 0.75, 1.4)
+	tw.tween_property(gato_nodo, "position:y", gato_nodo.position.y - 14.0, 1.4 * LENTO).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(gato_nodo, "rotation:x", gato_nodo.rotation.x + TAU * 1.5, 1.4 * LENTO)
+	tw.tween_property(gato_nodo, "rotation:z", gato_nodo.rotation.z + TAU * 0.75, 1.4 * LENTO)
 	if motivo.contains("movimientos"):   # (se acabó el tiempo: cae la sala entera)
-		tw.tween_property(vivo, "position:y", vivo.position.y - 30.0, 1.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(vivo, "position:y", vivo.position.y - 30.0, 1.6 * LENTO).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	var base := pivot.position
 	var temblor := create_tween()
 	for i in 8:
-		temblor.tween_property(pivot, "position", base + Vector3(randf_range(-0.12, 0.12), randf_range(-0.12, 0.12), randf_range(-0.12, 0.12)), 0.04)
-	temblor.tween_property(pivot, "position", base, 0.05)
+		temblor.tween_property(pivot, "position", base + Vector3(randf_range(-0.12, 0.12), randf_range(-0.12, 0.12), randf_range(-0.12, 0.12)), 0.04 * LENTO)
+	temblor.tween_property(pivot, "position", base, 0.05 * LENTO)
 
 
 ## Volver a empezar la sala perdida (reintentar): se acomoda todo como al entrar a ella.

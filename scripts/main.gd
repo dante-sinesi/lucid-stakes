@@ -531,6 +531,10 @@ func _torre_nueva_arrancar(s: int, con_dados := false) -> void:
 		if permitidos > 0 and Profile.has_ability("margen_de_error"):
 			permitidos += 1
 	nueva.falsos_permitidos = permitidos
+	nueva.sala_inicial = _continuar_sala
+	nueva.banco_inicial = _continuar_banco
+	_continuar_sala = 0
+	_continuar_banco = 0
 	if tutorial_index >= 0:
 		nueva.n_salas_fijo = 2   # (la torre del tutorial es chica)
 	nueva.vidas_fn = func(): return run.lives
@@ -670,7 +674,7 @@ func _torre_nueva_murio(motivo: String) -> void:
 	if training:   # (tutorial: no hay vidas; la sala vuelve a empezar sola después de la caída)
 		nueva.animar_derrota(motivo)
 		Sfx.play("lose")
-		await get_tree().create_timer(1.2).timeout
+		await get_tree().create_timer(2.4).timeout
 		if nueva != null:
 			nueva.reiniciar_sala()
 		return
@@ -970,6 +974,10 @@ func _join_zombies() -> void:
 	_zombies.clear()
 	Gen.cancel = false
 	Abort.flag = false
+
+
+var _continuar_sala := 0    # (al continuar una partida guardada en la torre nueva: el checkpoint donde se quedó)
+var _continuar_banco := 0
 
 
 ## Vuelve a la torre generada tal como empezó.
@@ -3626,9 +3634,12 @@ func save_game() -> void:
 	var data := {"run": run.to_dict(), "stage": stage_number, "seed": seed_value}
 	if casino != null:
 		data["phase"] = "casino"
-	elif nueva != null:   # (la torre nueva se vuelve a empezar desde la primera sala con la misma semilla)
+	elif nueva != null:   # (la torre nueva se retoma en el último checkpoint con la misma semilla)
 		data["phase"] = "tower"
 		data["nueva"] = true
+		if nueva.t != null:
+			data["sala"] = nueva.t.indice
+			data["banco"] = nueva.t.cosecha.banco
 		data["dirty"] = attempt_dirty
 		data["dead"] = nueva.t != null and nueva.t.muerta   # (murió y todavía no reintentó: al continuar cuenta como reintento después de morir)
 	else:
@@ -3678,6 +3689,8 @@ func continue_game() -> void:
 	if data.get("dirty", false) and trial.get("no_retry", false):
 		end_run(false, Loc.f("Abandonaste la prueba «%s» (no hay reintentos).", [Loc.t(trial.name)]))
 		return
+	_continuar_sala = int(data.get("sala", 0)) if data.get("nueva", false) else 0
+	_continuar_banco = int(data.get("banco", 0))
 	var was_dead: bool = data.get("dead", false)
 	if was_dead and not run.can_revive():
 		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))

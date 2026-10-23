@@ -14,7 +14,7 @@ signal menu
 
 const DIM_ALPHA := 0.8
 const DIM_TIME := 1.6      # lo que tarda en oscurecerse el fondo
-const SHOW_DELAY := 0.5    # se espera un momento para ver cómo se cae antes de oscurecer
+const SHOW_DELAY := 1.0    # se espera un momento para ver cómo se cae antes de oscurecer
 
 var dim: ColorRect
 var box: VBoxContainer
