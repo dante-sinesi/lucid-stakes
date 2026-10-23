@@ -387,6 +387,16 @@ func _asentar_jugador() -> void:
 		jugador += DOWN
 
 
+## Purifica esas celdas (consumibles). Devuelve las letras de los bloques que se purificaron.
+func purificar_celdas(celdas: Array) -> Array:
+	var letras: Array = []
+	for k in celdas:
+		if bloques.has(k) and ids.has(k) and not purificados.has(ids[k]):
+			purificados[ids[k]] = true
+			letras.append(str(bloques[k]))
+	return letras
+
+
 ## Pisar un bloque (o colgarse de él) lo purifica: sólo cambia cómo se ve.
 func _purificar() -> void:
 	var c := jugador + DOWN if colgado == Vector3i.ZERO else jugador + colgado

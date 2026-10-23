@@ -24,6 +24,13 @@ const ZOOM_FACTOR := 1.1
 const TOP_VIEW_PITCH := -52.0 # desde este ángulo (mirando desde arriba) se ocultan las salas de arriba, que taparían al personaje
 const STEP_TIME := 0.14
 
+## Cuando la torre se juega dentro del juego (scripts/main.gd): el juego pasa el paquete, la semilla, la etapa y los boosts antes de agregarla, y escucha estas señales.
+signal checkpoint_alcanzado          ## se llegó a la salida de una sala (la anterior cae)
+signal torre_completa                ## se llegó al portal
+signal murio(motivo: String)         ## se perdió una vida (el juego descuenta la del run); la sala ya volvió a empezar
+signal accion_hecha                  ## después de cada acción que salió bien (el juego actualiza su HUD)
+signal aviso(texto: String)          ## algo para mostrar en el cartel del juego (Segundo aliento, etc.)
+
 var t                     # la Torre
 var paquete: Array = []
 var semilla := 0
@@ -44,11 +51,17 @@ var texto_hud: Label
 var texto_aviso: Label
 var _aviso_id := 0
 var panorama := false      # V: se ve la torre entera desde afuera
+var en_juego := false      # se juega dentro del juego (main.gd): vidas, claridad y boosts son los del run
+var etapa := 0
+var boosts: Array = []
+var vidas_fn := Callable()   # () -> int: las vidas del run
+var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
 
 
 func _ready() -> void:
 	RoomView.register_globals()
-	RoomView.add_lighting(self)
+	if not en_juego:
+		RoomView.add_lighting(self)   # (dentro del juego se usa su luz)
 	pivot = Node3D.new()
 	pivot.rotation_degrees.y = yaw_target
 	add_child(pivot)
@@ -88,6 +101,11 @@ func _ready() -> void:
 	texto_aviso.add_theme_color_override("font_outline_color", Color.BLACK)
 	texto_aviso.add_theme_constant_override("outline_size", 8)
 	capa.add_child(texto_aviso)
+	if en_juego:
+		if paquete.is_empty():
+			paquete = Torre.cargar_paquete_del_juego()
+		_nueva_torre()
+		return
 	var ruta := OS.get_environment("SN_PAQUETE")
 	if ruta == "":
 		ruta = ProjectSettings.globalize_path("res://bibliotecas/paquete_salas.jsonl")
@@ -106,7 +124,12 @@ func _nueva_torre() -> void:
 			n.queue_free()
 	estaticas.clear()
 	var n_salas := int(OS.get_environment("SN_SALAS")) if OS.get_environment("SN_SALAS") != "" else 8
-	t = Torre.armar(paquete, semilla, n_salas)
+	if en_juego:
+		t = Torre.armar(paquete, semilla, Torre.salas_de_etapa(etapa), true, etapa)
+		t.externo = true
+		t.aplicar_boosts(boosts)
+	else:
+		t = Torre.armar(paquete, semilla, n_salas)
 	if t.salas.is_empty():
 		_aviso("No se pudo armar la torre", 0.0)
 		return
@@ -117,7 +140,8 @@ func _nueva_torre() -> void:
 		Vista.poblar(nodo, Vista.motor_de(t.salas[i].d), {}, false, false, true, true)
 		estaticas.append(nodo)
 	_refrescar()
-	_aviso("Torre %d: %d salas, %d pisos" % [semilla, t.salas.size(), t.total_pisos()], 3.0)
+	if not en_juego:
+		_aviso("Torre %d: %d salas, %d pisos" % [semilla, t.salas.size(), t.total_pisos()], 3.0)
 
 
 func _refrescar(animar := false) -> void:
@@ -136,7 +160,7 @@ func _refrescar(animar := false) -> void:
 				estaticas[i].visible = i >= t.indice
 	else:
 		_ocultar_arriba()
-	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d   ·   Claridad %d%s" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), t.vidas, t.cosecha.claridad(), ("  (racha ×%.1f)" % t.cosecha.streak_mult(t.cosecha.streak)) if t.cosecha.streak > 1 else ""]
+	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d   ·   Claridad %d%s" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), (int(vidas_fn.call()) if vidas_fn.is_valid() else t.vidas), t.cosecha.claridad(), ("  (racha ×%.1f)" % t.cosecha.streak_mult(t.cosecha.streak)) if t.cosecha.streak > 1 else ""]
 
 
 ## Dónde están los pies del personaje (colgado, el cuerpo se arrima al bloque del que se agarra).
@@ -229,6 +253,8 @@ func _process(delta: float) -> void:
 
 
 func _input(ev: InputEvent) -> void:
+	if en_juego and puede_jugar.is_valid() and not puede_jugar.call():
+		return
 	if ev is InputEventMouseButton and ev.pressed:
 		if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
 			acercar(1.0 / ZOOM_FACTOR)
@@ -245,15 +271,17 @@ func _input(ev: InputEvent) -> void:
 	if ev.echo and k != KEY_EQUAL and k != KEY_MINUS and k != KEY_KP_ADD and k != KEY_KP_SUBTRACT:
 		return
 	if k == KEY_ESCAPE:
-		get_tree().quit()
+		if not en_juego:   # (dentro del juego Esc abre la pausa del juego)
+			get_tree().quit()
 		return
 	if k == KEY_V:
 		panorama = not panorama
 		_refrescar(true)
 		return
 	if k == KEY_R:
-		semilla = (semilla * 7 + 13) % 1000000
-		_nueva_torre()
+		if not en_juego:
+			semilla = (semilla * 7 + 13) % 1000000
+			_nueva_torre()
 		return
 	if k == KEY_Q or k == KEY_E:   # (como en el juego: vuelve al ángulo isométrico y gira 90° desde la diagonal más cercana)
 		var base := roundf((yaw_target - 45.0) / 90.0) * 90.0 + 45.0
@@ -302,14 +330,30 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 		"checkpoint":
 			_caer_sala(t.ultima_caida)
 			_aviso("¡Checkpoint!", 1.8)
+			checkpoint_alcanzado.emit()
 		"torre":
-			_aviso("¡Llegaste al portal! Pulsa R para otra torre.", 0.0)
+			if en_juego:
+				torre_completa.emit()
+			else:
+				_aviso("¡Llegaste al portal! Pulsa R para otra torre.", 0.0)
 		"muerte":
-			_aviso("%s. Pierdes una vida (te quedan %d)." % [str(r.msg), t.vidas], 3.0)
+			if en_juego:
+				_aviso("%s. Pierdes una vida." % str(r.msg), 3.0)
+				murio.emit(str(r.msg))
+			else:
+				_aviso("%s. Pierdes una vida (te quedan %d)." % [str(r.msg), t.vidas], 3.0)
+		"aliento":
+			_aviso("Segundo aliento: la sala vuelve a empezar y no pierdes la vida.", 3.0)
 		"fin":
 			_aviso("%s. Te quedaste sin vidas. Pulsa R para otra torre." % str(r.msg), 0.0)
 	_refrescar(str(r.evento) == "")   # (tras un checkpoint o una muerte el personaje aparece de golpe en su sitio)
+	accion_hecha.emit()
 	return r
+
+
+## Vuelve a dibujar la sala actual (por ejemplo después de usar un consumible).
+func actualizar() -> void:
+	_refrescar(false)
 
 
 ## La sala anterior cae por el checkpoint: se la ve hundirse y desaparece.

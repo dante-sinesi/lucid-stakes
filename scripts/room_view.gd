@@ -12,9 +12,10 @@ static var _mats := {}
 
 ## Los parámetros globales que usa el shader de los bloques (el juego los registra en main.gd; acá se apagan las ayudas de profundidad).
 static func register_globals() -> void:
-	if _globals_done:
+	if _globals_done or Engine.has_meta("globales_de_bloques"):   # (dentro del juego main.gd ya los registró)
 		return
 	_globals_done = true
+	Engine.set_meta("globales_de_bloques", true)
 	for spec in [["depth_focus", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0], ["depth_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0],
 			["xray_radius", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0], ["focus_view", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3.ZERO]]:
 		RenderingServer.global_shader_parameter_add(spec[0], spec[1], spec[2])

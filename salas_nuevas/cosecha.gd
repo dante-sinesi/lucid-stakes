@@ -103,6 +103,19 @@ func despues_de_accion(nuevos: Array, agarro: bool, piso: int) -> int:
 	return ganado
 
 
+## Un consumible que purifica de golpe (Imán de luz, Lluvia de luz): da la claridad con la racha (no la corta si no purifica nada, como en la torre vieja).
+func extra(letras: Array) -> int:
+	if letras.is_empty():
+		return 0
+	streak += 1
+	best_streak = maxi(best_streak, streak)
+	purificados += letras.size()
+	var base := 0
+	for l in letras:
+		base += claridad_de(str(l))
+	return _ganar(float(base) * streak_mult(streak))
+
+
 ## Llegó al checkpoint: la claridad de la sala queda asegurada.
 func asegurar() -> void:
 	banco += sala

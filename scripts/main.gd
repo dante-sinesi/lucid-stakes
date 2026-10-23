@@ -2,6 +2,7 @@ extends Node3D
 ## Vista isométrica + entrada. Las reglas viven en tower_logic.gd.
 
 const TowerLogic := preload("res://scripts/tower_logic.gd")
+const TorreJuego := preload("res://salas_nuevas/torre_juego.gd")   # la torre nueva (salas apiladas, sin núcleo): ver docs/torre_salas_reglas.md
 const Gen := preload("res://scripts/tower_gen.gd")
 const Abort := preload("res://scripts/gen_abort.gd")
 const STEP_TIME := 0.14
@@ -147,6 +148,7 @@ var pitch_node: Node3D
 var depth_mode := 1
 var run := RunState.new()   # estado del run: claridad, boosts, consumibles
 var casino                  # escena del casino mientras se está en él
+var nueva = null            # la escena de la torre nueva mientras se juega una (en lugar de `logic` y los bloques de la torre vieja)
 var hud_layer: CanvasLayer
 var quick_portal := false   # pruebas: pasar al casino sin esperar
 var banked := false         # la claridad de esta torre ya se sumó al run
@@ -450,8 +452,136 @@ static func moved_blocks(tower, path: Array) -> int:
 	return moved.size()
 
 
+## ¿Esta torre se arma con las salas nuevas? Los runs normales sí; el tutorial, el laboratorio, el entrenamiento, la demo, los demás escenarios y las pruebas automáticas siguen con la torre de siempre
+## (GAME_TORRE_VIEJA=1 las apaga; GAME_TORRE_NUEVA=1 las fuerza, también en las pruebas).
+func _torre_nueva_activa() -> bool:
+	if OS.get_environment("GAME_TORRE_VIEJA") != "" or run == null:
+		return false
+	if training or lab_active or tutorial_index >= 0 or Demo.on():
+		return false
+	if test_mode and OS.get_environment("GAME_TORRE_NUEVA") == "":
+		return false
+	return str(run.scenario().get("id", Scenarios.FREE)) == Scenarios.FREE
+
+
+## Arma y empieza la torre nueva de la etapa (o la vuelve a empezar con la misma semilla).
+func _torre_nueva_arrancar(s: int) -> void:
+	cancel_targeting()
+	if lost_screen != null:
+		lost_screen.hide_screen()
+	_torre_nueva_cerrar(false)
+	seed_value = s
+	trial = run.trial_at(stage_number)
+	profile = Gen.profile_for_stage(stage_number, trial, run.scenario())
+	run.stage = stage_number
+	run.max_stage = maxi(run.max_stage, stage_number)
+	var unlocked: Array = Profile.on_stage_reached(stage_number)   # la etapa 10 desbloquea al conejito
+	if not unlocked.is_empty():
+		_flash(_character_msg(unlocked))
+		Sfx.play("item")
+	run.tower_retries = 0
+	Music.play(_tower_music(stage_number))
+	if anim_tween:
+		anim_tween.kill()
+	busy = false
+	generating = false
+	for n in block_nodes.values():   # (los bloques de la torre vieja que hubiera quedado)
+		n.queue_free()
+	for n in goal_nodes:
+		n.queue_free()
+	block_nodes.clear()
+	goal_nodes.clear()
+	logic = null
+	undo_stack.clear()
+	banked = false
+	attempt_dirty = false
+	action_log.clear()
+	var perks: Array = run.boosts.duplicate()   # los boosts del run y las habilidades persistentes valen en cada torre
+	perks.append_array(Abilities.perks_for(Profile.owned_abilities()))
+	if trial.get("no_streak", false):
+		perks.append("sin_racha")
+	nueva = TorreJuego.new()
+	nueva.en_juego = true
+	nueva.semilla = s
+	nueva.etapa = stage_number
+	nueva.boosts = perks
+	nueva.vidas_fn = func(): return run.lives
+	nueva.puede_jugar = func(): return not in_menu and not generating and casino == null and not console_open and not get_tree().paused and (dialogue == null or not dialogue.is_active())
+	nueva.position = Vector3(-1000, 0, 0)   # lejos de todo lo demás (la cámara ortogonal de la torre nueva no ve nada de la torre vieja)
+	nueva.checkpoint_alcanzado.connect(_torre_nueva_checkpoint)
+	nueva.torre_completa.connect(_torre_nueva_ganada)
+	nueva.murio.connect(_torre_nueva_murio)
+	nueva.accion_hecha.connect(_torre_nueva_accion)
+	add_child(nueva)
+	hud_layer.visible = true
+	banner.text = ""
+	_refresh()
+	_loading_dice_done = false
+	save_game()
+	_announce_trial()
+
+
+## Saca la escena de la torre nueva (y, si se pide, devuelve la cámara del juego).
+func _torre_nueva_cerrar(devolver_camara: bool) -> void:
+	if nueva != null:
+		nueva.queue_free()
+		nueva = null
+	if devolver_camara and cam != null:
+		cam.make_current()
+
+
+func _torre_nueva_accion() -> void:
+	if nueva == null:   # (la última acción ganó la torre y la escena ya se sacó)
+		return
+	attempt_dirty = true
+	_refresh()
+
+
+func _torre_nueva_checkpoint() -> void:
+	Sfx.play("item")
+	if nueva != null:
+		_refresh()
+
+
+## Llegó al portal de la torre nueva: la claridad pasa al run y sigue el casino (o el final).
+func _torre_nueva_ganada() -> void:
+	_bank_claridad()
+	banner.text = "¡Portal alcanzado!" + ("\n" + _trial_msg if _trial_msg != "" else "")
+	if not quick_portal:
+		await get_tree().create_timer(1.0).timeout
+	if nueva == null or in_menu:
+		return
+	_torre_nueva_cerrar(true)
+	if stage_number >= FINAL_STAGE:
+		banner.text = "¡Escapaste de la pesadilla!"
+		if not quick_portal:
+			await get_tree().create_timer(2.5).timeout
+		if not in_menu:
+			end_run(true)
+		return
+	enter_casino()
+
+
+## Se perdió una vida en la torre nueva (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
+func _torre_nueva_murio(motivo: String) -> void:
+	if trial.get("no_retry", false) and not training:
+		end_run(false, Loc.f("Fallaste la prueba «%s»: %s.", [Loc.t(trial.name), Loc.t(motivo).to_lower()]))
+		return
+	if not run.can_revive():
+		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
+		return
+	run.note_retry(true)
+	_flash(Loc.t("Perdiste una vida"))
+	Sfx.play("lose")
+	_refresh()
+	save_game()
+
+
 func new_tower(s: int) -> void:
 	if generating:
+		return
+	if _torre_nueva_activa():
+		_torre_nueva_arrancar(s)
 		return
 	generating = true
 	seed_value = s
@@ -672,7 +802,7 @@ var _prefetch_t := 0.0
 
 
 func _prefetch_next_stage() -> void:
-	if run == null or run_over or in_menu or training or lab_active or (test_mode and not test_mode_jobs):
+	if run == null or run_over or in_menu or training or lab_active or (test_mode and not test_mode_jobs) or _torre_nueva_activa():
 		return
 	for job in _jobs:   # todavía se está generando una: no se arranca otra encima
 		if not job.done and _job_alive(job):
@@ -732,6 +862,9 @@ func _join_zombies() -> void:
 
 ## Vuelve a la torre generada tal como empezó.
 func restart() -> void:
+	if _torre_nueva_activa():   # (reintentar la torre nueva: se vuelve a armar la misma desde la primera sala)
+		_torre_nueva_arrancar(seed_value)
+		return
 	cancel_targeting()
 	if lost_screen != null:
 		lost_screen.hide_screen()
@@ -1235,6 +1368,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if pick.use >= 0:
 				use_consumable_slot(int(pick.use))
 			return
+	if nueva != null:   # (la escena de la torre nueva maneja su teclado y su cámara)
+		return
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
 		if not targeting.is_empty() and event is InputEventMouseButton:
 			_targeting_click(event)
@@ -1421,6 +1556,7 @@ func _register_globals() -> void:
 	if _globals_registered:
 		return
 	_globals_registered = true
+	Engine.set_meta("globales_de_bloques", true)   # (room_view.gd, que usa la torre nueva, no los registra otra vez)
 	for spec in [["depth_focus", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0],
 			["depth_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, DEPTH_STRENGTH],
 			["xray_radius", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0],
@@ -1860,11 +1996,28 @@ func _flash(msg: String) -> void:
 	_toast_tween.tween_property(toast, "modulate:a", 0.0, 1.4)
 
 
+## El HUD con la torre nueva: la etapa, la claridad del run más la de la torre, lo que cobrará Farolín, las vidas y las barras de boosts y consumibles.
+func _refresh_nueva() -> void:
+	stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, Demo.shown_final(FINAL_STAGE), " *" if not trial.is_empty() else ""])
+	hud.text = "Torre nueva %d: sala %d/%d" % [seed_value, nueva.t.indice + 1, nueva.t.salas.size()] if nueva.t != null else ""
+	var total: int = run.claridad + (nueva.t.cosecha.claridad() if nueva.t != null else 0)
+	var show_toll: bool = not training and not lab_active and tutorial_index < 0 and not (test_mode and not toll_in_tests)
+	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
+	hud_panel.set_toll(next_toll, total < next_toll)
+	if total > clarity_counter.value:
+		juice.pop(clarity_counter, 1.25)
+	clarity_counter.value = total
+	_update_perk_label()
+
+
 func _refresh() -> void:
 	if lives_hud != null and run != null:
 		lives_hud.max_lives = run.max_lives()
 		lives_hud.lives = run.lives
 		lives_hud.visible = not training
+	if nueva != null:
+		_refresh_nueva()
+		return
 	var state := "colgado" if logic.hang_dir != Vector3i.ZERO else "de pie"
 	var prof_text := ("ENTRENAMIENTO   " if training else "") + "Etapa %d/%d (ritmo %s)" % [stage_number, FINAL_STAGE, PACE_NAMES.get(profile.get("pace", "normal"), "normal")]
 	if lab_active:
@@ -1948,10 +2101,11 @@ func _bank_claridad() -> void:
 	banked = true
 	run.stage = stage_number
 	run.towers_cleared += 1
-	var gained := int(round(logic.claridad * float(trial.get("mult", 1.0))))
+	var cl: int = nueva.t.cosecha.claridad() if nueva != null and nueva.t != null else logic.claridad   # (la torre nueva lleva su claridad en la cosecha)
+	var gained := int(round(cl * float(trial.get("mult", 1.0))))
 	run.claridad_earned += gained
 	run.gain(gained)
-	if logic.toll > 0:   # Farolín cobra por encender el portal
+	if nueva == null and logic.toll > 0:   # Farolín cobra por encender el portal
 		run.claridad = maxi(run.claridad - logic.toll, 0)
 	_trial_msg = ""
 	if not trial.is_empty() and not training:
@@ -1963,7 +2117,7 @@ func _bank_claridad() -> void:
 			run.take(rw.item)
 		else:
 			run.gain(int(rw.claridad))
-		_trial_msg = Loc.f("¡Prueba superada!   +%d de claridad extra\n%s", [gained - logic.claridad, rw.text])
+		_trial_msg = Loc.f("¡Prueba superada!   +%d de claridad extra\n%s", [gained - cl, rw.text])
 		var new_chars: Array = Profile.on_trial_cleared()   # superar una prueba puede desbloquear personajes
 		if not new_chars.is_empty():
 			_trial_msg = Loc.join([_trial_msg, _character_msg(new_chars)])
@@ -2201,6 +2355,7 @@ func _rebuild_menus() -> void:
 
 
 func open_main_menu() -> void:
+	_torre_nueva_cerrar(true)
 	_close_balance()
 	lab_active = false
 	if trial_banner != null:
@@ -2270,6 +2425,7 @@ func _on_new_game(scenario_id: String) -> void:
 
 
 func start_game(scenario_id := Scenarios.FREE) -> void:
+	_torre_nueva_cerrar(true)
 	if not Profile.pay_entry(scenario_id):
 		scenario_id = Scenarios.FREE
 	main_menu.visible = false
@@ -2444,6 +2600,7 @@ func _log_tower(outcome: String) -> void:
 func end_run(victory: bool, reason := "") -> void:
 	if run_over:
 		return
+	_torre_nueva_cerrar(true)
 	if not training:
 		Telemetry.log_event("run_fin", {"victory": victory, "stage": run.max_stage, "towers": run.towers_cleared, "trials": run.trials_cleared, "earned": run.claridad_earned, "lives": run.lives})
 	if lost_screen != null:
@@ -2731,7 +2888,48 @@ func _update_perk_label() -> void:
 
 
 ## Usa el consumible del casillero `slot` (teclas 1, 2 y 3).
+## Un consumible en la torre nueva: los que tienen sentido (cosecha, racha, luz, movimientos, bombas) funcionan; el resto avisa y no se gasta.
+func _usar_item_nueva(slot: int) -> void:
+	if in_menu or generating or busy or casino != null or nueva.t == null or nueva.t.terminada:
+		return
+	if slot >= run.consumables.size():
+		return
+	if trial.get("no_items", false):
+		_flash(Loc.f("Prueba «%s»: no se pueden usar consumibles", [Loc.t(trial.name)]))
+		return
+	var id: String = run.consumables[slot]
+	if run.item_blocked(id):
+		_flash(Loc.t("No funciona en este escenario"))
+		return
+	if id == "vida_extra":
+		if run.add_life():
+			run.use_consumable(id)
+			_flash(Loc.t("¡Una vida más!"))
+			Sfx.play("item")
+			_refresh()
+			save_game()
+		else:
+			_flash(Loc.f("Ya tienes las %d vidas", [run.max_lives()]))
+		return
+	if id == "escudo" or id == "totem" or id == "soborno":
+		_flash(Loc.t("Se usa solo cuando hace falta") if id != "soborno" else Loc.t("Se usa en el casino, frente a Farolín"))
+		return
+	var r: Dictionary = nueva.t.usar_item(id)
+	if bool(r.ok):
+		run.use_consumable(id)
+		_flash(Loc.t(str(r.msg)))
+		Sfx.play("item")
+		nueva.actualizar()
+		_refresh()
+		save_game()
+	else:
+		_flash(Loc.t(str(r.msg)))
+
+
 func use_consumable_slot(slot: int) -> void:
+	if nueva != null:
+		_usar_item_nueva(slot)
+		return
 	if in_menu or generating or busy or logic == null or logic.won or logic.lost or casino != null:
 		return
 	if slot >= run.consumables.size():
@@ -3249,7 +3447,7 @@ func dev_give(id: String) -> String:
 
 ## ¿Hay un run en juego que valga la pena guardar? (no en el entrenamiento, ni terminado, ni en el menú)
 func _run_active() -> bool:
-	return not training and not run_over and not in_menu and (casino != null or (logic != null and stage_start != null))
+	return not training and not run_over and not in_menu and (casino != null or nueva != null or (logic != null and stage_start != null))
 
 
 ## Autoguardado: el run y, si se está en una torre, el estado inicial de esa torre (para volver a empezarla igual).
@@ -3276,6 +3474,10 @@ func save_game() -> void:
 	var data := {"run": run.to_dict(), "stage": stage_number, "seed": seed_value}
 	if casino != null:
 		data["phase"] = "casino"
+	elif nueva != null:   # (la torre nueva se vuelve a empezar desde la primera sala con la misma semilla)
+		data["phase"] = "tower"
+		data["nueva"] = true
+		data["dirty"] = attempt_dirty
 	else:
 		data["phase"] = "tower"
 		data["tower"] = stage_start.to_dict()
@@ -3314,7 +3516,8 @@ func continue_game() -> void:
 		Music.play(_tower_music(stage_number))
 		new_tower(seed_value)
 		return
-	stage_start = TowerLogic.from_dict(data.tower)
+	if data.has("tower"):
+		stage_start = TowerLogic.from_dict(data.tower)
 	solution = Meteors.decode(data.get("solution", []))
 	room_segments = data.get("rooms", [])
 	trial = run.trial_at(stage_number)

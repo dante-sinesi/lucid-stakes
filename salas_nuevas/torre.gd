@@ -17,6 +17,9 @@ static var aceptados := 0
 const VIDAS := 3
 ## Niveles de dificultad que admite cada sala de la torre (la curva sube de a poco); las dos primeras son de bloques comunes (se aprende a jugar).
 const CURVA := [["facil"], ["facil", "media"], ["media"], ["media", "dificil"], ["dificil"], ["dificil", "pesadilla"]]
+## En qué etapa se habilita cada tipo de bloque especial (como en la torre vieja: hielo 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, trampolín 8).
+const ETAPA_ESPECIAL := {"i": 2, "h": 3, "c": 4, "t": 5, "s": 6, "b": 7, "k": 8}
+const ETAPAS := 15
 
 # --- la torre armada ---
 var salas: Array = []   # de cada sala: { d: sala ya girada, off: desplazamiento vertical, max_mov: movimientos, sim: simetría, id: id de la sala en el paquete }
@@ -29,6 +32,11 @@ var terminada := false   # llegó al portal
 var perdida := false     # se quedó sin vidas
 var muertes := 0
 var cosecha = Cosecha.new()   # la claridad de la torre (ver cosecha.gd)
+var etapa := 0                # 0: curva fija de prueba; si no, la etapa del run (sube la dificultad y se habilitan los especiales de a poco)
+var externo := false          # las vidas son las del run (las lleva el juego): morir reinicia la sala y avisa, pero no resta
+var perks := {}               # boosts del run
+var mov_extra := 0            # movimientos de más para la sala actual (Freno, Reloj de arena)
+var aliento_usado := false    # Segundo aliento: una vez por torre
 var ultima_caida := -1   # índice de la sala que acaba de caer por el checkpoint (para la animación)
 
 
@@ -137,6 +145,14 @@ static func camino_ok(d: Dictionary, obstaculos: Array = []) -> bool:
 
 # --- armado ---
 
+## El paquete de salas que viaja con el juego (data/salas_torre.jsonl); si no está, el de bibliotecas/ (desarrollo).
+static func cargar_paquete_del_juego() -> Array:
+	var p := cargar_paquete("res://data/salas_torre.jsonl")
+	if p.is_empty():
+		p = cargar_paquete(ProjectSettings.globalize_path("res://bibliotecas/paquete_salas.jsonl"))
+	return p
+
+
 static func cargar_paquete(ruta: String) -> Array:
 	var out: Array = []
 	var f := FileAccess.open(ruta, FileAccess.READ)
@@ -208,16 +224,17 @@ static func _rect_sim(r: Rect2i, s: int) -> Rect2i:
 ## Arma una torre de `n` salas con la curva de dificultad CURVA (si n es mayor se repite el último tramo). Cada sala se gira o espeja y se desliza por el anillo
 ## hasta que su entrada caiga en la salida de la anterior; con `espiral` la torre da vueltas siempre hacia el mismo lado (cada sala sigue por delante de la anterior).
 ## Si no se puede con espiral se arma sin esa condición. Devuelve un Torre; si no pudo encadenar una sala queda más corta.
-static func armar(paquete: Array, semilla: int, n := 6, espiral := true):
+static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_run := 0):
 	var rng := RandomNumberGenerator.new()
 	rng.seed = semilla
 	var info := _info(paquete)
-	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral}
+	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral, "etapa": etapa_run}
 	var ok := _extender(ctx, 0)
 	if not ok and espiral:
-		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false}
+		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false, "etapa": etapa_run}
 		ok = _extender(ctx, 0)
 	var t = load("res://salas_nuevas/torre.gd").new()
+	t.etapa = etapa_run
 	var off := 0
 	for e in ctx.elegidas:
 		var g: Dictionary = e.d
@@ -230,12 +247,44 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true):
 	return t
 
 
+## Cuántas salas tiene la torre de una etapa: de 5 en la primera a 14 en la última.
+static func salas_de_etapa(etapa_run: int) -> int:
+	return int(round(lerpf(5.0, 14.0, clampf(float(etapa_run - 1) / float(ETAPAS - 1), 0.0, 1.0))))
+
+
+## Niveles de dificultad que admite la sala `i` de `n` en la etapa dada: la etapa sube la dificultad de toda la torre y, dentro de ella, cada sala es más difícil que la anterior.
+static func niveles_para(i: int, n: int, etapa_run: int) -> Array:
+	var p := clampf(float(etapa_run - 1) / float(ETAPAS - 1), 0.0, 1.0) * 0.6 + (float(i) / float(maxi(n - 1, 1))) * 0.4
+	if p < 0.2:
+		return ["facil"]
+	if p < 0.4:
+		return ["facil", "media"]
+	if p < 0.6:
+		return ["media"]
+	if p < 0.75:
+		return ["media", "dificil"]
+	if p < 0.9:
+		return ["dificil"]
+	return ["dificil", "pesadilla"]
+
+
+## ¿Todos los especiales de la sala están habilitados en esa etapa?
+static func especiales_habilitados(d: Dictionary, etapa_run: int) -> bool:
+	for b in d.bloques:
+		var l := str(b[3]).substr(0, 1)
+		if l == "d":
+			l = "b"
+		if ETAPA_ESPECIAL.has(l) and etapa_run < int(ETAPA_ESPECIAL[l]):
+			return false
+	return true
+
+
 ## Busca (con vuelta atrás) la sala número i y las que siguen. Devuelve true si se armaron las n.
 static func _extender(ctx: Dictionary, i: int) -> bool:
 	if i >= ctx.n:
 		return true
 	var rng: RandomNumberGenerator = ctx.rng
-	var niveles: Array = CURVA[mini(i, CURVA.size() - 1)]
+	var niveles: Array = CURVA[mini(i, CURVA.size() - 1)] if int(ctx.etapa) <= 0 else niveles_para(i, int(ctx.n), int(ctx.etapa))
 	var info: Array = ctx.info
 	var orden: Array = []
 	for k in info.size():
@@ -244,6 +293,8 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			continue
 		if i < 2 and str(d.get("categoria", "base")) != "base":
 			continue   # (las dos primeras salas son de bloques comunes)
+		if int(ctx.etapa) > 0 and not especiales_habilitados(d, int(ctx.etapa)):
+			continue
 		orden.append(k)
 	# primero las del nivel que toca (mezcladas) y después las otras
 	for k in range(orden.size() - 1, 0, -1):
@@ -332,8 +383,24 @@ func sala_actual() -> Dictionary:
 	return salas[indice]
 
 
+## Los boosts del run (los de la caída de la fila de abajo pasan al temporizador de movimientos de cada sala).
+func aplicar_boosts(ids: Array) -> void:
+	perks = {}
+	for id in ids:
+		perks[id] = true
+	cosecha.aplicar_boosts(ids)
+	if motor != null:
+		motor.luz_propia = perks.has("luz_propia")
+
+
+## Movimientos que tiene la sala actual: el margen sobre el mínimo, y con Madrugada (x1,25), Aire extra (+4) y lo que sumaron Freno y Reloj de arena.
 func max_mov() -> int:
-	return int(salas[indice].max_mov)
+	var m := float(salas[indice].max_mov)
+	if perks.has("madrugada"):
+		m *= 1.25
+	if perks.has("aire_extra"):
+		m += 4.0
+	return int(ceil(m)) + mov_extra
 
 
 func _entrar(i: int) -> void:
@@ -343,7 +410,13 @@ func _entrar(i: int) -> void:
 	if i + 1 < salas.size():   # (los bloques de la sala de arriba que quedan al alcance de ésta)
 		motor.agregar_obstaculos(obstaculos_de(salas[i + 1].d, int(salas[i].d.meta)))
 	movs = 0
+	mov_extra = 0
 	encendidos = {}
+	if perks.has("reflejos"):   # las bombas empiezan 3 movimientos más altas
+		for c in motor.bloques:
+			var tp := str(motor.bloques[c])
+			if tp.length() >= 2 and tp[0] == "b":
+				motor.bloques[c] = "b%d" % (int(tp.substr(1)) + 3)
 	for c in motor.bloques:
 		if str(motor.bloques[c]) == "p":
 			encendidos[c] = true
@@ -354,11 +427,13 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 	ultima_caida = -1
 	if terminada or perdida:
 		return {"ok": false, "msg": "", "evento": ""}
+	var antes_y: int = motor.jugador.y
 	var r: Dictionary = motor.actuar(dir, modo)
 	if not r.ok:
 		r["evento"] = ""
 		return r
-	movs = motor.pasos
+	if not (perks.has("paso_firme") and not motor.agarro and absi(motor.jugador.y - antes_y) == 1):   # Paso firme: trepar y bajar un piso no gasta movimiento
+		movs += 1
 	cosecha.despues_de_accion(motor.ultimos_purificados, motor.agarro, int(salas[indice].off) + motor.jugador.y)
 	if motor.ganado:
 		cosecha.asegurar()
@@ -382,11 +457,68 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 
 
 func _morir(motivo: String) -> Dictionary:
-	vidas -= 1
-	muertes += 1
 	cosecha.perder_intento()
+	if perks.has("segundo_aliento") and not aliento_usado:   # Segundo aliento: una vez por torre se vuelve a empezar la sala sin perder la vida
+		aliento_usado = true
+		_entrar(indice)
+		return {"ok": true, "msg": motivo, "evento": "aliento"}
+	muertes += 1
+	if externo:   # (las vidas las lleva el juego)
+		_entrar(indice)
+		return {"ok": true, "msg": motivo, "evento": "muerte"}
+	vidas -= 1
 	if vidas <= 0:
 		perdida = true
 		return {"ok": true, "msg": motivo, "evento": "fin"}
 	_entrar(indice)   # vuelve al checkpoint con la sala virgen
 	return {"ok": true, "msg": motivo, "evento": "muerte"}
+
+
+## Un consumible del run. Devuelve { ok, msg }. No gasta un movimiento. Los que no tienen sentido en la torre nueva (o todavía no están) devuelven ok = false y no se gastan.
+func usar_item(id: String) -> Dictionary:
+	if terminada or perdida:
+		return {"ok": false, "msg": ""}
+	match id:
+		"pocion_de_cosecha":
+			if cosecha.harvest_potion:
+				return {"ok": false, "msg": "Ya tienes la cosecha doble en esta torre"}
+			cosecha.harvest_potion = true
+			return {"ok": true, "msg": "Poción de cosecha: la claridad de esta torre vale el doble"}
+		"baraja_de_racha":
+			cosecha.streak = maxi(cosecha.streak, 7)
+			return {"ok": true, "msg": "Racha ×4"}
+		"freno":
+			mov_extra += 5
+			return {"ok": true, "msg": "Freno: 5 movimientos más en esta sala"}
+		"reloj_de_arena":
+			mov_extra += 10
+			return {"ok": true, "msg": "Reloj de arena: 10 movimientos más en esta sala"}
+		"iman_de_luz", "lluvia_de_luz":
+			var celdas: Array = []
+			for c in motor.bloques:
+				var d: Vector3i = c - motor.jugador
+				if id == "iman_de_luz":
+					if d.x * d.x + d.y * d.y + d.z * d.z <= 4:
+						celdas.append(c)
+				elif c.y == motor.jugador.y - 1:
+					celdas.append(c)
+			var letras: Array = motor.purificar_celdas(celdas)
+			if letras.is_empty():
+				return {"ok": false, "msg": "No hay nada por purificar"}
+			var got: int = cosecha.extra(letras)
+			return {"ok": true, "msg": "+%d de claridad (%d bloques)" % [got, letras.size()]}
+		"desarmar":
+			var mejor := Vector3i(-999, -999, -999)
+			var mejor_d := 1 << 30
+			for c in motor.bloques:
+				var tp := str(motor.bloques[c])
+				if tp.length() >= 2 and tp[0] == "b":
+					var dd: Vector3i = (c - motor.jugador).abs()
+					if dd.x + dd.y + dd.z < mejor_d:
+						mejor_d = dd.x + dd.y + dd.z
+						mejor = c
+			if mejor_d == 1 << 30:
+				return {"ok": false, "msg": "No hay bombas para desarmar"}
+			motor.bloques[mejor] = "d"
+			return {"ok": true, "msg": "Bomba desarmada"}
+	return {"ok": false, "msg": "Todavía no funciona en la torre nueva"}
