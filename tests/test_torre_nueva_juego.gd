@@ -76,7 +76,16 @@ func _init() -> void:
 	_ok(main.run.consumables.size() == n_cons, "un consumible que todavía no funciona no se gasta")
 	# jugar toda la torre con los caminos: claridad al run y casino
 	var claridad0: int = main.run.claridad
-	for k in main.nueva.t.salas.size():
+	var total_salas: int = main.nueva.t.salas.size()
+	_jugar_sala(main, 0)
+	await _frames(2)
+	_ok(main.nueva.t.indice == 1 and main.dialogue.is_active(), "en el checkpoint Farolín dice cuánto falta (cuadro de diálogo abierto)")
+	_ok(str(main.dialogue.lines[0]).contains(str(total_salas - 1)) and main.dialogue.speaker == "Farolín", "Farolín dice cuántos checkpoints faltan (%s)" % str(main.dialogue.lines[0]))
+	var sal0: Dictionary = main.nueva.t.sala_actual()
+	var s0: Vector2i = main.nueva.Torre.salida_xz(sal0.d)
+	_ok(main.nueva.farolin.visible and absf(main.nueva.farolin.position.x - (s0.x + 0.8)) < 0.01, "Farolín espera en el próximo checkpoint (la salida de la sala actual)")
+	main.dialogue.hide_box()
+	for k in range(1, total_salas):
 		_jugar_sala(main, k)
 	await _frames(4)
 	_ok(main.casino != null and main.nueva == null, "al llegar al portal sigue el casino y la torre se saca")

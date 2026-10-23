@@ -90,8 +90,6 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		m.material_override = _material_brillo(tint, kind == 1, glow, energia) if energia > 0.0 else RoomView.material(tint, kind == 1)
 		m.position = world_pos(c)
 		parent.add_child(m)
-		if letra == "p" or letra == "f":
-			parent.add_child(_farolito(c, encendidos.has(c)))
 		if letra.length() >= 2 and letra[0] == "b":
 			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador))
 			parent.add_child(_zona(c))
@@ -161,23 +159,6 @@ static func _cuenta(c: Vector3i, mecha: int, jugador: Vector3i) -> Label3D:
 	l.outline_size = 12
 	l.position = Vector3(c.x + 0.5, c.y + 1.25, c.z + 0.5)
 	return l
-
-
-## El farolito del bloque checkpoint: una esferita arriba (amarilla y brillante si está prendido, apagada si no).
-static func _farolito(c: Vector3i, prendido: bool) -> MeshInstance3D:
-	var s := MeshInstance3D.new()
-	var sp := SphereMesh.new()
-	sp.radius = 0.13
-	sp.height = 0.26
-	s.mesh = sp
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.85, 0.3) if prendido else Color(0.25, 0.22, 0.12)
-	mat.emission_enabled = prendido
-	mat.emission = Color(1.0, 0.8, 0.2)
-	mat.emission_energy_multiplier = 2.2 if prendido else 0.0
-	s.material_override = mat
-	s.position = Vector3(c.x + 0.5, c.y + 1.18, c.z + 0.5)
-	return s
 
 
 ## Una referencia tenue del anillo de la torre (11 x 11 con el vacío de 5 x 5): no es suelo, sólo ayuda a ubicarse.

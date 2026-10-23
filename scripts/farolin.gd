@@ -49,6 +49,22 @@ const REACTIONS := {
 }
 
 
+## Lo que dice Farolín cuando llegás a un checkpoint de la torre: cuántos faltan (contando el portal) según cuánto se subió. `indice`: el número de checkpoint, para variar la frase.
+static func checkpoint_line(faltan: int, total: int, indice: int) -> String:
+	if faltan <= 1:
+		var ultimas := ["Ya casi: la siguiente es la última.", "Último tramo, soñador. La siguiente es la última."]
+		return Loc.t(ultimas[indice % ultimas.size()])
+	var avance := float(total - faltan) / float(maxi(total, 1))
+	var frases: Array
+	if indice <= 1:
+		frases = ["Buen comienzo, soñador. Faltan %d.", "¡Así se empieza! Faltan %d."]
+	elif avance < 0.66:
+		frases = ["Vas bien. Faltan %d.", "Sigue subiendo, soñador. Faltan %d.", "La luz te sigue. Faltan %d."]
+	else:
+		frases = ["Ya queda poco. Faltan %d.", "Se ve el final... Faltan %d."]
+	return Loc.f(str(frases[indice % frases.size()]), [faltan])
+
+
 static func reaction(id: String) -> String:
 	return Loc.t(str(REACTIONS.get(id, "")))
 

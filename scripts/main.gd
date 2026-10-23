@@ -567,10 +567,13 @@ func _torre_nueva_falsos(quedan: int, permitidos: int, sin_salida: bool, hubo_fa
 			_flash(Loc.f("¡Sin salida! Movimiento en falso %d de %d", [cuenta, permitidos]) if sin_salida else Loc.f("¡Movimiento en falso! %d de %d", [cuenta, permitidos]))
 
 
-func _torre_nueva_checkpoint() -> void:
+func _torre_nueva_checkpoint(faltan: int, total: int) -> void:
 	Sfx.play("item")
-	if nueva != null:
-		_refresh()
+	if nueva == null:
+		return
+	_refresh()
+	if tutorial_index < 0 and not training and faltan >= 1:   # Farolín, que espera en cada checkpoint, dice cuánto falta
+		dialogue.show_lines([Farolin.checkpoint_line(faltan, total, total - faltan)], Farolin.SPEAKER, true, true)
 
 
 ## Llegó al portal de la torre nueva: la claridad pasa al run y sigue el casino (o el final).

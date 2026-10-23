@@ -16,6 +16,7 @@ const Characters := preload("res://scripts/characters.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const Controls := preload("res://scripts/controls.gd")
 const Falsos := preload("res://salas_nuevas/falsos.gd")
+const Farolin := preload("res://scripts/farolin.gd")
 const Profile := preload("res://scripts/profile.gd")     # (el personaje y los cosméticos que eligió el jugador)
 const Graphics := preload("res://scripts/graphics.gd")   # (las teclas y el mando del juego, con sus reasignaciones: el mando entra como teclas, ver pad_bridge.gd)
 
@@ -29,7 +30,7 @@ const TOP_VIEW_PITCH := -52.0 # desde este ángulo (mirando desde arriba) se ocu
 const STEP_TIME := 0.14
 
 ## Cuando la torre se juega dentro del juego (scripts/main.gd): el juego pasa el paquete, la semilla, la etapa y los boosts antes de agregarla, y escucha estas señales.
-signal checkpoint_alcanzado          ## se llegó a la salida de una sala (la anterior cae)
+signal checkpoint_alcanzado(faltan: int, total: int)   ## se llegó a la salida de una sala (la anterior cae): cuántos checkpoints faltan (contando el portal) de cuántas salas
 signal torre_completa                ## se llegó al portal
 signal murio(motivo: String)         ## se perdió una vida (el juego descuenta la del run); la sala ya volvió a empezar
 signal accion_hecha                  ## después de cada acción que salió bien (el juego actualiza su HUD)
@@ -66,6 +67,7 @@ var vidas_fn := Callable()   # () -> int: las vidas del run
 var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
 var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario no los usa)
 var falsos = null              # el medidor (falsos.gd)
+var farolin: Node3D            # Farolín espera en el próximo checkpoint (sólo en ése)
 var contador: Label3D          # los movimientos que quedan, sobre el personaje, cuando son pocos (no hay texto de depuración en el HUD)
 
 
@@ -98,6 +100,9 @@ func _ready() -> void:
 	var silueta := Characters.build(id_personaje, gorro, prenda, true)   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego)
 	silueta.visible = bool(Graphics.value("silhouette")) if en_juego else true
 	gato_nodo.add_child(silueta)
+	farolin = Farolin.build()
+	farolin.visible = false
+	add_child(farolin)
 	contador = Label3D.new()
 	contador.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	contador.no_depth_test = true
@@ -194,6 +199,7 @@ func _refrescar(animar := false) -> void:
 	else:
 		_ocultar_arriba()
 	_poner_contador()
+	_poner_farolin()
 	texto_hud.visible = not en_juego   # (dentro del juego no hay texto de depuración: el HUD es el del juego)
 	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d   ·   Claridad %d%s" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), (int(vidas_fn.call()) if vidas_fn.is_valid() else t.vidas), t.cosecha.claridad(), ("  (racha ×%.1f)" % t.cosecha.streak_mult(t.cosecha.streak)) if t.cosecha.streak > 1 else ""]
 
@@ -241,6 +247,17 @@ func _poner_camara(animar: bool) -> void:
 		cam.size = tam
 
 
+## Farolín está parado sobre el bloque de salida de la sala actual (el próximo checkpoint), en una esquina de la cara de arriba, mirando hacia la cámara.
+func _poner_farolin() -> void:
+	if farolin == null or t == null:
+		return
+	var sala: Dictionary = t.sala_actual()
+	var s: Vector2i = Torre.salida_xz(sala.d)
+	farolin.visible = s.x >= 0
+	farolin.position = Vector3(s.x + 0.5 + 0.3, int(sala.off) + int(sala.d.meta) + 1, s.y + 0.5 + 0.3)
+	farolin.rotation_degrees.y = yaw_target
+
+
 ## Los últimos 5 movimientos de la sala se ven como un número sobre el personaje (rojo cuando quedan 3 o menos).
 func _poner_contador() -> void:
 	if contador == null or t == null:
@@ -273,6 +290,8 @@ func orbitar(rel: Vector2) -> void:
 		_camara_tween.kill()
 	pivot.rotation_degrees.y = yaw_target
 	pitch_node.rotation_degrees.x = cam_pitch
+	if farolin != null:
+		farolin.rotation_degrees.y = yaw_target   # (sigue mirando hacia la cámara)
 	_ocultar_arriba()
 
 
@@ -407,7 +426,7 @@ func _procesar(r: Dictionary) -> void:
 		"checkpoint":
 			_caer_sala(t.ultima_caida)
 			_aviso("¡Checkpoint!", 1.8)
-			checkpoint_alcanzado.emit()
+			checkpoint_alcanzado.emit(t.salas.size() - t.indice, t.salas.size())
 		"torre":
 			if en_juego:
 				torre_completa.emit()
