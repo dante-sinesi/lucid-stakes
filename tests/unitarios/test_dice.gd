@@ -52,17 +52,21 @@ func test_prizes() -> void:
 	check(DiceGame.prize_for(0).claridad == 0 and DiceGame.prize_for(1).claridad == 0 and DiceGame.prize_for(2).claridad == 8, "premios: con 0 o 1 acierto nada, con 2 +8 de claridad")
 	check(DiceGame.prize_for(0).luz == 0 and DiceGame.prize_for(1).luz == 0 and DiceGame.prize_for(2).luz == 0, "con 2 aciertos o menos no hay Luz")
 	var three := DiceGame.prize_for(3)
-	check(three.claridad == 25 and three.luz == 0, "3 aciertos: claridad, sin Luz")
+	check(three.claridad == 25 and three.luz == 0 and three.cosmetic.is_empty(), "3 aciertos: claridad, sin Luz ni cosmetico")
 	var four := DiceGame.prize_for(4)
+	check(four.claridad == 80 and four.luz == 0 and four.cosmetic.has("comun") and four.cosmetic.has("raro") and not four.cosmetic.has("epico") and four.cosmetic.comun > four.cosmetic.raro, "4 aciertos: Luz y un cosmetico comun (a veces raro)")
+	check(is_equal_approx(float(four.cosmetic_chance), 0.15), "con 4 aciertos el cosmetico sale con 15 % de chance")
 	var five := DiceGame.prize_for(5)
+	check(five.luz == 0 and five.claridad == 150 and five.cosmetic.has("raro") and five.cosmetic.has("epico") and not five.cosmetic.has("comun") and five.cosmetic.raro > five.cosmetic.epico, "5 aciertos: mas Luz y un cosmetico raro (a veces epico)")
+	check(is_equal_approx(float(five.cosmetic_chance), 1.0), "con 5 aciertos el cosmetico es seguro")
 	check(DiceGame.prize_for(-3).claridad == 0 and DiceGame.prize_for(99).luz == 0, "los aciertos fuera de rango se acotan")
 	for n in 6:
 		check(DiceGame.LINES.has(n) and DiceGame.LINES[n].size() >= 3, "el tabernero tiene varias frases para %d aciertos" % n)
 	check(DiceGame.THROWS == 3 and DiceGame.DICE == 5, "una predicción de 5 dados y 3 tiradas para cumplirla")
 	# copias independientes
 	var a := DiceGame.prize_for(4)
-	a["claridad"] = 0
-	check(DiceGame.prize_for(4).claridad == 80, "el premio es una copia: no se modifica la tabla")
+	a.cosmetic["comun"] = 0.0
+	check(DiceGame.prize_for(4).cosmetic.comun == 0.85, "el premio es una copia: no se modifica la tabla")
 
 
 func test_game() -> void:
@@ -149,6 +153,7 @@ func test_odds() -> void:
 	var counts := [0, 0, 0, 0, 0, 0]
 	var n := 30000
 	var claridad := 0
+	var cosmetics := 0
 	for t in n:
 		var hits := 0
 		for i in 5:
@@ -158,8 +163,12 @@ func test_odds() -> void:
 					break
 		counts[hits] += 1
 		claridad += int(DiceGame.prize_for(hits).claridad)
+		if hits == 5 or (hits == 4 and rng.randf() < 0.15):
+			cosmetics += 1
 	check(absf(counts[0] / float(n) - 0.065) < 0.01 and absf(counts[2] / float(n) - 0.344) < 0.02 and absf(counts[4] / float(n) - 0.091) < 0.012, "la distribucion de aciertos es la esperada (%s)" % str(counts))
 	check(counts[5] / float(n) > 0.008 and counts[5] / float(n) < 0.02, "acertar los 5 pasa ~1,3 %% de las veces (%d en %d)" % [counts[5], n])
+	var rate := cosmetics / float(n)
+	check(rate > 0.015 and rate < 0.035, "un cosmetico sale en ~2,7 %% de las cargas (%.3f)" % rate)
 	var avg := claridad / float(n)
 	check(avg > 14.0 and avg < 22.0, "el promedio de claridad por carga es ~18 (%.2f)" % avg)
 
@@ -244,14 +253,27 @@ func test_main() -> void:
 	main._on_dice_prize(info2)
 	check(info2.granted == 5 and main.run.dice_claridad == RunState.DICE_CAP, "la claridad de los dados tiene tope por partida")
 	var info3 := DiceGame.prize_for(4)
+	info3["cosmetic_chance"] = 1.0   # (acá se prueba el cosmético: en el juego sale con 15 % de chance)
 	var before: int = main.run.claridad
 	main._on_dice_prize(info3)
+	check(Profile.luz() == 0 and Profile.owned_cosmetics().is_empty() and main.run.dice_pending.cosmetics.size() == 1, "los dados dejan el cosmético pendiente: no pasan al perfil hasta superar una torre")
 	main._claim_dice_rewards()
-	check(main.run.dice_pending.luz == 0 and Profile.owned_cosmetics().is_empty(), "los dados no dejan cosméticos pendientes ni Luz")
+	check(main.run.dice_pending.luz == 0 and main.run.dice_pending.cosmetics.is_empty(), "al reclamarlos el run queda sin pendientes")
 	check(info3.granted == 0 and main.run.claridad == before and Profile.luz() == 0, "con el tope lleno ya no da claridad (y los dados no dan Luz)")
+	check(str(info3.cosmetic_name) != "" and Cosmetics.get_cosmetic(Profile.owned_cosmetics()[0]).rarity in ["comun", "raro"], "4 aciertos dan un cosmetico comun o raro")
 	check(RunState.from_dict(JSON.parse_string(JSON.stringify(main.run.to_dict()))).dice_claridad == RunState.DICE_CAP, "el tope se guarda con el run")
+	# cosmetico
+	var info5 := DiceGame.prize_for(5)
+	main._on_dice_prize(info5)
+	main._claim_dice_rewards()
+	check(str(info5.cosmetic_name) != "" and Profile.owned_cosmetics().size() == 2 and str(info5.cosmetic_rarity) in ["comun", "raro"] and Profile.luz() == 0, "5 aciertos en Medio: un cosmetico comun o raro (los dados no dan Luz)")
 	for c in Cosmetics.ALL:
 		Profile.grant_cosmetic(c.id)
+	var info6 := DiceGame.prize_for(5)
+	var before6: int = main.run.claridad
+	main._on_dice_prize(info6)
+	main._claim_dice_rewards()
+	check(not info6.has("cosmetic_name") and info6.granted == 100 and main.run.claridad == before6 + 100, "si ya los tiene todos, da claridad en su lugar")
 	# el aspecto elegido se ve en el personaje de la torre
 	Profile.equip("copa")
 	main.restart()
@@ -266,6 +288,13 @@ func test_main() -> void:
 	main.enter_casino()
 	check(main.casino.model.get_node_or_null("prenda") != null and main.casino.model.get_node_or_null("gorro") == null, "tambien el del casino")
 	Profile.reset()
+	var no_cosmetic := 0
+	for k in 40:
+		var info4 := DiceGame.prize_for(4)
+		main._on_dice_prize(info4)
+		if not info4.has("cosmetic_name"):
+			no_cosmetic += 1
+	check(no_cosmetic > 20 and no_cosmetic < 40, "con 4 aciertos el cosmetico sale solo a veces (%d de 40 sin cosmetico)" % no_cosmetic)
 	main.queue_free()
 	await process_frame
 	Profile.reset()

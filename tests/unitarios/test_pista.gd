@@ -97,12 +97,23 @@ func _init() -> void:
 		if c.rarity != "epico":
 			todos_cr.append(c.id)
 	_ok(Cosmetics.roll_por_dificultad("media", todos_cr, rng).is_empty(), "en Medio, si ya tienes todos los comunes y raros, no sale nada")
-	# los dados ya no dan cosméticos
+	# los dados: el azar decide, la dificultad limita las rarezas (Fácil no da)
 	var DiceGame = load("res://scripts/casino/dice_game.gd")
-	var sin_cosmeticos := true
-	for n in 6:
-		sin_cosmeticos = sin_cosmeticos and not DiceGame.prize_for(n).has("cosmetic")
-	_ok(sin_cosmeticos, "los dados no dan cosméticos")
+	main.start_game("pesadilla", "facil")
+	await _frames(4)
+	var info_f: Dictionary = DiceGame.prize_for(5)
+	main._on_dice_prize(info_f)
+	_ok(not info_f.has("cosmetic_name"), "en Fácil los dados no dan cosméticos aunque se acierten los cinco")
+	main.start_game("pesadilla", "pesadilla")
+	await _frames(4)
+	var info_p: Dictionary = DiceGame.prize_for(5)
+	main._on_dice_prize(info_p)
+	_ok(info_p.has("cosmetic_name") and str(info_p.cosmetic_rarity) in ["raro", "epico"], "en Pesadilla, cinco aciertos dan un cosmético raro o épico")
+	main.start_game("pesadilla", "media")
+	await _frames(4)
+	var info_m: Dictionary = DiceGame.prize_for(5)
+	main._on_dice_prize(info_m)
+	_ok(info_m.has("cosmetic_name") and str(info_m.cosmetic_rarity) in ["comun", "raro"], "en Medio, cinco aciertos dan un cosmético común o raro")
 	# la Luz del run en Fácil
 	var run := RunState.new()
 	run.towers_cleared = 10

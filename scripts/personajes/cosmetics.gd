@@ -109,7 +109,7 @@ static func roll(weights: Dictionary, owned: Array, rng: RandomNumberGenerator) 
 	return {}
 
 
-## Qué rarezas de cosmético da cada dificultad al superar las torres de las etapas 5, 10 y 15 (Fácil no da ninguno).
+## Qué rarezas de cosmético pueden salir en los dados según la dificultad (Fácil no da ninguno).
 const POR_DIFICULTAD := {
 	"media": {"comun": 0.85, "raro": 0.15},
 	"dificil": {"comun": 0.6, "raro": 0.4},

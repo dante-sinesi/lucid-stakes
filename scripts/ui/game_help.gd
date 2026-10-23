@@ -43,7 +43,7 @@ const PAGES := {
 	"dados": [
 		{"title": "Los dados del tabernero", "art": "dados_elegir", "text": "Mientras se genera la torre puedes jugar. Elige con {lr} qué cara crees que saldrá en cada uno de los 5 dados (con {ud} cambias el número) y tira con {enter}."},
 		{"title": "Tres tiradas", "art": "dados_tiradas", "text": "Tienes 3 tiradas para cumplir tu predicción. Los dados que aciertan quedan retenidos, en verde y con candado, y solo se vuelven a tirar los que fallaron."},
-		{"title": "Premios", "art": "dados_premios", "text": "Con 2 aciertos ganas 8 de claridad, con 3 ganas 25, con 4 ganas 80 y con 5 ganas 150. Los premios son tuyos cuando superes la torre."},
+		{"title": "Premios", "art": "dados_premios", "text": "Con 2 aciertos ganas 8 de claridad, con 3 ganas 25, con 4 ganas 80 y con 5 ganas 150. Con 4 o 5 aciertos también puede salir un cosmético. Los premios son tuyos cuando superes la torre."},
 	],
 	"taller": [
 		{"title": "El taller", "art": "taller_yunque", "text": "Aquí vendes un boost o un consumible por el 40 % de su valor. También puedes cambiarlo por otro del mismo nivel pagando el 30 % de la ficha. Sirve para liberar lugar en tus barras."},

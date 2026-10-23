@@ -25,14 +25,14 @@ Resumen (detalle en `reglas_torre.md`): un anillo de 11x11 alrededor de un vací
 - **Regla de la casa** por nivel (`casino_rules.gd`): ninguna en la taberna; Racha en el salón; Apuesta libre en el casino; Jackpot en el gran casino. **Servicio** por nivel (`casino_services.gd`): Taller en el salón, Caja fuerte en el casino.
 - **Balance del casino** (`casino_balance_screen.gd`): al salir se ve una tabla por mesa de lo jugado, ganado y perdido.
 - **Farolín** (`scripts/personajes/farolin.gd`): farol con patas junto a la puerta de salida (celda libre de muebles en los cuatro casinos). Al llegar a la puerta o caminar hacia él se abre su diálogo con las decisiones (cada opción muestra su tecla —1, 2, 3— o su botón del mando); después dice una frase (`Farolin.REACTIONS`).
-- **Dados de la pantalla de carga** (`dice_game.gd`): una predicción de 5 dados y 3 tiradas; los aciertos quedan retenidos. Premios: sólo claridad (los dados ya no dan Luz ni cosméticos). Van siempre (también cuando la torre ya está lista).
+- **Dados de la pantalla de carga** (`dice_game.gd`): una predicción de 5 dados y 3 tiradas; los aciertos quedan retenidos. Premios: claridad y, con 4 aciertos (15 % de chance) o 5 (seguro), un cosmético con la rareza que permite la dificultad. Van siempre (también cuando la torre ya está lista).
 - **Tabernero** (cuadro de diálogo de cubitos, `dialogue_box.gd`): toda voz de un personaje usa ese cuadro; los avisos chicos (`_flash`) quedan para lo que no tiene voz.
 
 ## Meta-progresión
 
 - **Luz** (`profile.gd`): moneda única que sirve para entrar a escenarios de pago; premia escapar (ver `economia.md`).
 - **Habilidades persistentes** (`abilities.gd`): se ganan al escapar de la pesadilla en un escenario; valen en todos.
-- **Personajes** (Dante, Gaby, gatito, perrito, conejito) y **ropa** (gorro y prenda, tres rarezas), elegibles en la pantalla Personaje. **Cosméticos:** se ganan al superar las torres de las etapas 5, 10 y 15 (`Cosmetics.roll_por_dificultad`): Fácil no da; Medio y Difícil dan comunes y raros (Difícil más raros); Pesadilla da raros y épicos y, si ya tienes todos esos y te faltan comunes, uno común. Modelos reemplazables desde el editor de modelos (`editor_modelos.md`).
+- **Personajes** (Dante, Gaby, gatito, perrito, conejito) y **ropa** (gorro y prenda, tres rarezas), elegibles en la pantalla Personaje. **Cosméticos:** salen sólo con el azar de los dados; la dificultad limita qué rarezas (`Cosmetics.roll_por_dificultad`): Fácil no da; Medio y Difícil dan comunes y raros (Difícil más raros); Pesadilla da raros y épicos y, si ya tienes todos esos y te faltan comunes, uno común. Modelos reemplazables desde el editor de modelos (`editor_modelos.md`).
 
 ## Interfaz
 

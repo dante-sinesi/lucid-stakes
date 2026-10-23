@@ -591,7 +591,6 @@ func _torre_ganada() -> void:
 			return
 		return
 	_bank_claridad()
-	_cosmetico_de_la_torre()
 	banner.text = "¡Portal alcanzado!" + ("\n" + _trial_msg if _trial_msg != "" else "")
 	if not quick_portal:
 		await get_tree().create_timer(1.0).timeout
@@ -606,20 +605,6 @@ func _torre_ganada() -> void:
 			end_run(true)
 		return
 	enter_casino()
-
-
-## Al superar las torres de las etapas 5, 10 y 15 en Medio, Difícil o Pesadilla se gana un cosmético (Fácil no da; qué rarezas, según la dificultad).
-func _cosmetico_de_la_torre() -> void:
-	if run == null or training or tutorial_index >= 0 or stage_number % 5 != 0:
-		return
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var c := Cosmetics.roll_por_dificultad(run.dificultad, Profile.owned_cosmetics(), rng)
-	if c.is_empty():
-		return
-	Profile.grant_cosmetic(str(c.id))
-	_trial_msg = (_trial_msg + "
-" if _trial_msg != "" else "") + Loc.f("¡Cosmético nuevo: %s!", [Loc.t(str(c.name))])
 
 
 ## Se perdió una vida en la torre (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
@@ -658,10 +643,10 @@ func _torre_murio(motivo: String) -> void:
 	save_game()
 
 
-## Premio de un tiro de los dados de la pantalla de carga: claridad (con tope por partida) y Luz.
-## Completa `info` con lo que de verdad se dio (`granted`) para que el minijuego lo muestre.
+## Premio de un tiro de los dados de la pantalla de carga: claridad (con tope por partida), Luz y, a veces, un cosmético (con la rareza que permite la dificultad).
+## Completa `info` con lo que de verdad se dio (`granted`, `cosmetic_name`) para que el minijuego lo muestre.
 func _on_dice_prize(info: Dictionary) -> void:
-	_loading_dice_done = true   # el premio ya está dado (la Luz queda pendiente en el run hasta superar una torre): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
+	_loading_dice_done = true   # el premio ya está dado (la Luz y el cosmético quedan pendientes en el run hasta superar una torre): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
 	var granted := 0
 	var want := int(info.get("claridad", 0))
 	if want > 0 and run != null:
@@ -671,17 +656,39 @@ func _on_dice_prize(info: Dictionary) -> void:
 	info["granted"] = granted
 	if int(info.get("luz", 0)) > 0 and run != null:
 		run.dice_pending.luz = int(run.dice_pending.luz) + int(info.luz)
+	var weights: Dictionary = info.get("cosmetic", {})
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	if not weights.is_empty() and rng.randf() < float(info.get("cosmetic_chance", 1.0)):   # el cosmético sale con la rareza que toca (y que todavía no tengas)
+		var have: Array[String] = Profile.owned_cosmetics()
+		if run != null:
+			for pid in run.dice_pending.cosmetics:
+				have.append(str(pid))
+		var c := Cosmetics.roll_por_dificultad(run.dificultad if run != null else "media", have, rng)   # (la dificultad decide qué rarezas pueden salir; Fácil no da ninguna)
+		if c.is_empty():   # ya los tiene todos: claridad grande en su lugar
+			if run != null:
+				run.gain(100)
+			info["granted"] = int(info.get("granted", 0)) + 100
+		else:
+			if run != null:
+				run.dice_pending.cosmetics.append(str(c.id))
+			info["cosmetic_name"] = c.name
+			info["cosmetic_rarity"] = c.rarity
+			info["cosmetic_id"] = c.id
+			info["cosmetic_slot"] = c.slot
 	save_game()
 
 
-## Lo que dieron los dados (la Luz) pasa al perfil: se llama al superar una torre (entrar al casino), al terminar el tutorial y al terminar un run en el que se superó alguna.
+## Lo que dieron los dados (Luz y cosméticos) pasa al perfil: se llama al superar una torre (entrar al casino), al terminar el tutorial y al terminar un run en el que se superó alguna.
 func _claim_dice_rewards() -> void:
 	if run == null or training:
 		return
 	var luz := int(run.dice_pending.luz)
 	if luz > 0:
 		Profile.add_luz(luz)
-	run.dice_pending = {"luz": 0}
+	for id in run.dice_pending.cosmetics:
+		Profile.grant_cosmetic(str(id))
+	run.dice_pending = {"luz": 0, "cosmetics": []}
 
 
 ## Empieza la torre de la etapa (con los dados del tabernero mientras se arma). Las torres se arman al momento con el paquete de salas: no hay nada que generar de antemano.
