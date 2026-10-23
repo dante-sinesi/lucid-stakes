@@ -19,6 +19,7 @@ var column: VBoxContainer
 var center: CenterContainer
 var options: Control
 var hints
+var info: VBoxContainer   # a la izquierda: la etapa y el peaje (la torre nueva no los muestra en el HUD)
 
 
 func _init() -> void:
@@ -44,6 +45,12 @@ func _init() -> void:
 	_button("abandonar", Loc.t("Abandonar partida"), false, func(): abandon_run.emit())
 	_button("opciones", Loc.t("Opciones"), false, func(): show_options(true))
 	_button("salir", Loc.t("Salir del juego"), false, func(): quit_game.emit())
+	info = VBoxContainer.new()
+	info.add_theme_constant_override("separation", 12)
+	info.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	info.position = Vector2(60, 0)
+	info.grow_vertical = Control.GROW_DIRECTION_BOTH
+	add_child(info)
 	hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Continuar"), "call": func(): resume.emit()}])
 	options = OptionsScreen.new()
@@ -75,6 +82,16 @@ func set_restart(lives: int, free: bool, in_casino: bool) -> void:
 	buttons["abandonar"].visible = not free
 
 
+## Las líneas de la izquierda (etapa y peaje); `rojo`: la línea que va en rojo (el peaje que no alcanza).
+func set_info(lines: Array, rojo := -1) -> void:
+	for c in info.get_children():
+		c.queue_free()
+	for i in lines.size():
+		var l := UI.label(info, str(lines[i]), 4.0, Color(1.0, 0.55, 0.45) if i == rojo else Color(0.97, 0.95, 0.9), false)
+		l.name = "info_%d" % i
+	info.visible = not lines.is_empty()
+
+
 ## Con una prueba activa el cartel de la prueba se ve entero al pausar (abajo): el menú sube un poco para no taparlo.
 func make_room_for_banner(on: bool) -> void:
 	center.offset_top = -100.0 if on else 0.0
@@ -91,6 +108,7 @@ func set_tutorial_lock(on: bool) -> void:
 ## Muestra u oculta las opciones dentro de la pausa.
 func show_options(on: bool) -> void:
 	center.visible = not on
+	info.visible = info.visible and not on
 	if hints != null:
 		hints.visible = not on
 	options.visible = on

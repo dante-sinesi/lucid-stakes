@@ -12,6 +12,7 @@ var lives
 var stage_label: Control
 var clarity
 var toll_label: Control      # lo que cobra Farolín del portal de salida
+var moves_label: Control     # los movimientos hechos en la sala (torre nueva)
 var mistakes: Control        # los movimientos en falso que quedan en la sala (Sin piedad): cubitos rojos
 
 
@@ -37,6 +38,11 @@ func _init(with_stage := true) -> void:
 	toll_label.color = Color(0.55, 0.9, 0.4)
 	toll_label.visible = false
 	add_child(toll_label)
+	moves_label = VoxelLabel.new()
+	moves_label.cube = 3.0
+	moves_label.color = Color(0.97, 0.95, 0.9)
+	moves_label.visible = false
+	add_child(moves_label)
 	mistakes = _Pips.new()
 	mistakes.visible = false
 	add_child(mistakes)
@@ -48,6 +54,12 @@ func _init(with_stage := true) -> void:
 func set_mistakes(left: int, total: int) -> void:
 	mistakes.visible = total > 0
 	mistakes.set_state(left, total)
+
+
+## Los movimientos hechos en la sala (-1 lo oculta).
+func set_moves(n: int) -> void:
+	moves_label.visible = n >= 0
+	moves_label.text = Loc.f("Movimientos %d", [n])
 
 
 ## El peaje de Farolín (0 lo oculta); `short`: te falta claridad para pagarlo.

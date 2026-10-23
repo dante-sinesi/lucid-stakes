@@ -2121,15 +2121,23 @@ func _flash(msg: String) -> void:
 ## El HUD con la torre nueva: la etapa, la claridad del run más la de la torre, lo que cobrará Farolín, las vidas y las barras de boosts y consumibles.
 func _refresh_nueva() -> void:
 	stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, Demo.shown_final(FINAL_STAGE), " *" if not trial.is_empty() else ""])
+	stage_label.visible = false   # (la etapa y el peaje se ven en el menú de pausa; el HUD muestra los movimientos de la sala)
 	hud.text = "Torre nueva %d: sala %d/%d" % [seed_value, nueva.t.indice + 1, nueva.t.salas.size()] if nueva.t != null else ""
 	var total: int = run.claridad + (nueva.t.cosecha.claridad() if nueva.t != null else 0)
 	var show_toll: bool = not training and not lab_active and tutorial_index < 0 and not (test_mode and not toll_in_tests)
 	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
-	hud_panel.set_toll(next_toll, total < next_toll)
+	hud_panel.set_toll(0)
+	hud_panel.set_moves(nueva.t.movs if nueva.t != null else 0)
+	_info_pausa = [stage_label.text] + ([Loc.f("Peaje %d", [next_toll])] if next_toll > 0 else [])
+	_info_pausa_rojo = 1 if next_toll > 0 and total < next_toll else -1
 	if total > clarity_counter.value:
 		juice.pop(clarity_counter, 1.25)
 	clarity_counter.value = total
 	_update_perk_label()
+
+
+var _info_pausa: Array = []   # lo que muestra el menú de pausa a la izquierda (torre nueva): etapa y peaje
+var _info_pausa_rojo := -1
 
 
 func _refresh() -> void:
@@ -2579,6 +2587,7 @@ func pause_game() -> void:
 	if trial_banner != null:
 		trial_banner.pin()
 	pause_menu.set_restart(run.lives, training or lab_active, casino != null)
+	pause_menu.set_info(_info_pausa if nueva != null and casino == null else [], _info_pausa_rojo)
 	pause_menu.open()
 	if trial.get("no_retry", false):
 		pause_menu.buttons["reiniciar"].disabled = true   # (la prueba "Todo o nada" no tiene reintentos)

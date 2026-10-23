@@ -86,7 +86,7 @@ var _rastro_pendiente: Array = []   # las celdas por las que pasó el personaje 
 var farolin: Node3D            # Farolín espera en el próximo checkpoint (sólo en ése)
 var faro_modelo: Node3D        # (su modelo, sentado)
 var faro_tronco: Node3D        # (el tronquito en el que se apoya)
-var contador: Label3D          # los movimientos que quedan, sobre el personaje, cuando son pocos (no hay texto de depuración en el HUD)
+var _temblando := false      # la sala tiembla cuando quedan la mitad de los movimientos o menos
 
 
 func _ready() -> void:
@@ -144,15 +144,6 @@ func _ready() -> void:
 	player_node = gato_nodo
 	efectos = Efectos.new(self)
 	efectos.juice.body = gato
-	contador = Label3D.new()
-	contador.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	contador.no_depth_test = true
-	contador.font_size = 96
-	contador.pixel_size = 0.012
-	contador.outline_size = 14
-	contador.position = Vector3(0, 1.45, 0)
-	contador.visible = false
-	gato_nodo.add_child(contador)
 	vivo = Node3D.new()
 	add_child(vivo)
 	var capa := CanvasLayer.new()
@@ -243,7 +234,6 @@ func _refrescar(animar := false) -> void:
 				estaticas[i].visible = i >= t.indice
 	else:
 		_ocultar_arriba()
-	_poner_contador()
 	_poner_farolin()
 	texto_hud.visible = not en_juego   # (dentro del juego no hay texto de depuración: el HUD es el del juego)
 	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d   ·   Claridad %d%s" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), (int(vidas_fn.call()) if vidas_fn.is_valid() else t.vidas), t.cosecha.claridad(), ("  (racha ×%.1f)" % t.cosecha.streak_mult(t.cosecha.streak)) if t.cosecha.streak > 1 else ""]
@@ -354,16 +344,6 @@ func _poner_farolin() -> void:
 	faro_tronco.rotation.y = ang
 
 
-## Los últimos 5 movimientos de la sala se ven como un número sobre el personaje (rojo cuando quedan 3 o menos).
-func _poner_contador() -> void:
-	if contador == null or t == null:
-		return
-	var quedan: int = t.max_mov() - t.movs
-	contador.visible = quedan <= 5 and quedan > 0
-	contador.text = str(quedan)
-	contador.modulate = Color(1.0, 0.25, 0.2) if quedan <= 3 else Color(1.0, 0.85, 0.3)
-
-
 func _aviso(msg: String, segundos := 2.2) -> void:
 	if en_juego:   # (dentro del juego los avisos salen por el cartel del juego, no por un texto propio)
 		aviso.emit(msg)
@@ -412,12 +392,34 @@ func _process(delta: float) -> void:
 	if not panorama and not _cayendo:   # la cámara sigue siempre al personaje (también mientras camina o se desliza), aunque algo la haya movido
 		var foco := gato_nodo.position + Vector3(0, 0.5, 0)
 		pivot.position = pivot.position.lerp(foco, 1.0 - exp(-14.0 * delta))
+	_temblar()
 	if not activa:
 		return
 	var ax := int(Controls.held("camara_derecha")) - int(Controls.held("camara_izquierda"))
 	var ay := int(Controls.held("camara_abajo")) - int(Controls.held("camara_arriba"))
 	if ax != 0 or ay != 0:
 		orbitar(Vector2(ax, ay) * ARROW_SPEED * delta / MOUSE_SENS)
+
+
+## Con la mitad de los movimientos de la sala gastados o más, la sala (y quien está sobre ella) tiembla: casi nada al principio y cada vez más fuerte hacia el límite.
+func _temblar() -> void:
+	var base := Vector3(0, int(t.sala_actual().off), 0)
+	var k := 0.0
+	if en_juego and not t.muerta and not t.terminada and not _cayendo:
+		var f := float(t.movs) / maxf(float(t.max_mov()), 1.0)
+		k = clampf((f - 0.5) / 0.5, 0.0, 1.0)
+	if k <= 0.0:
+		if _temblando:
+			_temblando = false
+			if not _cayendo and not t.muerta:
+				vivo.position = base
+			gato.position = Vector3.ZERO
+		return
+	_temblando = true
+	var amp := lerpf(0.004, 0.07, k * k)
+	var j := Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * amp
+	vivo.position = base + j
+	gato.position = j   # (el personaje va con los bloques en los que está parado)
 
 
 func _input(ev: InputEvent) -> void:

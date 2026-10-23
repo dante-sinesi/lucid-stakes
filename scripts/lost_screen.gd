@@ -82,7 +82,7 @@ func show_loss(reason: String, cost: int, can_afford := true, free := false, lif
 		retry_button.set_label(Loc.t("Terminar la partida"))
 		hint_label.text = Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost])
 	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": retry_button.text, "call": func(): retry.emit()},
-			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Salir al menú principal"), "keycode": KEY_SPACE, "call": func(): menu.emit()}])
+			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Salir al menú principal"), "keycode": KEY_SPACE, "when": func(): return box.modulate.a > 0.5, "call": func(): menu.emit()}])
 	visible = true
 	if _tween != null:
 		_tween.kill()
