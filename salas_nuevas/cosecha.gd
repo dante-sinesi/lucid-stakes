@@ -116,6 +116,21 @@ func extra(letras: Array) -> int:
 	return _ganar(float(base) * streak_mult(streak))
 
 
+## Lo que se junta cambia con cada acción: una foto para deshacer (la poción de cosecha no se deshace: se gastó).
+func estado() -> Dictionary:
+	return {"sala": sala, "banco": banco, "streak": streak, "best_streak": best_streak, "purificados": purificados, "last_gain": last_gain, "max_piso": max_piso}
+
+
+func restaurar(e: Dictionary) -> void:
+	sala = int(e.sala)
+	banco = int(e.banco)
+	streak = int(e.streak)
+	best_streak = int(e.best_streak)
+	purificados = int(e.purificados)
+	last_gain = int(e.last_gain)
+	max_piso = int(e.max_piso)
+
+
 ## Llegó al checkpoint: la claridad de la sala queda asegurada.
 func asegurar() -> void:
 	banco += sala

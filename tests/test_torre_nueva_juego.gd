@@ -38,6 +38,25 @@ func _init() -> void:
 		main.nueva.accion(Vector3i(int(cam[i][0]), 0, int(cam[i][1])), int(cam[i][2]))
 	_ok(main.run.lives == vidas0 - 1 and main.nueva.t.indice == 0 and main.nueva.t.movs == 0, "morir resta una vida del run y reinicia la sala (%d vidas)" % main.run.lives)
 	main.nueva.t.salas[0].max_mov = 999
+	# deshacer: vuelve el jugador, la cuenta de movimientos y la claridad
+	var cam1: Array = main.nueva.t.salas[0].d.camino
+	var pos0: Vector3i = main.nueva.t.motor.jugador
+	var cl0: int = main.nueva.t.cosecha.claridad()
+	main.nueva.accion(Vector3i(int(cam1[0][0]), 0, int(cam1[0][1])), int(cam1[0][2]))
+	main.nueva.accion(Vector3i(int(cam1[1][0]), 0, int(cam1[1][1])), int(cam1[1][2]))
+	_ok(main.nueva.t.movs == 2, "dos movimientos hechos")
+	main.undo_move()
+	main.undo_move()
+	_ok(main.nueva.t.movs == 0 and main.nueva.t.motor.jugador == pos0 and main.nueva.t.cosecha.claridad() == cl0, "deshacer dos veces vuelve al comienzo (jugador, movimientos y claridad)")
+	main.undo_move()
+	_ok(main.nueva.t.movs == 0, "sin nada que deshacer no pasa nada")
+	# el mando entra como teclas: la acción 'mover_adelante' mueve y 'deshacer' deshace
+	var ev := InputEventKey.new()
+	ev.pressed = true
+	ev.keycode = main.Controls.key_of("deshacer")
+	main.nueva.accion(Vector3i(int(cam1[0][0]), 0, int(cam1[0][1])), int(cam1[0][2]))
+	main.nueva._input(ev)
+	_ok(main.nueva.t.movs == 0, "la tecla de deshacer (la que reasigna Controles) deshace")
 	# consumible: Freno suma movimientos
 	main.run.consumables.append("freno")
 	var antes: int = main.nueva.t.max_mov()
@@ -61,6 +80,26 @@ func _init() -> void:
 	main.save_game()
 	var data: Dictionary = main.SaveGame.read()
 	_ok(str(data.get("phase", "")) == "tower" and bool(data.get("nueva", false)), "el guardado marca la torre nueva")
+	# Sin piedad: los movimientos en falso de la sala (el solucionador nativo mide cuántos pasos faltan)
+	main.run.scenario_id = "sin_piedad"
+	main._torre_nueva_arrancar(7)   # (una semilla fija: la prueba no depende del azar)
+	await _frames(3)
+	_ok(main.nueva != null and main.nueva.falsos != null and main.nueva.falsos.permitidos == 2, "Sin piedad: la torre nueva trae el medidor con 2 falsos por sala")
+	main.nueva.falsos.inline = true
+	main.nueva.falsos.sala_nueva(main.nueva.t.motor)
+	var vidas_sp: int = main.run.lives
+	var intentos := 0
+	var dirs := [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+	var max_cuenta := 0
+	while main.run.lives == vidas_sp and intentos < 60 and main.nueva != null:
+		var antes_cuenta: int = main.nueva.falsos.cuenta
+		main.nueva.accion(dirs[intentos % 4], 0)
+		max_cuenta = maxi(max_cuenta, main.nueva.falsos.cuenta)
+		intentos += 1
+	_ok(max_cuenta >= 1, "Sin piedad: andar sin rumbo cuenta movimientos en falso (%d)" % max_cuenta)
+	main.run.scenario_id = Scenarios.FREE
+	main.restart()
+	await _frames(2)
 	# sin vidas: termina el run
 	main.run.lives = 0
 	main.nueva.t.salas[0].max_mov = 1
@@ -68,6 +107,25 @@ func _init() -> void:
 	main.nueva.accion(Vector3i(int(c2[0][0]), 0, int(c2[0][1])), int(c2[0][2]))
 	await _frames(2)
 	_ok(main.run_over, "sin vidas, morir termina el run")
+	# la última lección del tutorial ('Una torre de verdad') es una torre nueva chica (2 salas)
+	var main2 = load("res://scenes/main.tscn").instantiate()
+	main2.test_mode = true
+	main2.quick_portal = true
+	main2.test_mode_jobs = false
+	root.add_child(main2)
+	await _frames(4)
+	var Tut = load("res://scripts/tutorial.gd")
+	main2.start_tutorial(Tut.count() - 1, true)
+	await _frames(6)
+	_ok(main2.nueva != null and main2.nueva.t.salas.size() == 2, "la última lección del tutorial es una torre nueva de 2 salas")
+	for k in main2.nueva.t.salas.size():
+		for a2 in main2.nueva.t.salas[k].d.camino:
+			if main2.nueva == null:
+				break
+			main2.nueva.accion(Vector3i(int(a2[0]), 0, int(a2[1])), int(a2[2]))
+	await _frames(8)
+	_ok(main2.nueva == null, "al llegar al portal del tutorial se pasa a lo que sigue")
+	main2.queue_free()
 	Profile.reset()
 	print("fallos: ", fallos)
 	quit(1 if fallos > 0 else 0)

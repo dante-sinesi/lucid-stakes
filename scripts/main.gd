@@ -452,16 +452,18 @@ static func moved_blocks(tower, path: Array) -> int:
 	return moved.size()
 
 
-## ¿Esta torre se arma con las salas nuevas? Los runs normales sí; el tutorial, el laboratorio, el entrenamiento, la demo, los demás escenarios y las pruebas automáticas siguen con la torre de siempre
-## (GAME_TORRE_VIEJA=1 las apaga; GAME_TORRE_NUEVA=1 las fuerza, también en las pruebas).
+## ¿Esta torre se arma con las salas nuevas? Todo el juego sí (todos los escenarios, la demo y la última lección del tutorial); sólo las lecciones de movimiento del tutorial, el laboratorio y las pruebas automáticas siguen con la torre de siempre
+## (GAME_TORRE_VIEJA=1 las apaga todas; GAME_TORRE_NUEVA=1 las fuerza, también en las pruebas).
 func _torre_nueva_activa() -> bool:
 	if OS.get_environment("GAME_TORRE_VIEJA") != "" or run == null:
 		return false
-	if training or lab_active or tutorial_index >= 0 or Demo.on():
+	if lab_active:
+		return false
+	if tutorial_index >= 0 and not Tutorial.lessons()[tutorial_index].has("generated"):   # (las lecciones de movimiento son de a pocos bloques armados a mano; sólo la última, 'Una torre de verdad', es una torre)
 		return false
 	if test_mode and OS.get_environment("GAME_TORRE_NUEVA") == "":
 		return false
-	return str(run.scenario().get("id", Scenarios.FREE)) == Scenarios.FREE
+	return true
 
 
 ## Arma y empieza la torre nueva de la etapa (o la vuelve a empezar con la misma semilla).
@@ -471,14 +473,15 @@ func _torre_nueva_arrancar(s: int) -> void:
 		lost_screen.hide_screen()
 	_torre_nueva_cerrar(false)
 	seed_value = s
-	trial = run.trial_at(stage_number)
+	trial = run.trial_at(stage_number) if not training else {}
 	profile = Gen.profile_for_stage(stage_number, trial, run.scenario())
 	run.stage = stage_number
 	run.max_stage = maxi(run.max_stage, stage_number)
-	var unlocked: Array = Profile.on_stage_reached(stage_number)   # la etapa 10 desbloquea al conejito
-	if not unlocked.is_empty():
-		_flash(_character_msg(unlocked))
-		Sfx.play("item")
+	if not training:
+		var unlocked: Array = Profile.on_stage_reached(stage_number)   # la etapa 10 desbloquea al conejito
+		if not unlocked.is_empty():
+			_flash(_character_msg(unlocked))
+			Sfx.play("item")
 	run.tower_retries = 0
 	Music.play(_tower_music(stage_number))
 	if anim_tween:
@@ -505,6 +508,14 @@ func _torre_nueva_arrancar(s: int) -> void:
 	nueva.semilla = s
 	nueva.etapa = stage_number
 	nueva.boosts = perks
+	var permitidos := 0   # Sin piedad: movimientos en falso por sala
+	if not training:
+		permitidos = int(run.scenario().get("mistakes", 0))
+		if permitidos > 0 and Profile.has_ability("margen_de_error"):
+			permitidos += 1
+	nueva.falsos_permitidos = permitidos
+	if tutorial_index >= 0:
+		nueva.n_salas_fijo = 2   # (la torre del tutorial es chica)
 	nueva.vidas_fn = func(): return run.lives
 	nueva.puede_jugar = func(): return not in_menu and not generating and casino == null and not console_open and not get_tree().paused and (dialogue == null or not dialogue.is_active())
 	nueva.position = Vector3(-1000, 0, 0)   # lejos de todo lo demás (la cámara ortogonal de la torre nueva no ve nada de la torre vieja)
@@ -512,9 +523,15 @@ func _torre_nueva_arrancar(s: int) -> void:
 	nueva.torre_completa.connect(_torre_nueva_ganada)
 	nueva.murio.connect(_torre_nueva_murio)
 	nueva.accion_hecha.connect(_torre_nueva_accion)
+	nueva.falsos_cambiaron.connect(_torre_nueva_falsos)
+	nueva.aviso.connect(func(texto: String): _flash(Loc.t(texto)))
+	nueva.deshacer_pedido.connect(undo_move)
+	nueva.reintentar_pedido.connect(request_restart)
 	add_child(nueva)
 	hud_layer.visible = true
 	banner.text = ""
+	if permitidos == 0:
+		hud_panel.set_mistakes(0, 0)
 	_refresh()
 	_loading_dice_done = false
 	save_game()
@@ -537,6 +554,19 @@ func _torre_nueva_accion() -> void:
 	_refresh()
 
 
+## Sin piedad: lo que quedan de movimientos en falso en la sala (y el aviso si acaba de pasar uno).
+func _torre_nueva_falsos(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool) -> void:
+	if nueva == null:
+		return
+	hud_panel.set_mistakes(quedan, permitidos)
+	if hubo_falso and quedan >= 0 and permitidos - quedan <= permitidos:
+		var cuenta: int = permitidos - quedan
+		if cuenta <= permitidos and cuenta > 0:
+			Sfx.play("miss")
+			juice.flash(Color(0.8, 0.1, 0.15), 0.18, 0.4)
+			_flash(Loc.f("¡Sin salida! Movimiento en falso %d de %d", [cuenta, permitidos]) if sin_salida else Loc.f("¡Movimiento en falso! %d de %d", [cuenta, permitidos]))
+
+
 func _torre_nueva_checkpoint() -> void:
 	Sfx.play("item")
 	if nueva != null:
@@ -545,6 +575,18 @@ func _torre_nueva_checkpoint() -> void:
 
 ## Llegó al portal de la torre nueva: la claridad pasa al run y sigue el casino (o el final).
 func _torre_nueva_ganada() -> void:
+	if training:   # (tutorial o entrenamiento: se festeja y se queda ahí, o pasa solo a la siguiente lección, como con la torre vieja)
+		if tutorial_index >= 0:
+			var idx := tutorial_index
+			banner.text = "¡Terminaste el tutorial!" if idx + 1 >= Tutorial.count() else "¡Bien!"
+			if not quick_portal:
+				await get_tree().create_timer(1.3).timeout
+			if tutorial_index == idx and nueva != null:
+				_torre_nueva_cerrar(true)
+				await _tutorial_next()
+			return
+		banner.text = "¡Completaste la torre!"
+		return
 	_bank_claridad()
 	banner.text = "¡Portal alcanzado!" + ("\n" + _trial_msg if _trial_msg != "" else "")
 	if not quick_portal:
@@ -564,6 +606,9 @@ func _torre_nueva_ganada() -> void:
 
 ## Se perdió una vida en la torre nueva (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
 func _torre_nueva_murio(motivo: String) -> void:
+	if training:   # (entrenamiento: no hay vidas; la sala ya volvió a empezar)
+		_flash(Loc.t(motivo))
+		return
 	if trial.get("no_retry", false) and not training:
 		end_run(false, Loc.f("Fallaste la prueba «%s»: %s.", [Loc.t(trial.name), Loc.t(motivo).to_lower()]))
 		return
@@ -2499,6 +2544,15 @@ func _finish_game() -> void:
 ## Reintentar la torre cuesta claridad (gratis en el entrenamiento). Si no te alcanza, el run termina.
 ## Deshace el último movimiento (también el de bloques): vuelve el estado de la torre —con la cuenta de la caída y lo que se juntó— y la vista.
 func undo_move() -> void:
+	if nueva != null:   # la torre nueva: deshace el último movimiento de la sala (con lo que se había juntado)
+		if run != null and bool(run.scenario().get("no_undo", false)) and not training:
+			_flash(Loc.t("En este escenario no se puede deshacer"))
+			return
+		if in_menu or generating or casino != null or dialogue.is_active():
+			return
+		if nueva.deshacer():
+			_flash(Loc.t("Movimiento deshecho"))
+		return
 	if run != null and bool(run.scenario().get("no_undo", false)) and not training and logic != null and not logic.won and not logic.lost:
 		_flash(Loc.t("En este escenario no se puede deshacer"))
 		return
@@ -2561,6 +2615,21 @@ func _on_mistakes_exhausted(_room: int) -> void:
 
 
 func request_restart() -> void:
+	if nueva != null:   # reintentar la torre nueva: se vuelve a armar desde la primera sala (cuesta una vida, no claridad)
+		if in_menu or generating or casino != null:
+			return
+		if training:
+			restart()
+			return
+		if trial.get("no_retry", false):
+			_flash(Loc.f("Prueba «%s»: no hay reintentos", [Loc.t(trial.name)]))
+			return
+		if not run.pay_voluntary_retry():
+			_flash(Loc.t("No te quedan vidas para reintentar la torre"))
+			return
+		restart()
+		_flash(Loc.t("Reintento: −1 vida"))
+		return
 	if in_menu or logic == null or generating or casino != null:
 		return
 	if training:

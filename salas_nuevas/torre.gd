@@ -37,6 +37,8 @@ var externo := false          # las vidas son las del run (las lleva el juego): 
 var perks := {}               # boosts del run
 var mov_extra := 0            # movimientos de más para la sala actual (Freno, Reloj de arena)
 var aliento_usado := false    # Segundo aliento: una vez por torre
+var deshacer_pila: Array = []  # fotos de la sala actual antes de cada movimiento (para deshacer)
+const DESHACER_MAX := 600
 var ultima_caida := -1   # índice de la sala que acaba de caer por el checkpoint (para la animación)
 
 
@@ -411,6 +413,7 @@ func _entrar(i: int) -> void:
 		motor.agregar_obstaculos(obstaculos_de(salas[i + 1].d, int(salas[i].d.meta)))
 	movs = 0
 	mov_extra = 0
+	deshacer_pila.clear()
 	encendidos = {}
 	if perks.has("reflejos"):   # las bombas empiezan 3 movimientos más altas
 		for c in motor.bloques:
@@ -428,10 +431,14 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 	if terminada or perdida:
 		return {"ok": false, "msg": "", "evento": ""}
 	var antes_y: int = motor.jugador.y
+	var foto := {"motor": motor.duplicar(), "movs": movs, "cosecha": cosecha.estado(), "encendidos": encendidos.duplicate()}
 	var r: Dictionary = motor.actuar(dir, modo)
 	if not r.ok:
 		r["evento"] = ""
 		return r
+	deshacer_pila.append(foto)
+	if deshacer_pila.size() > DESHACER_MAX:
+		deshacer_pila.pop_front()
 	if not (perks.has("paso_firme") and not motor.agarro and absi(motor.jugador.y - antes_y) == 1):   # Paso firme: trepar y bajar un piso no gasta movimiento
 		movs += 1
 	cosecha.despues_de_accion(motor.ultimos_purificados, motor.agarro, int(salas[indice].off) + motor.jugador.y)
@@ -456,6 +463,13 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 	return r
 
 
+## La sala se pierde por algo que decide el juego (por ejemplo el último movimiento en falso de Sin piedad): cuenta como una muerte.
+func forzar_muerte(motivo: String) -> Dictionary:
+	if terminada or perdida:
+		return {"ok": false, "msg": "", "evento": ""}
+	return _morir(motivo)
+
+
 func _morir(motivo: String) -> Dictionary:
 	cosecha.perder_intento()
 	if perks.has("segundo_aliento") and not aliento_usado:   # Segundo aliento: una vez por torre se vuelve a empezar la sala sin perder la vida
@@ -474,10 +488,32 @@ func _morir(motivo: String) -> Dictionary:
 	return {"ok": true, "msg": motivo, "evento": "muerte"}
 
 
+## Deshace el último movimiento de la sala actual (con lo que se había juntado y la cuenta de movimientos). false si no hay nada que deshacer.
+func deshacer() -> bool:
+	if deshacer_pila.is_empty() or terminada or perdida:
+		return false
+	var f: Dictionary = deshacer_pila.pop_back()
+	motor = f.motor
+	movs = int(f.movs)
+	cosecha.restaurar(f.cosecha)
+	encendidos = f.encendidos
+	return true
+
+
 ## Un consumible del run. Devuelve { ok, msg }. No gasta un movimiento. Los que no tienen sentido en la torre nueva (o todavía no están) devuelven ok = false y no se gastan.
 func usar_item(id: String) -> Dictionary:
 	if terminada or perdida:
 		return {"ok": false, "msg": ""}
+	var pila_antes := deshacer_pila.duplicate()
+	var r := _usar_item(id)
+	if bool(r.ok):
+		deshacer_pila.clear()   # (lo que hizo un consumible no se deshace: no se puede volver atrás de él)
+	else:
+		deshacer_pila = pila_antes
+	return r
+
+
+func _usar_item(id: String) -> Dictionary:
 	match id:
 		"pocion_de_cosecha":
 			if cosecha.harvest_potion:
