@@ -204,7 +204,7 @@ func test_controls() -> void:
 	check(Controls.action_of(e) == "mover_adelante", "una tecla se reconoce como su acción")
 	var swapped := Controls.rebind_key("mover_adelante", KEY_UP)
 	check(swapped == "camara_arriba" and Controls.key_of("camara_arriba") == KEY_W and Controls.key_of("mover_adelante") == KEY_UP, "reasignar a una tecla en uso intercambia las dos")
-	check(Controls.rebind_key("reintentar", KEY_H) == "" and Controls.key_of("reintentar") == KEY_H, "reasignar a una tecla libre")
+	check(Controls.rebind_key("reintentar", KEY_J) == "" and Controls.key_of("reintentar") == KEY_J, "reasignar a una tecla libre")
 	var saved: Dictionary = Settings.get_value("bindings")
 	check(saved.has("reintentar") and int(saved.reintentar.key) == KEY_H, "el cambio se guarda en los ajustes")
 	Controls._loaded = false

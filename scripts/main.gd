@@ -1369,12 +1369,12 @@ func start_game(scenario_id := Scenarios.FREE, dificultad := "media") -> void:
 func _titulo_pausa() -> String:
 	if run == null or training:
 		return ""
-	var nombre := Loc.t(str(run.scenario().get("name", "")))
+	var nombre := str(run.scenario().get("name", ""))
 	if run.scenario_id == Scenarios.FREE:
 		for o in DifficultyScreen.OPTIONS:
 			if o.id == run.dificultad:
-				return "%s - %s" % [nombre, Loc.t(str(o.name))]
-	return nombre
+				return Loc.t("%s - %s" % [nombre, o.name])   # (la frase entera está en la tabla: "La Pesadilla - Fácil"...)
+	return Loc.t(nombre)
 
 
 func pause_game() -> void:
