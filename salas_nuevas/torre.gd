@@ -177,13 +177,15 @@ static func cargar_paquete(ruta: String) -> Array:
 
 
 ## Movimientos que se le dan a una sala de `pasos` movimientos mínimos (o conocidos): un margen proporcional que baja con el nivel de la sala.
-static func max_movimientos(pasos: int, nivel: String) -> int:
+## En las primeras etapas el margen es la mitad (etapa 1) y crece hasta el completo en la etapa 8; `etapa` 0 (el prototipo) usa el completo.
+static func max_movimientos(pasos: int, nivel: String, etapa := 0) -> int:
 	var idx := ["facil", "media", "dificil", "pesadilla"].find(nivel)
 	var factores: Array = [1.9, 1.6, 1.4, 1.25]
 	var extras: Array = [10, 8, 6, 5]
 	var k: float = factores[maxi(idx, 0)]
 	var extra: int = extras[maxi(idx, 0)]
-	return int(ceil(pasos * k)) + extra
+	var s := 1.0 if etapa <= 0 else lerpf(0.5, 1.0, clampf(float(etapa - 1) / 7.0, 0.0, 1.0))
+	return int(ceil(pasos * (1.0 + (k - 1.0) * s))) + int(round(float(extra) * s))
 
 
 ## ¿La celda (x, z) es del anillo? (11 x 11 con el vacío de 5 x 5 en el medio)
@@ -247,7 +249,7 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_r
 	for e in ctx.elegidas:
 		var g: Dictionary = e.d
 		e["off"] = off
-		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel))
+		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel), etapa_run)
 		t.salas.append(e)
 		off += int(g.meta) - 1   # la entrada de la siguiente (nivel 1) queda en el nivel de salida de ésta
 	if not t.salas.is_empty():
