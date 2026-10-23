@@ -8,6 +8,7 @@ func _ok(c: bool, m: String) -> void:
 	if not c:
 		fallos += 1
 func _init() -> void:
+	Cosecha.mult_global = 1.0   # (las reglas se prueban sin el multiplicador de balance del juego)
 	# reglas puras
 	var c = Cosecha.new()
 	c.despues_de_accion(["n"], false, 2)

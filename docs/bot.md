@@ -35,3 +35,6 @@ Con la torre nueva el ingreso por torre ronda las **300** de claridad, contra el
 | ×3,0 | 15 % (pasa a la primera 93–98 % hasta la etapa 5; cae en la 6 y 7) |
 
 El objetivo de diseño era 3 a 7 %. Falta decidir cómo calibrar (valor de la claridad por bloque, curva del peaje o ingreso por etapa).
+
+## Calibración adoptada para la torre nueva
+Un jugador real no llegaba a pagar a Farolín en la etapa 1 (peaje 219 contra unos 100–150 de claridad por torre). Se fijó: `Cosecha.mult_global` = **2,25** (toda la claridad de la torre nueva vale 2,25 veces) y `RunState.pre_wall_from` = **0,35** (el peaje de la etapa 1 baja de 219 a 128 y sube hasta la pared). Con eso el bot de habilidad media (120 runs) gana el 5 % de los runs y pasa la etapa 1 sin reintentos: lo esperado es 3 a 7 %. Los valores se prueban con `CLARIDAD=` y `PRE_FROM=` en `tests/bot_runs.gd`; hay que volver a calibrar con la telemetría de partidas reales (el bot es un jugador casi perfecto).

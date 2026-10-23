@@ -94,7 +94,7 @@ const HILL_START := 3          # hasta esta etapa el precio es el de siempre; de
 static var hill_power := 1.25        # 1 = geométrico parejo; más: sube más tarde
 static var wall_growth := 1.20      # lo que crece el precio cada etapa después de la pared
 static var wall_margin := 50        # lo que se pasa del presupuesto máximo el precio de la pared
-static var pre_wall_from := 0.60    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
+static var pre_wall_from := 0.35    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
 static var pre_wall_to := 1.00      # ...y esta en la etapa anterior a la pared
 
 
