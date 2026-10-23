@@ -103,6 +103,20 @@ func _input(event: InputEvent) -> void:
 	if Time.get_ticks_msec() / 1000.0 - _open_t < 0.3:   # (una tecla que venía apretada no elige sin querer)
 		get_viewport().set_input_as_handled()
 		return
-	if event.keycode == KEY_SHIFT or event.keycode == KEY_ESCAPE:
-		_choose("")
-		get_viewport().set_input_as_handled()
+	var ids: Array = OPTIONS.map(func(o): return str(o.id))
+	var cur := 1
+	for i in ids.size():
+		if buttons[ids[i]].has_focus():
+			cur = i
+	match event.keycode:
+		KEY_SHIFT, KEY_ESCAPE:
+			_choose("")
+		KEY_UP, KEY_W:
+			buttons[ids[maxi(cur - 1, 0)]].grab_focus()
+		KEY_DOWN, KEY_S:
+			buttons[ids[mini(cur + 1, ids.size() - 1)]].grab_focus()
+		KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
+			_choose(ids[cur])
+		_:
+			return
+	get_viewport().set_input_as_handled()

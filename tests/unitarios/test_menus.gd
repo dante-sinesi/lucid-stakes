@@ -64,7 +64,18 @@ func test_start() -> void:
 	check(main.main_menu.scenarios.visible and not main.main_menu.main_center.visible and main.in_menu, "Nueva partida abre el selector de escenario")
 	main.main_menu.scenarios.play_buttons["pesadilla"].pressed.emit()   # el gratuito
 	main.difficulty_screen._open_t = -10.0   # (La Pesadilla pregunta la dificultad primero)
-	main.difficulty_screen._choose("media")
+	var teclas := []
+	main.difficulty_screen.chosen.connect(func(id): teclas.append(id))
+	for k in [KEY_S, KEY_S]:   # con WASD se baja dos veces y Espacio elige "Difícil", no "Medio"
+		var ev := InputEventKey.new()
+		ev.keycode = k
+		ev.pressed = true
+		main.difficulty_screen._input(ev)
+	var esp := InputEventKey.new()
+	esp.keycode = KEY_SPACE
+	esp.pressed = true
+	main.difficulty_screen._input(esp)
+	check(teclas == ["dificil"], "en el selector de dificultad, WASD mueve y Espacio elige la opción apuntada")
 	if main.confirm_box.visible:   # (había una partida guardada: pide confirmar que se pierde)
 		main.confirm_box._open_t = -10.0
 		main.confirm_box._answer(true)
