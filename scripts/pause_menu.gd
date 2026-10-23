@@ -48,7 +48,7 @@ func _init() -> void:
 	info = VBoxContainer.new()
 	info.add_theme_constant_override("separation", 12)
 	info.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-	info.position = Vector2(60, 0)
+	info.position = Vector2(120, 0)
 	info.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(info)
 	hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
