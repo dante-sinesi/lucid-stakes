@@ -35,7 +35,7 @@ const TABLE := {
 	"Tres tiradas": "Three rolls",
 	"Tienes 3 tiradas para cumplir tu predicción. Los dados que aciertan quedan retenidos, en verde y con candado, y solo se vuelven a tirar los que fallaron.": "You have 3 rolls to fulfil your prediction. The dice that hit are held, in green with a padlock, and only the ones that missed are rolled again.",
 	"Premios": "Prizes",
-	"Con 2 aciertos ganas 8 de claridad, con 3 ganas 25, con 4 ganas 80 y con 5 ganas 150. Con 4 o 5 aciertos también puede salir un cosmético. Los premios son tuyos cuando superes la torre.": "With 2 hits you win 8 clarity, with 3 you win 25, with 4 you win 80 and with 5 you win 150. With 4 or 5 hits a cosmetic may also drop. The prizes are yours once you clear the tower.",
+	"Con 2 aciertos ganas 8 de claridad, con 3 ganas 25, con 4 ganas 80 y con 5 ganas 150. Los premios son tuyos cuando superes la torre.": "With 2 hits you win 8 clarity, with 3 you win 25, with 4 you win 80 and with 5 you win 150. The prizes are yours once you clear the tower.",
 	"El taller": "The workshop",
 	"Aquí vendes un boost o un consumible por el 40 % de su valor. También puedes cambiarlo por otro del mismo nivel pagando el 30 % de la ficha. Sirve para liberar lugar en tus barras.": "Here you sell a boost or a consumable for 40 % of its value. You can also swap it for another of the same tier by paying 30 % of the chip. It frees up room in your bars.",
 	"La caja fuerte": "The safe",

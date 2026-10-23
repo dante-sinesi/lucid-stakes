@@ -16,6 +16,8 @@ const Characters := preload("res://scripts/personajes/characters.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
 const Controls := preload("res://scripts/entrada/controls.gd")
 const Falsos := preload("res://torre/falsos.gd")
+const Solucionador := preload("res://torre/solucionador.gd")
+const Nat := preload("res://torre/nativo.gd")
 const Farolin := preload("res://scripts/personajes/farolin.gd")
 const Efectos := preload("res://torre/efectos.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
@@ -42,6 +44,7 @@ signal ganancia(texto: String, cantidad: int)   ## la claridad que dio la últim
 signal profundidad_pedida            ## se apretó la tecla de la ayuda de profundidad
 signal falsos_cambiaron(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool)   ## Sin piedad: lo que quedan de movimientos en falso en la sala
 signal deshacer_pedido               ## se apretó deshacer (el juego decide si se puede en este escenario)
+signal pista_cambiada(texto: String)   ## la pista que hay que mostrar arriba ("" = ninguna)
 signal reintentar_pedido             ## se apretó reintentar la torre
 signal aviso(texto: String)          ## algo para mostrar en el cartel del juego (Segundo aliento, etc.)
 
@@ -444,6 +447,7 @@ func _process(delta: float) -> void:
 		var foco := gato_nodo.position + Vector3(0, 0.5, 0)
 		pivot.position = pivot.position.lerp(foco, 1.0 - exp(-14.0 * delta))
 	_temblar()
+	_pista_proceso()
 	if not activa:
 		return
 	var ax := int(Controls.held("camara_derecha")) - int(Controls.held("camara_izquierda"))
@@ -511,6 +515,9 @@ func _input(ev: InputEvent) -> void:
 		else:
 			semilla = (semilla * 7 + 13) % 1000000
 			_nueva_torre()
+		return
+	if accion_id == "pista":
+		alternar_pista()
 		return
 	if accion_id == "deshacer":
 		if en_juego:
@@ -742,6 +749,8 @@ func deshacer() -> bool:
 func _exit_tree() -> void:
 	if falsos != null:
 		falsos.cerrar()
+	if _pista_hilo != null:
+		_pista_hilo.wait_to_finish()
 
 
 func _caer_sala(i: int) -> void:
@@ -782,3 +791,103 @@ func _caer_sala(i: int) -> void:
 		tw.tween_property(mi, "rotation", Vector3(rng.randf_range(-1.6, 1.6), rng.randf_range(-1.0, 1.0), rng.randf_range(-1.6, 1.6)), dur).set_delay(demora).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		ultimo = maxf(ultimo, demora + dur)
 	get_tree().create_timer(ultimo + 0.2).timeout.connect(cae.queue_free)
+
+
+# --- Modo pista (Fácil): la tecla de la pista muestra arriba el próximo movimiento de la solución de la sala, con los botones que hay que apretar ---
+
+const TECLAS_DIR := ["mover_adelante", "mover_derecha", "mover_atras", "mover_izquierda"]   # (en el orden de KeyDirs.assign: W, D, S, A)
+const PISTA_TOPE := 400000        # estados que explora el solucionador nativo para la pista
+const PISTA_TOPE_GDSCRIPT := 20000
+
+var pista_permitida := false      # el juego la habilita sólo en Fácil
+var pista_activa := false
+var _pista_hilo: Thread
+var _pista_clave := ""            # el estado de la sala para el que está lista la pista
+var _pista_res := {}              # { estado: "ok" | "sin_salida" | "tope", dir, modo, suelta }
+var _pista_texto := ""            # lo que se muestra ahora (para avisar sólo cuando cambia)
+
+
+## Enciende o apaga el modo pista.
+func alternar_pista() -> void:
+	if not pista_permitida:
+		return
+	pista_activa = not pista_activa
+	_pista_clave = ""
+	_pista_res = {}
+	if not pista_activa:
+		_publicar_pista("")
+
+
+func _clave_pista() -> String:
+	if t == null or t.motor == null:
+		return ""
+	return "%d:%d" % [t.indice, Solucionador.clave(t.motor)]
+
+
+func _pista_proceso() -> void:
+	if not pista_activa or not pista_permitida or t == null or t.terminada or t.perdida or t.muerta:
+		if _pista_texto != "":
+			_publicar_pista("")
+		return
+	if _pista_hilo != null:
+		if _pista_hilo.is_alive():
+			return
+		var r: Dictionary = _pista_hilo.wait_to_finish()
+		_pista_hilo = null
+		if str(r.clave) == _clave_pista():
+			_pista_clave = str(r.clave)
+			_pista_res = r
+		return
+	var c := _clave_pista()
+	if c != _pista_clave:
+		_pista_res = {}
+		_pista_hilo = Thread.new()
+		_pista_hilo.start(_pista_calcular.bind(t.motor.duplicar(), c))
+		return
+	_publicar_pista(_texto_pista())
+
+
+## En un hilo: la solución de la sala desde ese estado. Con el solucionador nativo si está, y si no con el de GDScript (más lento y con menos tope).
+func _pista_calcular(motor, clave: String) -> Dictionary:
+	var res := {"clave": clave, "estado": "tope"}
+	var s: Dictionary = Nat.resolver(motor, PISTA_TOPE) if Nat.disponible() else Solucionador.resolver(motor, PISTA_TOPE_GDSCRIPT)
+	if bool(s.get("ok", false)) and not (s.path as Array).is_empty():
+		var paso: Array = s.path[0]
+		res["estado"] = "ok"
+		res["dir"] = paso[0]
+		res["modo"] = int(paso[1])
+		res["suelta"] = int(paso[1]) == Motor.Modo.COLGAR and motor.colgado != Vector3i.ZERO and paso[0] == -motor.colgado
+	elif not bool(s.get("tope", false)):
+		res["estado"] = "sin_salida"
+	return res
+
+
+## La frase de la pista con las teclas entre llaves (la dibuja key_hint.gd); depende de hacia dónde mira la cámara.
+func _texto_pista() -> String:
+	match str(_pista_res.get("estado", "")):
+		"sin_salida":
+			return "Esta sala ya no tiene salida: deshaz o reintenta."
+		"tope":
+			return "Esta sala es muy complicada para calcular la pista."
+		"ok":
+			if bool(_pista_res.suelta):
+				return "Pulsa {colgarse}"
+			var dirs := KeyDirs.assign(yaw_target)
+			var i := dirs.find(Vector2i(_pista_res.dir.x, _pista_res.dir.z))
+			if i < 0:
+				return ""
+			var tecla: String = TECLAS_DIR[i]
+			match int(_pista_res.modo):
+				Motor.Modo.AGARRAR:
+					return "Mantén {empujar} y pulsa {%s}" % tecla
+				Motor.Modo.COLGAR:
+					return "Mantén {colgarse} y pulsa {%s}" % tecla
+			return "Pulsa {%s}" % tecla
+	return ""
+
+
+func _publicar_pista(texto: String) -> void:
+	if texto == _pista_texto:
+		return
+	_pista_texto = texto
+	pista_cambiada.emit(texto)

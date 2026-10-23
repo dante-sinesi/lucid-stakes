@@ -7,7 +7,7 @@ func _init() -> void:
 	g.open(RandomNumberGenerator.new())
 	g.set_ready(true)
 	g.fast = true
-	g.prize.connect(func(info): info["granted"] = 8; info["luz"] = 1; info["cosmetic_name"] = "Gorro de copa"; info["cosmetic_rarity"] = "raro"; info["cosmetic_slot"] = "gorro"; info["cosmetic_id"] = "copa")
+	g.prize.connect(func(info): info["granted"] = 8; info["luz"] = 1)
 	g.throw_dice()
 	for i in 60:
 		await process_frame

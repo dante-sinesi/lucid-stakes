@@ -46,6 +46,7 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 
 ## 5. Temporizador, muerte y vidas
 
+- **Fácil no tiene límite de movimientos** (`Torre.SIN_LIMITE`) y tiene **modo pista** (`torre_juego.gd`: tecla `pista`, solucionador nativo en un hilo; muestra el próximo movimiento con `key_hint.gd`).
 - **Temporizador de movimientos por sala:** el mínimo conocido de la sala × 1,9 / 1,6 / 1,4 / 1,25 + 10 / 8 / 6 / 5 movimientos, según su nivel (fácil / media / difícil / pesadilla); el margen (lo que pasa de ×1 y los movimientos extra) vale la mitad en la etapa 1 y crece hasta completo en la etapa 8, y además se multiplica por la dificultad elegida (`MARGEN_DIFICULTAD`: Fácil ×1,25, Medio ×1, Difícil ×0,85, Pesadilla ×0,7). **(provisorio)** `Torre.max_movimientos`.
   - Madrugada lo multiplica por 1,25; Aire extra suma 4; Freno suma 5 y Reloj de arena 10 (sólo a la sala actual); Pies ligeros y Aire de más suman 1 por mejora; Paso firme hace que trepar y bajar un piso no gaste. `Torre.max_mov`.
   - Los últimos 5 movimientos se ven como un número sobre el personaje (rojo con 3 o menos). Ganar en el último movimiento gana al temporizador.

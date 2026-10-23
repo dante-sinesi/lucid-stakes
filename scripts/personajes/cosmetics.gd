@@ -109,6 +109,26 @@ static func roll(weights: Dictionary, owned: Array, rng: RandomNumberGenerator) 
 	return {}
 
 
+## Qué rarezas de cosmético da cada dificultad al superar las torres de las etapas 5, 10 y 15 (Fácil no da ninguno).
+const POR_DIFICULTAD := {
+	"media": {"comun": 0.85, "raro": 0.15},
+	"dificil": {"comun": 0.6, "raro": 0.4},
+	"pesadilla": {"raro": 0.6, "epico": 0.4},
+}
+
+
+## Sortea el cosmético que da la dificultad ({} si no da o ya no queda ninguno de lo que le toca). En Medio y Difícil sólo salen comunes y raros; en Pesadilla,
+## raros y épicos, y si ya los tienes todos y te faltan comunes, sale uno común.
+static func roll_por_dificultad(dificultad: String, owned: Array, rng: RandomNumberGenerator) -> Dictionary:
+	if not POR_DIFICULTAD.has(dificultad):
+		return {}
+	var weights: Dictionary = POR_DIFICULTAD[dificultad]
+	var c := roll(weights, owned, rng)
+	if not c.is_empty() and dificultad != "pesadilla" and not weights.has(c.rarity):
+		return {}
+	return c
+
+
 # --- los modelos ----------------------------------------------------------------------------------------------------------
 
 ## Una caja de color pegada a `parent` en `pos`. Con `ghost` lleva el material de la silueta (lo que se ve a través de lo que tapa al personaje).

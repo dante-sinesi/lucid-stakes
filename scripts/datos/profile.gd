@@ -348,10 +348,13 @@ static func _unlocked(ids: Array) -> Array[String]:
 const LUZ_FAIL_SHARE := 0.2   # fracción de la Luz del avance que se conserva al perder o abandonar
 
 
+const LUZ_POR_DIFICULTAD := {"facil": 0.25}   # Fácil (movimientos ilimitados y pistas) da menos Luz; las demás dificultades, la completa
+
+
 static func luz_for_run(run, victory: bool) -> int:
 	var progress: int = run.towers_cleared * 5 + run.trials_cleared * 20   # (son 15 torres y 5 pruebas)
 	var base := float(progress + 100) if victory else float(progress) * LUZ_FAIL_SHARE   # lo que importa es escapar: si el run no termina en victoria, sólo se conserva una parte de lo avanzado
-	return int(round(base * float(run.scenario().get("luz_mult", 1.0))))
+	return int(round(base * float(run.scenario().get("luz_mult", 1.0)) * float(LUZ_POR_DIFICULTAD.get(run.dificultad, 1.0))))
 
 
 ## Anota un run terminado: suma Luz y estadísticas, y guarda. Devuelve la Luz ganada.

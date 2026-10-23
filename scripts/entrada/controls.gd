@@ -25,6 +25,7 @@ const ACTIONS: Array[Dictionary] = [
 	{"id": "empujar", "name": "Empujar o tirar (mantener)", "group": "Acciones", "key": KEY_SHIFT, "pad": [{"axis": AXIS_LT, "sign": 1}]},
 	{"id": "colgarse", "name": "Colgarse (mantener)", "group": "Acciones", "key": KEY_SPACE, "pad": [{"button": JOY_BUTTON_X}]},
 	{"id": "deshacer", "name": "Deshacer el último movimiento", "group": "Acciones", "key": KEY_Z, "pad": []},
+	{"id": "pista", "name": "Modo pista (activar o apagar)", "group": "Acciones", "key": KEY_H, "pad": [{"button": JOY_BUTTON_Y}]},
 	{"id": "reintentar", "name": "Reintentar la torre", "group": "Acciones", "key": KEY_R, "pad": [{"button": JOY_BUTTON_BACK}]},
 	{"id": "consumible_1", "name": "Usar consumible 1", "group": "Consumibles", "key": KEY_1, "pad": []},
 	{"id": "consumible_2", "name": "Usar consumible 2", "group": "Consumibles", "key": KEY_2, "pad": []},

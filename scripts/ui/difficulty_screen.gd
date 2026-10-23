@@ -13,7 +13,7 @@ signal chosen(id: String)
 
 ## id, nombre y qué cambia.
 const OPTIONS := [
-	{"id": "facil", "name": "Fácil", "desc": "Salas más cortas y con más margen de movimientos. Casi todo el recorrido es de nivel fácil o medio."},
+	{"id": "facil", "name": "Fácil", "desc": "Para practicar: movimientos ilimitados y modo pista (una tecla te muestra el próximo movimiento). Da menos Luz y ningún cosmético."},
 	{"id": "media", "name": "Medio", "desc": "La dificultad pensada para el juego: empieza suave y sube de a poco hasta salas muy exigentes al final."},
 	{"id": "dificil", "name": "Difícil", "desc": "Las salas se ponen difíciles mucho antes y el margen de movimientos es menor."},
 	{"id": "pesadilla", "name": "Pesadilla", "desc": "Casi desde el principio, salas de nivel medio o difícil, y al final solo las peores, con muy poco margen."},

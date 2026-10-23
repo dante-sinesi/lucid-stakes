@@ -43,8 +43,8 @@ static func dice_intro() -> Array:
 	return [
 		"¡Qué agilidad, soñador! Ahora probemos tu suerte.",
 		"Tienes 5 dados. Elige el número que esperas en cada uno y tíralos: los que aciertan se quedan. Puedes tirar hasta 3 veces.",
-		{"text": "Con dos aciertos ganas claridad. Con tres, más claridad y una luz. Con cuatro, todavía más y dos luces.", "icon": "luz"},
-		"Pero con cinco... cinco luces y un cosmético. Un premio enorme.",
+		"Con dos aciertos ganas claridad. Con tres, más claridad. Con cuatro, todavía más.",
+		"Pero con cinco... un premio enorme.",
 	]
 
 

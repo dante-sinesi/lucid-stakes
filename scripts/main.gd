@@ -134,6 +134,8 @@ var _loading_dice_done := false   # ya se jugaron los dados de esta pantalla de 
 var _toll_options: Array = []   # las salidas que ofrece Farolín en la puerta (ver Farolin.toll_dialog)
 var _keeper_talk := false   # el tabernero del casino está hablando (cuadro de diálogo)
 var key_hint                # las teclas de la lección arriba al centro: grises hasta que se aprietan (ver key_hint.gd)
+var pista_hint              # el modo pista de Fácil: el próximo movimiento arriba al centro, con sus teclas (el mismo dibujo que key_hint)
+var _pista_on := false      # el modo pista sigue encendido de una torre a la siguiente
 var perk_label: Control
 var juice                # animaciones de sensación de juego (estirar, polvo, temblor, destellos)
 var compass              # rosa de los vientos (qué eje mueve cada tecla)
@@ -308,6 +310,11 @@ func _build_hud() -> void:
 	tutorial_label.visible = false
 	key_hint = KeyHint.new()
 	layer.add_child(key_hint)
+	pista_hint = KeyHint.new()
+	pista_hint.name = "pista"
+	pista_hint.offset_top = 6.0   # (más arriba que la ayuda del tutorial: el cartel de claridad sale justo debajo)
+	pista_hint.offset_bottom = 6.0 + KeyHint.KEY_H + 36.0
+	layer.add_child(pista_hint)
 	banner = _label(layer, 5, Color(1.0, 0.95, 0.8))
 	banner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	banner.align = VoxelLabel.Align.CENTER
@@ -410,6 +417,9 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.etapa = stage_number
 	torre.boosts = perks
 	torre.dificultad = run.dificultad
+	torre.pista_permitida = run.dificultad == "facil" and tutorial_index < 0 and not training
+	torre.pista_activa = _pista_on and torre.pista_permitida
+	torre.pista_cambiada.connect(_torre_pista)
 	torre.mov_run = run.movs_extra   # (Pies ligeros y la mejora Aire de más: movimientos de más en cada sala)
 	var permitidos := 0   # Sin piedad: movimientos en falso por sala
 	if not training:
@@ -470,11 +480,23 @@ func _cubo_portal() -> Node3D:
 
 ## Saca la escena de la torre (y, si se pide, devuelve la cámara del juego).
 func _torre_cerrar(devolver_camara: bool) -> void:
+	if pista_hint != null:
+		pista_hint.clear()
 	if torre != null:
+		if torre.pista_permitida:
+			_pista_on = torre.pista_activa
 		torre.queue_free()
 		torre = null
 	if devolver_camara and cam != null:
 		cam.make_current()
+
+
+## La pista del modo Fácil: la frase con las teclas arriba ("" la saca).
+func _torre_pista(texto: String) -> void:
+	if texto == "":
+		pista_hint.clear()
+	else:
+		pista_hint.show_help(texto, "")
 
 
 func _torre_accion() -> void:
@@ -569,6 +591,7 @@ func _torre_ganada() -> void:
 			return
 		return
 	_bank_claridad()
+	_cosmetico_de_la_torre()
 	banner.text = "¡Portal alcanzado!" + ("\n" + _trial_msg if _trial_msg != "" else "")
 	if not quick_portal:
 		await get_tree().create_timer(1.0).timeout
@@ -583,6 +606,20 @@ func _torre_ganada() -> void:
 			end_run(true)
 		return
 	enter_casino()
+
+
+## Al superar las torres de las etapas 5, 10 y 15 en Medio, Difícil o Pesadilla se gana un cosmético (Fácil no da; qué rarezas, según la dificultad).
+func _cosmetico_de_la_torre() -> void:
+	if run == null or training or tutorial_index >= 0 or stage_number % 5 != 0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var c := Cosmetics.roll_por_dificultad(run.dificultad, Profile.owned_cosmetics(), rng)
+	if c.is_empty():
+		return
+	Profile.grant_cosmetic(str(c.id))
+	_trial_msg = (_trial_msg + "
+" if _trial_msg != "" else "") + Loc.f("¡Cosmético nuevo: %s!", [Loc.t(str(c.name))])
 
 
 ## Se perdió una vida en la torre (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
@@ -621,10 +658,10 @@ func _torre_murio(motivo: String) -> void:
 	save_game()
 
 
-## Premio de un tiro de los dados de la pantalla de carga: claridad (con tope por partida), Luz y, con los 5 aciertos, un cosmético.
-## Completa `info` con lo que de verdad se dio (`granted`, `cosmetic_name`) para que el minijuego lo muestre.
+## Premio de un tiro de los dados de la pantalla de carga: claridad (con tope por partida) y Luz.
+## Completa `info` con lo que de verdad se dio (`granted`) para que el minijuego lo muestre.
 func _on_dice_prize(info: Dictionary) -> void:
-	_loading_dice_done = true   # el premio ya está dado (la Luz y el cosmético quedan pendientes en el run hasta superar una torre): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
+	_loading_dice_done = true   # el premio ya está dado (la Luz queda pendiente en el run hasta superar una torre): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
 	var granted := 0
 	var want := int(info.get("claridad", 0))
 	if want > 0 and run != null:
@@ -634,39 +671,17 @@ func _on_dice_prize(info: Dictionary) -> void:
 	info["granted"] = granted
 	if int(info.get("luz", 0)) > 0 and run != null:
 		run.dice_pending.luz = int(run.dice_pending.luz) + int(info.luz)
-	var weights: Dictionary = info.get("cosmetic", {})
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	if not weights.is_empty() and rng.randf() < float(info.get("cosmetic_chance", 1.0)):   # el cosmético sale con la rareza que toca (y que todavía no tengas)
-		var have: Array[String] = Profile.owned_cosmetics()
-		if run != null:
-			for pid in run.dice_pending.cosmetics:
-				have.append(str(pid))
-		var c := Cosmetics.roll(weights, have, rng)
-		if c.is_empty():   # ya los tiene todos: claridad grande en su lugar
-			if run != null:
-				run.gain(100)
-			info["granted"] = int(info.get("granted", 0)) + 100
-		else:
-			if run != null:
-				run.dice_pending.cosmetics.append(str(c.id))
-			info["cosmetic_name"] = c.name
-			info["cosmetic_rarity"] = c.rarity
-			info["cosmetic_id"] = c.id
-			info["cosmetic_slot"] = c.slot
 	save_game()
 
 
-## Lo que dieron los dados (Luz y cosméticos) pasa al perfil: se llama al superar una torre (entrar al casino), al terminar el tutorial y al terminar un run en el que se superó alguna.
+## Lo que dieron los dados (la Luz) pasa al perfil: se llama al superar una torre (entrar al casino), al terminar el tutorial y al terminar un run en el que se superó alguna.
 func _claim_dice_rewards() -> void:
 	if run == null or training:
 		return
 	var luz := int(run.dice_pending.luz)
 	if luz > 0:
 		Profile.add_luz(luz)
-	for id in run.dice_pending.cosmetics:
-		Profile.grant_cosmetic(str(id))
-	run.dice_pending = {"luz": 0, "cosmetics": []}
+	run.dice_pending = {"luz": 0}
 
 
 ## Empieza la torre de la etapa (con los dados del tabernero mientras se arma). Las torres se arman al momento con el paquete de salas: no hay nada que generar de antemano.
@@ -1331,6 +1346,7 @@ func start_game(scenario_id := Scenarios.FREE, dificultad := "media") -> void:
 	main_menu.visible = false
 	in_menu = false
 	run = RunState.new()
+	_pista_on = false
 	run.scenario_id = scenario_id
 	run.dificultad = dificultad if ["facil", "media", "dificil", "pesadilla"].has(dificultad) else "media"
 	var draw_rng := RandomNumberGenerator.new()

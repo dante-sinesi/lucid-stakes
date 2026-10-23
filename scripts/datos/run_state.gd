@@ -33,7 +33,7 @@ var dificultad := "media"          # dificultad de La Pesadilla elegida al empez
 var scenario_id := "pesadilla"      # escenario del run (ver scenarios.gd)
 var trial_schedule := {}          # etapa -> id de la prueba que toca (se sortea al empezar el run; ver trials.gd)
 var price_mult := 1.0             # multiplicador del precio de la ficha (lo fija el escenario)
-var dice_pending := {"luz": 0, "cosmetics": []}   # la Luz y los cosméticos que dieron los dados: pasan al perfil recién al superar una torre (así no se pueden sacar empezando y cerrando)
+var dice_pending := {"luz": 0}   # la Luz que dieron los dados: pasa al perfil recién al superar una torre (así no se pueden sacar empezando y cerrando)
 var dice_claridad := 0          # claridad ganada con los dados de la pantalla de carga (tiene tope por partida)
 var meta_consumable_slots := 0   # mejoras permanentes del Despertar (ver profile.gd)
 var restart_discount := 0.0
@@ -384,9 +384,7 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.dice_claridad = int(d.get("dice_claridad", 0))
 	var dp = d.get("dice_pending", {})
 	if dp is Dictionary:
-		r.dice_pending = {"luz": int(dp.get("luz", 0)), "cosmetics": []}
-		for id in dp.get("cosmetics", []):
-			r.dice_pending.cosmetics.append(str(id))
+		r.dice_pending = {"luz": int(dp.get("luz", 0))}
 	r.vault = int(d.get("vault", 0))
 	r.vault_stage = int(d.get("vault_stage", 0))
 	r.toll_bribe = bool(d.get("toll_bribe", false))

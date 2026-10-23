@@ -6,6 +6,7 @@ Balatro x Catherine: puzzle de torres de bloques (estilo Catherine) con casino y
 
 - 15 etapas. Cada etapa: una **torre**, un **casino** y el peaje de **Farolín**. Cada 3 etapas hay una **prueba** (reglas especiales que se ven desde el principio).
 - **Vidas** (3): perder una sala no cuesta claridad, cuesta una vida; sin vidas termina el run. Reintentar desde la pausa cuesta 1 vida.
+- **Dificultad de La Pesadilla:** Fácil es la de práctica: **movimientos ilimitados** y **modo pista** (una tecla, H por omisión o Y en el mando, muestra arriba el próximo movimiento de la solución de la sala con los botones que hay que apretar, como en el tutorial; se calcula con el solucionador nativo y sigue encendida de torre en torre), pero da menos Luz (×0,25) y ningún cosmético. Medio, Difícil y Pesadilla tienen temporizador y no tienen pista.
 - **Escenarios** (`scripts/datos/scenarios.gd`): se juegan el tutorial, **La Pesadilla** (con cuatro dificultades: Fácil, Medio, Difícil y Pesadilla) y **Sin piedad**; los demás dicen "Próximamente". Los de pago cuestan **Luz**.
 - **Sin piedad** (`torre/falsos.gd`): cada sala permite 2 movimientos en falso (el que deja más pasos para salir de la sala, medido con el solucionador nativo sobre el estado recortado, en un hilo); al tercero se pierde una vida; no se puede deshacer. Un movimiento que no se alcanza a medir nunca se castiga.
 
@@ -24,14 +25,14 @@ Resumen (detalle en `reglas_torre.md`): un anillo de 11x11 alrededor de un vací
 - **Regla de la casa** por nivel (`casino_rules.gd`): ninguna en la taberna; Racha en el salón; Apuesta libre en el casino; Jackpot en el gran casino. **Servicio** por nivel (`casino_services.gd`): Taller en el salón, Caja fuerte en el casino.
 - **Balance del casino** (`casino_balance_screen.gd`): al salir se ve una tabla por mesa de lo jugado, ganado y perdido.
 - **Farolín** (`scripts/personajes/farolin.gd`): farol con patas junto a la puerta de salida (celda libre de muebles en los cuatro casinos). Al llegar a la puerta o caminar hacia él se abre su diálogo con las decisiones (cada opción muestra su tecla —1, 2, 3— o su botón del mando); después dice una frase (`Farolin.REACTIONS`).
-- **Dados de la pantalla de carga** (`dice_game.gd`): una predicción de 5 dados y 3 tiradas; los aciertos quedan retenidos. Premios: claridad y, con 4 o 5 aciertos, cosméticos. Van siempre (también cuando la torre ya está lista).
+- **Dados de la pantalla de carga** (`dice_game.gd`): una predicción de 5 dados y 3 tiradas; los aciertos quedan retenidos. Premios: sólo claridad (los dados ya no dan Luz ni cosméticos). Van siempre (también cuando la torre ya está lista).
 - **Tabernero** (cuadro de diálogo de cubitos, `dialogue_box.gd`): toda voz de un personaje usa ese cuadro; los avisos chicos (`_flash`) quedan para lo que no tiene voz.
 
 ## Meta-progresión
 
 - **Luz** (`profile.gd`): moneda única que sirve para entrar a escenarios de pago; premia escapar (ver `economia.md`).
 - **Habilidades persistentes** (`abilities.gd`): se ganan al escapar de la pesadilla en un escenario; valen en todos.
-- **Personajes** (Dante, Gaby, gatito, perrito, conejito) y **ropa** (gorro y prenda, tres rarezas), elegibles en la pantalla Personaje. Modelos reemplazables desde el editor de modelos (`editor_modelos.md`).
+- **Personajes** (Dante, Gaby, gatito, perrito, conejito) y **ropa** (gorro y prenda, tres rarezas), elegibles en la pantalla Personaje. **Cosméticos:** se ganan al superar las torres de las etapas 5, 10 y 15 (`Cosmetics.roll_por_dificultad`): Fácil no da; Medio y Difícil dan comunes y raros (Difícil más raros); Pesadilla da raros y épicos y, si ya tienes todos esos y te faltan comunes, uno común. Modelos reemplazables desde el editor de modelos (`editor_modelos.md`).
 
 ## Interfaz
 

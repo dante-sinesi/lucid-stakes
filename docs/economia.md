@@ -30,7 +30,9 @@ Todo el balance vive en variables (`static var`) para poder probarlo con el bot 
 ## La Luz (meta-progresión)
 
 - Se gana al terminar un run: avance = 5 por torre superada + 20 por prueba superada. Con victoria (escapar de la pesadilla): (avance + 100) × el multiplicador del escenario; sin victoria, el 20 % del avance × el multiplicador (`Profile.luz_for_run`, `LUZ_FAIL_SHARE`). Sirve para entrar a los escenarios de pago.
-- Los dados dan claridad (tope de 150 por partida, `RunState.DICE_CAP`) y, con 4 o 5 aciertos, cosméticos; la Luz y los cosméticos de los dados quedan pendientes en el run (`run.dice_pending`) y pasan al perfil al superar una torre (así no se pueden sacar empezando y cerrando).
+- Fácil multiplica la Luz del run por 0,25 (`Profile.LUZ_POR_DIFICULTAD`): tiene movimientos ilimitados y pistas.
+- Los dados dan sólo claridad (tope de 150 por partida, `RunState.DICE_CAP`); la Luz que pudieran dar queda pendiente en el run (`run.dice_pending`) y pasa al perfil al superar una torre.
+- Cosméticos: al superar las torres de las etapas 5, 10 y 15 (ver `diseno.md`); Fácil no da.
 - Habilidades persistentes: se ganan por escenario al escapar (una por vez, al azar entre las que faltan; cuando no quedan, Luz).
 
 ## Calibración con el bot

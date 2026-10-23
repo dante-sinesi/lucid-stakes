@@ -4,8 +4,7 @@ extends Control
 ## el dado, arriba y abajo cambian la cara, 1 a 6 la fijan y Enter tira; también se puede con WASD: A y D eligen el dado, W y S cambian la
 ## cara, y E empieza cuando la torre está lista) y se tiran: caen desde arriba, rebotan y se frenan, y se revelan de a uno.
 ##   0 aciertos: nada, una frase del tabernero     1: +2 de claridad     2: +8
-##   3: +25 de claridad y 1 de Luz                 4: +80, 2 de Luz y un cosmético común (a veces raro)
-##   5: +150, 5 de Luz y un cosmético raro (a veces épico)   (1 chance en 7.776 por tiro)
+##   3: +25 de claridad     4: +80     5: +150   (los dados ya no dan Luz ni cosméticos)
 ## La trampa: con los dados ya revelados, los que fallaron se pueden amañar pagando Luz (2 el primero, 3 el segundo, 4 el tercero...: sube
 ## con cada uno y vuelve a empezar en cada tiro); con Luz de sobra se pueden comprar los cinco.
 ## No te saca del juego: jugarlo es obligatorio. Cuando se terminan las tiradas aparece a la derecha el botón "Empezar": gris y con una espiral
@@ -14,7 +13,6 @@ extends Control
 
 const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
-const Cosmetics := preload("res://scripts/personajes/cosmetics.gd")
 const LuzIcon := preload("res://scripts/ui/luz_icon.gd")
 const VFont := preload("res://scripts/ui/voxel_font.gd")
 const UI := preload("res://scripts/ui/menu_ui.gd")
@@ -25,12 +23,11 @@ const PadGlyph := preload("res://scripts/ui/pad_glyph.gd")
 const VoxelLabel := preload("res://scripts/ui/voxel_label.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 const LuzCounter := preload("res://scripts/ui/luz_counter.gd")
-const CosmeticsScreen := preload("res://scripts/ui/cosmetics_screen.gd")
 const DialogueBox := preload("res://scripts/ui/dialogue_box.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const Sfx := preload("res://scripts/sonido/sfx.gd")
 
-signal prize(info: Dictionary)   ## el tiro terminó: {hits, claridad, luz, cosmetic}; quien lo recibe puede agregar `granted` (lo que de verdad se dio) y `cosmetic_name`
+signal prize(info: Dictionary)   ## el tiro terminó: {hits, claridad, luz}; quien lo recibe puede agregar `granted` (lo que de verdad se dio) y `cosmetic_name`
 signal closed
 
 const THROWS := 3            # tiradas para cumplir la predicción: los dados acertados quedan retenidos y sólo se vuelven a tirar los que fallaron
@@ -44,14 +41,13 @@ const SHIFT := 0.0           # (antes el juego se corría a la izquierda para de
 enum Phase { IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE }   # HOLD: los dados acertados quedan retenidos y se espera la próxima tirada de los que fallaron
 
 ## Premios por cantidad de aciertos al terminar las tiradas (una sola predicción y hasta THROWS tiradas para cumplirla).
-## `cosmetic`: las probabilidades de cada rareza del cosmético que se da ({} = ninguno); `cosmetic_chance`: con qué probabilidad se da (1 = siempre).
 const PRIZES := {
-	0: {"claridad": 0, "luz": 0, "cosmetic": {}},
-	1: {"claridad": 0, "luz": 0, "cosmetic": {}},
-	2: {"claridad": 8, "luz": 0, "cosmetic": {}},
-	3: {"claridad": 25, "luz": 0, "cosmetic": {}},
-	4: {"claridad": 80, "luz": 0, "cosmetic": {"comun": 0.85, "raro": 0.15}, "cosmetic_chance": 0.15},
-	5: {"claridad": 150, "luz": 0, "cosmetic": {"raro": 0.7, "epico": 0.3}, "cosmetic_chance": 1.0},
+	0: {"claridad": 0, "luz": 0},
+	1: {"claridad": 0, "luz": 0},
+	2: {"claridad": 8, "luz": 0},
+	3: {"claridad": 25, "luz": 0},
+	4: {"claridad": 80, "luz": 0},
+	5: {"claridad": 150, "luz": 0},
 }
 
 ## Lo que dice el tabernero según los aciertos.
@@ -60,7 +56,7 @@ const LINES := {
 	1: ["Uno. Algo es algo.", "Uno solo, pero cuenta.", "Un acierto: se nota que sabes."],
 	2: ["¡Dos! Vas bien.", "Dos aciertos. Eso ya es puntería.", "Dos de cinco, nada mal."],
 	3: ["¡Tres! Eso es suerte de la buena.", "Tres aciertos, soñador. Me estás asustando.", "¡Tres! La casa empieza a sudar."],
-	4: ["¡CUATRO! Esto no pasa seguido.", "Cuatro... ¡y un cosmético de regalo, tal vez!", "¿Cuatro? Estás tocado por la claridad."],
+	4: ["¡CUATRO! Esto no pasa seguido.", "Cuatro... ¡y no es poca cosa!", "¿Cuatro? Estás tocado por la claridad."],
 	5: ["¡LOS CINCO! No lo puedo creer...", "Cinco de cinco. Esto va a quedar en la historia de la taberna.", "¡¡Cinco!! Aquí tienes, te lo ganaste."],
 }
 
@@ -398,7 +394,7 @@ func _finish_throw() -> void:
 	last_hits = hits()
 	prize_info = prize_for(last_hits)
 	prize_info["hits"] = last_hits
-	prize.emit(prize_info)   # el juego lo aplica y puede completar `granted` y `cosmetic_name`
+	prize.emit(prize_info)   # el juego lo aplica y puede completar `granted`
 	var granted: int = int(prize_info.get("granted", prize_info.claridad))
 	total_claridad += granted
 	total_luz += int(prize_info.luz)
@@ -490,13 +486,6 @@ func _process(delta: float) -> void:
 	dice3d.update(self, delta)
 	if showcase.visible:
 		showcase.layout()
-	var hide_dice: bool = showcase.visible and showcase._has_cosmetic   # con un cosmético nuevo el muñeco ocupa el centro: los dados se apartan
-	for n in dice3d.dice + dice3d.shadows:
-		n.visible = not hide_dice
-	if hide_dice:
-		for n in dice3d.locks:
-			n.visible = false
-	overlay_layer.visible = not hide_dice
 	overlay_layer.queue_redraw()
 	queue_redraw()
 
@@ -702,27 +691,20 @@ class _Spiral extends Control:
 			draw_rect(Rect2(p - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), Color(0.85, 0.82, 0.95, 0.25 + 0.75 * k))
 
 
-## Las recompensas de la carga, en grande: encima de los dados, con la claridad y la Luz que se ganaron y, si salió un cosmético, cómo se ve puesto en el personaje.
+## Las recompensas de la carga, en grande: una tira debajo de los dados con la claridad y la Luz que se ganaron.
 class _Showcase extends Control:
 	const UI := preload("res://scripts/ui/menu_ui.gd")
 	const Draw := preload("res://scripts/ui/voxel_draw.gd")
 	const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 	const LuzCounter := preload("res://scripts/ui/luz_counter.gd")
-	const CosmeticsScreen := preload("res://scripts/ui/cosmetics_screen.gd")
-	const Cosmetics := preload("res://scripts/personajes/cosmetics.gd")
-	const Profile := preload("res://scripts/datos/profile.gd")
 	const Loc := preload("res://scripts/idioma/loc.gd")
 
 	var title: Control
 	var row: HBoxContainer
 	var clarity
 	var luz
-	var cosmetic_box: VBoxContainer
-	var preview
-	var cosmetic_label: Control
 	var _card := Rect2()
 	var center: CenterContainer
-	var _has_cosmetic := false
 	var col: VBoxContainer
 
 	func _init() -> void:
@@ -753,22 +735,11 @@ class _Showcase extends Control:
 		luz = LuzCounter.new(3.5)
 		luz.name = "luz"
 		row.add_child(luz)
-		cosmetic_box = VBoxContainer.new()
-		cosmetic_box.alignment = BoxContainer.ALIGNMENT_CENTER
-		cosmetic_box.add_theme_constant_override("separation", 6)
-		col.add_child(cosmetic_box)
-		preview = CosmeticsScreen._Preview.new()
-		preview.custom_minimum_size = Vector2(190, 200)
-		preview.spin = true
-		preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		cosmetic_box.add_child(preview)
-		cosmetic_label = UI.label(cosmetic_box, "", 3.0, Color(1.0, 0.9, 0.5), true, 1000)
-		cosmetic_label.name = "cosmetico"
 
-	## Sin cosmético: una tira abajo de la mesa; con cosmético: ocupa el centro de la mesa (lleva el muñeco).
+	## Una tira abajo de la mesa.
 	func layout() -> void:
 		var panel: Rect2 = get_parent()._panel_rect()
-		var area := panel if _has_cosmetic else Rect2(panel.position.x, panel.end.y - 92.0, panel.size.x, 84.0)
+		var area := Rect2(panel.position.x, panel.end.y - 92.0, panel.size.x, 84.0)
 		center.position = area.position
 		center.size = area.size
 		queue_redraw()
@@ -779,26 +750,11 @@ class _Showcase extends Control:
 	func show_prize(info: Dictionary) -> void:
 		var granted: int = int(info.get("granted", info.get("claridad", 0)))
 		var luz_n: int = int(info.get("luz", 0))
-		var cname: String = str(info.get("cosmetic_name", ""))
-		title.text = Loc.t("¡Recompensas!") if granted > 0 or luz_n > 0 or cname != "" else Loc.t("Sin recompensa esta vez")
+		title.text = Loc.t("¡Recompensas!") if granted > 0 or luz_n > 0 else Loc.t("Sin recompensa esta vez")
 		clarity.visible = granted > 0
 		clarity.value = granted
 		luz.visible = luz_n > 0
 		luz.value = luz_n
 		row.visible = granted > 0 or luz_n > 0
-		cosmetic_box.visible = cname != ""
-		if cname != "":
-			var rarity: String = str(info.get("cosmetic_rarity", "comun"))
-			var rinfo: Dictionary = Cosmetics.RARITIES.get(rarity, Cosmetics.RARITIES.comun)
-			cosmetic_label.text = Loc.f("¡Cosmético %s nuevo: %s!", [Loc.t(str(rinfo.name)).to_lower(), Loc.t(cname)])
-			cosmetic_label.color = rinfo.color
-			var hat := Profile.equipped_hat()
-			var outfit := Profile.equipped_outfit()
-			if str(info.get("cosmetic_slot", "")) == "gorro":
-				hat = str(info.get("cosmetic_id", hat))
-			else:
-				outfit = str(info.get("cosmetic_id", outfit))
-			preview.show_model(Profile.character(), hat, outfit)
-		_has_cosmetic = cname != ""
 		layout()
 		visible = true

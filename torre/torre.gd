@@ -462,8 +462,14 @@ func aplicar_boosts(ids: Array) -> void:
 		motor.luz_propia = perks.has("luz_propia")
 
 
-## Movimientos que tiene la sala actual: el margen sobre el mínimo, y con Madrugada (x1,25), Aire extra (+4) y lo que sumaron Freno y Reloj de arena.
+## Los movimientos que se dan en Fácil: sin límite.
+const SIN_LIMITE := 999999
+
+
+## Movimientos que tiene la sala actual: el margen sobre el mínimo, y con Madrugada (x1,25), Aire extra (+4) y lo que sumaron Freno y Reloj de arena. En Fácil no hay límite.
 func max_mov() -> int:
+	if dificultad == "facil":
+		return SIN_LIMITE
 	var m := float(salas[indice].max_mov)
 	if perks.has("madrugada"):
 		m *= 1.25

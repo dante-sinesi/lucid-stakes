@@ -57,6 +57,7 @@ const TABLE := {
 	"Colgarse (mantener)": "Hang (hold)",
 	"Reintentar la torre": "Retry the tower",
 	"Deshacer el último movimiento": "Undo the last move",
+	"Modo pista (activar o apagar)": "Hint mode (turn on or off)",
 	"Movimiento deshecho": "Move undone",
 	"Usar consumible 1": "Use consumable 1",
 	"Usar el consumible elegido (mantener y arriba o abajo para elegir)": "Use the chosen consumable (hold, then up or down to choose)",
