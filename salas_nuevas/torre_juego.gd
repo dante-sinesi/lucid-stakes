@@ -74,6 +74,8 @@ var vidas_fn := Callable()   # () -> int: las vidas del run
 var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
 var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario no los usa)
 var falsos = null              # el medidor (falsos.gd)
+var _bloques_antes := {}      # id de cada bloque de la sala viva -> dónde se dibujó la última vez (para ver cómo se mueven)
+var _sala_dibujada := -1
 var _tweens_derrota: Array = []   # las animaciones de la derrota en marcha (al reintentar se cortan)
 var _cayendo := false   # la animación de la derrota está en marcha: la cámara no sigue al personaje que cae
 var _pos_previa := Vector3.ZERO   # dónde estaba el personaje antes de la última acción (la caída de la derrota arranca de ahí)
@@ -227,6 +229,7 @@ func _refrescar(animar := false) -> void:
 		n.visible = i > t.indice   # la actual se dibuja viva; las de abajo ya cayeron
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
 	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true, portal != null and t.indice == t.salas.size() - 1)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
+	_animar_bloques(animar)
 	_poner_gato(animar)
 	_poner_camara(animar)
 	if panorama:
@@ -238,6 +241,37 @@ func _refrescar(animar := false) -> void:
 	_poner_farolin()
 	texto_hud.visible = not en_juego   # (dentro del juego no hay texto de depuración: el HUD es el del juego)
 	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d   ·   Claridad %d%s" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), (int(vidas_fn.call()) if vidas_fn.is_valid() else t.vidas), t.cosecha.claridad(), ("  (racha ×%.1f)" % t.cosecha.streak_mult(t.cosecha.streak)) if t.cosecha.streak > 1 else ""]
+
+
+## Los bloques que se movieron en la última acción (empujados, tirados, deslizados o caídos) se ven recorrer el camino desde donde estaban hasta donde quedaron.
+func _animar_bloques(animar: bool) -> void:
+	var ahora := {}   # id del bloque -> su posición
+	var mallas := {}  # id del bloque -> su malla
+	for h in vivo.get_children():
+		var mi := h as Node3D
+		if mi == null:
+			continue
+		var celda := Vector3i(floori(mi.position.x), floori(mi.position.y), floori(mi.position.z))
+		if t.motor.ids.has(celda) and not ahora.has(t.motor.ids[celda]):
+			ahora[t.motor.ids[celda]] = mi.position
+			mallas[t.motor.ids[celda]] = mi
+	if animar and _sala_dibujada == t.indice:
+		for id in ahora:
+			if not _bloques_antes.has(id) or _bloques_antes[id].is_equal_approx(ahora[id]):
+				continue
+			var desde: Vector3 = _bloques_antes[id]
+			var hasta: Vector3 = ahora[id]
+			var mi: Node3D = mallas[id]
+			var recorrido := desde.distance_to(hasta)
+			var cae := absf(desde.x - hasta.x) < 0.01 and absf(desde.z - hasta.z) < 0.01 and hasta.y < desde.y
+			mi.position = desde
+			var tw := mi.create_tween()
+			if cae:   # un bloque que pierde su apoyo cae acelerando
+				tw.tween_property(mi, "position", hasta, 0.12 + 0.07 * recorrido).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			else:   # empujado o deslizado: recorre las celdas a la velocidad del personaje
+				tw.tween_property(mi, "position", hasta, maxf(STEP_TIME, 0.07 * recorrido)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_bloques_antes = ahora
+	_sala_dibujada = t.indice
 
 
 ## El cubo-portal sobre el bloque de salida de la última sala.
