@@ -18,3 +18,20 @@ Porcentaje de runs que ganan, vidas perdidas, qué porcentaje pasa cada etapa, y
 
 ## Configuración de balance elegida
 `Roulette.base_price` 75 y `price_step` 6; `RunState.pre_wall_from` 0,60 y `pre_wall_to` 1,00; `wall_growth` 1,20; ingreso de referencia `income_base` 340 + `income_slope` 25 por etapa. Con eso el bot gana el 3 al 7 % de los runs (ver `docs/diseno.md` §48).
+
+## El bot con la torre nueva (por omisión)
+- `Bot.arm_bank(paquete, rng, por_etapa)` arma torres nuevas por etapa (`Torre.armar`); `Bot.play_tower_nueva` juega cada sala siguiendo su camino mínimo (el motor real, `Torre.actuar`), con titubeos (2 movimientos que gastan el temporizador y cortan la racha) y una probabilidad de perder cada sala (`die_first`..`die_last` según la etapa, repartida por el peso del nivel `PESO_NIVEL`). Perder una sala cuesta una vida y vuelve a su checkpoint (`reintentar_sala`). Usa los consumibles con `Torre.usar_item`. `run_one_nueva` hace el run entero.
+- `tests/bot_runs.gd`: por omisión la torre nueva. `VIEJA=1` usa el banco viejo; `TOWERS` = torres por etapa; `CLARIDAD` = multiplicador global de claridad (`Cosecha.mult_global`, sólo para balance). Al final muestra, por nivel de sala, el porcentaje perdido y los movimientos usados sobre el mínimo y sobre el máximo.
+- Supuestos: la muerte por sala es un supuesto (con los valores actuales casi no se pierden salas: unas 3 cada 40 torres); calibrarla con la telemetría de partidas reales (`herramientas/resumen_telemetria.py` resume los eventos `sala` y `torre`).
+
+## Hallazgo de balance (60 runs, habilidad 1,0, 6 torres por etapa)
+Con la torre nueva el ingreso por torre ronda las **300** de claridad, contra el peaje de Farolín de 219 / 260 / 304 / 386 / 537 en las primeras etapas.
+
+| Multiplicador de claridad | Victorias |
+|---|---|
+| ×1,0 | 0 % (los runs se traban en las etapas 3 a 5) |
+| ×1,5 | 1,7 % |
+| ×2,0 | 1,7 % |
+| ×3,0 | 15 % (pasa a la primera 93–98 % hasta la etapa 5; cae en la 6 y 7) |
+
+El objetivo de diseño era 3 a 7 %. Falta decidir cómo calibrar (valor de la claridad por bloque, curva del peaje o ingreso por etapa).
