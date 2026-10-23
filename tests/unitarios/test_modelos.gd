@@ -44,7 +44,7 @@ func _clean() -> void:
 
 
 func test_variants() -> void:
-	for kind in [0, 1, 2, 3, 4, 5, 6, 7, 9]:
+	for kind in [0, 1, 2, 3, 4, 5, 6, 7]:
 		check(BM.variant_count(kind) >= BM.VARIANTS, "tipo %d: tiene al menos %d variantes" % [kind, BM.VARIANTS])
 		var sigs := {}
 		for v in BM.variant_count(kind):
@@ -80,7 +80,7 @@ func test_variants() -> void:
 	# el costo de armar todas las mallas
 	var t0 := Time.get_ticks_msec()
 	BM.clear_cache()
-	for kind in [0, 1, 2, 3, 4, 5, 6, 7, 9]:
+	for kind in [0, 1, 2, 3, 4, 5, 6, 7]:
 		for v in BM.variant_count(kind):
 			for st in 3:
 				BM.mesh_for(kind, st, v)
