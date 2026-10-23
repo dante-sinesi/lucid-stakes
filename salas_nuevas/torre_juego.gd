@@ -619,10 +619,14 @@ func _caer_sala(i: int) -> void:
 	if i < 0 or i >= estaticas.size():
 		return
 	var n = estaticas[i]
-	if n == null or not is_instance_valid(n):
-		return
-	n.visible = true
-	var tw := create_tween()
-	tw.tween_property(n, "position:y", n.position.y - 40.0, 1.2).set_ease(Tween.EASE_IN)
-	tw.tween_callback(n.queue_free)
+	if n != null and is_instance_valid(n):
+		n.queue_free()   # (el dibujo virgen de la sala: lo que cae es la sala tal como quedó)
 	estaticas[i] = null
+	var cae := Node3D.new()
+	add_child(cae)
+	cae.position = vivo.position
+	for h in vivo.get_children():   # los bloques vivos de la sala se pasan al nodo que cae, antes de que se redibuje la siguiente
+		h.reparent(cae, false)
+	var tw := create_tween()
+	tw.tween_property(cae, "position:y", cae.position.y - 40.0, 1.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(cae.queue_free)
