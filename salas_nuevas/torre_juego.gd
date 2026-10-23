@@ -15,7 +15,9 @@ const RoomView := preload("res://scripts/room_view.gd")
 const Characters := preload("res://scripts/characters.gd")
 const KeyDirs := preload("res://scripts/key_dirs.gd")
 const Controls := preload("res://scripts/controls.gd")
-const Falsos := preload("res://salas_nuevas/falsos.gd")   # (las teclas y el mando del juego, con sus reasignaciones: el mando entra como teclas, ver pad_bridge.gd)
+const Falsos := preload("res://salas_nuevas/falsos.gd")
+const Profile := preload("res://scripts/profile.gd")     # (el personaje y los cosméticos que eligió el jugador)
+const Graphics := preload("res://scripts/graphics.gd")   # (las teclas y el mando del juego, con sus reasignaciones: el mando entra como teclas, ver pad_bridge.gd)
 
 const PITCH := -35.264        # ángulo isométrico (el del juego)
 const PITCH_MIN := -86.0
@@ -86,10 +88,16 @@ func _ready() -> void:
 	cam.make_current()
 	gato_nodo = Node3D.new()
 	add_child(gato_nodo)
+	# el personaje y los cosméticos que eligió el jugador (en el prototipo suelto, SN_PERSONAJE o el gatito)
 	var personaje := OS.get_environment("SN_PERSONAJE")
-	gato = Characters.build(personaje if personaje != "" else "gato")
+	var id_personaje: String = Profile.character() if en_juego else (personaje if personaje != "" else "gato")
+	var gorro: String = Profile.equipped_hat() if en_juego else ""
+	var prenda: String = Profile.equipped_outfit() if en_juego else ""
+	gato = Characters.build(id_personaje, gorro, prenda)
 	gato_nodo.add_child(gato)
-	gato_nodo.add_child(Characters.build(personaje if personaje != "" else "gato", "", "", true))   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego)
+	var silueta := Characters.build(id_personaje, gorro, prenda, true)   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego)
+	silueta.visible = bool(Graphics.value("silhouette")) if en_juego else true
+	gato_nodo.add_child(silueta)
 	contador = Label3D.new()
 	contador.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	contador.no_depth_test = true
@@ -176,7 +184,7 @@ func _refrescar(animar := false) -> void:
 			continue
 		n.visible = i > t.indice   # la actual se dibuja viva; las de abajo ya cayeron
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
-	Vista.poblar(vivo, t.motor, t.encendidos, true, false, false, true)
+	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
 	_poner_gato(animar)
 	_poner_camara(animar)
 	if panorama:

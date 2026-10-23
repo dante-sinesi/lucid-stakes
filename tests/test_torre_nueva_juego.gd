@@ -38,6 +38,14 @@ func _init() -> void:
 		main.nueva.accion(Vector3i(int(cam[i][0]), 0, int(cam[i][1])), int(cam[i][2]))
 	_ok(main.run.lives == vidas0 - 1 and main.nueva.t.indice == 0 and main.nueva.t.movs == 0, "morir resta una vida del run y reinicia la sala (%d vidas)" % main.run.lives)
 	main.nueva.t.salas[0].max_mov = 999
+	# el personaje y los cosméticos del perfil son los de la torre nueva (no siempre el gatito)
+	Profile.select_character("dante")
+	main._torre_nueva_arrancar(3)
+	_ok(main.nueva.gato != null and Profile.character() == "dante" and main.nueva.gato.get_child_count() > 3, "la torre nueva usa el personaje elegido (dante) con su modelo")
+	var ref_grilla = main.nueva.vivo.get_node_or_null("referencia")
+	_ok(ref_grilla == null, "dentro del juego no se dibuja la grilla blanca de prueba")
+	Profile.select_character("gato")
+	main._torre_nueva_arrancar(3)
 	# deshacer: vuelve el jugador, la cuenta de movimientos y la claridad
 	var cam1: Array = main.nueva.t.salas[0].d.camino
 	var pos0: Vector3i = main.nueva.t.motor.jugador
