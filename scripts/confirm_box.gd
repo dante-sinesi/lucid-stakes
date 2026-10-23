@@ -1,6 +1,6 @@
 extends Control
 ## Cuadro de confirmación (abandonar la partida, empezar una nueva sobre una sin terminar): un título, el detalle de lo que se pierde y dos salidas, con la botonera de abajo
-## ("[A / Enter] Sí..." "[B / Esc] No..."). `ask(title, body, yes_text, no_text)` y se contesta con `chosen(yes)`. Funciona con el juego en pausa.
+## ("[A / Espacio] Sí..." "[B / Shift] No..."). `ask(title, body, yes_text, no_text)` y se contesta con `chosen(yes)`. Funciona con el juego en pausa.
 
 const Draw := preload("res://scripts/voxel_draw.gd")
 const UI := preload("res://scripts/menu_ui.gd")
@@ -56,8 +56,8 @@ func _init() -> void:
 func ask(title: String, body: String, yes_text: String, no_text: String) -> void:
 	title_label.text = title
 	body_label.text = body
-	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": yes_text, "call": func(): _answer(true)},
-			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": no_text, "call": func(): _answer(false)}])
+	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": yes_text, "call": func(): _answer(true)},
+			{"slot": PadGlyph.Slot.EAST, "key": "Shift", "text": no_text, "call": func(): _answer(false)}])
 	_open_t = Time.get_ticks_msec() / 1000.0
 	visible = true
 
@@ -80,9 +80,9 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	match event.keycode:
-		KEY_ENTER, KEY_KP_ENTER:
+		KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
 			_answer(true)
-		KEY_ESCAPE:
+		KEY_SHIFT, KEY_ESCAPE:
 			_answer(false)
 		_:
 			return

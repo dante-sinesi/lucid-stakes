@@ -83,7 +83,7 @@ func show_loss(reason: String, cost: int, can_afford := true, free := false, lif
 		hint_label.text = Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost])
 	var listo := func(): return box.modulate.a > 0.5   # (las teclas valen cuando el cuadro ya se ve: la barra con la que se suelta una cornisa no debe actuar durante la caída)
 	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": retry_button.text, "keycode": KEY_SPACE, "when": listo, "call": func(): retry.emit()},
-			{"slot": PadGlyph.Slot.WEST, "key": "Enter", "text": Loc.t("Salir al menú principal"), "keycode": [KEY_ENTER, KEY_KP_ENTER], "when": listo, "call": func(): menu.emit()}])
+			{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Salir al menú principal"), "keycode": KEY_SHIFT, "when": listo, "call": func(): menu.emit()}])
 	visible = true
 	if _tween != null:
 		_tween.kill()

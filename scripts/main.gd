@@ -37,6 +37,7 @@ const CasinoScene := preload("res://scripts/casino_scene.gd")
 const MainMenu := preload("res://scripts/main_menu.gd")
 const PauseMenu := preload("res://scripts/pause_menu.gd")
 const ConfirmBox := preload("res://scripts/confirm_box.gd")
+const DifficultyScreen := preload("res://scripts/difficulty_screen.gd")
 const Settings := preload("res://scripts/settings.gd")
 const Sfx := preload("res://scripts/sfx.gd")
 const Music := preload("res://scripts/music.gd")
@@ -160,6 +161,7 @@ var tower_rows := TOWER_ROWS
 var in_menu := false
 var main_menu
 var pause_menu
+var difficulty_screen   # selector de dificultad de La Pesadilla
 var confirm_box   # cuadro de confirmación (abandonar la partida, empezar otra sobre una sin terminar)
 var menu_layer: CanvasLayer
 var env: Environment
@@ -255,11 +257,16 @@ func _ready() -> void:
 		dice_always = false
 		block_discovery = false
 	Settings.apply()   # idioma, ventana, resolución y volumen del jugador
+	for par in [["ui_up", KEY_W], ["ui_down", KEY_S], ["ui_left", KEY_A], ["ui_right", KEY_D]]:   # (en los menús también se navega con WASD)
+		var ev := InputEventKey.new()
+		ev.keycode = par[1] as Key
+		if not InputMap.action_has_event(par[0], ev):
+			InputMap.action_add_event(par[0], ev)
 	AudioHub.instance()   # el audio (efectos y música) se prepara desde el arranque
 	_register_globals()
 	var pad_bridge := PadBridge.new()   # el mando se traduce a las teclas de cada acción
 	pad_bridge.nav_mode = func() -> bool:
-		return in_menu or get_tree().paused or (dice != null and dice.visible) or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible) or (dialogue != null and dialogue.is_active()) or (confirm_box != null and confirm_box.is_open())
+		return in_menu or get_tree().paused or (dice != null and dice.visible) or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible) or (dialogue != null and dialogue.is_active()) or (confirm_box != null and confirm_box.is_open()) or (difficulty_screen != null and difficulty_screen.is_open())
 	pad_bridge.process_mode = Node.PROCESS_MODE_ALWAYS   # (el mando tiene que seguir andando con el juego en pausa: si no, el menú de pausa no responde)
 	add_child(pad_bridge)
 	add_to_group("graphics")
@@ -524,6 +531,7 @@ func _torre_nueva_arrancar(s: int, con_dados := false) -> void:
 	nueva.semilla = s
 	nueva.etapa = stage_number
 	nueva.boosts = perks
+	nueva.dificultad = run.dificultad
 	nueva.mov_run = run.collapse_bonus   # (Pies ligeros y la mejora Aire de más: movimientos de más en cada sala)
 	var permitidos := 0   # Sin piedad: movimientos en falso por sala
 	if not training:
@@ -614,6 +622,7 @@ func _log_sala_nueva() -> void:
 	var d: Dictionary = nueva.t.ultima_sala.duplicate()
 	d["stage"] = stage_number
 	d["lives"] = run.lives
+	d["dificultad"] = run.dificultad
 	Telemetry.log_event("sala", d)
 
 
@@ -621,7 +630,7 @@ func _log_torre_nueva(resultado: String, causa: String) -> void:
 	if training or lab_active or tutorial_index >= 0 or nueva == null or nueva.t == null:
 		return
 	Telemetry.log_event("torre", {"stage": stage_number, "outcome": resultado, "seconds": int((Time.get_ticks_msec() - _attempt_t0) / 1000), "moves": nueva.t.movs_total,
-			"claridad": nueva.t.cosecha.claridad(), "retries": run.tower_retries, "lives": run.lives, "cause": causa, "sala": nueva.t.indice + 1, "salas": nueva.t.salas.size(), "torre_nueva": true})
+			"claridad": nueva.t.cosecha.claridad(), "retries": run.tower_retries, "lives": run.lives, "cause": causa, "dificultad": run.dificultad, "sala": nueva.t.indice + 1, "salas": nueva.t.salas.size(), "torre_nueva": true})
 
 
 func _torre_nueva_checkpoint(faltan: int, total: int) -> void:
@@ -2453,6 +2462,8 @@ func _build_menus() -> void:
 	menu_layer.add_child(pause_menu)
 	confirm_box = ConfirmBox.new()
 	menu_layer.add_child(confirm_box)
+	difficulty_screen = DifficultyScreen.new()
+	menu_layer.add_child(difficulty_screen)
 	run_end = RunEndScreen.new()
 	run_end.new_game.connect(func():   # "Nueva partida" del fin de run: se elige el escenario otra vez
 		open_main_menu()
@@ -2550,19 +2561,25 @@ func _ask_abandon() -> void:
 
 ## Elegir un escenario nuevo: si hay una partida sin terminar, antes hay que confirmar que se pierde.
 func _on_new_game(scenario_id: String) -> void:
+	var dificultad := "media"
+	if scenario_id == Scenarios.FREE:   # La Pesadilla: primero se elige la dificultad (gradúa las salas de las 15 etapas)
+		difficulty_screen.ask()
+		dificultad = await difficulty_screen.chosen
+		if dificultad == "":
+			return
 	var saved := SaveGame.read()
 	if saved.is_empty():
-		start_game(scenario_id)
+		start_game(scenario_id, dificultad)
 		return
 	confirm_box.ask(Loc.t("¿Empezar una partida nueva?"), Loc.f("Tienes una partida sin terminar. %s Si empiezas otra, esa partida se perderá.", [_progress_text(saved.run, int(saved.stage))]),
 			Loc.t("Sí, empezar de nuevo"), Loc.t("Volver"))
 	var yes: bool = await confirm_box.chosen
 	if yes:
 		SaveGame.delete()
-		start_game(scenario_id)
+		start_game(scenario_id, dificultad)
 
 
-func start_game(scenario_id := Scenarios.FREE) -> void:
+func start_game(scenario_id := Scenarios.FREE, dificultad := "media") -> void:
 	_torre_nueva_cerrar(true)
 	if not Profile.pay_entry(scenario_id):
 		scenario_id = Scenarios.FREE
@@ -2570,6 +2587,7 @@ func start_game(scenario_id := Scenarios.FREE) -> void:
 	in_menu = false
 	run = RunState.new()
 	run.scenario_id = scenario_id
+	run.dificultad = dificultad if ["facil", "media", "dificil", "pesadilla"].has(dificultad) else "media"
 	var draw_rng := RandomNumberGenerator.new()
 	draw_rng.randomize()
 	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng)   # qué prueba toca en cada etapa 3, 6, 9...

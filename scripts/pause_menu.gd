@@ -51,7 +51,7 @@ func _init() -> void:
 	info.position = Vector2(120, 0)
 	info.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(info)
-	hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
+	hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Continuar"), "call": func(): resume.emit()}])
 	options = OptionsScreen.new()
 	options.back.connect(func(): show_options(false))

@@ -48,6 +48,19 @@ func _init() -> void:
 	_ok(ref_grilla == null, "dentro del juego no se dibuja la grilla blanca de prueba")
 	Profile.select_character("gato")
 	main._torre_nueva_arrancar(3)
+	# la dificultad del run gradúa los niveles de las salas
+	var Torre = main.nueva.Torre
+	var facil_ok := true
+	var pes_ok := true
+	for etapa in [1, 5, 10, 15]:
+		for i in 6:
+			var nf: Array = Torre.niveles_para(i, 6, etapa, "facil")
+			facil_ok = facil_ok and not nf.has("dificil") and not nf.has("pesadilla")
+			var np: Array = Torre.niveles_para(i, 6, etapa, "pesadilla")
+			pes_ok = pes_ok and not np.has("facil")
+	_ok(facil_ok, "en Fácil no salen salas difíciles ni pesadilla")
+	_ok(pes_ok, "en Pesadilla no salen salas fáciles")
+	_ok(Torre.max_movimientos(20, "media", 8, "facil") > Torre.max_movimientos(20, "media", 8, "media") and Torre.max_movimientos(20, "media", 8, "media") > Torre.max_movimientos(20, "media", 8, "pesadilla"), "cuanto más difícil, menos margen de movimientos")
 	# telemetría: una sala perdida deja su evento
 	var eventos: Array = main.Telemetry.read_all()
 	var salas_perdidas := 0

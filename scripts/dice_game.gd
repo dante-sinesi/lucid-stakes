@@ -439,13 +439,13 @@ func _update_hints() -> void:
 	match phase:
 		Phase.PICK:
 			hints.set_items([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Dado")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Número")},
-					{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Tirar"), "dim": not can_throw(), "call": throw_dice}])
+					{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Tirar"), "dim": not can_throw(), "call": throw_dice}])
 		Phase.HOLD:
-			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Tirar de nuevo"), "dim": not can_throw(), "call": throw_dice}])
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Tirar de nuevo"), "dim": not can_throw(), "call": throw_dice}])
 		Phase.RESULT, Phase.DONE:
-			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Empezar") if tower_ready else Loc.t("Generando la torre..."), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Empezar") if tower_ready else Loc.t("Generando la torre..."), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
 		_:
-			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Saltear")}])
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Saltear")}])
 
 
 func _update_button() -> void:

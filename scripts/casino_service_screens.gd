@@ -265,8 +265,8 @@ class TallerScreen extends Base:
 
 	func _update_taller_hints() -> void:
 		_set_hints([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir")},
-				{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": sell_button.text, "dim": sell_button.disabled, "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): if not sell_button.disabled: sell()},
-				{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": swap_button.text, "dim": swap_button.disabled, "keycode": KEY_SPACE, "call": func(): if not swap_button.disabled: swap()}])
+				{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": sell_button.text, "dim": sell_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not sell_button.disabled: sell()},
+				{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": swap_button.text, "dim": swap_button.disabled, "keycode": KEY_SHIFT, "call": func(): if not swap_button.disabled: swap()}])
 
 
 ## La tienda: tres premios de la visita (uno épico, uno raro y uno común), a la venta a precio fijo. Caro pero seguro.
@@ -358,7 +358,7 @@ class TiendaScreen extends Base:
 
 	func _update_tienda_hints() -> void:
 		_set_hints([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir")},
-				{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": buy_button.text, "dim": buy_button.disabled, "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): if not buy_button.disabled: buy()}])
+				{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": buy_button.text, "dim": buy_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not buy_button.disabled: buy()}])
 
 
 ## Casino: guardar claridad con interés para el casino siguiente.
@@ -416,7 +416,7 @@ class CajaScreen extends Base:
 		deposit_buttons.mitad.disabled = run.claridad < 2
 		deposit_buttons.todo.disabled = run.claridad < 1
 		withdraw_button.disabled = run.vault <= 0
-		_set_hints([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": deposit_buttons.cuarto.text, "dim": deposit_buttons.cuarto.disabled, "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): deposit(int(run.claridad / 4))},
-				{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": deposit_buttons.mitad.text, "dim": deposit_buttons.mitad.disabled, "keycode": KEY_SPACE, "call": func(): deposit(int(run.claridad / 2))},
+		_set_hints([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": deposit_buttons.cuarto.text, "dim": deposit_buttons.cuarto.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): deposit(int(run.claridad / 4))},
+				{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": deposit_buttons.mitad.text, "dim": deposit_buttons.mitad.disabled, "keycode": KEY_SHIFT, "call": func(): deposit(int(run.claridad / 2))},
 				{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": deposit_buttons.todo.text, "dim": deposit_buttons.todo.disabled, "keycode": KEY_C, "call": func(): deposit(run.claridad)},
 				{"name": "RB", "key": "E", "text": withdraw_button.text, "dim": withdraw_button.disabled, "keycode": KEY_E, "call": func(): withdraw()}])

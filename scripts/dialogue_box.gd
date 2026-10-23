@@ -327,7 +327,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
-## La opción que elige un botón apretado sin moverse por la pantalla: con el mando, A, X e Y (las que traduce el puente a Enter, Espacio y C) y con el teclado los números 1, 2 y 3. -1 si ninguna.
+## La opción que elige un botón apretado sin moverse por la pantalla: con el mando, A, X e Y (las que traduce el puente a Espacio, Shift y C) y con el teclado los números 1, 2 y 3. -1 si ninguna.
 func direct_choice(event: InputEventKey) -> int:
 	match event.keycode:
 		KEY_1, KEY_KP_1:
@@ -338,9 +338,9 @@ func direct_choice(event: InputEventKey) -> int:
 			return 2
 	if Controls.using_pad:
 		match event.keycode:
-			KEY_ENTER, KEY_KP_ENTER:
+			KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
 				return 0
-			KEY_SPACE:
+			KEY_SHIFT:
 				return 1
 			KEY_C:
 				return 2

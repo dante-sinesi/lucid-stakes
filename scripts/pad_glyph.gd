@@ -2,7 +2,7 @@ extends RefCounted
 ## Íconos de los botones del mando para los textos de ayuda y las opciones: un círculo del color del botón con su letra (Xbox) o su símbolo (PlayStation),
 ## según el mando que se detecte. Se piden por posición física ("slot"), no por nombre, así valen igual en cualquier mando:
 ##   SOUTH (abajo: A en Xbox, cruz en PlayStation) · WEST (izquierda: X, cuadrado) · NORTH (arriba: Y, triángulo) · EAST (derecha: B, círculo).
-## El puente del mando (pad_bridge.gd) traduce SOUTH a Enter, WEST a Espacio, NORTH a C y EAST a Esc cuando hay un menú o un juego del casino.
+## El puente del mando (pad_bridge.gd) traduce SOUTH a Espacio, WEST a Shift, NORTH a C y EAST a Esc cuando hay un menú o un juego del casino.
 
 const Settings := preload("res://scripts/settings.gd")
 

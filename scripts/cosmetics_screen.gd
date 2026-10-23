@@ -86,7 +86,7 @@ func _init() -> void:
 	back_button.name = "volver_cosmeticos"
 	back_button.pressed.connect(func(): back.emit())
 	_col.add_child(back_button)
-	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "← | → | ↑ | ↓", "text": Loc.t("Moverse")},
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "← | → | ↑ | ↓", "text": Loc.t("Moverse")},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": func(): back.emit()}], [back_button])
 
 

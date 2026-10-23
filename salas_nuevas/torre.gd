@@ -20,6 +20,11 @@ const CURVA := [["facil"], ["facil", "media"], ["media"], ["media", "dificil"], 
 ## En qué etapa se habilita cada tipo de bloque especial (como en la torre vieja: hielo 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, trampolín 8).
 const ETAPA_ESPECIAL := {"i": 2, "h": 3, "c": 4, "t": 5, "s": 6, "b": 7, "k": 8}
 const ETAPAS := 15
+const DIFICULTADES := ["facil", "media", "dificil", "pesadilla"]
+## Cómo corre la dificultad del run la curva de niveles de las salas: p' = p * a + b (p va de 0 a 1 a lo largo de las 15 etapas). Fácil no pasa de salas medias; Pesadilla arranca en medias y termina en pesadillas.
+const PENDIENTE_DIFICULTAD := {"facil": [0.55, 0.0], "media": [1.0, 0.0], "dificil": [0.75, 0.25], "pesadilla": [0.5, 0.5]}
+## Cuánto cambia el margen de movimientos de cada sala (el que pasa del mínimo).
+const MARGEN_DIFICULTAD := {"facil": 1.25, "media": 1.0, "dificil": 0.85, "pesadilla": 0.7}
 
 # --- la torre armada ---
 var salas: Array = []   # de cada sala: { d: sala ya girada, off: desplazamiento vertical, max_mov: movimientos, sim: simetría, id: id de la sala en el paquete }
@@ -32,6 +37,7 @@ var terminada := false   # llegó al portal
 var perdida := false     # se quedó sin vidas
 var muertes := 0
 var cosecha = Cosecha.new()   # la claridad de la torre (ver cosecha.gd)
+var dificultad := "media"     # la dificultad elegida para el run: fácil, media, difícil o pesadilla (ver niveles_para)
 var etapa := 0                # 0: curva fija de prueba; si no, la etapa del run (sube la dificultad y se habilitan los especiales de a poco)
 var externo := false          # las vidas son las del run (las lleva el juego): morir reinicia la sala y avisa, pero no resta
 var perks := {}               # boosts del run
@@ -178,13 +184,14 @@ static func cargar_paquete(ruta: String) -> Array:
 
 ## Movimientos que se le dan a una sala de `pasos` movimientos mínimos (o conocidos): un margen proporcional que baja con el nivel de la sala.
 ## En las primeras etapas el margen es la mitad (etapa 1) y crece hasta el completo en la etapa 8; `etapa` 0 (el prototipo) usa el completo.
-static func max_movimientos(pasos: int, nivel: String, etapa := 0) -> int:
+static func max_movimientos(pasos: int, nivel: String, etapa := 0, dif := "media") -> int:
 	var idx := ["facil", "media", "dificil", "pesadilla"].find(nivel)
 	var factores: Array = [1.9, 1.6, 1.4, 1.25]
 	var extras: Array = [10, 8, 6, 5]
 	var k: float = factores[maxi(idx, 0)]
 	var extra: int = extras[maxi(idx, 0)]
 	var s := 1.0 if etapa <= 0 else lerpf(0.5, 1.0, clampf(float(etapa - 1) / 7.0, 0.0, 1.0))
+	s *= float(MARGEN_DIFICULTAD.get(dif, 1.0))
 	return int(ceil(pasos * (1.0 + (k - 1.0) * s))) + int(round(float(extra) * s))
 
 
@@ -234,22 +241,23 @@ static func _rect_sim(r: Rect2i, s: int) -> Rect2i:
 ## Arma una torre de `n` salas con la curva de dificultad CURVA (si n es mayor se repite el último tramo). Cada sala se gira o espeja y se desliza por el anillo
 ## hasta que su entrada caiga en la salida de la anterior; con `espiral` la torre da vueltas siempre hacia el mismo lado (cada sala sigue por delante de la anterior).
 ## Si no se puede con espiral se arma sin esa condición. Devuelve un Torre; si no pudo encadenar una sala queda más corta.
-static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_run := 0):
+static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_run := 0, dificultad := "media"):
 	var rng := RandomNumberGenerator.new()
 	rng.seed = semilla
 	var info := _info(paquete)
-	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral, "etapa": etapa_run}
+	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral, "etapa": etapa_run, "dif": dificultad}
 	var ok := _extender(ctx, 0)
 	if not ok and espiral:
-		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false, "etapa": etapa_run}
+		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false, "etapa": etapa_run, "dif": dificultad}
 		ok = _extender(ctx, 0)
 	var t = load("res://salas_nuevas/torre.gd").new()
 	t.etapa = etapa_run
+	t.dificultad = dificultad
 	var off := 0
 	for e in ctx.elegidas:
 		var g: Dictionary = e.d
 		e["off"] = off
-		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel), etapa_run)
+		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel), etapa_run, dificultad)
 		t.salas.append(e)
 		off += int(g.meta) - 1   # la entrada de la siguiente (nivel 1) queda en el nivel de salida de ésta
 	if not t.salas.is_empty():
@@ -263,8 +271,9 @@ static func salas_de_etapa(etapa_run: int) -> int:
 
 
 ## Niveles de dificultad que admite la sala `i` de `n` en la etapa dada: la etapa sube la dificultad de toda la torre y, dentro de ella, cada sala es más difícil que la anterior.
-static func niveles_para(i: int, n: int, etapa_run: int) -> Array:
+static func niveles_para(i: int, n: int, etapa_run: int, dif := "media") -> Array:
 	var p := clampf(float(etapa_run - 1) / float(ETAPAS - 1), 0.0, 1.0) * 0.6 + (float(i) / float(maxi(n - 1, 1))) * 0.4
+	p = p * float(PENDIENTE_DIFICULTAD.get(dif, [1.0, 0.0])[0]) + float(PENDIENTE_DIFICULTAD.get(dif, [1.0, 0.0])[1])   # (la dificultad del run corre toda la curva)
 	if p < 0.2:
 		return ["facil"]
 	if p < 0.4:
@@ -280,7 +289,11 @@ static func niveles_para(i: int, n: int, etapa_run: int) -> Array:
 
 ## Las primeras torres enseñan: salas bajas, cortas y con un solo bloque que mover; después se suman pisos y bloques. Devuelve {pisos, pasos, distintos} máximos
 ## (vacío = sin límite). La etapa 1 sube de a poco, y las etapas 2 a 4 son escalones más; desde la 5 manda sólo la curva de dificultad.
-static func limites_aprendizaje(etapa_run: int, i: int, n: int) -> Dictionary:
+static func limites_aprendizaje(etapa_run: int, i: int, n: int, dif := "media") -> Dictionary:
+	if dif == "pesadilla":
+		return {}   # (quien elige Pesadilla ya sabe jugar)
+	if dif == "dificil":
+		return {"pisos": 8, "pasos": 18, "distintos": 2} if etapa_run == 1 else {}
 	if etapa_run == 1:
 		if i < 2:
 			return {"pisos": 5, "pasos": 10, "distintos": 1}
@@ -293,6 +306,8 @@ static func limites_aprendizaje(etapa_run: int, i: int, n: int) -> Dictionary:
 		return {"pisos": 11, "pasos": 20, "distintos": 3}
 	if etapa_run == 4:
 		return {"pisos": 15, "pasos": 28, "distintos": 4}
+	if etapa_run == 5 and dif == "facil":
+		return {"pisos": 18, "pasos": 34, "distintos": 4}
 	return {}
 
 
@@ -319,7 +334,7 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 	if i >= ctx.n:
 		return true
 	var rng: RandomNumberGenerator = ctx.rng
-	var niveles: Array = CURVA[mini(i, CURVA.size() - 1)] if int(ctx.etapa) <= 0 else niveles_para(i, int(ctx.n), int(ctx.etapa))
+	var niveles: Array = CURVA[mini(i, CURVA.size() - 1)] if int(ctx.etapa) <= 0 else niveles_para(i, int(ctx.n), int(ctx.etapa), str(ctx.dif))
 	var info: Array = ctx.info
 	var orden: Array = []
 	for k in info.size():
@@ -330,7 +345,7 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			continue   # (las dos primeras salas son de bloques comunes)
 		if int(ctx.etapa) > 0 and not especiales_habilitados(d, int(ctx.etapa)):
 			continue
-		if not dentro_de_limites(d, limites_aprendizaje(int(ctx.etapa), i, int(ctx.n))):
+		if not dentro_de_limites(d, limites_aprendizaje(int(ctx.etapa), i, int(ctx.n), str(ctx.dif))):
 			continue
 		orden.append(k)
 	# primero las del nivel que toca (mezcladas) y después las otras
@@ -412,6 +427,7 @@ static func copia(o):
 	var t = load("res://salas_nuevas/torre.gd").new()
 	t.salas = o.salas
 	t.etapa = o.etapa
+	t.dificultad = o.dificultad
 	t._entrar(0)
 	return t
 

@@ -29,6 +29,7 @@ var towers_cleared := 0
 var claridad_earned := 0  # claridad juntada en las torres superadas
 var moves := 0
 var max_stage := 1
+var dificultad := "media"          # dificultad de La Pesadilla elegida al empezar: facil, media, dificil o pesadilla (ver Torre.niveles_para)
 var scenario_id := "pesadilla"      # escenario del run (ver scenarios.gd)
 var trial_schedule := {}          # etapa -> id de la prueba que toca (se sortea al empezar el run; ver trials.gd)
 var price_mult := 1.0             # multiplicador del precio de la ficha (lo fija el escenario)
@@ -355,7 +356,7 @@ func to_dict() -> Dictionary:
 			"casino_spent": casino_spent, "casino_won": casino_won, "retries": retries, "tower_retries": tower_retries,
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "collapse_bonus": collapse_bonus,
-			"scenario_id": scenario_id, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
+			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
 			"vault": vault, "vault_stage": vault_stage, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
 
 
@@ -388,6 +389,7 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.restart_discount = float(d.get("restart_discount", 0.0))
 	r.collapse_bonus = int(d.get("collapse_bonus", 0))
 	r.scenario_id = str(d.get("scenario_id", "pesadilla"))
+	r.dificultad = str(d.get("dificultad", "media"))
 	r.price_mult = float(d.get("price_mult", 1.0))
 	r.dice_claridad = int(d.get("dice_claridad", 0))
 	var dp = d.get("dice_pending", {})

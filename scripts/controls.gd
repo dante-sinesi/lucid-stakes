@@ -46,9 +46,10 @@ const ACTIONS: Array[Dictionary] = [
 
 ## Entradas del mando que no son de una acción reasignable: valen siempre. {entrada: teclas que se sintetizan}
 const PAD_FIXED := [
-	{"pad": {"button": JOY_BUTTON_A}, "keys": [KEY_ENTER]},
+	{"pad": {"button": JOY_BUTTON_A}, "keys": [KEY_SPACE]},   # (en los menús: Espacio confirma, Shift es la decisión secundaria, Esc vuelve)
 	{"pad": {"button": JOY_BUTTON_B}, "keys": [KEY_ESCAPE]},
-	{"pad": {"button": JOY_BUTTON_X}, "keys": [KEY_SPACE]},
+	{"pad": {"button": JOY_BUTTON_X}, "keys": [KEY_SHIFT]},
+	{"pad": {"axis": AXIS_LT, "sign": 1}, "keys": [KEY_R]},   # (rotar la vitrina)
 	{"pad": {"button": JOY_BUTTON_Y}, "keys": [KEY_C]},
 	{"pad": {"button": JOY_BUTTON_BACK}, "keys": [KEY_H]},   # Select: la ayuda del juego (en la torre sigue siendo reintentar)
 	{"pad": {"button": JOY_BUTTON_DPAD_UP}, "keys": [KEY_UP]},

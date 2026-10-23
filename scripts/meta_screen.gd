@@ -65,7 +65,7 @@ func _init() -> void:
 	back_button.pressed.connect(func(): back.emit())
 	col.add_child(back_button)
 	_build_info_panel()
-	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "← | → | ↑ | ↓", "text": Loc.t("Moverse")},
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "← | → | ↑ | ↓", "text": Loc.t("Moverse")},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": func(): back.emit(), "when": func(): return not info_panel.visible}], [back_button])
 	tip = UI.label(self, "", 2, Draw.MARBLE, false, 520)
 	tip.localize = false   # (el texto ya se arma con las partes traducidas)

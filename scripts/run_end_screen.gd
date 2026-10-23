@@ -80,8 +80,8 @@ func _init() -> void:
 	menu_button.name = "menu"
 	menu_button.pressed.connect(func(): to_menu.emit())
 	btns.add_child(menu_button)
-	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Nueva partida"), "keycode": [KEY_ENTER, KEY_KP_ENTER], "call": func(): new_game.emit()},
-			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Menú principal"), "keycode": KEY_SPACE, "call": func(): to_menu.emit()}], [new_button, menu_button])
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Nueva partida"), "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): new_game.emit()},
+			{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Menú principal"), "keycode": KEY_SHIFT, "call": func(): to_menu.emit()}], [new_button, menu_button])
 
 
 ## Filas del resumen: [[etiqueta, número, con_icono_de_claridad]].

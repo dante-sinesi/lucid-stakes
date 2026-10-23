@@ -62,14 +62,14 @@ func test_games() -> void:
 	check(r.spin_button.focus_mode == Control.FOCUS_NONE, "en la ruleta los botones no toman el foco (no se navega por la pantalla)")
 	await _key(KEY_RIGHT)
 	check(r.pad_cursor == 2, "la cruceta mueve la casilla marcada (%d)" % r.pad_cursor)
-	await _key(KEY_SPACE)
+	await _key(KEY_SHIFT)
 	check(r.selected == [2], "X pone la ficha en la casilla marcada (%s)" % str(r.selected))
 	var bet0: int = r.bet
 	await _key(KEY_E)
 	check(r.bet != bet0, "RB cambia el tipo de apuesta")
 	await _key(KEY_Q)
 	check(r.bet == bet0, "LB vuelve al tipo anterior")
-	await _key(KEY_ENTER)
+	await _key(KEY_SPACE)
 	await process_frame
 	check(r.state != r.State.IDLE, "A gira la ruleta con la apuesta puesta")
 	r.queue_free()
@@ -79,14 +79,14 @@ func test_games() -> void:
 	root.add_child(sl)
 	sl.setup(run, rng, true)
 	await process_frame
-	await _key(KEY_ENTER)
+	await _key(KEY_SPACE)
 	for i in 6:
 		await process_frame
 	check(sl.ui_state == sl.UiState.HOLD or sl.ui_state == sl.UiState.DONE, "A gira las tragamonedas")
 	if sl.ui_state == sl.UiState.HOLD:
 		await _key(KEY_LEFT)
 		check(sl.holds[0], "la cruceta izquierda retiene el primer carrete")
-		await _key(KEY_SPACE)
+		await _key(KEY_SHIFT)
 		for i in 4:
 			await process_frame
 		check(sl.ui_state == sl.UiState.DONE or sl.ui_state == sl.UiState.IDLE, "X cobra")
@@ -97,7 +97,7 @@ func test_games() -> void:
 	root.add_child(bj)
 	bj.setup(run, rng, true)
 	await process_frame
-	await _key(KEY_ENTER)
+	await _key(KEY_SPACE)
 	for i in 8:
 		await process_frame
 	check(bj.game.phase != bj.Blackjack.Phase.BETTING if "BETTING" in bj.Blackjack.Phase else true, "A reparte")

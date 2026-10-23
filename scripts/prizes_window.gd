@@ -103,7 +103,7 @@ func _update_hints() -> void:
 		return
 	var items := [{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Tipo de apuesta"), "call": func(): pass}]
 	if _can_rotate():
-		items.append({"name": "LT", "key": "Shift", "text": Loc.f("Rotar vitrina (%d)", [Showcase.rotate_cost(run)]), "call": rotate_here, "dim": not run.can_afford(Showcase.rotate_cost(run))})
+		items.append({"name": "LT", "key": "R", "text": Loc.f("Rotar vitrina (%d)", [Showcase.rotate_cost(run)]), "call": rotate_here, "dim": not run.can_afford(Showcase.rotate_cost(run))})
 	items.append({"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Cerrar"), "call": close_window})
 	hints.set_items(items)
 
@@ -168,7 +168,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		show_bet(ids[posmod(ids.find(bet) + (1 if event.keycode in [KEY_E, KEY_RIGHT] else -1), ids.size())])
 		get_viewport().set_input_as_handled()
 		return
-	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SHIFT:   # Shift (LT) rota la vitrina sin cerrar la ventana
+	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:   # R (LT) rota la vitrina sin cerrar la ventana
 		rotate_here()
 		get_viewport().set_input_as_handled()
 		return

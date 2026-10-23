@@ -212,7 +212,7 @@ func test_controls() -> void:
 	check(Controls.pad_of("mover_adelante") == {"axis": Controls.AXIS_LY, "sign": -1} and Controls.pads_of("mover_adelante").size() == 2, "el mando de fábrica: stick y cruceta")
 	var keys := Controls.keys_for_pad({"button": JOY_BUTTON_DPAD_UP})
 	check(keys == [KEY_UP], "la cruceta arriba manda la tecla de Mover adelante (reasignada)")
-	check(Controls.keys_for_pad({"button": JOY_BUTTON_A}) == [KEY_ENTER], "A confirma (Enter)")
+	check(Controls.keys_for_pad({"button": JOY_BUTTON_A}) == [KEY_SPACE], "A confirma (Espacio)")
 	check(Controls.rebind_pad("reintentar", {"button": JOY_BUTTON_A}) == "" and Controls.keys_for_pad({"button": JOY_BUTTON_A}) == [KEY_H], "reasignar un botón cambia la tecla que produce")
 	Controls.reset_action("reintentar")
 	check(Controls.key_of("reintentar") == KEY_R, "reset_action vuelve una sola acción a lo de fábrica")

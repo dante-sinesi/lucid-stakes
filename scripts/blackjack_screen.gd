@@ -1,6 +1,6 @@
 extends Control
 ## Pantalla del blackjack. Las reglas viven en blackjack.gd; acá se reparten las cartas con animación y se elige Pedir, Plantarse o Doblar.
-## Teclas: Espacio = Pedir (o Repartir), Enter = Plantarse (o Repartir), D = Doblar, Esc = salir.
+## Teclas: Espacio = Pedir (o Repartir), Shift = Plantarse, C = Doblar, Esc = salir.
 ## Uso: crear, add_child, setup(run, rng). Emite `resolved` cuando se pagó o cobró algo (hay que guardar) y `closed` al salir.
 
 const Blackjack := preload("res://scripts/blackjack.gd")
@@ -191,11 +191,11 @@ func _update_hints() -> void:
 		return
 	_hint_key = key
 	if can_deal():
-		pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Repartir"), "dim": busy, "call": deal},
+		pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Repartir"), "dim": busy, "call": deal},
 				{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": request_close}])
 	else:
-		pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Pedir"), "dim": busy, "call": hit},
-				{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Plantarse"), "dim": busy, "call": stand},
+		pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Pedir"), "dim": busy, "call": hit},
+				{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Plantarse"), "dim": busy, "call": stand},
 				{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Doblar"), "dim": busy or not game.can_double(), "call": double_down},
 				{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": request_close}])
 
@@ -204,10 +204,10 @@ func _process(_delta: float) -> void:
 	_update_hints()
 
 
-## Con el mando: A reparte o pide carta, X se planta, Y dobla y B sale.
+## Con el mando (o Espacio y Shift): A reparte o pide carta, X se planta, Y dobla y B sale.
 func _pad_key(code: int) -> bool:
 	match code:
-		KEY_ENTER, KEY_KP_ENTER:
+		KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
 			if overlay.showing:
 				return false
 			if can_deal():
@@ -215,7 +215,7 @@ func _pad_key(code: int) -> bool:
 			else:
 				hit()
 			return true
-		KEY_SPACE:
+		KEY_SHIFT:
 			if overlay.showing:
 				return false
 			if can_deal():

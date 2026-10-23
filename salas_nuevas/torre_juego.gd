@@ -69,6 +69,7 @@ var n_salas_fijo := 0         # >0: cuántas salas tiene la torre (el tutorial);
 var boosts: Array = []
 var sala_inicial := 0           # >0: la torre empieza en el checkpoint de esa sala (continuar una partida guardada)
 var banco_inicial := 0          # la claridad asegurada hasta ese checkpoint
+var dificultad := "media"       # la dificultad del run (fácil, media, difícil o pesadilla)
 var mov_run := 0             # movimientos de más por sala (mejoras permanentes del run)
 var vidas_fn := Callable()   # () -> int: las vidas del run
 var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
@@ -200,7 +201,7 @@ func _nueva_torre() -> void:
 	estaticas.clear()
 	var n_salas := int(OS.get_environment("SN_SALAS")) if OS.get_environment("SN_SALAS") != "" else 8
 	if en_juego:
-		t = Torre.armar(paquete, semilla, n_salas_fijo if n_salas_fijo > 0 else Torre.salas_de_etapa(etapa), true, etapa)
+		t = Torre.armar(paquete, semilla, n_salas_fijo if n_salas_fijo > 0 else Torre.salas_de_etapa(etapa), true, etapa, dificultad)
 		t.externo = true
 		t.aplicar_boosts(boosts)
 		t.mov_run = mov_run

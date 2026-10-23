@@ -231,14 +231,14 @@ func _update_hints() -> void:
 		return
 	match ui_state:
 		UiState.SPINNING:
-			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Saltear"), "call": skip_spin}])
+			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Saltear"), "call": skip_spin}])
 		UiState.HOLD:
 			pad_hints.set_items([{"name": "DPAD", "key": "← | ↑ | →", "text": Loc.t("Retener")},
-					{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Volver a girar"), "dim": not game.can_respin(), "call": respin},
-					{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Cobrar"), "call": collect},
+					{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Volver a girar"), "dim": not game.can_respin(), "call": respin},
+					{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Cobrar"), "call": collect},
 					{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": request_close}])
 		_:
-			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Girar"), "call": spin},
+			pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Girar"), "call": spin},
 					{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Premios"), "call": func(): prizes_panel.visible = true},
 					{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": request_close}])
 
@@ -483,7 +483,7 @@ func _pad_key(code: int) -> bool:
 	if prizes_panel.visible:
 		return false
 	match code:
-		KEY_ENTER, KEY_KP_ENTER:
+		KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
 			if overlay.showing:
 				return false
 			if ui_state == UiState.SPINNING:
@@ -541,12 +541,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			toggle_hold(1)
 		KEY_3, KEY_KP_3:
 			toggle_hold(2)
-		KEY_SPACE:
+		KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
 			if ui_state == UiState.HOLD:
 				respin()
 			else:
 				spin()
-		KEY_ENTER, KEY_KP_ENTER:
+		KEY_SHIFT:
 			if ui_state == UiState.HOLD:
 				collect()
 			else:

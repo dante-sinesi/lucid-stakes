@@ -171,12 +171,12 @@ func _build() -> void:
 	pad_hints.offset_bottom = -8.0
 	add_child(pad_hints)
 	PadHints.focus_none(self)   # con el mando se juega apretando botones, no moviéndose por la pantalla
-	pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Girar"), "call": func(): spin()},
-			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Poner ficha"), "call": func(): toggle_pocket(pad_cursor)},
+	pad_hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Girar"), "call": func(): spin()},
+			{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Poner ficha"), "call": func(): toggle_pocket(pad_cursor)},
 			{"name": "DPAD", "key": "← | →", "text": Loc.t("Casilla")},
 			{"name": "LB|RB", "key": "Q | E", "text": Loc.t("Tipo de apuesta")},
 			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Premios"), "call": open_prizes},
-			{"name": "LT", "key": "Shift", "text": Loc.t("Rotar vitrina"), "call": rotate_showcase},
+			{"name": "LT", "key": "R", "text": Loc.t("Rotar vitrina"), "call": rotate_showcase},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": func(): closed.emit()}])
 	_retired = PadHints.retire([spin_button, prizes_button, rotate_button, exit_button])   # la botonera de abajo los reemplaza
 	shown_claridad = run.claridad
@@ -329,7 +329,7 @@ func _pad_key(code: int) -> bool:
 		return false
 	var n := Roulette.POCKETS - 1   # las casillas 1 a 12 (la 0 es de la casa)
 	match code:
-		KEY_ENTER, KEY_KP_ENTER:
+		KEY_SPACE, KEY_ENTER, KEY_KP_ENTER:
 			if state == State.SPINNING:
 				skip_spin()
 			elif can_spin():
@@ -337,7 +337,7 @@ func _pad_key(code: int) -> bool:
 			else:
 				spin()   # (muestra por qué no se puede: "elige N casillas")
 			return true
-		KEY_SPACE:
+		KEY_SHIFT:
 			toggle_pocket(pad_cursor)
 			return true
 		KEY_LEFT, KEY_UP:
@@ -354,7 +354,7 @@ func _pad_key(code: int) -> bool:
 		KEY_C:
 			open_prizes()
 			return true
-		KEY_SHIFT:
+		KEY_R:
 			rotate_showcase()
 			return true
 		KEY_ESCAPE:

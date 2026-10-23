@@ -129,7 +129,7 @@ func _init() -> void:
 	back_button.name = "volver_opciones"
 	back_button.pressed.connect(func(): back.emit())
 	bottom.add_child(back_button)
-	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": Loc.t("Elegir")},
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")},
 			{"name": "LB|RB", "key": "Q | E", "text": Loc.t("Pestaña")},
 			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Restablecer"), "keycode": KEY_C, "call": reset_tab, "when": func(): return not Controls.capturing},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "call": func(): back.emit()}], [reset_button, back_button])
