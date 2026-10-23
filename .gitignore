@@ -26,3 +26,4 @@ data/*.rooms.bak
 
 # Rondas del generador
 data/salas/
+tests/resultados.txt
