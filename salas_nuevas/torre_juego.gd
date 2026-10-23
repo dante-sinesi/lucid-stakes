@@ -472,8 +472,7 @@ func _procesar(r: Dictionary) -> void:
 				_aviso("¡Llegaste al portal! Pulsa R para otra torre.", 0.0)
 		"muerte":
 			if en_juego:
-				_aviso("%s. Pierdes una vida." % str(r.msg), 3.0)
-				murio.emit(str(r.msg))
+				murio.emit(str(r.msg))   # (el juego muestra la pantalla de derrota con el motivo)
 			else:
 				_aviso("%s. Pierdes una vida (te quedan %d)." % [str(r.msg), t.vidas], 3.0)
 		"aliento":
@@ -493,6 +492,35 @@ func _falsos_agotados() -> void:
 	if falsos != null:
 		falsos.sala_nueva(t.motor)
 		falsos_cambiaron.emit(falsos.quedan(), falsos_permitidos, false, false)
+
+
+## La animación de perder: el personaje se cae dando vueltas (y, si se acabaron los movimientos, la sala entera se derrumba con él) y la cámara tiembla.
+func animar_derrota(motivo: String) -> void:
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(gato_nodo, "position:y", gato_nodo.position.y - 14.0, 1.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(gato_nodo, "rotation:x", gato_nodo.rotation.x + TAU * 1.5, 1.4)
+	tw.tween_property(gato_nodo, "rotation:z", gato_nodo.rotation.z + TAU * 0.75, 1.4)
+	if motivo.contains("movimientos"):   # (se acabó el tiempo: cae la sala entera)
+		tw.tween_property(vivo, "position:y", vivo.position.y - 30.0, 1.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	var base := pivot.position
+	var temblor := create_tween()
+	for i in 8:
+		temblor.tween_property(pivot, "position", base + Vector3(randf_range(-0.12, 0.12), randf_range(-0.12, 0.12), randf_range(-0.12, 0.12)), 0.04)
+	temblor.tween_property(pivot, "position", base, 0.05)
+
+
+## Volver a empezar la sala perdida (reintentar): se acomoda todo como al entrar a ella.
+func reiniciar_sala() -> void:
+	if t == null:
+		return
+	t.reintentar_sala()
+	gato_nodo.rotation = Vector3.ZERO
+	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
+	if falsos != null:
+		falsos.sala_nueva(t.motor)
+		falsos_cambiaron.emit(falsos.quedan(), falsos_permitidos, false, false)
+	_refrescar(false)
+	accion_hecha.emit()
 
 
 ## Vuelve a dibujar la sala actual (por ejemplo después de usar un consumible).

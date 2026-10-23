@@ -64,9 +64,12 @@ func _init() -> void:
 
 ## Muestra la derrota. `reason`: lo que pasó (ya traducido). `cost`: lo que cuesta reintentar; `free`: el reintento no cuesta (tutorial);
 ## `can_afford`: alcanza la claridad.
-func show_loss(reason: String, cost: int, can_afford := true, free := false) -> void:
+func show_loss(reason: String, cost: int, can_afford := true, free := false, life := false) -> void:
 	title_label.text = reason
-	if free:
+	if life:   # (la torre nueva: reintentar la sala cuesta una vida; con un Tótem no cuesta)
+		retry_button.set_label(Loc.t("Reintentar (−1 vida)") if not free else Loc.t("Reintentar"))
+		hint_label.text = ""
+	elif free:
 		retry_button.set_label(Loc.t("Reintentar"))
 		hint_label.text = ""
 	elif cost == 0:

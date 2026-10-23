@@ -351,7 +351,7 @@ func _despues(grieta: Vector3i) -> void:
 		var mecha := int(tp.substr(1)) - 1
 		if mecha <= 0:
 			perdido = true
-			motivo = "Explotó una bomba: la sala se derrumbó"
+			motivo = "Explotó una bomba"
 			return
 		bloques[c] = "b%d" % mecha
 

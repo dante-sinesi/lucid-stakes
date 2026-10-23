@@ -517,7 +517,7 @@ func _torre_nueva_arrancar(s: int) -> void:
 	if tutorial_index >= 0:
 		nueva.n_salas_fijo = 2   # (la torre del tutorial es chica)
 	nueva.vidas_fn = func(): return run.lives
-	nueva.puede_jugar = func(): return not in_menu and not generating and casino == null and not console_open and not get_tree().paused and (dialogue == null or not dialogue.is_active())
+	nueva.puede_jugar = func(): return not in_menu and not generating and casino == null and not console_open and not get_tree().paused and (dialogue == null or not dialogue.is_active()) and (lost_screen == null or not lost_screen.visible)
 	nueva.position = Vector3(-1000, 0, 0)   # lejos de todo lo demás (la cámara ortogonal de la torre nueva no ve nada de la torre vieja)
 	nueva.checkpoint_alcanzado.connect(_torre_nueva_checkpoint)
 	nueva.torre_completa.connect(_torre_nueva_ganada)
@@ -609,19 +609,25 @@ func _torre_nueva_ganada() -> void:
 
 ## Se perdió una vida en la torre nueva (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
 func _torre_nueva_murio(motivo: String) -> void:
-	if training:   # (entrenamiento: no hay vidas; la sala ya volvió a empezar)
-		_flash(Loc.t(motivo))
+	if training:   # (tutorial: no hay vidas; la sala vuelve a empezar sola después de la caída)
+		nueva.animar_derrota(motivo)
+		Sfx.play("lose")
+		await get_tree().create_timer(1.2).timeout
+		if nueva != null:
+			nueva.reiniciar_sala()
 		return
-	if trial.get("no_retry", false) and not training:
+	if trial.get("no_retry", false):
 		end_run(false, Loc.f("Fallaste la prueba «%s»: %s.", [Loc.t(trial.name), Loc.t(motivo).to_lower()]))
 		return
 	if not run.can_revive():
 		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
 		return
-	run.note_retry(true)
-	_flash(Loc.t("Perdiste una vida"))
+	# se cae, y aparece la pantalla de derrota (Reintentar -1 vida o salir al menú)
+	nueva.animar_derrota(motivo)
+	juice.flash(Color(0.8, 0.1, 0.15), 0.4, 0.6)
 	Sfx.play("lose")
-	_refresh()
+	var libre: bool = run.consumables.has("totem") and not run.item_blocked("totem")   # (con un Tótem el reintento no cuesta la vida)
+	lost_screen.show_loss(Loc.t(motivo), run.restart_cost(true), run.can_afford(run.restart_cost(true)), libre, true)
 	save_game()
 
 
@@ -2618,8 +2624,22 @@ func _on_mistakes_exhausted(_room: int) -> void:
 
 
 func request_restart() -> void:
-	if nueva != null:   # reintentar la torre nueva: se vuelve a armar desde la primera sala (cuesta una vida, no claridad)
+	if nueva != null:   # reintentar la torre nueva
 		if in_menu or generating or casino != null:
+			return
+		if nueva.t != null and nueva.t.muerta:   # perdió la sala: reintenta ESA sala (cuesta una vida, o el Tótem)
+			var costo := run.restart_cost(true)
+			if not run.can_afford(costo):
+				end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [costo]))
+				return
+			var con_totem: bool = run.consumables.has("totem") and not run.item_blocked("totem")
+			run.spend(costo)
+			run.note_retry(true)
+			lost_screen.hide_screen()
+			nueva.reiniciar_sala()
+			_flash(Loc.t("Reintento gratis: el Tótem te dio otra vida") if con_totem else Loc.t("Reintento: perdiste una vida"))
+			_refresh()
+			save_game()
 			return
 		if training:
 			restart()

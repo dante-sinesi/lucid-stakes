@@ -36,7 +36,9 @@ func _init() -> void:
 	main.nueva.t.mov_extra = 0
 	for i in 2:
 		main.nueva.accion(Vector3i(int(cam[i][0]), 0, int(cam[i][1])), int(cam[i][2]))
-	_ok(main.run.lives == vidas0 - 1 and main.nueva.t.indice == 0 and main.nueva.t.movs == 0, "morir resta una vida del run y reinicia la sala (%d vidas)" % main.run.lives)
+	_ok(main.nueva.t.muerta and main.lost_screen.visible and main.run.lives == vidas0, "morir muestra la pantalla de derrota y todavía no resta la vida")
+	main.request_restart()   # (el botón Reintentar)
+	_ok(main.run.lives == vidas0 - 1 and main.nueva.t.indice == 0 and main.nueva.t.movs == 0 and not main.nueva.t.muerta and not main.lost_screen.visible, "Reintentar resta una vida del run y reinicia la sala (%d vidas)" % main.run.lives)
 	main.nueva.t.salas[0].max_mov = 999
 	# el personaje y los cosméticos del perfil son los de la torre nueva (no siempre el gatito)
 	Profile.select_character("dante")

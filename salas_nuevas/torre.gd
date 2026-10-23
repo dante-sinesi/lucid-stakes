@@ -37,6 +37,7 @@ var externo := false          # las vidas son las del run (las lleva el juego): 
 var perks := {}               # boosts del run
 var mov_extra := 0            # movimientos de más para la sala actual (Freno, Reloj de arena)
 var aliento_usado := false    # Segundo aliento: una vez por torre
+var muerta := false           # (con las vidas del run) se perdió la sala y espera a que el juego decida: reintentar o salir
 var deshacer_pila: Array = []  # fotos de la sala actual antes de cada movimiento (para deshacer)
 const DESHACER_MAX := 600
 var ultima_caida := -1   # índice de la sala que acaba de caer por el checkpoint (para la animación)
@@ -428,7 +429,7 @@ func _entrar(i: int) -> void:
 ## Una acción del jugador. Devuelve { ok, msg, evento }: evento = "" | "checkpoint" | "muerte" | "torre" | "fin".
 func actuar(dir: Vector3i, modo: int) -> Dictionary:
 	ultima_caida = -1
-	if terminada or perdida:
+	if terminada or perdida or muerta:
 		return {"ok": false, "msg": "", "evento": ""}
 	var antes_y: int = motor.jugador.y
 	var foto := {"motor": motor.duplicar(), "movs": movs, "cosecha": cosecha.estado(), "encendidos": encendidos.duplicate()}
@@ -458,12 +459,18 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 	if motor.perdido:
 		return _morir(str(motor.motivo) if str(motor.motivo) != "" else "Caíste")
 	if movs >= max_mov():
-		return _morir("Se acabaron los movimientos: la sala se derrumbó")
+		return _morir("Se acabaron los movimientos")
 	r["evento"] = ""
 	return r
 
 
 ## La sala se pierde por algo que decide el juego (por ejemplo el último movimiento en falso de Sin piedad): cuenta como una muerte.
+## Reintentar la sala perdida: vuelve a su checkpoint con la sala virgen.
+func reintentar_sala() -> void:
+	muerta = false
+	_entrar(indice)
+
+
 func forzar_muerte(motivo: String) -> Dictionary:
 	if terminada or perdida:
 		return {"ok": false, "msg": "", "evento": ""}
@@ -477,8 +484,8 @@ func _morir(motivo: String) -> Dictionary:
 		_entrar(indice)
 		return {"ok": true, "msg": motivo, "evento": "aliento"}
 	muertes += 1
-	if externo:   # (las vidas las lleva el juego)
-		_entrar(indice)
+	if externo:   # (las vidas las lleva el juego: la sala queda perdida hasta que el juego la reinicie con reintentar_sala)
+		muerta = true
 		return {"ok": true, "msg": motivo, "evento": "muerte"}
 	vidas -= 1
 	if vidas <= 0:
@@ -490,7 +497,7 @@ func _morir(motivo: String) -> Dictionary:
 
 ## Deshace el último movimiento de la sala actual (con lo que se había juntado y la cuenta de movimientos). false si no hay nada que deshacer.
 func deshacer() -> bool:
-	if deshacer_pila.is_empty() or terminada or perdida:
+	if deshacer_pila.is_empty() or terminada or perdida or muerta:
 		return false
 	var f: Dictionary = deshacer_pila.pop_back()
 	motor = f.motor
@@ -502,7 +509,7 @@ func deshacer() -> bool:
 
 ## Un consumible del run. Devuelve { ok, msg }. No gasta un movimiento. Los que no tienen sentido en la torre nueva (o todavía no están) devuelven ok = false y no se gastan.
 func usar_item(id: String) -> Dictionary:
-	if terminada or perdida:
+	if terminada or perdida or muerta:
 		return {"ok": false, "msg": ""}
 	var pila_antes := deshacer_pila.duplicate()
 	var r := _usar_item(id)
