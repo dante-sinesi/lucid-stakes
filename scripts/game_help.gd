@@ -257,9 +257,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if visible:
 		match event.keycode:
-			KEY_RIGHT, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+			KEY_RIGHT, KEY_D, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				next_page()
-			KEY_LEFT:
+			KEY_LEFT, KEY_A:
 				prev_page()
 			KEY_ESCAPE, KEY_H:
 				close()

@@ -340,10 +340,10 @@ func _pad_key(code: int) -> bool:
 		KEY_SHIFT:
 			toggle_pocket(pad_cursor)
 			return true
-		KEY_LEFT, KEY_UP:
+		KEY_LEFT, KEY_UP, KEY_A, KEY_W:
 			pad_cursor = posmod(pad_cursor - 2, n) + 1
 			return true
-		KEY_RIGHT, KEY_DOWN:
+		KEY_RIGHT, KEY_DOWN, KEY_D, KEY_S:
 			pad_cursor = posmod(pad_cursor, n) + 1
 			return true
 		KEY_Q, KEY_E:

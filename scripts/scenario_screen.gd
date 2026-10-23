@@ -221,10 +221,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			info_panel.visible = false
 			get_viewport().set_input_as_handled()
 		return
-	if event.keycode == KEY_RIGHT:
+	if event.keycode == KEY_RIGHT or event.keycode == KEY_D:
 		scroll_cards(1)
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_LEFT:
+	elif event.keycode == KEY_LEFT or event.keycode == KEY_A:
 		scroll_cards(-1)
 		get_viewport().set_input_as_handled()
 

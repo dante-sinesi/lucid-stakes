@@ -503,13 +503,13 @@ func _pad_key(code: int) -> bool:
 			if ui_state == UiState.IDLE or ui_state == UiState.DONE:
 				prizes_panel.visible = true
 			return true
-		KEY_LEFT:
+		KEY_LEFT, KEY_A:
 			toggle_hold(0)
 			return true
-		KEY_UP:
+		KEY_UP, KEY_W:
 			toggle_hold(1)
 			return true
-		KEY_RIGHT:
+		KEY_RIGHT, KEY_D:
 			toggle_hold(2)
 			return true
 	return false

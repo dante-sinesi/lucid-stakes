@@ -163,9 +163,9 @@ func _make_row(r: Dictionary) -> Control:
 
 # Esc cierra la ventana; un clic en el fondo oscuro también.
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E, KEY_LEFT, KEY_RIGHT]:   # las flechas, LB y RB cambian el tipo de apuesta
+	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E, KEY_LEFT, KEY_RIGHT, KEY_A, KEY_D]:   # las flechas, LB y RB cambian el tipo de apuesta
 		var ids: Array = Roulette.BETS.keys()
-		show_bet(ids[posmod(ids.find(bet) + (1 if event.keycode in [KEY_E, KEY_RIGHT] else -1), ids.size())])
+		show_bet(ids[posmod(ids.find(bet) + (1 if event.keycode in [KEY_E, KEY_RIGHT, KEY_D] else -1), ids.size())])
 		get_viewport().set_input_as_handled()
 		return
 	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:   # R (LT) rota la vitrina sin cerrar la ventana

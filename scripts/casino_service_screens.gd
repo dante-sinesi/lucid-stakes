@@ -140,10 +140,10 @@ class Base extends Control:
 			KEY_ESCAPE:
 				request_close()
 				get_viewport().set_input_as_handled()
-			KEY_LEFT, KEY_UP:
+			KEY_LEFT, KEY_UP, KEY_A, KEY_W:
 				step_selection(-1)
 				get_viewport().set_input_as_handled()
-			KEY_RIGHT, KEY_DOWN:
+			KEY_RIGHT, KEY_DOWN, KEY_D, KEY_S:
 				step_selection(1)
 				get_viewport().set_input_as_handled()
 
