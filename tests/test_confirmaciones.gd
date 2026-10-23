@@ -26,6 +26,8 @@ func _init() -> void:
 	check(SaveGame.read().has("run"), "hay una partida guardada")
 	main.in_menu = true
 	main._on_new_game("pesadilla")
+	main.difficulty_screen._open_t = -10.0   # (La Pesadilla pregunta la dificultad primero)
+	main.difficulty_screen._choose("media")
 	await process_frame
 	check(main.confirm_box.visible, "elegir un escenario nuevo con una partida sin terminar pide confirmar")
 	var body: String = main.confirm_box.body_label.text
@@ -35,6 +37,8 @@ func _init() -> void:
 	await process_frame
 	check(SaveGame.read().has("run") and main.in_menu, "decir que no deja la partida como estaba")
 	main._on_new_game("pesadilla")
+	main.difficulty_screen._open_t = -10.0   # (La Pesadilla pregunta la dificultad primero)
+	main.difficulty_screen._choose("media")
 	await process_frame
 	main.confirm_box._open_t = -10.0
 	main.confirm_box._answer(true)
@@ -44,6 +48,8 @@ func _init() -> void:
 	SaveGame.delete()
 	main.in_menu = true
 	main._on_new_game("pesadilla")
+	main.difficulty_screen._open_t = -10.0   # (La Pesadilla pregunta la dificultad primero)
+	main.difficulty_screen._choose("media")
 	await process_frame
 	check(not main.confirm_box.visible, "sin partida guardada no se pide confirmación")
 	# en el casino no hay reintentar

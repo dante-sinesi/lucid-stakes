@@ -191,6 +191,8 @@ func test_end_screen() -> void:
 	main.run_end.new_button.pressed.emit()
 	check(not main.run_end.visible and main.in_menu and main.main_menu.scenarios.visible, "Nueva partida del fin de run lleva al selector de escenario")
 	main.main_menu.scenarios.play_buttons["pesadilla"].pressed.emit()
+	main.difficulty_screen._open_t = -10.0   # (La Pesadilla pregunta la dificultad primero)
+	main.difficulty_screen._choose("media")
 	check(not main.in_menu and main.stage_number == 1 and main.run.retries == 0 and not main.run_over, "elegir un escenario arranca un run nuevo desde la etapa 1")
 	main._cancel_jobs()
 	main.queue_free()

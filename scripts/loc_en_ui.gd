@@ -2,6 +2,17 @@ extends RefCounted
 ## Inglés: pantallas, HUD, casino, dados y mensajes de la torre. Ver loc.gd.
 
 const TABLE := {
+	"Elige la dificultad": "Choose the difficulty",
+	"Fácil": "Easy",
+	"Medio": "Medium",
+	"Difícil": "Hard",
+	"Pesadilla": "Nightmare",
+	"Salas más cortas y con más margen de movimientos. Casi todo el recorrido es de nivel fácil o medio.": "Shorter rooms with more room to spare on moves. Almost the whole run is easy or medium rooms.",
+	"La dificultad pensada para el juego: empieza suave y sube de a poco hasta salas muy exigentes al final.": "The difficulty the game was designed for: it starts gently and slowly climbs to very demanding rooms at the end.",
+	"Las salas se ponen difíciles mucho antes y el margen de movimientos es menor.": "Rooms get hard much sooner and there are fewer spare moves.",
+	"Casi desde el principio, salas de nivel medio o difícil, y al final solo las peores, con muy poco margen.": "Medium or hard rooms almost from the start, and only the worst ones at the end, with very little margin.",
+	"Movimientos %d": "Moves %d",
+	"Reintentar (−1 vida)": "Retry (−1 life)",
 	# --- HUD y mensajes de la torre (main.gd) ---
 	"No se pudo generar la torre.\nVuelve al menú (Esc) y prueba de nuevo.": "Couldn't generate the tower.\nGo back to the menu (Esc) and try again.",
 	"Generando otra torre...": "Generating another tower...",

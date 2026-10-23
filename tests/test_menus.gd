@@ -14,6 +14,7 @@ func check(cond: bool, label: String) -> void:
 
 
 func _init() -> void:
+	OS.set_environment("GAME_TORRE_VIEJA", "1")   # (esta prueba mira la torre vieja: con la nueva no hay `logic`)
 	await test_start()
 	await test_pause_and_back()
 	await test_stage_look()
@@ -66,6 +67,8 @@ func test_start() -> void:
 	main.main_menu.buttons["nueva"].pressed.emit()   # abre el selector de escenario
 	check(main.main_menu.scenarios.visible and not main.main_menu.main_center.visible and main.in_menu, "Nueva partida abre el selector de escenario")
 	main.main_menu.scenarios.play_buttons["pesadilla"].pressed.emit()   # el gratuito
+	main.difficulty_screen._open_t = -10.0   # (La Pesadilla pregunta la dificultad primero)
+	main.difficulty_screen._choose("media")
 	if main.confirm_box.visible:   # (había una partida guardada: pide confirmar que se pierde)
 		main.confirm_box._open_t = -10.0
 		main.confirm_box._answer(true)

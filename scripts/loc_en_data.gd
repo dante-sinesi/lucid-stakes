@@ -2,6 +2,13 @@ extends RefCounted
 ## Inglés: nombres y descripciones del catálogo (boosts, consumibles, habilidades, pruebas, escenarios y cosméticos). Ver loc.gd.
 
 const TABLE := {
+	# --- boosts de movimientos de la torre nueva ---
+	"Una vez por torre, si pierdes una sala vuelves a empezarla sin perder la vida.": "Once per tower, if you lose a room you start it again without losing the life.",
+	"Cada sala tiene un 25 % más de movimientos.": "Every room has 25% more moves.",
+	"Trepar y bajar un piso no cuenta como movimiento de la sala.": "Climbing up or down one floor does not count as a room move.",
+	"Cada sala tiene 4 movimientos más.": "Every room has 4 more moves.",
+	"Suma 5 movimientos a la sala en la que estás.": "Adds 5 moves to the room you are in.",
+	"Suma 10 movimientos a la sala en la que estás.": "Adds 10 moves to the room you are in.",
 	# --- boosts y consumibles (items.gd) ---
 	"Segundo aliento": "Second wind",
 	"Una vez por etapa, si caes al vacío vuelves a la última plataforma firme.": "Once per stage, if you fall into the void you return to the last solid platform.",
