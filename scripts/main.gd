@@ -678,11 +678,16 @@ func _torre_nueva_murio(motivo: String) -> void:
 		if nueva != null:
 			nueva.reiniciar_sala()
 		return
-	if trial.get("no_retry", false):
-		end_run(false, Loc.f("Fallaste la prueba «%s»: %s.", [Loc.t(trial.name), Loc.t(motivo).to_lower()]))
-		return
-	if not run.can_revive():
-		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
+	if trial.get("no_retry", false) or not run.can_revive():   # (el run termina: antes se ve caer al personaje y se dice por qué murió)
+		var razon: String = Loc.f("Fallaste la prueba «%s»: %s.", [Loc.t(trial.name), Loc.t(motivo).to_lower()]) if trial.get("no_retry", false) else (Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
+		nueva.animar_derrota(motivo)
+		juice.flash(Color(0.8, 0.1, 0.15), 0.4, 0.6)
+		Sfx.play("lose")
+		_flash(Loc.t(motivo))
+		var mi_epoca := epoch
+		await get_tree().create_timer(3.2 if not test_mode else 0.1).timeout
+		if mi_epoca == epoch and not in_menu and not run_over:
+			end_run(false, razon)
 		return
 	# se cae, y aparece la pantalla de derrota (Reintentar -1 vida o salir al menú)
 	nueva.animar_derrota(motivo)

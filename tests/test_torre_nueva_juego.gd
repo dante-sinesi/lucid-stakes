@@ -135,7 +135,8 @@ func _init() -> void:
 	main.nueva.t.salas[0].max_mov = 1
 	var c2: Array = main.nueva.t.salas[0].d.camino
 	main.nueva.accion(Vector3i(int(c2[0][0]), 0, int(c2[0][1])), int(c2[0][2]))
-	await _frames(2)
+	_ok(not main.run_over and main.nueva != null, "sin vidas, antes de terminar el run se ve la caída")
+	await create_timer(0.4).timeout   # (en las pruebas la animación espera 0,1 s)
 	_ok(main.run_over, "sin vidas, morir termina el run")
 	# los dados de la pantalla de carga: al empezar cada torre nueva se ofrecen y "Empezar" está habilitado
 	var main3 = load("res://scenes/main.tscn").instantiate()

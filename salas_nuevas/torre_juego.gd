@@ -401,25 +401,25 @@ func _process(delta: float) -> void:
 		orbitar(Vector2(ax, ay) * ARROW_SPEED * delta / MOUSE_SENS)
 
 
-## Con la mitad de los movimientos de la sala gastados o más, la sala (y quien está sobre ella) tiembla: casi nada al principio y cada vez más fuerte hacia el límite.
+## Con la mitad de los movimientos de la sala gastados o más, los bloques de la sala tiemblan (cada uno a su modo, como la fila de abajo de la torre vieja): casi nada al principio y cada vez más fuerte hacia el límite.
 func _temblar() -> void:
-	var base := Vector3(0, int(t.sala_actual().off), 0)
-	var k := 0.0
+	var amp := 0.0
 	if en_juego and not t.muerta and not t.terminada and not _cayendo:
 		var f := float(t.movs) / maxf(float(t.max_mov()), 1.0)
-		k = clampf((f - 0.5) / 0.5, 0.0, 1.0)
-	if k <= 0.0:
-		if _temblando:
-			_temblando = false
-			if not _cayendo and not t.muerta:
-				vivo.position = base
-			gato.position = Vector3.ZERO
+		var k := clampf((f - 0.5) / 0.5, 0.0, 1.0)
+		if k > 0.0:
+			amp = lerpf(0.004, 0.045, pow(k, 1.5))
+	if amp <= 0.0 and not _temblando:
 		return
-	_temblando = true
-	var amp := lerpf(0.004, 0.07, k * k)
-	var j := Vector3(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * amp
-	vivo.position = base + j
-	gato.position = j   # (el personaje va con los bloques en los que está parado)
+	_temblando = amp > 0.0
+	for h in vivo.get_children():
+		var mi := h as MeshInstance3D
+		if mi == null or not (mi.material_override is ShaderMaterial):
+			continue
+		if not mi.has_meta("unico"):   # (los materiales de los bloques se comparten: cada bloque de la sala viva tiene el suyo para temblar solo)
+			mi.material_override = mi.material_override.duplicate()
+			mi.set_meta("unico", true)
+		(mi.material_override as ShaderMaterial).set_shader_parameter("shake", amp)
 
 
 func _input(ev: InputEvent) -> void:
