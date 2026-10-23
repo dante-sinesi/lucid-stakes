@@ -494,6 +494,8 @@ func _input(ev: InputEvent) -> void:
 		modo = Motor.Modo.AGARRAR
 	elif Controls.held("colgarse"):
 		modo = Motor.Modo.COLGAR
+	if t.motor.colgado != Vector3i.ZERO and dir == -t.motor.colgado and modo != Motor.Modo.COLGAR:
+		return   # colgado, la única forma de soltarse de la cornisa es la tecla de colgarse (la barra): la dirección contraria no hace nada
 	accion(dir, modo)
 
 
