@@ -81,8 +81,9 @@ func show_loss(reason: String, cost: int, can_afford := true, free := false, lif
 	else:
 		retry_button.set_label(Loc.t("Terminar la partida"))
 		hint_label.text = Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost])
-	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Enter", "text": retry_button.text, "call": func(): retry.emit()},
-			{"slot": PadGlyph.Slot.WEST, "key": "Espacio", "text": Loc.t("Salir al menú principal"), "keycode": KEY_SPACE, "when": func(): return box.modulate.a > 0.5, "call": func(): menu.emit()}])
+	var listo := func(): return box.modulate.a > 0.5   # (las teclas valen cuando el cuadro ya se ve: la barra con la que se suelta una cornisa no debe actuar durante la caída)
+	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": retry_button.text, "keycode": KEY_SPACE, "when": listo, "call": func(): retry.emit()},
+			{"slot": PadGlyph.Slot.WEST, "key": "Enter", "text": Loc.t("Salir al menú principal"), "keycode": [KEY_ENTER, KEY_KP_ENTER], "when": listo, "call": func(): menu.emit()}])
 	visible = true
 	if _tween != null:
 		_tween.kill()
@@ -106,10 +107,3 @@ func hide_screen() -> void:
 	visible = false
 	dim.color.a = 0.0
 	box.modulate.a = 0.0
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if visible and box.modulate.a > 0.5 and event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
-			retry.emit()
-			get_viewport().set_input_as_handled()
