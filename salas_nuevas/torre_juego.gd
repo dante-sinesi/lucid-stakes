@@ -74,6 +74,7 @@ var vidas_fn := Callable()   # () -> int: las vidas del run
 var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
 var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario no los usa)
 var falsos = null              # el medidor (falsos.gd)
+var _dur_empuje := 0.0          # lo que dura el movimiento de los bloques de la última acción (lo que cae por perder apoyo empieza después)
 var _bloques_antes := {}      # id de cada bloque de la sala viva -> dónde se dibujó la última vez (para ver cómo se mueven)
 var _sala_dibujada := -1
 var _rastro_muerte: Array = []   # el camino de la última acción (si ésta termina en derrota se anima antes de caer)
@@ -256,21 +257,27 @@ func _animar_bloques(animar: bool) -> void:
 		if t.motor.ids.has(celda) and not ahora.has(t.motor.ids[celda]):
 			ahora[t.motor.ids[celda]] = mi.position
 			mallas[t.motor.ids[celda]] = mi
+	_dur_empuje = 0.0
 	if animar and _sala_dibujada == t.indice:
-		for id in ahora:
+		var cayendo: Array = []
+		for id in ahora:   # primero se ve cómo se mueve el bloque (empujado, tirado o deslizado)...
 			if not _bloques_antes.has(id) or _bloques_antes[id].is_equal_approx(ahora[id]):
 				continue
 			var desde: Vector3 = _bloques_antes[id]
 			var hasta: Vector3 = ahora[id]
 			var mi: Node3D = mallas[id]
-			var recorrido := desde.distance_to(hasta)
-			var cae := absf(desde.x - hasta.x) < 0.01 and absf(desde.z - hasta.z) < 0.01 and hasta.y < desde.y
 			mi.position = desde
+			if absf(desde.x - hasta.x) < 0.01 and absf(desde.z - hasta.z) < 0.01 and hasta.y < desde.y:
+				cayendo.append([mi, desde, hasta])
+				continue
+			var dur := maxf(STEP_TIME, 0.07 * desde.distance_to(hasta))
+			mi.create_tween().tween_property(mi, "position", hasta, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			_dur_empuje = maxf(_dur_empuje, dur)
+		for c in cayendo:   # ...y recién cuando termina empiezan a caer los que perdieron el apoyo
+			var mi: Node3D = c[0]
 			var tw := mi.create_tween()
-			if cae:   # un bloque que pierde su apoyo cae acelerando
-				tw.tween_property(mi, "position", hasta, 0.12 + 0.07 * recorrido).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-			else:   # empujado o deslizado: recorre las celdas a la velocidad del personaje
-				tw.tween_property(mi, "position", hasta, maxf(STEP_TIME, 0.07 * recorrido)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tw.tween_interval(_dur_empuje)
+			tw.tween_property(mi, "position", c[2], 0.12 + 0.07 * c[1].distance_to(c[2])).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_bloques_antes = ahora
 	_sala_dibujada = t.indice
 
@@ -557,7 +564,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 	_rastro_muerte = motor_antes.rastro.duplicate()
 	_procesar(r)
 	efectos.sonido(motor_antes, modo, antes_y)   # (el motor de antes guarda lo que pasó en la acción, aunque la sala haya cambiado)
-	efectos.visuales(motor_antes, antes_y, off_antes)
+	efectos.visuales(motor_antes, antes_y, off_antes, _dur_empuje)
 	if str(r.evento) == "torre":
 		efectos.juice.gold_burst(portal.position if portal != null else gato_nodo.position)
 		efectos.juice.zoom_punch(0.05)
@@ -583,6 +590,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 
 ## Lo que pasó con una acción (también el último movimiento en falso): avisos, señales y volver a dibujar.
 func _procesar(r: Dictionary) -> void:
+	var muerte_pendiente := ""
 	match str(r.evento):
 		"checkpoint":
 			_caer_sala(t.ultima_caida)
@@ -595,7 +603,7 @@ func _procesar(r: Dictionary) -> void:
 				_aviso("¡Llegaste al portal! Pulsa R para otra torre.", 0.0)
 		"muerte":
 			if en_juego:
-				murio.emit(str(r.msg))   # (el juego muestra la pantalla de derrota con el motivo)
+				muerte_pendiente = str(r.msg)   # (el juego muestra la pantalla de derrota con el motivo, después de dibujar lo que pasó)
 			else:
 				_aviso("%s. Pierdes una vida (te quedan %d)." % [str(r.msg), t.vidas], 3.0)
 		"aliento":
@@ -605,6 +613,8 @@ func _procesar(r: Dictionary) -> void:
 	if str(r.evento) == "checkpoint":
 		_rastro_pendiente = []   # (el camino es de la sala de abajo: el último paso hasta el checkpoint se anima en línea recta, y la cámara lo acompaña)
 	_refrescar(str(r.evento) == "" or str(r.evento) == "checkpoint")   # (tras una muerte el personaje aparece de golpe en su sitio)
+	if muerte_pendiente != "":
+		murio.emit(muerte_pendiente)
 	accion_hecha.emit()
 
 
@@ -636,14 +646,16 @@ func animar_derrota(motivo: String) -> float:
 			pts.append(Vector3(c.x + 0.5, c.y + off, c.z + 0.5))
 	_rastro_muerte = []
 	var previo := 0.0
+	var espera := _dur_empuje   # (primero se ve moverse el bloque; el personaje cae cuando éste termina)
 	_tweens_derrota = []
 	if pts.size() > 1:
 		gato_nodo.position = pts[0]
 		var seg := 0.14
-		previo = seg * float(pts.size() - 1) + 0.35   # (y una pausa para ver dónde quedó)
+		previo = espera + seg * float(pts.size() - 1) + 0.35   # (y una pausa para ver dónde quedó)
 		var mov := create_tween()
+		mov.tween_interval(espera)
 		mov.tween_method(func(k: float) -> void: gato_nodo.position = _punto_en(pts, k), 0.0, 1.0, seg * float(pts.size() - 1))
-		Characters.step_anim(gato, seg)
+		mov.parallel().tween_callback(Characters.step_anim.bind(gato, seg)).set_delay(0.0)
 		_tweens_derrota.append(mov)
 	get_tree().create_timer(previo).timeout.connect(_caer_derrota.bind(motivo, LENTO))
 	return previo

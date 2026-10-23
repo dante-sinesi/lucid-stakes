@@ -87,7 +87,8 @@ func sonido(m, modo: int, antes_y: int) -> void:
 
 ## Los efectos visuales de una acción: estirar al dar el paso, aplastar y polvo al aterrizar, polvo de los bloques que se movieron, partículas de lo que se purificó,
 ## la explosión de una bomba y los bloques que caen al vacío. `off`: el desplazamiento de altura de la sala donde pasó.
-func visuales(m, antes_y: int, off: float) -> void:
+## `demora`: los bloques que se pierden empiezan a caer cuando termina de moverse el bloque que empujaste.
+func visuales(m, antes_y: int, off: float, demora := 0.0) -> void:
 	var fell := maxi(0, antes_y - m.jugador.y)
 	juice.step(fell)
 	if fell > 0:
@@ -99,7 +100,7 @@ func visuales(m, antes_y: int, off: float) -> void:
 	if m.exploto:
 		explosion(_w(m.celda_explosion, off))
 	for p in m.caidos_fuera:
-		caida_de_bloque(m, p[0], str(p[1]), off)
+		caida_de_bloque(m, p[0], str(p[1]), off, demora)
 
 
 ## Una explosión de partículas de luz sobre el bloque que se purificó.
@@ -170,7 +171,7 @@ func explosion(pos: Vector3) -> void:
 
 
 ## Un bloque que se perdió: se lo dibuja un instante donde estaba y se hunde en la oscuridad dando vueltas.
-func caida_de_bloque(m, celda: Vector3i, letra: String, off: float) -> void:
+func caida_de_bloque(m, celda: Vector3i, letra: String, off: float, demora := 0.0) -> void:
 	var falso = Motor.nueva(int(m.meta), m.jugador)
 	falso.poner(celda, letra)
 	var pivote := Node3D.new()   # (gira alrededor del centro del bloque)
@@ -181,7 +182,7 @@ func caida_de_bloque(m, celda: Vector3i, letra: String, off: float) -> void:
 	pivote.add_child(contenido)
 	Vista.poblar(contenido, falso, {}, false, false, false, true)
 	var tw := pivote.create_tween().set_parallel(true)
-	tw.tween_property(pivote, "position:y", pivote.position.y - 14.0, 0.8).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(pivote, "rotation:x", randf_range(-1.5, 1.5), 0.8)
-	tw.tween_property(pivote, "rotation:z", randf_range(-1.5, 1.5), 0.8)
+	tw.tween_property(pivote, "position:y", pivote.position.y - 14.0, 0.8).set_delay(demora).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(pivote, "rotation:x", randf_range(-1.5, 1.5), 0.8).set_delay(demora)
+	tw.tween_property(pivote, "rotation:z", randf_range(-1.5, 1.5), 0.8).set_delay(demora)
 	tw.chain().tween_callback(pivote.queue_free)

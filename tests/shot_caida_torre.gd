@@ -25,8 +25,8 @@ func _init() -> void:
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(pref + "_antes.png")
 	main.nueva.accion(Vector3i(1, 0, 0), Motor.Modo.AGARRAR)
-	for k in 12:
-		await create_timer(0.4).timeout
-		print("t=", (k + 1) * 0.4, " gato=", main.nueva.gato_nodo.position, " lost=", main.lost_screen.visible, " alpha=", main.lost_screen.box.modulate.a)
+	for k in 14:
+		await create_timer(0.1).timeout
+		print("t=", (k + 1) * 0.1, " bloques=", main.nueva.vivo.get_children().map(func(n): return snappedf(n.position.x, 0.1) if n is Node3D else 0), " cae=", main.nueva.get_children().size(), " gato=", main.nueva.gato_nodo.position, " lost=", main.lost_screen.visible, " alpha=", main.lost_screen.box.modulate.a)
 		root.get_texture().get_image().save_png("%s_%d.png" % [pref, k])
 	quit(0)
