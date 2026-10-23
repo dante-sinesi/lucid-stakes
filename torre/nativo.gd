@@ -82,7 +82,7 @@ static func minimo(t, ub: int, tope := 6000000) -> Dictionary:
 	return correr(["--minimo", "ub=%d" % ub, "tope=%d" % tope], t, tope)
 
 
-## Las métricas de complejidad (ver docs/metrica_dificultad.md).
+## Las métricas de complejidad (ver docs/generador.md).
 static func medir(t, tope := 3000000) -> Dictionary:
 	return correr(["--medir", "tope=%d" % tope], t, tope)
 

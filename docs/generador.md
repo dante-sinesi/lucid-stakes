@@ -1,31 +1,60 @@
-# Generador nativo de salas (versión final)
+# El generador de salas
 
-Un solo programa en C++ (`native/generador.cpp` → `tools/generador.exe`, se arma con `native\construir.bat`) hace todo el trabajo de buscar salas, sin GDScript en el camino:
-escalera → excavar (grafo de estados) → solución exacta (A\*, camino más corto con menos agarres) → comprobación de que no se resuelve caminando → auditoría de especiales
-(un especial sólo queda si al cambiarlo por comunes cambia el camino óptimo) → paso de tipos (inserta hielo, pinchos, bombas, catapultas, trampas, agrietados guiado por el camino)
-→ paso de mutación. Guarda élites por celda (forma, altura) y prefiere las que llegan alto (`reach` ≥ 0.5).
+Las salas se buscan con `native/salas.cpp` (se arma con `native\construir.bat` → `tools/salas.exe`, g++ de MSYS2; el .exe no se versiona). El motor de reglas vive en tres lugares que deben coincidir: `torre/motor.gd` + `torre/reglas.gd` (GDScript, el del juego), `torre/solucionador.gd` (A* de referencia en GDScript) y el propio `native/salas.cpp`. Pruebas: `torre/test_especiales.gd`, `tests/unitarios/test_paquete_salas.gd` y `test_nativo*.gd`.
 
-Las reglas de los bloques y los movimientos están cerradas: el generador usa el mismo motor que `solver_nativo.cpp` (todos los tipos, bombas con zona esférica de radio² 5).
-Las bombas tienen la mecha mínima que obliga a usarlas (bisección) y `RoomLib.tune_fuse` hace lo mismo del lado de GDScript.
+## Cómo se genera una sala (`salas.exe --gen`)
 
-## Flujo de un comando
+1. **Sala resuelta:** una escalera de un bloque por piso dentro de la huella (3x3, 5x3 u 8x3 del anillo de 11x11), con el bloque de entrada (nivel 1) y el de salida (nivel h) como checkpoints, un bloque fijo pegado a la salida y `extras` bloques más (~1,3 por piso en 3x3, ~2,3 en 5x3 y 8x3). El jugador parado sobre la salida.
+2. **Contra-movimientos con haz:** cada paso hacia atrás es un estado desde el cual UNA acción del motor lleva al actual (se comprueba simulando), así que se resuelve por construcción. El haz se guía con la distancia exacta del solucionador.
+3. **Variante con el jugador sobre el bloque de entrada** (el estado con el que se arrancaría), resuelta con el solucionador exacto.
+4. **Escalada local:** mover, agregar o sacar un bloque; se acepta si la sala sigue resolviéndose y el valor (pasos + 3·agarres + `wd`·bloques distintos movidos) no baja. Sin esta escalada las salas salen fáciles.
 
-```
-herramientas\generador.bat            :: mina (varias partes en paralelo) y cierra
-```
+Hasta 9 pisos el solucionador es exacto; más alto se usan lonjas de 3 pisos (válidas, no necesariamente las más cortas) y el mínimo real se calcula después (`--minimo`, `torre/refinar_biblioteca.gd`).
 
-1. `tools\generador.exe mina --out=bibliotecas\generador\gen_X_N.txt --steps=N --shapes=3x3,3x5,3x8,L,U --hlo=5 --hhi=10 --seed=S --part=P --parts=K --nodes=500000 --eval=16`
-   (determinista por semilla y parte; los topes son de trabajo, no de tiempo).
-2. Cierre: `Godot --headless --path . res://scenes/generador.tscn -- --in=bibliotecas/generador --old=bibliotecas/minero --lib=data/salas.rooms --out=data/salas.rooms --min-reach=0.5`
-   (`scripts/generador_main.gd`): vuelve a comprobar cada sala con las reglas reales del juego (estructura, repetir el camino, hashes), mezcla con la biblioteca que ya había
-   (deja `.bak`) y audita nativamente las salas del minero viejo.
-3. `tools\generador.exe auditar --in=... --out=... --min-reach=0.5` audita salas existentes.
+## Bloques especiales por propósito (`--especializar`)
 
-Formato de línea: `R|forma|h|mecha|pasos|agarres|reach|especiales|camino|x,z:col;...|origen`.
+Un especial no se agrega por cantidad: cambia cómo se juega la sala. Cada rol se coloca donde le rompe el paso más barato a la solución, se vuelve a resolver con el solucionador exacto y se acepta sólo si cumple su papel. Al final cada especial pasa la **prueba de necesidad**: volverlo común cambia el resultado (el largo, el valor, o cuánto pesa cada decisión).
 
-## Pruebas
+| Rol | Papel |
+|---|---|
+| Pesado | limita: no se puede mover |
+| Pinchos | celdas prohibidas |
+| Agrietado | cada decisión pesa (se pisa una vez) |
+| Hielo | resbalar, pero también transporte |
+| Trampolín (catapulta) | salto en vez de escalera (acorta mucho la sala) |
+| Bomba | apura: la mecha baja con cada acción dentro de su zona; se busca por bisección la **mecha mínima con solución** (≥ 3) y que la solución pase al menos 3 movimientos dentro de la zona |
 
-`tests/test_generador.gd`: el generador es determinista, todo lo que saca pasa las reglas del juego, la auditoría nativa coincide con la de GDScript y el cierre escribe una biblioteca legible.
+Las **salas mixtas** son una cadena de especializaciones sobre una sala base (cantidad por altura: 1 + (pisos − 3) // 9); `--revisar` comprueba que cada especial siga siendo necesario.
 
-## Modo hielo
-El paso de tipos acepta: `--types=i,h,c,s` (qué especiales inserta y audita: hielo, pesado, agrietado, pinchos; por defecto `icbkts` como siempre), `--p-ice=0.7` (la fracción de veces que inserta hielo), `--min-ice=N` (sólo se escriben salas con al menos N bloques de hielo) y `--min-slides=N` (con al menos N resbalones o empujes de hielo en el camino). Cada línea trae al final `|slides`. El cierre (`room_from_line`) vuelve a medir con las reglas del juego y guarda `opt.slides` y `opt.ice_moved` (`RoomLib.path_stats`); el Estudio ordena y filtra por resbalones. Prueba: `tests/test_generador.gd` (`test_ice`). Con el modo apagado, el generador produce exactamente lo de antes.
+## Métrica de complejidad (`--medir`)
+
+Se toma UN camino más corto exacto y, en cada estado, se prueban todos los movimientos legales resolviendo cada hijo con el solucionador exacto: `legales`, `optimos` (siguen un camino más corto) y `letales` (matan en el acto o dejan la sala sin solución).
+
+- **bits de decisión** = Σ log2(legales / optimos); **bits de peligro** = Σ −log2(1 − letales / legales); **complejidad** = suma de ambos (pesos 1 y 1, provisorios).
+- También se guardan pasos, agarres, **bloques distintos movidos** (la que importa), pasos críticos y los hijos sin resolver (si hay, la métrica es aproximada).
+- Bandas de nivel: fácil < 60, media 60–110, difícil 110–180, pesadilla > 180 bits.
+- Se calibró con salas reales: las 3x3 de 5 a 8 pisos dan 1,2 a 2,4 bloques distintos movidos por piso (Catherine pide ~1) y el riesgo medido (movimientos legales que matan o dejan sin solución) va del 10 al 25 %.
+
+## Mínimo real de las salas altas (`--minimo ub=N tope=M`)
+
+A* exacto con poda por la cota superior `ub` (el largo de un camino conocido). Si el tope de nodos alcanza, el resultado es el mínimo demostrado; si no, la salida trae `cota_inferior` (una cota inferior demostrada) y el mínimo queda entre las dos. Una 5x3 de 11 pisos pasó de 117 pasos (lonjas) a 103 exactos en 78 mil nodos. Hoy hay mínimo demostrado en todas las 3x3, las 5x3 hasta 8 pisos y las 8x3 hasta 9; las más altas tienen cota inferior y camino por lonjas.
+
+## Producción
+
+1. `powershell -ExecutionPolicy Bypass -File herramientas\generar_salas.ps1 [-Minutos 30] [-Copias 6] [-Prefijo lote] [-Tipos 3x3,5x3,8x3] [-NivelFijo n] [-HMax n] [-PorDemanda]`: varias copias de `salas.exe` a la vez (`trabajador_salas.ps1` recorre una lista de tipos y alturas); las salas quedan en `bibliotecas\sn_corridas\`. Los topes son de trabajo, no de tiempo (determinista por semilla).
+2. `herramientas\juntar_salas.ps1` las junta sin repetir en `bibliotecas\salas.jsonl`.
+3. `herramientas/clasificar_salas.py` clasifica por nivel y tipo y dice qué falta para la composición objetivo (40 % fácil, 30 % media, 20 % difícil, 10 % pesadilla; 40 % 3x3, 35 % 5x3, 25 % 8x3).
+4. `herramientas/revisar_forma_salas.py` comprueba la forma; `herramientas/armar_paquete.py` junta base + roles + mixtas, sin repetidas, en `bibliotecas/paquete_salas.jsonl` (con id, categoría y nivel). Se copia a `data/salas_torre.jsonl`, que es la biblioteca que viaja con el juego. `tests/unitarios/test_paquete_salas.gd` juega el camino de cada sala en el motor de GDScript (0 fallos).
+
+`bibliotecas/` no se versiona. El paquete vigente tiene 1208 salas de 4 a 23 pisos.
+
+## Estudio de salas
+
+`herramientas\estudio_salas.bat [archivo.jsonl]` abre `torre/estudio.tscn`: lista de salas, reproducción desde atrás del jugador, edición, resolver con el nativo y guardar. `herramientas\torre_prototipo.bat [semilla] [salas]` abre una torre jugable aislada del juego. Capturas del Estudio: `tests/capturas/shot_estudio.gd` + `herramientas/montaje_salas.py` (siempre desde detrás del jugador).
+
+## Pendiente
+
+- Heurística admisible más fuerte (el techo del A* son unos 25 a 30 pasos con muchos bloques) para certificar las salas altas.
+- Calibrar los pesos de la métrica y las bandas con salas jugadas por personas.
+- Salas con trampa (todavía no hay) y más salas mixtas altas.
+- Salas de la comunidad (Steam Workshop): pulir el Estudio hasta hacerlo fácil de usar y publicarlo como herramienta aparte.

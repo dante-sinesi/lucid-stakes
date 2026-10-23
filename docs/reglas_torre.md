@@ -1,7 +1,6 @@
-# Torre de salas sin núcleo: las reglas (versión implementada)
+# La torre: reglas
 
-Descripción exacta de lo que hace el juego hoy con la torre nueva (rama `feature/recuperar-torre-vieja`). Cada regla dice dónde vive en el código. Lo que todavía no está o es provisorio va marcado como **(provisorio)** o **(pendiente)**.
-Antes de esta versión el documento era una propuesta; la historia de las decisiones está en `docs/progreso_salas_nuevas.md`.
+Descripción exacta de lo que hace el juego con la torre (`torre/`). Cada regla dice dónde vive en el código. Lo que es provisorio va marcado como **(provisorio)** o **(pendiente)**.
 
 ## 1. La torre
 
@@ -43,14 +42,14 @@ Todos gastan **un movimiento** (si salen bien); los que no salen bien no gastan 
 | k | Catapulta (trampolín) | Al llegar parado encima, sube 4 celdas (más hasta 2 buscando agarre) y queda colgado del costado de un bloque que tenga el borde de arriba libre; sólo hacia arriba |
 | b7 / d | Bomba con mecha / desactivada | La mecha (el número) baja **1 por acción mientras el jugador está dentro de su zona** (celdas con dx²+dy²+dz² ≤ 5); fuera se congela. Al llegar a 0 explota y se pierde la sala. Pararse encima la desactiva ("d", queda como un común); si cae fuera de la huella se pierde. Ganar en el mismo movimiento gana a la explosión |
 
-Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada especial está en la sala por un propósito comprobado: si se lo cambia por un bloque común, cambia el camino o cuánto pesa cada movimiento (`docs/plan_generador_especiales.md`).
+Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada especial está en la sala por un propósito comprobado: si se lo cambia por un bloque común, cambia el camino o cuánto pesa cada movimiento (`docs/generador.md`).
 
 ## 5. Temporizador, muerte y vidas
 
-- **Temporizador de movimientos por sala:** el mínimo conocido de la sala × 1,9 / 1,6 / 1,4 / 1,25 + 10 / 8 / 6 / 5 movimientos, según su nivel (fácil / media / difícil / pesadilla); el margen (lo que pasa de ×1 y los movimientos extra) vale la mitad en la etapa 1 y crece hasta completo en la etapa 8. **(provisorio)** `Torre.max_movimientos`.
+- **Temporizador de movimientos por sala:** el mínimo conocido de la sala × 1,9 / 1,6 / 1,4 / 1,25 + 10 / 8 / 6 / 5 movimientos, según su nivel (fácil / media / difícil / pesadilla); el margen (lo que pasa de ×1 y los movimientos extra) vale la mitad en la etapa 1 y crece hasta completo en la etapa 8, y además se multiplica por la dificultad elegida (`MARGEN_DIFICULTAD`: Fácil ×1,25, Medio ×1, Difícil ×0,85, Pesadilla ×0,7). **(provisorio)** `Torre.max_movimientos`.
   - Madrugada lo multiplica por 1,25; Aire extra suma 4; Freno suma 5 y Reloj de arena 10 (sólo a la sala actual); Pies ligeros y Aire de más suman 1 por mejora; Paso firme hace que trepar y bajar un piso no gaste. `Torre.max_mov`.
   - Los últimos 5 movimientos se ven como un número sobre el personaje (rojo con 3 o menos). Ganar en el último movimiento gana al temporizador.
-- **Perder una sala:** caer al vacío, quedar sobre pinchos, explotar una bomba, agotar los movimientos o (Sin piedad) pasarse del último movimiento en falso. El personaje se cae dando vueltas (con toda la sala si se acabaron los movimientos) y aparece la **pantalla de derrota** con *Reintentar (−1 vida)* y *Salir al menú principal* (R o Enter reintenta). Reintentar vuelve al **checkpoint** de la sala con la sala **virgen**, y recién entonces cuesta la vida (el Tótem lo hace gratis). La claridad que se juntó en ese intento se pierde. Sin vidas, el run termina. `Torre._morir`, `main._torre_murio`, `request_restart`.
+- **Perder una sala:** caer al vacío, quedar sobre pinchos, explotar una bomba, agotar los movimientos o (Sin piedad) pasarse del último movimiento en falso. El personaje se cae dando vueltas (con toda la sala si se acabaron los movimientos) y aparece la **pantalla de derrota** con *Reintentar (−1 vida)* y *Salir al menú principal* (Espacio reintenta, Shift sale al menú). Reintentar vuelve al **checkpoint** de la sala con la sala **virgen**, y recién entonces cuesta la vida (el Tótem lo hace gratis). La claridad que se juntó en ese intento se pierde. Sin vidas, el run termina. `Torre._morir`, `main._torre_murio`, `request_restart`.
 - **Segundo aliento:** una vez por torre vuelve a empezar la sala sin perder la vida.
 - **Reintentar la torre entera** (tecla de reintentar o desde la pausa): vuelve a la primera sala y cuesta una vida. Guardar y continuar también empieza la torre desde la primera sala (si se había muerto y no reintentado, cuenta como reintento).
 - Cada torre empieza con la pantalla de **dados** del tabernero (con "Empezar" ya habilitado).
@@ -60,7 +59,7 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 - Al llegar a la salida de una sala, el bloque queda como entrada de la siguiente y la sala anterior cae. **Farolín está sentado, apoyado en un tronquito, en una esquina del próximo checkpoint**, mirando al centro del cubo (la esquina con menos bloques al lado). Al llegar dice cuántos checkpoints faltan, contando el portal ("Buen comienzo, faltan 6", "Ya casi: la siguiente es la última").
 - El último checkpoint es el **cubo-portal** luminoso del juego. Llegar a él termina la torre: la claridad pasa al run y sigue el casino (o el final del juego en la etapa 15).
 
-## 7. Claridad (`torre/cosecha.gd`, las mismas reglas de la torre vieja)
+## 7. Claridad (`torre/cosecha.gd`)
 
 - Pisar un bloque o colgarse de él lo **purifica** y da su claridad: común 1, hielo 2, agrietado 2, pesado 2, trampa 2, pinchos 3, catapulta 3, bomba 5, checkpoint 1.
 - **Racha:** cada acción que purifica algo nuevo sube la racha; una que no purifica nada la corta. Multiplicador = 1 + 0,5 × (racha − 1), con tope ×4 (Racha larga ×6, Racha imparable ×8; Mano de oro de a 1,0).
@@ -70,7 +69,7 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 ## 8. Etapas
 
 - **Largo:** 5 salas en la etapa 1 hasta 14 en la 15 (`Torre.salas_de_etapa`).
-- **Dificultad:** `p = 0,6 × (etapa − 1)/14 + 0,4 × (sala/(n − 1))`; <0,2 fácil · <0,4 fácil o media · <0,6 media · <0,75 media o difícil · <0,9 difícil · el resto difícil o pesadilla. Si no hay sala del nivel que toca se acepta de otro.
+- **Dificultad:** `p = 0,6 × (etapa − 1)/14 + 0,4 × (sala/(n − 1))`, corrida por la dificultad elegida (`PENDIENTE_DIFICULTAD`); <0,2 fácil · <0,4 fácil o media · <0,6 media · <0,75 media o difícil · <0,9 difícil · el resto difícil o pesadilla. Si no hay sala del nivel que toca se acepta de otro.
 - **Aprendizaje (`Torre.limites_aprendizaje`):** las primeras torres usan salas bajas, cortas y con pocos bloques que mover. Etapa 1: las dos primeras salas de hasta 5 pisos, 10 pasos mínimos y 1 bloque distinto movido; las dos siguientes hasta 6 pisos, 12 pasos y 1 bloque; la última hasta 7 pisos, 15 pasos y 2 bloques. Etapa 2: 8 pisos, 16 pasos, 2 bloques. Etapa 3: 11 pisos, 20 pasos, 3 bloques. Etapa 4: 15 pisos, 28 pasos, 4 bloques. Desde la 5 manda sólo la curva de dificultad.
 - **Especiales habilitados:** hielo en la etapa 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, trampolín 8. (Todavía no hay salas con trampa.)
 - Las salas salen del paquete `data/salas_torre.jsonl` (`herramientas/armar_paquete.py`): 1208 salas de 4 a 23 pisos. Las de más de 10 pisos se resolvieron por lonjas: su camino es válido pero puede no ser el más corto.
@@ -78,8 +77,8 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 ## 9. Escenarios y pruebas
 
 - **Sin piedad:** cada sala permite 2 movimientos en falso (3 con Margen de error). Un movimiento es "en falso" si después faltan **más** pasos para salir de la sala (lo mide el solucionador nativo en un hilo). El siguiente pierde la sala. No se puede deshacer.
-- **Pruebas** (cada 3 etapas): funcionan Sin ayudas, Todo o nada, Sin racha y el multiplicador de claridad. **(pendiente)** Niebla, Oscuridad y Lluvia de meteoritos.
-- **Tutorial:** las seis primeras lecciones son de bloques armados a mano (la torre vieja); la última, "Una torre de verdad", es una torre nueva de 2 salas.
+- **Pruebas** (cada 3 etapas): hoy son Sin ayudas, Todo o nada y Sin racha, más el multiplicador de claridad de la etapa. **(pendiente)** repensar más pruebas (ver `pendientes.md`).
+- **Tutorial:** todas las lecciones se juegan con este motor: las de movimiento son salas dibujadas por capas (`Tutorial.sala_de_capas`) y la última, "Una torre de verdad", es una torre de 2 salas.
 
 ## 10. Controles
 

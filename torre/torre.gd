@@ -1,6 +1,6 @@
 extends RefCounted
 ## La torre de salas sin núcleo, lista para jugar (prototipo, aislado del juego actual): arma una torre apilando salas del paquete
-## (herramientas/armar_paquete.py) y lleva la partida con las reglas de docs/torre_salas_reglas.md: checkpoints, temporizador de movimientos
+## (herramientas/armar_paquete.py) y lleva la partida con las reglas de docs/reglas_torre.md: checkpoints, temporizador de movimientos
 ## (el mínimo del solucionador más un margen), caída de la sala entera al agotarse, vidas y vuelta al checkpoint con la sala virgen.
 ##
 ## Cada sala se juega con su propio Motor (torre/motor.gd) en las coordenadas del anillo de 11 x 11. La salida de una sala (el bloque

@@ -1,7 +1,7 @@
 extends Node3D
 ## La escena principal: el menú, el run (etapas, torre, casino, peaje), los menús de pausa y de fin, el tutorial y el guardado. La torre se juega en torre/torre_juego.gd.
 
-const TorreJuego := preload("res://torre/torre_juego.gd")   # la torre nueva (salas apiladas, sin núcleo): ver docs/torre_salas_reglas.md
+const TorreJuego := preload("res://torre/torre_juego.gd")   # la torre nueva (salas apiladas, sin núcleo): ver docs/reglas_torre.md
 const RunState := preload("res://scripts/datos/run_state.gd")
 const Controls := preload("res://scripts/entrada/controls.gd")
 const Graphics := preload("res://scripts/ui/graphics.gd")

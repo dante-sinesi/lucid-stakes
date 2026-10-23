@@ -1,5 +1,5 @@
 extends Control
-## Estudio de las salas nuevas (torre sin núcleo, ver docs/torre_salas_reglas.md): abre una biblioteca de salas (jsonl de tools/salas.exe), las muestra
+## Estudio de las salas nuevas (torre sin núcleo, ver docs/reglas_torre.md): abre una biblioteca de salas (jsonl de tools/salas.exe), las muestra
 ## desde detrás del jugador (o en diagonal), reproduce su camino más corto cuadro por cuadro, deja corregirlas (poner y sacar bloques, bloque checkpoint,
 ## bloque fijo, mover el jugador), las resuelve de nuevo con el solucionador nativo y guarda la biblioteca.
 ## Archivo: variable de entorno SALAS_ARCHIVO, o bibliotecas/salas.jsonl.

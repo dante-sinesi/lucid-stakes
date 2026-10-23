@@ -1,5 +1,5 @@
 extends RefCounted
-## Motor de la torre de salas sin núcleo: el jugador y los movimientos (ver docs/torre_salas_reglas.md). Módulo aislado: sólo usa torre/reglas.gd.
+## Motor de la torre de salas sin núcleo: el jugador y los movimientos (ver docs/reglas_torre.md). Módulo aislado: sólo usa torre/reglas.gd.
 ## Las reglas de movimiento son las del juego actual (empujar, tirar, colgarse, bordear, trepar) con el sostén nuevo y sin suelo.
 ## Un bloque es { Vector3i: tipo } con tipo "n" común, "p" checkpoint (se comporta como uno común; lleva el farolito), "f" fijo, y los especiales
 ## "i" hielo, "h" pesado, "c" agrietado, "t" trampa, "s" pinchos, "k" catapulta (todavía no se usan: las salas son de bloques básicos).

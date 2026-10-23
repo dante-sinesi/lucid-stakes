@@ -3,7 +3,7 @@ extends RefCounted
 ## característica personalizada `demo` del preset de exportación) o con la variable de entorno GAME_DEMO=1 (para probarla en el editor). Sin el interruptor, el juego
 ## completo se comporta exactamente igual que siempre. Todo recorte de la demo pasa por acá; lo que la demo esconde sigue existiendo en el código, sólo no se puede abrir.
 ##
-## Qué es la demo (docs/plan_demo.md): el tutorial y La Pesadilla hasta la etapa 6, con el segundo casino y dos pruebas (LAST_STAGE etapas); los demás escenarios dicen "Próximamente"; las habilidades
+## Qué es la demo (docs/demo.md): el tutorial y La Pesadilla hasta la etapa 6, con el segundo casino y dos pruebas (LAST_STAGE etapas); los demás escenarios dicen "Próximamente"; las habilidades
 ## persistentes, el blackjack y las tragamonedas dicen "Disponible en la versión completa"; de cosméticos sólo 2 gorros, 2 prendas y 4 personajes. Al pagarle (o fallarle) a
 ## Farolín del segundo casino se muestra la pantalla de fin de la demo.
 
