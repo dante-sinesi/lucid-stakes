@@ -9,7 +9,7 @@ Las cuatro pistas del juego son *Las Cuatro Estaciones* (Antonio Vivaldi, Op. 8;
 | `casino` | Otoño | casinos | ~9,5 min |
 | `pruebas` | Invierno | torres que son una prueba (`Main._tower_music`) | ~6,5 min |
 
-Los archivos están en `audio/music/*.ogg` (unos 34 MB en total). Si falta alguno, `scripts/music.gd` sintetiza una pista simple por código.
+Los archivos están en `audio/music/*.ogg` (unos 34 MB en total). Si falta alguno, `scripts/sonido/music.gd` sintetiza una pista simple por código.
 
 ## Cómo se hicieron
 - Las notas salen de las partituras en MIDI de **Mutopia Project** (obra y transcripción en dominio público), una por movimiento: `herramientas/musica/fuentes/{spring,summer,autumn,winter}/` (bajadas de `https://www.mutopiaproject.org/ftp/VivaldiA/O8/<estación>/<estación>-mids.zip`). Por cada estación hay tres archivos: `*-score.mid` (movimiento I), `*-score-1.mid` (II) y `*-score-2.mid` (III), identificados por su contenido.

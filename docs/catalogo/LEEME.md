@@ -29,4 +29,4 @@ Estos archivos listan, en texto, todo lo que es "contenido" del juego, tal como 
 
 ## Regenerarlos desde el código
 
-Si el código cambió y querés una versión nueva de los archivos, se vuelven a escribir con `tests/export_catalog.gd` (ver el encabezado del script). **No pisa archivos que ya existen**, justamente para no perder tus cambios; para regenerarlos hay que pasar `CATALOG_FORCE=1` (hacé antes una copia de lo que quieras conservar).
+Si el código cambió y querés una versión nueva de los archivos, se vuelven a escribir con `tests/sondas/export_catalog.gd` (ver el encabezado del script). **No pisa archivos que ya existen**, justamente para no perder tus cambios; para regenerarlos hay que pasar `CATALOG_FORCE=1` (hacé antes una copia de lo que quieras conservar).

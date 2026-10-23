@@ -20,7 +20,7 @@ def leer(ruta):
     return [json.loads(l) for l in open(os.path.join(RAIZ, ruta), encoding='utf-8') if l.strip()]
 
 
-fuentes = [('base', 'bibliotecas/salas_nuevas_final.jsonl')]
+fuentes = [('base', 'bibliotecas/salas_base.jsonl')]
 for f in sorted(glob.glob(os.path.join(RAIZ, 'bibliotecas', 'sn_corridas', 'giro_*.jsonl'))):   # (salas 5x3 y 8x3 con la salida a 90 grados de la entrada)
     fuentes.append(('base', os.path.relpath(f, RAIZ)))
 for rol in ['pinchos', 'pesado', 'agrietado', 'hielo', 'trampolin', 'bomba']:

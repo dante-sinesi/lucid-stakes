@@ -7,9 +7,9 @@ Rama: `feature/salas-medianas-encadenadas`. En la conversación de ideas no se m
 ## Cambios hechos justo antes del brainstorming (sin commitear)
 
 ### Pisos configurables por etapa
-- `RunState.rows_for(etapa)` en `scripts/run_state.gd`: 25 filas hasta la etapa 5 y 2 más por etapa desde ahí, con tope en 41 (se alcanza en la etapa 13).
+- `RunState.rows_for(etapa)` en `scripts/datos/run_state.gd`: 25 filas hasta la etapa 5 y 2 más por etapa desde ahí, con tope en 41 (se alcanza en la etapa 13).
 - `scripts/main.gd` (`_start_job`) la usa al generar cada torre. Si `tower_rows` fue cambiado a mano (tutorial, tests con torres chicas), se respeta ese valor.
-- Chequeo nuevo en `tests/test_run.gd` (25 en etapa 1 y 5, 31 en la 8, 41 en la 15).
+- Chequeo nuevo en `tests/unitarios/test_run.gd` (25 en etapa 1 y 5, 31 en la 8, 41 en la 15).
 - **Pendiente: `test_run.gd` no está verificado.** La última corrida terminó con código de salida 4 y no se revisó el motivo (la salida mostraba mucha generación de torres, puede ser un tope de tiempo del lanzamiento).
 - Una torre de 41 filas tardará bastante más en generarse (estimado 4–5 minutos); hay que revisar caída del suelo, tiempo y prefetch con esa altura.
 

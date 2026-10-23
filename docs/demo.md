@@ -3,7 +3,7 @@
 Plan completo y decisiones de Dante: `docs/plan_demo.md`. Acá, lo que quedó hecho y cómo usarlo.
 
 ## Qué es
-El mismo código del juego completo con un interruptor (`scripts/demo.gd`). `Demo.on()` es verdadero en la compilación "Windows Demo" (característica personalizada `demo` del preset) o con `GAME_DEMO=1` en el editor. Sin el interruptor el juego completo no cambia (`tests/test_demo.gd` lo comprueba).
+El mismo código del juego completo con un interruptor (`scripts/datos/demo.gd`). `Demo.on()` es verdadero en la compilación "Windows Demo" (característica personalizada `demo` del preset) o con `GAME_DEMO=1` en el editor. Sin el interruptor el juego completo no cambia (`tests/unitarios/test_demo.gd` lo comprueba).
 
 - **Contenido:** el tutorial y La Pesadilla hasta el casino de la etapa 6 (`Demo.LAST_STAGE`): las dos pruebas (etapas 3 y 6) y el segundo casino (el salón, desde la etapa 4). Al pagarle a Farolín en ese casino, o al abandonar (sin vidas y sin claridad), sale la pantalla de fin de la demo (`demo_end_screen.gd`) con el resumen, el agradecimiento y la lista de deseos (`Demo.WISHLIST_URL`: completar con la dirección de la página en Steam).
 - **Recortes** (todos por `Demo`): los demás escenarios dicen "Próximamente" (tarjeta bloqueada); el botón Habilidades avisa "Disponible en la versión completa"; el blackjack y las tragamonedas avisan "Disponible en el juego completo"; cosméticos: Corona y Gorro de lana, Remera y Capa (vienen desbloqueados, los demás salen con "?" y, al pasar el mouse, "Disponible en la versión completa"); personajes: Dante, Gaby, gatito (predeterminado) y perrito.
@@ -17,7 +17,7 @@ El mismo código del juego completo con un interruptor (`scripts/demo.gd`). `Dem
 3. Probarla en el editor: `GAME_DEMO=1 tools\Godot_v4.7.2-stable_win64.exe --path .`
 
 ## Pruebas
-`tests/test_demo.gd` (interruptor, recortes, fin de la demo), `tests/test_banco.gd` (cada torre del banco se gana con su camino, no hay repetidas, el juego las usa al instante), `tests/test_farolin.gd`, `tests/test_telemetria.gd`. La batería completa se corre con todos los `tests/test_*.gd` (cada uno termina con "fallos: N").
+`tests/unitarios/test_demo.gd` (interruptor, recortes, fin de la demo), `tests/test_banco.gd` (cada torre del banco se gana con su camino, no hay repetidas, el juego las usa al instante), `tests/unitarios/test_farolin.gd`, `tests/unitarios/test_telemetria.gd`. La batería completa se corre con todos los `tests/test_*.gd` (cada uno termina con "fallos: N").
 
 ## Prueba con jugadores (pendiente de Dante: hace falta gente)
 - 5 a 10 personas, una sesión de 45 minutos cada una, sin explicarles nada; se anota dónde se traban, qué no entienden y cuándo se aburren.

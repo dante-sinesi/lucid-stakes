@@ -1,6 +1,6 @@
 # Métrica de complejidad de una sala (propuesta, para calibrar)
 
-Objetivo: un número que diga con exactitud cuánta complejidad lleva una sala, calculado por el solucionador y no a ojo. Está en `native/salas_nuevas.cpp` (`salas_nuevas.exe --medir`) y se guarda en cada sala de la biblioteca.
+Objetivo: un número que diga con exactitud cuánta complejidad lleva una sala, calculado por el solucionador y no a ojo. Está en `native/salas.cpp` (`salas.exe --medir`) y se guarda en cada sala de la biblioteca.
 
 ## Qué se mide
 Se toma UN camino más corto exacto de la sala (A*, con la cota del camino conocido: ver "Fase 2"). En cada estado de ese camino se prueban TODOS los movimientos legales y se resuelve cada hijo con el solucionador exacto:
@@ -26,6 +26,6 @@ Se toma UN camino más corto exacto de la sala (A*, con la cota del camino conoc
 
 # Fase 2: el camino más corto REAL de las salas altas
 
-`salas_nuevas.exe --minimo ub=N tope=M`: A* exacto con poda por la cota superior `ub` (el largo de un camino conocido: los de lonjas son válidos pero no óptimos). Si el tope de nodos alcanza, el resultado es el mínimo demostrado; si no, la salida trae `cota_inferior` (el menor f que quedaba abierto en el A*), una cota inferior DEMOSTRADA, de modo que el mínimo queda entre las dos.
-- `salas_nuevas/refinar_biblioteca.gd` lo aplica a una biblioteca entera (reparte el trabajo en procesos con PARTE y PARTES) y calcula las métricas.
+`salas.exe --minimo ub=N tope=M`: A* exacto con poda por la cota superior `ub` (el largo de un camino conocido: los de lonjas son válidos pero no óptimos). Si el tope de nodos alcanza, el resultado es el mínimo demostrado; si no, la salida trae `cota_inferior` (el menor f que quedaba abierto en el A*), una cota inferior DEMOSTRADA, de modo que el mínimo queda entre las dos.
+- `torre/refinar_biblioteca.gd` lo aplica a una biblioteca entera (reparte el trabajo en procesos con PARTE y PARTES) y calcula las métricas.
 - Primeras pruebas: una 5x3 de 11 pisos pasó de 117 pasos (lonjas) a 103 exactos en 78 mil nodos; otra de 8 pisos de 148 a 95; una 8x3 de 78 a 76. La poda por cota superior hace que el A* llegue sin búsquedas gigantes.

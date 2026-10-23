@@ -1,5 +1,5 @@
 #!/bin/bash
-# Corre todas las pruebas (tests/test_*.gd) una por una y resume. Uso: bash tests/correr_todos.sh [patrón] (por ejemplo: bash tests/correr_todos.sh casino)
+# Corre todas las pruebas (tests/unitarios/test_*.gd) una por una y resume. Uso: bash tests/correr_todos.sh [patrón] (por ejemplo: bash tests/correr_todos.sh casino)
 # Cada prueba termina con "fallos: N"; el código de salida es 1 si alguna falla o se pasa del tiempo (TIEMPO, en segundos, 900 por omisión).
 # Las pruebas de generación y de runs completos tardan varios minutos; todo el conjunto, más de una hora. Resultados también en tests/resultados.txt (no se versiona).
 cd "$(dirname "$0")/.."
@@ -7,11 +7,11 @@ GODOT="tools/Godot_v4.7.2-stable_win64_console.exe"
 TIEMPO=${TIEMPO:-900}
 export GAME_SANDBOX=1
 cp data/salas_torre.jsonl tests/_paquete_prueba.jsonl   # (las pruebas del Estudio guardan salas: se les da una copia, nunca el paquete del juego)
-export SN_LIB=${SN_LIB:-tests/_paquete_prueba.jsonl}   # (las pruebas de la biblioteca de salas necesitan saber cuál mirar)
+export SALAS_ARCHIVO=${SALAS_ARCHIVO:-tests/_paquete_prueba.jsonl}   # (las pruebas de la biblioteca de salas necesitan saber cuál mirar)
 SALIDA=tests/resultados.txt
 : > "$SALIDA"
 malas=0
-for f in tests/test_*.gd; do
+for f in tests/unitarios/test_*.gd; do
   n=$(basename "$f" .gd)
   if [ -n "$1" ] && [[ "$n" != *"$1"* ]]; then continue; fi
   r=$(timeout "$TIEMPO" "$GODOT" --headless --path . -s "$f" 2>&1)

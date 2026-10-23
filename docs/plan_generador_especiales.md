@@ -1,10 +1,10 @@
 # Plan: generador de salas con bloques especiales
 
-Parte del generador que ya funciona (`native/salas_nuevas.cpp`, ver `docs/progreso_salas_nuevas.md`). Sin bombas por ahora. Este documento es un plan para revisar, no código.
+Parte del generador que ya funciona (`native/salas.cpp`, ver `docs/progreso_salas_nuevas.md`). Sin bombas por ahora. Este documento es un plan para revisar, no código.
 
 ## 1. Por qué el generador actual casi no hay que cambiarlo
 
-La construcción de una sala es hacia atrás: cada paso es un estado desde el cual UNA acción del motor lleva al actual, comprobado simulando hacia adelante con las reglas del juego. Eso significa que **el generador no conoce las reglas**: las reglas de cada bloque especial ya están en el motor (`salas_nuevas/motor.gd` y `native/salas_nuevas.cpp`) y la comprobación hacia adelante las respeta sola. Lo que hace falta es:
+La construcción de una sala es hacia atrás: cada paso es un estado desde el cual UNA acción del motor lleva al actual, comprobado simulando hacia adelante con las reglas del juego. Eso significa que **el generador no conoce las reglas**: las reglas de cada bloque especial ya están en el motor (`torre/motor.gd` y `native/salas.cpp`) y la comprobación hacia adelante las respeta sola. Lo que hace falta es:
 
 1. **Armar la sala resuelta con especiales** de modo que la solución los use (hoy es una escalera de bloques comunes).
 2. **Dejar que el desordenado los entienda** (en tres casos hay que agregar candidatos de estados anteriores que hoy no se generan: ver cada bloque).
@@ -13,7 +13,7 @@ La construcción de una sala es hacia atrás: cada paso es un estado desde el cu
 5. **Pruebas del motor para cada tipo** (hoy los especiales del motor nuevo no tienen pruebas propias: se copiaron del juego actual).
 6. **Métrica** (`--medir`): ya cuenta los movimientos legales de cualquier tipo; sólo hay que confirmar que los especiales entran bien (por ejemplo, el hielo agrega movimientos que resbalan).
 
-**Comprobado (paso 1 del plan, hecho):** `salas_nuevas/test_especiales.gd` arma salas chicas al azar con cada tipo y compara el motor de GDScript con el nativo: 87 salas comparadas (pesado, agrietado, pinchos, trampa, hielo y catapulta), 0 diferencias en la solución, y los caminos nativos ganan jugados en GDScript. Es poca muestra para el hielo y la catapulta (los casos más delicados): conviene repetirla con más salas antes de usarlos.
+**Comprobado (paso 1 del plan, hecho):** `torre/test_especiales.gd` arma salas chicas al azar con cada tipo y compara el motor de GDScript con el nativo: 87 salas comparadas (pesado, agrietado, pinchos, trampa, hielo y catapulta), 0 diferencias en la solución, y los caminos nativos ganan jugados en GDScript. Es poca muestra para el hielo y la catapulta (los casos más delicados): conviene repetirla con más salas antes de usarlos.
 
 ## 1b. Los especiales son verbos, no cantidades (corrección del usuario)
 
@@ -29,7 +29,7 @@ Un especial no se agrega "porque sí" ni por cantidad: **cambia cómo se juega l
 
 **Cómo sale la cantidad:** no se decide de antemano. La colocación es un bucle "adversario": (1) se resuelve la sala; (2) se pone el especial en el lugar que le rompe el paso más barato a esa solución; (3) se vuelve a resolver con el solucionador exacto; (4) se acepta si sigue teniendo solución y la prueba de efecto da positivo; (5) se repite mientras cada especial nuevo sume. Cuantos especiales aguanta una sala es un resultado, no un parámetro.
 
-**Estructura de la herramienta:** un segundo paso sobre salas ya generadas (`salas_nuevas.exe --especializar rol=pesado ...`), no un generador distinto: la sala base sigue saliendo del generador que ya funciona y la especialización la modifica y la vuelve a verificar. Así lo ya validado no se toca.
+**Estructura de la herramienta:** un segundo paso sobre salas ya generadas (`salas.exe --especializar rol=pesado ...`), no un generador distinto: la sala base sigue saliendo del generador que ya funciona y la especialización la modifica y la vuelve a verificar. Así lo ya validado no se toca.
 
 ## 2. Los tipos, del más fácil al más difícil
 
@@ -78,7 +78,7 @@ Trampa (la marca roja) y arenisca: asumo que "arenisca" es el bloque agrietado d
 - **Recomendación:** dejarlo para el final, cuando ya esté probado todo lo demás.
 
 ## 3. Pasos de trabajo propuestos
-1. **Pruebas del motor por tipo** en `salas_nuevas/` (GDScript y nativo, mismas respuestas): una sala chica por cada especial con su camino conocido.
+1. **Pruebas del motor por tipo** en `torre/` (GDScript y nativo, mismas respuestas): una sala chica por cada especial con su camino conocido.
 2. **Pesado**: parámetro `especiales=h:2` en el generador, el desordenado y la escalada lo respetan, y prueba de necesidad en el ejecutable (`--necesidad`). Medir con la métrica.
 3. **Pinchos**, igual que el pesado; se elige la celda mirando el camino más corto.
 4. **Agrietado**: candidato nuevo hacia atrás + prueba de necesidad.

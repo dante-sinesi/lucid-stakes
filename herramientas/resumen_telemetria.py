@@ -16,7 +16,7 @@ if not ruta or not os.path.exists(ruta):
     sys.exit(1)
 ev = [json.loads(l) for l in open(ruta, encoding='utf-8') if l.strip()]
 salas = [e for e in ev if e['kind'] == 'sala']
-torres = [e for e in ev if e['kind'] == 'torre' and e.get('torre_nueva')]
+torres = [e for e in ev if e['kind'] == 'torre']
 print('eventos: %d · salas: %d · intentos de torre: %d' % (len(ev), len(salas), len(torres)))
 por_nivel = defaultdict(lambda: {'n': 0, 'perdidas': 0, 'movs': 0, 'max': 0, 'pasos': 0, 'seg': 0})
 causas = Counter()

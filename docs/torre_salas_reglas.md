@@ -19,7 +19,7 @@ Antes de esta versión el documento era una propuesta; la historia de las decisi
 - Lo que no está anclado **cae en línea recta** hasta apoyarse en algo sostenido; si no hay nada, se pierde (desaparece). Un bloque que cae sobre el jugador se queda ahí hasta que éste se mueva. `Reglas.asentar`.
 - Mientras se juega una sala, las salas de arriba son decorado anclado: nada de lo que pasa en la actual las toca. Al llegar a la salida, **la sala anterior cae**.
 
-## 3. Movimientos (`salas_nuevas/motor.gd`)
+## 3. Movimientos (`torre/motor.gd`)
 
 Todos gastan **un movimiento** (si salen bien); los que no salen bien no gastan nada y avisan por qué.
 
@@ -50,7 +50,7 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 - **Temporizador de movimientos por sala:** el mínimo conocido de la sala × 1,9 / 1,6 / 1,4 / 1,25 + 10 / 8 / 6 / 5 movimientos, según su nivel (fácil / media / difícil / pesadilla); el margen (lo que pasa de ×1 y los movimientos extra) vale la mitad en la etapa 1 y crece hasta completo en la etapa 8. **(provisorio)** `Torre.max_movimientos`.
   - Madrugada lo multiplica por 1,25; Aire extra suma 4; Freno suma 5 y Reloj de arena 10 (sólo a la sala actual); Pies ligeros y Aire de más suman 1 por mejora; Paso firme hace que trepar y bajar un piso no gaste. `Torre.max_mov`.
   - Los últimos 5 movimientos se ven como un número sobre el personaje (rojo con 3 o menos). Ganar en el último movimiento gana al temporizador.
-- **Perder una sala:** caer al vacío, quedar sobre pinchos, explotar una bomba, agotar los movimientos o (Sin piedad) pasarse del último movimiento en falso. El personaje se cae dando vueltas (con toda la sala si se acabaron los movimientos) y aparece la **pantalla de derrota** con *Reintentar (−1 vida)* y *Salir al menú principal* (R o Enter reintenta). Reintentar vuelve al **checkpoint** de la sala con la sala **virgen**, y recién entonces cuesta la vida (el Tótem lo hace gratis). La claridad que se juntó en ese intento se pierde. Sin vidas, el run termina. `Torre._morir`, `main._torre_nueva_murio`, `request_restart`.
+- **Perder una sala:** caer al vacío, quedar sobre pinchos, explotar una bomba, agotar los movimientos o (Sin piedad) pasarse del último movimiento en falso. El personaje se cae dando vueltas (con toda la sala si se acabaron los movimientos) y aparece la **pantalla de derrota** con *Reintentar (−1 vida)* y *Salir al menú principal* (R o Enter reintenta). Reintentar vuelve al **checkpoint** de la sala con la sala **virgen**, y recién entonces cuesta la vida (el Tótem lo hace gratis). La claridad que se juntó en ese intento se pierde. Sin vidas, el run termina. `Torre._morir`, `main._torre_murio`, `request_restart`.
 - **Segundo aliento:** una vez por torre vuelve a empezar la sala sin perder la vida.
 - **Reintentar la torre entera** (tecla de reintentar o desde la pausa): vuelve a la primera sala y cuesta una vida. Guardar y continuar también empieza la torre desde la primera sala (si se había muerto y no reintentado, cuenta como reintento).
 - Cada torre empieza con la pantalla de **dados** del tabernero (con "Empezar" ya habilitado).
@@ -60,7 +60,7 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 - Al llegar a la salida de una sala, el bloque queda como entrada de la siguiente y la sala anterior cae. **Farolín está sentado, apoyado en un tronquito, en una esquina del próximo checkpoint**, mirando al centro del cubo (la esquina con menos bloques al lado). Al llegar dice cuántos checkpoints faltan, contando el portal ("Buen comienzo, faltan 6", "Ya casi: la siguiente es la última").
 - El último checkpoint es el **cubo-portal** luminoso del juego. Llegar a él termina la torre: la claridad pasa al run y sigue el casino (o el final del juego en la etapa 15).
 
-## 7. Claridad (`salas_nuevas/cosecha.gd`, las mismas reglas de la torre vieja)
+## 7. Claridad (`torre/cosecha.gd`, las mismas reglas de la torre vieja)
 
 - Pisar un bloque o colgarse de él lo **purifica** y da su claridad: común 1, hielo 2, agrietado 2, pesado 2, trampa 2, pinchos 3, catapulta 3, bomba 5, checkpoint 1.
 - **Racha:** cada acción que purifica algo nuevo sube la racha; una que no purifica nada la corta. Multiplicador = 1 + 0,5 × (racha − 1), con tope ×4 (Racha larga ×6, Racha imparable ×8; Mano de oro de a 1,0).

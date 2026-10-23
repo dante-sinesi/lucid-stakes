@@ -29,9 +29,9 @@ Lo demás se borra. Lo que se aprendió de lo viejo y puede servir (qué funcion
 
 ### Fase 1 — Basura sin riesgo (media hora)
 - Sacar `data/salas/` del control de versiones y agregarlo al `.gitignore` (la biblioteca que viaja con el juego es `data/salas_torre.jsonl`).
-- Borrar de `tools/` todo salvo `Godot_*`, `salas_nuevas.exe`, `solver_nativo.exe` y `generador.exe` (los tres se rearman con `native/construir.bat`).
+- Borrar de `tools/` todo salvo `Godot_*`, `salas.exe`, `solver_nativo.exe` y `generador.exe` (los tres se rearman con `native/construir.bat`).
 - Vaciar `build/`, `capturas/`, `audio_prueba/` y los `.bak` de `data/`.
-- `bibliotecas/`: dejar `paquete_salas.jsonl`, `todas_las_salas.jsonl` y `salas_nuevas.jsonl` (las fuentes del paquete); el resto se borra.
+- `bibliotecas/`: dejar `paquete_salas.jsonl`, `todas_las_salas.jsonl` y `salas.jsonl` (las fuentes del paquete); el resto se borra.
 - `docs/capturas`, `docs/maquetas`, `docs/img`: borrar lo de la torre vieja; poner un `.gdignore` en `docs/` para que Godot no genere `.import` ahí; dejar sólo capturas vigentes.
 - Mover `demo.bat` y `jugar.bat` a `herramientas/` (o dejar sólo `jugar.bat` en la raíz).
 - Efecto: se liberan unos 1,7 GB y la carpeta queda legible.
@@ -51,7 +51,7 @@ La torre vieja (`tower_logic`, `solver`, `rooms`, `tower_gen`, `tower_metrics`, 
 Después se borran los módulos viejos, las ramas de `main.gd` que usan `logic.` (unas 176 referencias y 34 de `lab_active`: `main.gd` baja de 3.700 líneas a poco más de la mitad), `GAME_TORRE_VIEJA`/`GAME_TORRE_NUEVA`, los 88 tests de la torre vieja (o se reescriben los que valga la pena) y las dos herramientas nativas viejas.
 
 ### Fase 4 — Nombres y estructura
-- `salas_nuevas/` deja de ser "nuevo": pasa a `torre/` (clase `Torre`, `Motor`, `Reglas`...), con sus pruebas dentro.
+- `torre/` deja de ser "nuevo": pasa a `torre/` (clase `Torre`, `Motor`, `Reglas`...), con sus pruebas dentro.
 - `scripts/` (263 archivos planos) se ordena en carpetas por tema: `ui/` (menús, pausa, derrota, confirmaciones), `casino/` (ruleta, tragamonedas, blackjack, dados, servicios), `personajes/`, `datos/` (perfil, ajustes, guardado, telemetría), `herramientas/` (editor de modelos, generador, bot). Un script reescribe todas las rutas `res://` y los `.uid`, y se corren los tests después.
 - `tests/` en subcarpetas (`unitarios/`, `sondas/`, `capturas/`).
 - Normalizar finales de línea (hoy hay archivos CRLF y LF mezclados) con `.gitattributes`.

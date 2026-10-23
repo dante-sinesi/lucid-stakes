@@ -1,6 +1,6 @@
 # Auditoría: qué se perdió al pasar el juego a la torre nueva
 
-Rama `feature/torre-nueva-en-el-juego`. Se comparó, función por función, lo que hacía `scripts/main.gd` con la torre vieja (`TowerLogic`) contra lo que hace hoy la torre nueva (`salas_nuevas/torre_juego.gd`, `torre.gd`, `cosecha.gd`, `falsos.gd`).
+Rama `feature/torre-nueva-en-el-juego`. Se comparó, función por función, lo que hacía `scripts/main.gd` con la torre vieja (`TowerLogic`) contra lo que hace hoy la torre nueva (`torre/torre_juego.gd`, `torre.gd`, `cosecha.gd`, `falsos.gd`).
 **Cómo leer las marcas:** *(leído)* = lo comprobé leyendo el código, no jugando; *(probado)* = hay una prueba automática; *(sin probar)* = no lo pude comprobar.
 
 ## 1. Cambios de reglas que ya estaban decididos (no son errores, pero cambian el juego)
