@@ -1365,6 +1365,18 @@ func start_game(scenario_id := Scenarios.FREE, dificultad := "media") -> void:
 	new_tower(randi() % 100000)
 
 
+## El título del menú de pausa: el escenario en el que se está (La Pesadilla lleva además su dificultad); en el tutorial, "Pausa".
+func _titulo_pausa() -> String:
+	if run == null or training:
+		return ""
+	var nombre := Loc.t(str(run.scenario().get("name", "")))
+	if run.scenario_id == Scenarios.FREE:
+		for o in DifficultyScreen.OPTIONS:
+			if o.id == run.dificultad:
+				return "%s - %s" % [nombre, Loc.t(str(o.name))]
+	return nombre
+
+
 func pause_game() -> void:
 	if in_menu or pause_menu.visible:
 		return
@@ -1374,6 +1386,7 @@ func pause_game() -> void:
 	if trial_banner != null:
 		trial_banner.pin()
 	pause_menu.set_restart(run.lives, training, casino != null)
+	pause_menu.set_title(_titulo_pausa())
 	pause_menu.set_info(_info_pausa if torre != null and casino == null else [], _info_pausa_rojo)
 	pause_menu.open()
 	if trial.get("no_retry", false):

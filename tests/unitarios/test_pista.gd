@@ -57,6 +57,16 @@ func _init() -> void:
 	torre.alternar_pista()
 	await _frames(2)
 	_ok(not main.pista_hint.visible and torre._pista_texto == "", "al apagar el modo pista se saca de la pantalla")
+	# el menú de pausa dice en qué escenario se está
+	main.pause_game()
+	_ok(main.pause_menu.title_label.text == "La Pesadilla - Fácil", "la pausa dice el escenario y la dificultad (%s)" % main.pause_menu.title_label.text)
+	main.resume_game()
+	Profile.add_luz(100)   # (la entrada de Sin piedad cuesta Luz)
+	main.start_game("sin_piedad", "media")
+	await _frames(4)
+	main.pause_game()
+	_ok(main.pause_menu.title_label.text == "Sin piedad", "en Sin piedad la pausa dice sólo el escenario (%s)" % main.pause_menu.title_label.text)
+	main.resume_game()
 	# en Medio no hay pista ni movimientos ilimitados
 	main.start_game("pesadilla", "media")
 	await _frames(4)
@@ -91,7 +101,7 @@ func _init() -> void:
 	var DiceGame = load("res://scripts/casino/dice_game.gd")
 	var sin_cosmeticos := true
 	for n in 6:
-		sin_cosmeticos = sin_cosmeticos and DiceGame.prize_for(n).cosmetic.is_empty()
+		sin_cosmeticos = sin_cosmeticos and not DiceGame.prize_for(n).has("cosmetic")
 	_ok(sin_cosmeticos, "los dados no dan cosméticos")
 	# la Luz del run en Fácil
 	var run := RunState.new()

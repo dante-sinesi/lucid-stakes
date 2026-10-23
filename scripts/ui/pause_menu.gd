@@ -19,6 +19,7 @@ var column: VBoxContainer
 var center: CenterContainer
 var options: Control
 var hints
+var title_label: Control   # el título: "Pausa" o el escenario en el que se está
 var info: VBoxContainer   # a la izquierda: la etapa y el peaje (la torre no los muestra en el HUD)
 
 
@@ -37,8 +38,8 @@ func _init() -> void:
 	column = VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
 	center.add_child(column)
-	var title := UI.label(column, Loc.t("Pausa"), 6, UI.GOLD)
-	title.dance = true
+	title_label = UI.label(column, Loc.t("Pausa"), 6, UI.GOLD)
+	title_label.dance = true
 	_button("continuar", "Continuar", true, func(): resume.emit())
 	_button("reiniciar", Loc.t("Reintentar la torre"), false, func(): restart_tower.emit())
 	_button("menu", Loc.t("Volver al menú principal"), false, func(): to_main_menu.emit())
@@ -117,6 +118,11 @@ func show_options(on: bool) -> void:
 		options.focus_default()
 	else:
 		buttons["opciones"].grab_focus()
+
+
+## El título del menú ("" = Pausa).
+func set_title(text: String) -> void:
+	title_label.text = text if text != "" else Loc.t("Pausa")
 
 
 func open() -> void:
