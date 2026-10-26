@@ -15,6 +15,7 @@ const Telemetry := preload("res://scripts/datos/telemetry.gd")
 const Demo := preload("res://scripts/datos/demo.gd")
 const DemoEndScreen := preload("res://scripts/ui/demo_end_screen.gd")
 const KeyHint := preload("res://scripts/ui/key_hint.gd")
+const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino/casino_rules.gd")
 const BalanceScreen := preload("res://scripts/casino/casino_balance_screen.gd")
@@ -121,6 +122,7 @@ var tutorial_forced := false   # primera vez: el tutorial no se puede dejar (la 
 var tutorial_index := -1    # lección del tutorial en curso (-1 = no se está en el tutorial)
 var dice                      # los dados del tabernero: el minijuego de la pantalla de carga
 var _sun: DirectionalLight3D
+var fondo                   # el fondo con movimiento suave (fondo_animado.gd)
 var dialogue                 # cuadro de diálogo del tabernero (historia y consejos del tutorial)
 const TUTORIAL_TOLL := 25   # lo que cuesta el peaje de práctica del final del tutorial
 var _outro_phase := 0       # el cierre del tutorial: 0 el tabernero habla, 1 se camina hasta Farolín, 2 Farolín contesta y se termina
@@ -216,6 +218,8 @@ func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
+	fondo = FondoAnimado.new(env, int(OS.get_environment("GAME_FONDO")) if OS.get_environment("GAME_FONDO") != "" else 0)
+	add_child(fondo)
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55, -30, 0)
