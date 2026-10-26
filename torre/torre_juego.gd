@@ -65,6 +65,8 @@ var gato_nodo: Node3D        # su posición y orientación
 var silueta: Node3D          # su silueta (se ve a través de los bloques que lo tapan)
 var animador: Node           # sus animaciones (animacion.gd)
 var _tipo_anim := "caminar"   # la animación de la última acción
+var _lento := 1.0            # cuánto se alarga lo que pasa en la última acción (cámara lenta cuando empujar o tirar un bloque hace perder la sala, para que se entienda por qué)
+const CAMARA_LENTA := 3.0
 var mira := Vector3i(0, 0, 1)
 var _camara_tween: Tween
 var _paso_tween: Tween
@@ -283,14 +285,14 @@ func _animar_bloques(animar: bool) -> void:
 			if absf(desde.x - hasta.x) < 0.01 and absf(desde.z - hasta.z) < 0.01 and hasta.y < desde.y:
 				cayendo.append([mi, desde, hasta])
 				continue
-			var dur := maxf(STEP_TIME, 0.07 * desde.distance_to(hasta))
+			var dur := maxf(STEP_TIME, 0.07 * desde.distance_to(hasta)) * _lento
 			mi.create_tween().tween_property(mi, "position", hasta, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			_dur_empuje = maxf(_dur_empuje, dur)
 		for c in cayendo:   # ...y recién cuando termina empiezan a caer los que perdieron el apoyo
 			var mi: Node3D = c[0]
 			var tw := mi.create_tween()
 			tw.tween_interval(_dur_empuje)
-			tw.tween_property(mi, "position", c[2], 0.12 + 0.07 * c[1].distance_to(c[2])).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			tw.tween_property(mi, "position", c[2], (0.12 + 0.07 * c[1].distance_to(c[2])) * _lento).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_bloques_antes = ahora
 	_sala_dibujada = t.indice
 
@@ -337,7 +339,7 @@ func _poner_gato(animar: bool) -> void:
 		_paso_tween = create_tween()
 		_paso_tween.tween_property(gato_nodo, "position", destino, STEP_TIME)
 		animador.colgado(t.motor.colgado != Vector3i.ZERO)
-		animador.reproducir(_tipo_anim, DURACION_ANIM.get(_tipo_anim, STEP_TIME))
+		animador.reproducir(_tipo_anim, float(DURACION_ANIM.get(_tipo_anim, STEP_TIME)) * _lento)
 	else:
 		gato_nodo.position = destino
 		animador.colgado(t.motor.colgado != Vector3i.ZERO)
@@ -625,6 +627,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
 	_tipo_anim = _tipo_animacion(motor_antes, modo, antes_y, colgado_antes)
+	_lento = CAMARA_LENTA if (str(r.evento) == "muerte" and (_tipo_anim == "empujar" or _tipo_anim == "tirar")) else 1.0   # (si el bloque que movió te hace perder, se ve despacio)
 	if _tipo_anim == "tirar":
 		mira = -dir   # (al tirar camina hacia atrás: sigue de frente al bloque que trae)
 	_rastro_pendiente = motor_antes.rastro
@@ -632,7 +635,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 	_rastro_muerte = motor_antes.rastro.duplicate()
 	_procesar(r)
 	efectos.sonido(motor_antes, modo, antes_y)   # (el motor de antes guarda lo que pasó en la acción, aunque la sala haya cambiado)
-	efectos.visuales(motor_antes, antes_y, off_antes, _dur_empuje)
+	efectos.visuales(motor_antes, antes_y, off_antes, _dur_empuje, _lento)
 	if str(r.evento) == "torre":
 		efectos.juice.gold_burst(portal.position if portal != null else gato_nodo.position)
 		efectos.juice.zoom_punch(0.05)
@@ -727,12 +730,12 @@ func animar_derrota(motivo: String) -> float:
 	_tweens_derrota = []
 	if pts.size() > 1:
 		gato_nodo.position = pts[0]
-		var seg := 0.14
+		var seg := 0.14 * _lento
 		previo = espera + seg * float(pts.size() - 1) + 0.35   # (y una pausa para ver dónde quedó)
 		var mov := create_tween()
 		mov.tween_interval(espera)
 		mov.tween_method(func(k: float) -> void: gato_nodo.position = _punto_en(pts, k), 0.0, 1.0, seg * float(pts.size() - 1))
-		mov.parallel().tween_callback(Characters.step_anim.bind(gato, seg)).set_delay(0.0)
+		mov.parallel().tween_callback(animador.reproducir.bind(_tipo_anim, float(DURACION_ANIM.get(_tipo_anim, 0.14)) * _lento)).set_delay(0.0)
 		_tweens_derrota.append(mov)
 	get_tree().create_timer(previo).timeout.connect(_caer_derrota.bind(motivo, LENTO))
 	return previo
