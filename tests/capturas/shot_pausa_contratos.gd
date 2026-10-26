@@ -14,7 +14,7 @@ func _init() -> void:
 	root.add_child(p)
 	p.visible = true
 	p.set_info(["Etapa 3 de 15", "Peaje: 235"])
-	var todos := [{"objetivo": "movimientos", "rareza": Arte.Rareza.COMUN}, {"objetivo": "especiales", "rareza": Arte.Rareza.EPICA}, {"objetivo": "claridad", "rareza": Arte.Rareza.IMPOSIBLE}, {"objetivo": "racha", "rareza": Arte.Rareza.RARA}]
+	var todos := [{"objetivo": "movimientos", "rareza": Arte.Rareza.COMUN, "titulo": "Ahorrador de pasos", "condiciones": ["Termina la torre con el 20 % de los movimientos sin gastar", "Con fianza de 120"]}, {"objetivo": "especiales", "rareza": Arte.Rareza.EPICA, "titulo": "Cazador de especiales", "condiciones": ["Purifica 4 bloques especiales"]}, {"objetivo": "claridad", "rareza": Arte.Rareza.IMPOSIBLE, "titulo": "Cosechador", "condiciones": ["Junta 2000 de claridad en la torre"]}, {"objetivo": "racha", "rareza": Arte.Rareza.RARA, "titulo": "Racha de oro", "condiciones": ["Llega a una racha de 6"]}]
 	p.set_contratos(todos.slice(0, int(args[1]) if args.size() > 1 else 3))
 	await create_timer(0.8).timeout
 	root.get_texture().get_image().save_png(args[0])

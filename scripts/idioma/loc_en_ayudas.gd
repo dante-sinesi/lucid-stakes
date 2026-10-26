@@ -3,9 +3,13 @@ extends RefCounted
 
 const TABLE := {
 	"El tablón de contratos": "The contract board",
-	"Cada papel pide algo para la próxima torre (llegar a una racha, no deshacer, purificar especiales...). Acéptalo gratis y se cobra en cuanto lo cumples. El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los que no aceptes siguen colgados en el próximo casino.": "Each paper asks for something in the next tower (reach a streak, don't undo, purify special blocks...). Accept it for free and you get paid as soon as you complete it. The seal tells how hard it is: gray, blue, purple, and black for the nearly impossible. The ones you don't accept stay hanging at the next casino.",
+	"Cada papel pide algo para la próxima torre: llegar a una racha, no deshacer, purificar especiales... Acéptalo gratis y se cobra en cuanto lo cumples.": "Each paper asks for something in the next tower: reach a streak, don't undo, purify special blocks... Accept it for free and you get paid as soon as you complete it.",
+	"Los sellos": "The seals",
+	"El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los papeles que no aceptes siguen colgados en el próximo casino.": "The seal tells how hard it is: gray, blue, purple, and black for the nearly impossible. The papers you don't accept stay hanging at the next casino.",
 	"Aceptar, descolgar y rotar": "Accept, take down and rotate",
-	"Puedes tener pocos contratos activos a la vez. Descolgar un papel deja su lugar libre: solo aparecen dos papeles nuevos por torre. Rotar cambia todos los papeles colgados por otros y cada vez cuesta más. En el casino y el gran casino se puede aceptar con fianza: pagas ahora y, si cumples, cobras más y recuperas la fianza.": "You can only have a few active contracts at a time. Taking a paper down frees its spot: only two new papers show up per tower. Rotating swaps every hanging paper for others and costs more each time. At the casino and the grand casino you can accept with a deposit: you pay now and, if you complete it, you earn more and get the deposit back.",
+	"Puedes tener pocos contratos activos a la vez. Descolgar un papel libera su lugar: solo llegan dos papeles nuevos por torre. Rotar cambia todos y cada vez cuesta más.": "You can only have a few active contracts at a time. Taking a paper down frees its spot: only two new papers arrive per tower. Rotating swaps them all and costs more each time.",
+	"Fianza y tienda": "Deposit and shop",
+	"En el casino y el gran casino puedes aceptar con fianza: pagas ahora y, si cumples, cobras más y la recuperas. La pestaña de arriba te lleva a la tienda.": "At the casino and the grand casino you can accept with a deposit: you pay now and, if you complete it, you earn more and get it back. The tab at the top takes you to the shop.",
 	"Ayuda": "Help",
 	"Página": "Page",
 	"Siguiente": "Next",

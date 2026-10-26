@@ -589,7 +589,7 @@ func interact() -> String:
 	if busy or leaving or input_locked:
 		return "blocked"
 	var n := cell + facing
-	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell) or (toll_base > 0 and n == lay.farolin):
+	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("tablon") and not story and n == lay.tablon) or (lay.has("station") and n == lay.station.cell) or (toll_base > 0 and n == lay.farolin):
 		return _bump(n)
 	for ct in lay.card_tables:
 		if ct.has_point(n):
@@ -630,6 +630,7 @@ func open_service() -> void:
 func open_tablon() -> void:
 	var s: Control = ServiceScreens.make("tablon")
 	s.tier = int(lay.tier)
+	s.pestanas = true   # (el tablón y la tienda son dos pestañas de lo mismo)
 	_open_screen(s)
 
 
@@ -658,9 +659,15 @@ func _open_screen(new_screen: Control) -> void:
 		changed.emit()
 		_build_tablon())   # (aceptar, rechazar o rotar cambia lo que cuelga del tablón)
 	if screen.has_signal("open_shop"):   # las estaciones de servicio tienen un botón para pasar a la tienda
+		var desde_tablon: bool = screen.pestanas
 		screen.open_shop.connect(func():
 			close_roulette()
-			_open_screen(ServiceScreens.make("tienda")))
+			var shop: Control = ServiceScreens.make("tienda")
+			shop.pestanas = desde_tablon
+			_open_screen(shop))
+		screen.open_tablon.connect(func():
+			close_roulette()
+			open_tablon())
 	hud_layer.visible = false   # el juego ocupa toda la pantalla: la interfaz del casino no se ve detras
 
 

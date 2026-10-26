@@ -44,6 +44,10 @@ func test_escena() -> void:
 		check(sc._tablon_nodos.size() == 3 and sc._papeles_del_tablon().size() == Contratos.capacidad(tier), "etapa %d: el tablón se dibuja con sus papeles" % stage)
 		var fino_antes: int = (sc._tablon_nodos[2].mesh as ArrayMesh).surface_get_array_len(0)
 		check(fino_antes > 0, "etapa %d: los papeles tienen minibloques" % stage)
+		sc.cell = sc.lay.tablon + Vector2i(1, 0)   # (parado al lado del tablón y mirándolo, Espacio lo abre)
+		sc.facing = Vector2i(-1, 0)
+		check(sc.interact() == "service" and sc.screen != null and sc.screen.pestanas and sc.screen.find_child("tienda", true, false) != null, "etapa %d: Espacio frente al tablón lo abre, con la pestaña de la tienda" % stage)
+		sc.close_roulette()
 		check(sc._bump(sc.lay.tablon) == "service" and sc.screen != null and sc.screen.get("service_id") == "tablon", "etapa %d: chocar con el tablón abre su pantalla" % stage)
 		var s = sc.screen
 		check(s.find_child("aceptar", true, false) != null and s.find_child("rotar", true, false) != null and s.find_child("descolgar", true, false) != null, "etapa %d: tiene aceptar, descolgar y rotar" % stage)

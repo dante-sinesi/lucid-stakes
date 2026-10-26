@@ -62,6 +62,7 @@ const TABLE := {
 	"En el próximo casino cobras parte de lo que ahorraste": "At the next casino you collect part of what you saved",
 	"Tus ahorros rinden: cobras %d de claridad.": "Your savings pay off: you collect %d clarity.",
 	# los contratos
+	"Contratos": "Contracts",
 	"Caza recompensas": "Bounty hunter",
 	"Puedes tener un contrato activo más. Se acumula (hasta 2).": "You can have one more active contract. Stacks (up to 2).",
 	"Contratista": "Contractor",

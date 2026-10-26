@@ -50,8 +50,10 @@ const PAGES := {
 		{"title": "El taller", "art": "taller_yunque", "text": "Aquí vendes un boost o un consumible por el 40 % de su valor. También puedes cambiarlo por otro del mismo nivel pagando el 30 % de la ficha. Sirve para liberar lugar en tus barras."},
 	],
 	"tablon": [
-		{"title": "El tablón de contratos", "art": "tablon_papeles", "text": "Cada papel pide algo para la próxima torre (llegar a una racha, no deshacer, purificar especiales...). Acéptalo gratis y se cobra en cuanto lo cumples. El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los que no aceptes siguen colgados en el próximo casino."},
-		{"title": "Aceptar, descolgar y rotar", "art": "tablon_acciones", "text": "Puedes tener pocos contratos activos a la vez. Descolgar un papel deja su lugar libre: solo aparecen dos papeles nuevos por torre. Rotar cambia todos los papeles colgados por otros y cada vez cuesta más. En el casino y el gran casino se puede aceptar con fianza: pagas ahora y, si cumples, cobras más y recuperas la fianza."},
+		{"title": "El tablón de contratos", "art": "tablon_papeles", "text": "Cada papel pide algo para la próxima torre: llegar a una racha, no deshacer, purificar especiales... Acéptalo gratis y se cobra en cuanto lo cumples."},
+		{"title": "Los sellos", "art": "tablon_papeles", "text": "El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los papeles que no aceptes siguen colgados en el próximo casino."},
+		{"title": "Aceptar, descolgar y rotar", "art": "tablon_acciones", "text": "Puedes tener pocos contratos activos a la vez. Descolgar un papel libera su lugar: solo llegan dos papeles nuevos por torre. Rotar cambia todos y cada vez cuesta más."},
+		{"title": "Fianza y tienda", "art": "tablon_acciones", "text": "En el casino y el gran casino puedes aceptar con fianza: pagas ahora y, si cumples, cobras más y la recuperas. La pestaña de arriba te lleva a la tienda."},
 	],
 	"tienda": [
 		{"title": "La tienda", "art": "tienda_vitrina", "text": "Tres premios de esta visita (uno épico, uno raro y uno común) a precio fijo. Es caro, pero seguro: no hay que tirar la ruleta. Los premios cambian en cada visita."},

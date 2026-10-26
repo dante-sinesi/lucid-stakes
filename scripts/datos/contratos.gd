@@ -394,5 +394,8 @@ static func condicion(papel: Dictionary) -> String:
 static func para_pausa(run) -> Array:
 	var out: Array = []
 	for p in activos(run):
-		out.append({"objetivo": str(OBJETIVOS[p.obj].icono), "rareza": int(p.r)})
+		var cond: Array = [condicion(p)]
+		if int(p.fianza) > 0:
+			cond.append(Loc.f("Con fianza de %d", [int(p.fianza)]))
+		out.append({"objetivo": str(OBJETIVOS[p.obj].icono), "rareza": int(p.r), "titulo": titulo(p), "condiciones": cond})
 	return out
