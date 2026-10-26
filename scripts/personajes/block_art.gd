@@ -305,7 +305,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 				var p := _de_cara(cara, uv)
 				var nucleo := (i % 9 == 4)
 				i += 1
-				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles or (hierro and _bordes(p) >= 2) or (pinchos and p.y > TOPE_PINCHOS):   # (las púas no se agrietan; las grietas del hierro no tocan el marco ni los remaches)
+				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles or (hierro and _bordes(p) >= 2) or (pinchos and p.y > TOPE_PINCHOS) or (punto and cara == 0):   # (las púas no se agrietan; las grietas del hierro no tocan el marco ni los remaches)
 					continue
 				_grieta(vox, p, cara, nucleo, c, sd, tipo)
 	if punto:
