@@ -10,7 +10,7 @@ const BlockModels := preload("res://scripts/personajes/block_models.gd")
 const N := 10
 enum Estado { CORRUPTO, PURIFICADO }
 
-## Los temas, uno por cada tres etapas (como las pruebas). Cada paleta: tonos de la piedra corrupta, vena y núcleo de la vena (emiten), tonos de la piedra
+## Los temas, uno por cada tres etapas (como las pruebas): violeta, musgo, arenisca, brasa y alba. Cada paleta: tonos de la piedra corrupta, vena y núcleo de la vena (emiten), tonos de la piedra
 ## purificada, cicatriz (la grieta curada) y resto de vena (lo que queda de la corrupción).
 const TEMAS := [
 	{
@@ -24,6 +24,54 @@ const TEMAS := [
 		"pura_arriba": Color(0.88, 0.85, 0.97),
 		"cicatriz": Color(0.50, 0.44, 0.67),
 		"resto_vena": Color(0.62, 0.18, 0.72),
+	},
+	{
+		"nombre": "Piedra de musgo",   # etapas 4 a 6
+		"corrupta": [Color(0.04, 0.09, 0.09), Color(0.06, 0.12, 0.12), Color(0.09, 0.16, 0.15)],
+		"roca_vena": Color(0.05, 0.22, 0.22),
+		"vena": Color(0.10, 0.95, 0.80, 0.40),
+		"nucleo": Color(0.65, 1.0, 0.95, 0.22),
+		"halo": Color(0.05, 0.50, 0.45, 0.88),
+		"pura": [Color(0.62, 0.78, 0.70), Color(0.68, 0.83, 0.75), Color(0.74, 0.88, 0.80)],
+		"pura_arriba": Color(0.85, 0.96, 0.90),
+		"cicatriz": Color(0.42, 0.58, 0.52),
+		"resto_vena": Color(0.10, 0.62, 0.52),
+	},
+	{
+		"nombre": "Arenisca",   # etapas 7 a 9
+		"corrupta": [Color(0.11, 0.06, 0.04), Color(0.15, 0.08, 0.05), Color(0.20, 0.11, 0.07)],
+		"roca_vena": Color(0.30, 0.10, 0.04),
+		"vena": Color(1.0, 0.50, 0.08, 0.40),
+		"nucleo": Color(1.0, 0.85, 0.45, 0.22),
+		"halo": Color(0.65, 0.22, 0.04, 0.88),
+		"pura": [Color(0.84, 0.72, 0.56), Color(0.89, 0.77, 0.61), Color(0.93, 0.82, 0.67)],
+		"pura_arriba": Color(0.97, 0.90, 0.78),
+		"cicatriz": Color(0.62, 0.48, 0.34),
+		"resto_vena": Color(0.82, 0.38, 0.10),
+	},
+	{
+		"nombre": "Roca de brasa",   # etapas 10 a 12
+		"corrupta": [Color(0.10, 0.04, 0.05), Color(0.14, 0.05, 0.06), Color(0.19, 0.07, 0.08)],
+		"roca_vena": Color(0.30, 0.04, 0.06),
+		"vena": Color(1.0, 0.16, 0.20, 0.40),
+		"nucleo": Color(1.0, 0.62, 0.55, 0.22),
+		"halo": Color(0.60, 0.08, 0.10, 0.88),
+		"pura": [Color(0.86, 0.68, 0.70), Color(0.91, 0.73, 0.75), Color(0.95, 0.79, 0.80)],
+		"pura_arriba": Color(0.98, 0.88, 0.89),
+		"cicatriz": Color(0.64, 0.44, 0.47),
+		"resto_vena": Color(0.80, 0.18, 0.24),
+	},
+	{
+		"nombre": "Piedra del alba",   # etapas 13 a 15
+		"corrupta": [Color(0.07, 0.07, 0.10), Color(0.10, 0.10, 0.14), Color(0.14, 0.14, 0.19)],
+		"roca_vena": Color(0.22, 0.20, 0.08),
+		"vena": Color(1.0, 0.82, 0.25, 0.40),
+		"nucleo": Color(1.0, 0.97, 0.75, 0.22),
+		"halo": Color(0.55, 0.42, 0.08, 0.88),
+		"pura": [Color(0.88, 0.88, 0.94), Color(0.93, 0.93, 0.98), Color(0.97, 0.97, 1.0)],
+		"pura_arriba": Color(1.0, 1.0, 1.0),
+		"cicatriz": Color(0.66, 0.66, 0.76),
+		"resto_vena": Color(0.86, 0.68, 0.18),
 	},
 ]
 
