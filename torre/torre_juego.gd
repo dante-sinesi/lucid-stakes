@@ -314,8 +314,6 @@ func _pos_gato() -> Vector3:
 
 
 func _poner_gato(animar: bool) -> void:
-	if silueta != null and en_juego:
-		silueta.visible = bool(Graphics.value("silhouette"))   # (si se cambió en las opciones, vale desde la próxima acción)
 	if en_juego and t.muerta:   # (perdió la sala: la animación de la derrota lleva al personaje; no se lo acomoda en su sitio)
 		return
 	var destino := _pos_gato()
@@ -484,6 +482,8 @@ func _ocultar_arriba() -> void:
 func _process(delta: float) -> void:
 	if t == null or pivot == null:
 		return
+	if silueta != null and en_juego:   # (Opciones > Gráficos > Transparencia del personaje: vale en cuanto se cambia)
+		silueta.visible = bool(Graphics.value("silhouette"))
 	var activa: bool = not (en_juego and puede_jugar.is_valid() and not puede_jugar.call())
 	efectos.proceso(delta, activa)
 	if not panorama and not _cayendo:   # la cámara sigue siempre al personaje (también mientras camina o se desliza), aunque algo la haya movido
