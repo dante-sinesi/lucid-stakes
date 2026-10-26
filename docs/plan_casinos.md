@@ -68,8 +68,9 @@ Conclusiones:
 | 4 en adelante | ×1 | 93 en adelante |
 
 - Es continua: no hay salto al pasar de la taberna al salón.
-- **Riesgo conocido:** los boosts valen una cantidad fija de claridad (épico ~640, raro ~210, común ~100), mientras que las bolsas escalan con la ficha. Con una ficha chica y premios grandes la ruleta rendiría de más. Por eso **la vitrina de la taberna lleva solo premios comunes y consumibles**, sin raros ni épicos (`Showcase`). Es el primer paso de "los premios dependen del casino".
-- Interacciones a revisar: *Ficha barata* (−20 %, se acumula), *Ficha gratis*, y los consumibles tipo "devuelve N veces la ficha".
+- **Los premios no se limitan en la taberna** (decisión de Dante): la ruleta de la taberna sortea entre todo, como las demás. No hace falta limitarlos porque el modelo ya escala con la ficha: `Items.value_of` da a cada premio un valor proporcional al precio (`value × ficha / 50`) y las bolsas de claridad pagan un múltiplo de la ficha (×1,4, ×3, ×6, ×15, ×40), de modo que el rendimiento esperado de la ruleta (`Roulette.expected_ratio`) es el mismo con cualquier ficha. Con la ficha al ~20 % del ingreso, un épico cuesta en promedio unas 2,6 torres de ingreso en cualquier etapa; hoy en la etapa 1 cuesta unas 5,8.
+- **Lo que sí cambia (y es de balance):** el *efecto* de un boost no escala con la ficha. Con la ficha chica los boosts llegan antes en claridad, y los que multiplican la ganancia (Cosecha doble, Midas…) arrancan la bola de nieve más temprano. Es el mismo efecto que ya tiene *Ficha barata*. Se corrige después con constantes (la ficha de la etapa 1, el peaje) midiendo con el bot, no con una regla nueva.
+- Interacciones a revisar: *Ficha barata* (−20 %, se acumula), *Ficha gratis* y los consumibles tipo "devuelve N veces la ficha".
 
 ## 4. Contratos
 
@@ -134,11 +135,11 @@ Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar
 |---|---|---|---|---|
 | Etapas | 1 a 3 | 4 a 7 | 8 a 11 | 12 a 15 |
 | Mesas | ruleta con ficha chica | ruleta, tragamonedas, blackjack | ídem | ídem |
-| Premios de la ruleta | solo comunes y consumibles | por definir | por definir | por definir |
+| Premios de la ruleta | todos | todos | todos | todos |
 | Tablón | 3 papeles | 4 | 5 (fianza) | 6 (fianza) |
 | Estación | — | Taller | — | — |
 
-Ideas para diferenciar más, **sin decidir**: premios por rareza según el casino (épicos solo desde cierto casino, boosts exclusivos del gran casino), un servicio propio del gran casino (fundir dos boosts en uno mejor), una mesa VIP, vista previa de lo que vende el casino siguiente, y un crupier con personalidad en cada casino.
+Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino, un servicio propio del gran casino (fundir dos boosts en uno mejor), una mesa VIP, vista previa de lo que vende el casino siguiente, y un crupier con personalidad en cada casino.
 
 ## 6. Reglas de implementación a respetar
 
@@ -150,7 +151,7 @@ Ideas para diferenciar más, **sin decidir**: premios por rareza según el casin
 
 ## 7. Orden de trabajo propuesto
 
-1. **Taberna y ficha chica:** sacar la tragamonedas de la taberna, multiplicador de ficha de las etapas 1 a 3, vitrina de la taberna con premios chicos.
+1. **Taberna y ficha chica:** sacar la tragamonedas de la taberna y poner el multiplicador de ficha de las etapas 1 a 3 (sin limitar los premios).
 2. **Reglas y Caja fuerte → boosts y consumibles:** quitar `casino_rules`, la regla aceptada con el tabernero, la apuesta de varias fichas y la Caja; agregar los ítems nuevos (Racha, Jackpot, Caja fuerte, Alcancía, Caza recompensas).
 3. **Contratos, versión mínima:** modelo de datos, sorteo por casino, estación del tablón con su pantalla, 2 activos, cobro al cumplirse.
 4. **Presentación:** sello de rareza, animación del sello "COBRADO", pausa con los contratos activos.
@@ -165,6 +166,6 @@ Ideas para diferenciar más, **sin decidir**: premios por rareza según el casin
 - Rareza y nombre del consumible "Sello de oro" (×5), y si se puede acumular más de uno.
 - Que el boost "Contratista" (cada contrato paga el doble) exista, su nombre y su rareza.
 - Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
-- Premios por rareza según el casino.
+- Si algún boost debería ser exclusivo de un casino (sin limitar lo que sale en los demás).
 - Si el casino y el gran casino llevan alguna estación (hoy, sin la Caja fuerte, no tienen ninguna).
 - Cuándo recalibrar el peaje (hoy es el 77 % de lo que rinde la torre en la etapa 1).
