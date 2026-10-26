@@ -88,13 +88,21 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 | Casino | 5 |
 | Gran casino | 6 |
 
-- Cada visita sortea sus papeles; los aceptados quedan marcados.
+### La cartelera es persistente
+- El tablón es **uno solo por partida** (se guarda con el run) y **sus papeles pasan de un casino al siguiente**: si dejas los 6 colgados y no haces hueco, en el próximo casino están **los mismos 6**.
+- Cada papel está en uno de estos estados: **colgado** (se ofrece), **activo** (aceptado: sale de la cartelera y cuenta para el límite de 2, o 3 con Caza recompensas) o **cobrado/fallido** (se va).
+- En cada casino aparecen **a lo sumo 2 papeles nuevos por torre**, y solo en los **huecos** de la cartelera (por haber aceptado, rechazado o cobrado alguno). Si no hay huecos, no aparece nada.
+- **Rechazar** un papel (gratis) lo descuelga y deja el hueco. Eso obliga a decidir en cada visita: aceptar, rechazar para hacer lugar, o dejarlo colgado para tomarlo en la próxima torre.
+- Cuando un casino tiene más lugares que el anterior (3 → 4 → 5 → 6), los lugares nuevos arrancan vacíos y se llenan con los 2 papeles nuevos por torre, igual que los demás huecos. Para el primer casino se llenan los 3 lugares de entrada (por confirmar).
+- Un papel guarda **qué se pide** (el objetivo) y su recompensa **en porcentaje** de lo que rinde una torre; el monto se calcula **al aceptar**, con la etapa de ese casino. Así un contrato difícil que se dejó colgado no se desvaloriza ni se aprovecha de una etapa más barata, y la rareza del sello (que sale de ese porcentaje) no cambia.
+- La cartelera se reinicia al empezar un run nuevo.
 
 ### Rotar los papeles
-- La pantalla del tablón tiene un botón **"Rotar"**, como la vitrina de la ruleta (`showcase.gd`: `rotate_cost` = ficha × (1 + rotaciones de la visita)): vuelve a sortear los papeles **que no se aceptaron** (los aceptados se quedan) y cada rotación de la visita cuesta más que la anterior. El contador se reinicia al entrar a cada casino.
-- Costo de partida: **la mitad de la ficha × (1 + rotaciones)** (`ROTAR_CONTRATOS`), o sea, con la ficha de la etapa 1 (33): 16, 33, 49… Se cobra en claridad. Es una constante: la mitad porque un contrato común de la etapa 1 paga unos 17 y rotar al precio de la ficha entera nunca valdría la pena.
-- Mientras se rota, la cantidad de papeles del casino no cambia (3, 4, 5 o 6) y la rareza de los nuevos se sortea de nuevo.
-- Con *Llave de la vitrina* ("la primera rotación de la vitrina de cada visita es gratis") queda por decidir si también hace gratis la primera rotación del tablón.
+- La pantalla del tablón tiene un botón **"Rotar"**, como la vitrina de la ruleta (`showcase.gd`): vuelve a sortear los papeles **colgados** (los activos no se tocan) y cada rotación de la visita cuesta más que la anterior. El contador se reinicia al entrar a cada casino.
+- Rotar es la única forma de ver más de 2 papeles nuevos por torre, y **tira también los que se estaban guardando**: antes de rotar conviene aceptar los que se quieran conservar. Es parte de la decisión.
+- Costo de partida: **la mitad de la ficha × (1 + rotaciones)** (`ROTAR_CONTRATOS`), **lineal**, igual que la vitrina. Con la ficha de la etapa 1 (33): 16, 33, 49… Se cobra en claridad. Es una constante: la mitad porque un contrato común de la etapa 1 paga unos 17 y rotar al precio de una ficha entera nunca valdría la pena.
+- La cantidad de papeles de la cartelera no cambia al rotar (3, 4, 5 o 6) y la rareza de los nuevos se sortea de nuevo.
+- **Llave de la vitrina** ("la primera rotación de la vitrina de cada visita es gratis") también hace **gratis (costo cero) la primera rotación del tablón** de cada visita.
 
 ### Rareza: el sello del papel
 - La rareza se ve en un **sello** sobre la hoja que cambia de color: **gris** (común), **azul** (raro), **violeta** (épico).
@@ -170,7 +178,7 @@ Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino,
 - Los porcentajes de cada objetivo (la recompensa), y qué objetivos cuentan como "muy duros".
 - `FIANZA_MULT` (×1,5 de partida) y si `FIANZA_FRACCION` (50 %) se queda fijo o pasa a depender de algo.
 - Rareza y nombre del consumible "Sello de oro" (×5), y si se puede acumular más de uno.
-- Si *Llave de la vitrina* abarca también la primera rotación de contratos, y la base del costo de rotar (la mitad de la ficha de partida).
+- Si rotar tiene que respetar a los papeles guardados o los tira (por ahora los tira) y si el primer casino arranca con la cartelera llena o con 2 papeles.
 - Que el boost "Contratista" (cada contrato paga el doble) exista, su nombre y su rareza.
 - Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
 - Si algún boost debería ser exclusivo de un casino (sin limitar lo que sale en los demás).
