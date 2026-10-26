@@ -107,7 +107,7 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 ### Rareza: el sello del papel
 - La rareza se ve en un **sello** sobre la hoja que cambia de color: **gris** (común), **azul** (raro), **violeta** (épico).
 - La rareza no se elige: sale de lo que paga el objetivo (ver "Recompensa y dificultad de la tarea"). Cuanto más difícil la tarea, más paga y más raro el sello; y todo escala con la etapa.
-- Hay una cuarta rareza, **imposible**, para contratos que **no se pueden cumplir sin una build dedicada** (por ejemplo, subir la torre sin gastar movimientos de escalada). No sale del porcentaje: es una marca del objetivo (`imposible`) que además **declara qué ítems lo hacen posible** (boosts o consumibles). Su sello es **rojo** (como el lacre), para no confundirse con el gris, el azul y el violeta; color provisorio.
+- Hay una cuarta rareza, **imposible**, para contratos que **no se pueden cumplir sin una build dedicada** (por ejemplo, subir la torre sin gastar movimientos de escalada). No sale del porcentaje: es una marca del objetivo (`imposible`) que además **declara qué ítems lo hacen posible** (boosts o consumibles). Su sello es **negro** (decisión de Dante), que se distingue del gris, el azul y el violeta.
 - Reglas de los imposibles: no aparecen en la taberna; **a lo sumo uno colgado a la vez**; con poco peso en el sorteo; pagan mucho más que cualquier otro (del orden de una torre entera o más: 100 % a 150 % de lo que rinde en esa etapa, antes de Contratista o Sello de oro). Como la cartelera es persistente, uno puede quedarse colgado hasta que el jugador tenga la build, o rechazarse si ocupa lugar.
 - Cada objetivo imposible se prueba con el bot jugando con la build que declara, para asegurar que **sí** se puede cumplir.
 
@@ -182,7 +182,7 @@ Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino,
 - `FIANZA_MULT` (×1,5 de partida) y si `FIANZA_FRACCION` (50 %) se queda fijo o pasa a depender de algo.
 - Rareza y nombre del consumible "Sello de oro" (×5), y si se puede acumular más de uno.
 - Si rotar tiene que respetar a los papeles guardados o los tira (por ahora los tira) y si el primer casino arranca con la cartelera llena o con 2 papeles.
-- Lista de objetivos imposibles y las builds que los habilitan; color final del sello rojo; desde qué casino aparecen (por ahora, desde el salón).
+- Lista de objetivos imposibles y las builds que los habilitan; desde qué casino aparecen (por ahora, desde el salón).
 - Que el boost "Contratista" (cada contrato paga el doble) exista, su nombre y su rareza.
 - Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
 - Si algún boost debería ser exclusivo de un casino (sin limitar lo que sale en los demás).
