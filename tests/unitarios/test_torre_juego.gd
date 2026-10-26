@@ -107,9 +107,14 @@ func _init() -> void:
 	var s0: Vector2i = main.torre.Torre.salida_xz(sal0.d)
 	_ok(main.torre.farolin.visible and absf(main.torre.farolin.position.x - (s0.x + 0.5)) < 0.01, "Farolín espera en el próximo checkpoint (la salida de la sala actual)")
 	main.dialogue.hide_box()
-	for k in range(1, total_salas):
+	for k in range(1, total_salas - 1):
 		_jugar_sala(main, k)
-	await _frames(4)
+	main.quick_portal = false   # (en el portal el HUD sigue a la vista un momento: la claridad no se cuenta dos veces)
+	_jugar_sala(main, total_salas - 1)
+	await _frames(3)
+	_ok(main.banked and main.clarity_counter.value == main.run.claridad, "en el portal el contador muestra la claridad del run, sin contar dos veces la de la torre (%d y %d)" % [main.clarity_counter.value, main.run.claridad])
+	main.quick_portal = true
+	await _frames(200)
 	_ok(main.casino != null and main.torre == null, "al llegar al portal sigue el casino y la torre se saca")
 	_ok(main.run.claridad > claridad0, "la claridad de la torre pasó al run (%d -> %d)" % [claridad0, main.run.claridad])
 	main.leave_casino()

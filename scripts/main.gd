@@ -879,7 +879,7 @@ func _refresh_torre() -> void:
 	stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, Demo.shown_final(FINAL_STAGE), " *" if not trial.is_empty() else ""])
 	stage_label.visible = false   # (la etapa y el peaje se ven en el menú de pausa; el HUD muestra los movimientos de la sala)
 	hud.text = "Semilla %d   Sala %d/%d   Movimientos %d/%d   Dificultad %s" % [seed_value, torre.t.indice + 1, torre.t.salas.size(), torre.t.movs, torre.t.max_mov(), run.dificultad] if torre.t != null else ""
-	var total: int = run.claridad + (torre.t.cosecha.claridad() if torre.t != null else 0)
+	var total: int = run.claridad + (torre.t.cosecha.claridad() if torre.t != null and not banked else 0)   # (ya sumada al run al llegar al portal: no se cuenta dos veces)
 	var show_toll: bool = not training and tutorial_index < 0 and not (test_mode and not toll_in_tests)
 	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
 	hud_panel.set_toll(0)
