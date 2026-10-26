@@ -62,7 +62,7 @@ const XRAY_RADIUS := 1.3
 const FINAL_STAGE := Stages.FINAL   # etapas del juego: al pasar la última se termina
 ## Fondo y bloques se aclaran de una etapa a la siguiente (no dentro de una misma etapa).
 const BG_DARK := Color(0.25, 0.22, 0.40)   # (las primeras etapas: un violeta medio, para que los bloques oscuros se recorten contra el fondo)
-const BG_LIGHT := Color(0.80, 0.84, 0.95)
+const BG_LIGHT := Color(0.40, 0.37, 0.60)   # (las etapas finales: un poco más claro, pero siempre tono medio: los bloques oscuros y los claros tienen que recortarse)
 const AMBIENT_TOWER := 0.7        # luz ambiente de las torres
 const AMBIENT_CASINO_EARLY := 1.0  # luz ambiente del casino en la primera etapa (una taberna en penumbra, pero que se lee)
 const AMBIENT_CASINO_LATE := 1.5   # luz ambiente del casino en la última etapa (el salón; el casino y el gran casino usan la luz cálida de abajo)

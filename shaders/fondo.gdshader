@@ -36,14 +36,14 @@ void fragment() {
 	vec3 tono = mix(base.rgb, violeta * lum * 1.6, 0.18);   // (el color de la etapa, un poco más violáceo)
 	// la capa lejana: cuadraditos grandes, lentos, casi no se mueven con la cámara
 	vec2 pl = pix + camara * 6.0;
-	float vl = remolino(cuadrito(pl, 30.0), c0, 0.0042 * 10.0, 0.5, 0.0);
+	float vl = remolino(cuadrito(pl, 30.0), c0, 0.0042 * 10.0, 0.28, 0.0);
 	float nl = vl > 0.9 ? 1.0 : (vl > 0.0 ? 0.35 : (vl > -0.9 ? -0.25 : -0.65));
 	// la capa del medio: cuadraditos medianos, algo más rápidos
 	vec2 pm = pix + camara * 16.0;
-	float vm = remolino(cuadrito(pm, 20.0), c0 + vec2(60.0, -40.0), 0.035, 0.8, 2.0);
+	float vm = remolino(cuadrito(pm, 20.0), c0 + vec2(60.0, -40.0), 0.035, 0.45, 2.0);
 	float nm = vm > 0.9 ? 1.0 : (vm > 0.0 ? 0.3 : (vm > -0.9 ? -0.2 : -0.5));
 	// la capa cercana: chispitas de luz que se mueven mucho con la cámara (dan la sensación de profundidad)
-	vec2 pc = pix + camara * 34.0 + vec2(TIME * 3.0, -TIME * 5.0);
+	vec2 pc = pix + camara * 34.0 + vec2(TIME * 1.5, -TIME * 2.5);
 	vec2 idc = floor(pc / 44.0);
 	vec2 fc = fract(pc / 44.0);
 	float rc = hash(idc);
@@ -51,7 +51,7 @@ void fragment() {
 	if (rc > 0.86) {
 		vec2 cc = vec2(0.25 + 0.5 * hash(idc + 1.3), 0.25 + 0.5 * hash(idc + 7.7));
 		vec2 dd = abs(fc - cc) * 44.0;
-		chispa = step(max(dd.x, dd.y), 2.4 + 2.0 * rc) * (0.4 + 0.6 * (0.5 + 0.5 * sin(TIME * (0.6 + rc) + rc * 50.0)));
+		chispa = step(max(dd.x, dd.y), 2.4 + 2.0 * rc) * (0.4 + 0.6 * (0.5 + 0.5 * sin(TIME * (0.35 + rc * 0.5) + rc * 50.0)));
 	}
 	float nivel = nl * 0.27 + nm * 0.15;   // (cuánto se aclara u oscurece el color: siempre poco)
 	vec3 col = tono * (1.0 + nivel * fuerza);
