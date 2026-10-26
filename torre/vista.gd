@@ -93,7 +93,10 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 					else:
 						glow = Color(1.0, 0.95, 0.7)
 						energia = 0.12
-		if aspecto_juego and (letra.begins_with("b") or letra == "d"):   # la bomba: activa (corrupta) o desactivada (purificada)
+		if aspecto_juego and letra == "k":   # la catapulta
+			m.mesh = BlockArt.malla_bloque("catapulta", BlockArt.Estado.PURIFICADO if t.purificados.has(t.ids.get(c, -1)) else BlockArt.Estado.CORRUPTO, BlockArt.nivel_de_etapa(maxi(etapa_arte, 1)), absi(c.x * 31 + c.y * 17 + c.z * 7) % VARIANTES_ARTE)
+			m.material_override = Escena.material(Color.WHITE, false)
+		elif aspecto_juego and (letra.begins_with("b") or letra == "d"):   # la bomba: activa (corrupta) o desactivada (purificada)
 				m.mesh = BlockArt.malla_bloque("bomba", BlockArt.Estado.PURIFICADO if letra == "d" else BlockArt.Estado.CORRUPTO, BlockArt.nivel_de_etapa(maxi(etapa_arte, 1)), absi(c.x * 31 + c.y * 17 + c.z * 7) % VARIANTES_ARTE)
 				m.material_override = Escena.material(Color.WHITE, false)
 		elif aspecto_juego and (letra == "n" or letra == "h" or letra == "i" or letra == "c" or letra == "t" or letra == "s"):   # la piedra común, el pesado, el hielo, la arenisca agrietada, la trampa y los pinchos: el arte de 10 x 10 x 10 (corrupto hasta que se pisa, después purificado)
