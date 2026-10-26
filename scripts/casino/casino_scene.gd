@@ -418,6 +418,13 @@ func use_consumable_slot(slot: int) -> void:
 		run.alcancia = true
 		run.use_consumable(id)
 		_flash(Loc.t("En el próximo casino cobras parte de lo que ahorraste"))
+	elif id == "sello_de_oro":
+		if run.sello_oro:
+			_flash(Loc.t("Ya tienes un sello de oro listo"))
+			return
+		run.sello_oro = true
+		run.use_consumable(id)
+		_flash(Loc.t("El próximo contrato que cobres paga cinco veces más"))
 	elif id == "soborno":
 		if toll_base <= 0 or run.toll_bribe:
 			_flash(Loc.t("Farolín no cobra, o ya lo sobornaste"))

@@ -121,6 +121,13 @@ const ALL: Array[Dictionary] = [
 		"desc": "Al entrar al casino cobras un 15 % de la claridad con la que empezaste la torre."},
 	{"id": "alcancia", "name": "Alcancía", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90, "casino": true,
 		"desc": "Se usa en el casino: en el próximo casino cobras un 30 % de la claridad con la que empieces la torre."},
+	# los contratos (docs/plan_casinos.md)
+	{"id": "caza_recompensas", "name": "Caza recompensas", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220, "stack": true, "max_stack": 2,
+		"desc": "Puedes tener un contrato activo más. Se acumula (hasta 2)."},
+	{"id": "contratista", "name": "Contratista", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 620,
+		"desc": "Cada contrato paga el doble."},
+	{"id": "sello_de_oro", "name": "Sello de oro", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200, "casino": true,
+		"desc": "Se usa en el casino: el próximo contrato que cobres paga cinco veces más."},
 	# bolsas de claridad grandes (la ficha de la etapa por el multiplicador)
 	{"id": "bolsa_pesada", "name": "Bolsa pesada", "type": Type.CLARITY, "tier": Tier.COMUN, "weight": 1.5, "mult": 3.0,
 		"desc": "Devuelve 3 veces lo que pagaste por la ficha, en claridad."},
@@ -133,7 +140,7 @@ const ALL: Array[Dictionary] = [
 ]
 
 ## Consumibles que se pueden usar dentro del casino (los demás sólo en la torre).
-const CASINO_USABLE: Array[String] = ["vida_extra", "soborno", "doble_o_nada", "ficha_gratis", "rayos_x", "racha_de_visita", "alcancia"]
+const CASINO_USABLE: Array[String] = ["vida_extra", "soborno", "doble_o_nada", "ficha_gratis", "rayos_x", "racha_de_visita", "alcancia", "sello_de_oro"]
 
 
 static func get_item(id: String) -> Dictionary:
