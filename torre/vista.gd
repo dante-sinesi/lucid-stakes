@@ -93,9 +93,9 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 					else:
 						glow = Color(1.0, 0.95, 0.7)
 						energia = 0.12
-		if aspecto_juego and (letra == "n" or letra == "h" or letra == "i" or letra == "c" or letra == "t"):   # la piedra común, el pesado, el hielo, la arenisca agrietada y la trampa: el arte de 10 x 10 x 10 (corrupto hasta que se pisa, después purificado)
+		if aspecto_juego and (letra == "n" or letra == "h" or letra == "i" or letra == "c" or letra == "t" or letra == "s"):   # la piedra común, el pesado, el hielo, la arenisca agrietada, la trampa y los pinchos: el arte de 10 x 10 x 10 (corrupto hasta que se pisa, después purificado)
 			var pura_n: bool = t.purificados.has(t.ids.get(c, -1))
-			m.mesh = BlockArt.malla_bloque("hierro" if letra == "h" else ("hielo" if letra == "i" else ("arenisca" if letra == "c" else ("trampa" if letra == "t" else "piedra"))), BlockArt.Estado.PURIFICADO if pura_n else BlockArt.Estado.CORRUPTO, BlockArt.nivel_de_etapa(maxi(etapa_arte, 1)), absi(c.x * 31 + c.y * 17 + c.z * 7) % VARIANTES_ARTE)
+			m.mesh = BlockArt.malla_bloque("hierro" if letra == "h" else ("hielo" if letra == "i" else ("arenisca" if letra == "c" else ("trampa" if letra == "t" else ("pinchos" if letra == "s" else "piedra")))), BlockArt.Estado.PURIFICADO if pura_n else BlockArt.Estado.CORRUPTO, BlockArt.nivel_de_etapa(maxi(etapa_arte, 1)), absi(c.x * 31 + c.y * 17 + c.z * 7) % VARIANTES_ARTE)
 			m.material_override = Escena.material_translucido("hielo" if letra == "i" else "trampa") if (letra == "i" or letra == "t") else Escena.material(Color.WHITE, false)   # (el hielo y la trampa son translúcidos)
 			if letra == "i" or letra == "t":   # (las caras de atrás, en otra malla igual que se dibuja antes)
 				var atras := MeshInstance3D.new()
