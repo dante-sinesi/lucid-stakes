@@ -621,6 +621,8 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
 	_tipo_anim = _tipo_animacion(motor_antes, modo, antes_y, colgado_antes)
+	if _tipo_anim == "tirar":
+		mira = -dir   # (al tirar camina hacia atrás: sigue de frente al bloque que trae)
 	_rastro_pendiente = motor_antes.rastro
 	ultimo_agarre = motor_antes.tipo_agarre
 	_rastro_muerte = motor_antes.rastro.duplicate()
