@@ -646,7 +646,7 @@ static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dic
 			glow[Vector3i(ox + 3, 8, oz + 2)] = Color(1.0, 0.5, 0.15)
 			glow[Vector3i(ox + 2, 8, oz + 3)] = Color(1.0, 0.7, 0.25)
 		"tablon":   # tablón de corcho sobre dos postes con los papeles de los contratos (`st.papeles`: la rareza de cada uno, o -1 si el lugar está vacío y queda solo el corcho)
-			_tablon(solid, glow, ox, oz, wood, st.get("papeles", []))
+			_tablon(solid, glow, ox, oz, L, int(st.get("tier", 0)), st.get("papeles", []))
 		"caja":   # caja fuerte de acero con la puerta al frente y un dial dorado
 			_box(solid, ox, 2, oz, ox + 5, 10, oz + 5, Color(0.36, 0.38, 0.42))
 			_box(solid, ox + 1, 3, oz + 5, ox + 4, 9, oz + 6, Color(0.28, 0.3, 0.34))
@@ -655,25 +655,77 @@ static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dic
 			glow[Vector3i(ox + 2, 7, oz + 6)] = L.gold
 
 
-## El tablón de contratos: marco de madera con corcho y hasta seis papeles (tres por fila) cuyo sello tiene el color de su rareza.
-static func _tablon(solid: Dictionary, glow: Dictionary, ox: int, oz: int, wood: Color, papeles: Array) -> void:
-	var cork := Color(0.66, 0.47, 0.28)
+## El tablón de contratos, uno por casino: en la taberna tablas clavadas con una vela encima; en el salón un marco pulido con tachas doradas y una repisa con tintero; en el
+## casino paño verde con marco dorado y una lámpara; en el gran casino un marco de mármol con columnas, paño violeta, remate dorado y base. Cuelgan hasta seis papeles
+## (tres por fila): cada uno con su chinche arriba, el pergamino y, abajo, un minibloque del color del sello de su rareza (`papeles`: la rareza de cada uno, o -1 si el lugar está vacío).
+static func _tablon(solid: Dictionary, glow: Dictionary, ox: int, oz: int, L: Dictionary, tier: int, papeles: Array) -> void:
+	var wood: Color = L.wood
+	var gold: Color = L.gold
 	var papel := Color(0.94, 0.88, 0.72)
-	_box(solid, ox, 2, oz + 2, ox + 1, 6, oz + 4, wood.darkened(0.25))   # los postes
-	_box(solid, ox + 4, 2, oz + 2, ox + 5, 6, oz + 4, wood.darkened(0.25))
-	_box(solid, ox, 5, oz + 2, ox + 5, 12, oz + 3, wood)   # el respaldo
-	_box(solid, ox, 5, oz + 3, ox + 5, 6, oz + 4, wood.lightened(0.12))   # el marco: abajo y arriba
-	_box(solid, ox, 11, oz + 3, ox + 5, 12, oz + 4, wood.lightened(0.12))
-	_box(solid, ox, 6, oz + 3, ox + 5, 11, oz + 4, cork)   # el corcho, de lado a lado
+	var fondo: Color
+	var marco: Color
+	var chinche: Color
+	match tier:
+		0:   # taberna: tablas
+			fondo = (L.plank as Color).darkened(0.05)
+			marco = wood
+			chinche = Color(0.20, 0.20, 0.24)
+			_box(solid, ox, 2, oz + 2, ox + 1, 6, oz + 4, wood.darkened(0.25))   # postes toscos
+			_box(solid, ox + 4, 2, oz + 2, ox + 5, 6, oz + 4, wood.darkened(0.25))
+		1:   # salón: madera pulida
+			fondo = Color(0.62, 0.45, 0.27)
+			marco = wood.lightened(0.12)
+			chinche = Color(0.85, 0.20, 0.20)
+			_box(solid, ox, 2, oz + 2, ox + 1, 6, oz + 4, wood.darkened(0.15))
+			_box(solid, ox + 4, 2, oz + 2, ox + 5, 6, oz + 4, wood.darkened(0.15))
+		2:   # casino: paño verde, marco dorado
+			fondo = (L.felt as Color).lightened(0.05)
+			marco = gold
+			chinche = Color(1.0, 0.88, 0.45)
+			_box(solid, ox, 2, oz + 2, ox + 1, 6, oz + 4, wood)
+			_box(solid, ox + 4, 2, oz + 2, ox + 5, 6, oz + 4, wood)
+		_:   # gran casino: mármol, paño violeta
+			fondo = Color(0.22, 0.15, 0.40)
+			marco = L.pillar
+			chinche = Color(1.0, 0.88, 0.45)
+			_box(solid, ox, 2, oz + 1, ox + 5, 5, oz + 4, (L.pillar as Color).darkened(0.08))   # la base de mármol
+			_box(solid, ox, 4, oz + 1, ox + 5, 5, oz + 2, gold)
+	_box(solid, ox, 5, oz + 2, ox + 5, 14, oz + 3, marco.darkened(0.1))   # el respaldo
+	_box(solid, ox, 5, oz + 3, ox + 5, 6, oz + 4, marco)   # el marco: abajo y arriba
+	_box(solid, ox, 13, oz + 3, ox + 5, 14, oz + 4, marco)
+	_box(solid, ox, 6, oz + 3, ox + 5, 13, oz + 4, fondo)   # el fondo donde cuelgan los papeles
+	match tier:
+		0:   # tablas: una junta horizontal entre las dos filas y una vela con su llama
+			_box(solid, ox, 9, oz + 3, ox + 5, 10, oz + 4, (fondo as Color).darkened(0.25))
+			_box(solid, ox + 4, 14, oz + 2, ox + 5, 15, oz + 3, Color(0.93, 0.90, 0.80))
+			glow[Vector3i(ox + 4, 15, oz + 2)] = Color(1.0, 0.65, 0.20)
+		1:   # tachas doradas en las esquinas y una repisa con tintero y pluma
+			for c in [Vector2i(0, 5), Vector2i(4, 5), Vector2i(0, 13), Vector2i(4, 13)]:
+				_box(solid, ox + c.x, c.y, oz + 4, ox + c.x + 1, c.y + 1, oz + 5, gold)
+			_box(solid, ox, 4, oz + 3, ox + 5, 5, oz + 5, wood.lightened(0.1))
+			_box(solid, ox + 4, 5, oz + 4, ox + 5, 6, oz + 5, Color(0.10, 0.08, 0.20))
+			_box(solid, ox + 4, 6, oz + 4, ox + 5, 8, oz + 5, Color(0.95, 0.95, 0.92))
+		2:   # lámpara de bronce arriba, en el medio
+			_box(solid, ox + 1, 14, oz + 3, ox + 4, 15, oz + 4, gold)
+			glow[Vector3i(ox + 2, 15, oz + 3)] = L.lamp
+		_:   # columnas con capitel dorado a los lados y un frontón de oro arriba
+			_box(solid, ox, 5, oz + 3, ox + 1, 14, oz + 4, L.pillar)
+			_box(solid, ox + 4, 5, oz + 3, ox + 5, 14, oz + 4, L.pillar)
+			_box(solid, ox, 13, oz + 3, ox + 1, 14, oz + 4, gold)
+			_box(solid, ox + 4, 13, oz + 3, ox + 5, 14, oz + 4, gold)
+			_box(solid, ox, 14, oz + 2, ox + 5, 15, oz + 4, gold)
+			_box(solid, ox + 1, 15, oz + 2, ox + 4, 16, oz + 4, gold)
+			glow[Vector3i(ox + 2, 16, oz + 3)] = L.lamp
 	for i in 6:
-		var x := ox + (i % 3) * 2   # tres por fila, con un hueco de corcho entre uno y otro
-		var y0 := 9 - (i / 3) * 3   # alto de abajo del papel (cada papel mide dos de alto; la fila 0 es la de arriba)
+		var x := ox + (i % 3) * 2   # tres por fila, con un hueco entre uno y otro
+		var y_top := 12 - (i / 3) * 4   # la chinche; el pergamino va debajo (dos de alto) y el sello al pie
 		if i < papeles.size() and int(papeles[i]) >= 0:
 			var sello: Color = Arte.SELLO_COLORES[int(papeles[i])].a
-			_box(solid, x, y0, oz + 4, x + 1, y0 + 1, oz + 5, papel)
-			_box(solid, x, y0 + 1, oz + 4, x + 1, y0 + 2, oz + 5, sello)
-			if int(papeles[i]) == Arte.Rareza.IMPOSIBLE:   # el negro lleva un puntito dorado para que se lea sobre el corcho
-				glow[Vector3i(x, y0 + 1, oz + 5)] = Arte.SELLO_COLORES[Arte.Rareza.IMPOSIBLE].m
+			_box(solid, x, y_top, oz + 4, x + 1, y_top + 1, oz + 5, chinche)
+			_box(solid, x, y_top - 2, oz + 4, x + 1, y_top, oz + 5, papel)
+			_box(solid, x, y_top - 3, oz + 4, x + 1, y_top - 2, oz + 5, sello)
+			if int(papeles[i]) == Arte.Rareza.IMPOSIBLE:   # el sello negro lleva un puntito dorado para que se lea sobre el fondo
+				glow[Vector3i(x, y_top - 3, oz + 5)] = Arte.SELLO_COLORES[Arte.Rareza.IMPOSIBLE].m
 
 
 ## Posición en el mundo del centro de una celda (a la altura del piso de esa celda).

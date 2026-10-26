@@ -118,7 +118,7 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 ### Cobro y animación
 - Se cobra **en cuanto se cumple**, dentro de la torre. Aviso corto sin texto de depuración en el HUD.
 - **Animación del cobro:** un sello baja sobre el papel y deja un "COBRADO" en el centro.
-- Los contratos activos se ven en el **menú de pausa**; en el HUD solo una marquita al cumplirse.
+- Los contratos activos se ven **solo como íconos, en columna, a la derecha del menú de pausa** (cada uno en una chapa de pergamino con un sello chico del color de su rareza). No se muestran en el HUD de la torre.
 
 ### Recompensa y dificultad de la tarea
 - Cada objetivo del catálogo trae su propia **`recompensa`**: un porcentaje de lo que rinde una torre en esa etapa (tabla de la sección 1; **no** del peaje, para no romper la pared). Es el dato que expresa **cuánto cuesta cumplirlo**: "sobrar movimientos" puede valer 10 %, "no empujar en ninguna sala" 20 %, y algo muy duro como "terminar la torre sin movimientos de escalada" 60 % o más, bastante por encima de cualquier otro.
@@ -150,7 +150,8 @@ Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar
 ### Arte (hecho, rama `arte/casinos`)
 - `scripts/ui/contract_art.gd`: el papel de la cartelera (con chinche si está colgado, sin ella si está activo), el sello de cera de las cuatro rarezas (gris, azul, violeta, negro con marca dorada), el sello "COBRADO" (tinta roja, marco doble, inclinado; `fuerza` sirve para animar el apoyo) y diez íconos de objetivo de 9 x 9 (movimientos, deshacer, racha, bomba, especiales, sin empujar, vidas, catapulta, escalada, claridad). La lista de objetivos se puede ampliar.
 - `scripts/ui/item_icons.gd`: íconos de los ítems nuevos (nombres de id provisorios): `racha_de_la_casa`, `racha_de_visita`, `pozo_del_jackpot`, `caja_fuerte`, `alcancia`, `caza_recompensas`, `contratista`, `sello_de_oro`.
-- `scripts/casino/casino_room.gd`: la estación `tablon` (`_tablon`): corcho sobre dos postes con hasta seis papeles cuyo sello lleva el color de su rareza; los lugares vacíos quedan de corcho.
+- `scripts/casino/casino_room.gd`: la estación `tablon` (`_tablon`), un diseño distinto para cada casino y más alta (hasta 14 minibloques): en la **taberna** tablas con postes toscos, clavos y una vela; en el **salón** madera pulida con tachas doradas y una repisa con tintero y pluma; en el **casino** paño verde con marco dorado y una lámpara; en el **gran casino** marco de mármol con columnas, paño violeta, base y un frontón dorado. Los papeles **cuelgan** (chinche arriba, pergamino y, abajo, un minibloque del color del sello de su rareza), de a tres por fila; los lugares vacíos quedan sin papel.
+- `scripts/ui/contratos_columna.gd`: la columna de contratos activos del menú de pausa (`PauseMenu.set_contratos(lista)`); sin contratos no se ve.
 - Capturas: `tests/capturas/shot_arte_contratos.gd` (papeles, sellos, íconos) y `shot_tablon.gd` (el tablón de cada casino).
 
 ## 5. Cómo queda cada casino

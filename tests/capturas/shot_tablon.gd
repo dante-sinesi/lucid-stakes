@@ -30,7 +30,7 @@ func _init() -> void:
 		for x in range(-2, 8):
 			for z in range(-2, 8):
 				solid[Vector3i(x, 1, z)] = (L.stone as Color) if (x + z) % 2 == 0 else (L.stone as Color).darkened(0.08)
-		Room._station(solid, glow, {"id": "tablon", "cell": Vector2i(0, 0), "papeles": tandas[tier]}, L)
+		Room._station(solid, glow, {"id": "tablon", "cell": Vector2i(0, 0), "tier": tier, "papeles": tandas[tier]}, L)
 		var m := MeshInstance3D.new()
 		m.mesh = VoxelMesh.build(solid, Room.VOXEL)
 		var mat := StandardMaterial3D.new()
@@ -48,8 +48,8 @@ func _init() -> void:
 		mundo.add_child(g)
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	cam.size = 5.0
-	cam.look_at_from_position(Vector3(0.4, 1.3, 0.5) + Vector3(-3.0, 4.2, 6.0) * 1.5, Vector3(0.4, 1.3, 0.5), Vector3.UP)
+	cam.size = 5.6
+	cam.look_at_from_position(Vector3(0.4, 1.7, 0.5) + Vector3(-3.0, 4.2, 6.0) * 1.5, Vector3(0.4, 1.7, 0.5), Vector3.UP)
 	mundo.add_child(cam)
 	cam.make_current()
 	await create_timer(0.6).timeout
