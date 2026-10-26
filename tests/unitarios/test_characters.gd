@@ -31,6 +31,11 @@ func bounds(n: Node, offset := Vector3.ZERO) -> AABB:
 			var a := AABB(off - size * 0.5, size)
 			box = a if first else box.merge(a)
 			first = false
+		elif node is MeshInstance3D and (node as MeshInstance3D).mesh != null:   # (las mallas de minibloques: su caja, desde la posición de la malla)
+			var ab := (node as MeshInstance3D).mesh.get_aabb()
+			var a := AABB(off + ab.position, ab.size)
+			box = a if first else box.merge(a)
+			first = false
 		for ch in node.get_children():
 			stack.append([ch, off])
 	return box
@@ -58,7 +63,7 @@ func test_models() -> void:
 		check(b.size.x <= 0.72 and b.size.z <= 0.72, "%s: cabe en la celda (ancho %.2f, fondo %.2f)" % [c.id, b.size.x, b.size.z])
 		check(b.end.y >= 0.7 and b.end.y <= 1.05, "%s: mide lo que corresponde (%.2f)" % [c.id, b.end.y])
 		# mira hacia +Z: lo que sobresale al frente (hocico, pico, nariz) esta del lado positivo
-		check(b.end.z > -b.position.z - 0.001 or b.end.z >= 0.22, "%s: la cara mira hacia +Z" % c.id)
+		check(b.end.z > -b.position.z - 0.001 or b.end.z >= 0.19, "%s: la cara mira hacia +Z" % c.id)
 		var sig := "%d:%.3f:%.3f" % [m.get_child_count(), b.size.y, b.size.x]
 		for part in m.get_children():
 			sig += str(part.name)

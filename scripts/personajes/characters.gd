@@ -57,12 +57,24 @@ static func build(id: String, hat := "", outfit := "", ghost := false) -> Node3D
 
 ## El gorro y la prenda sobre un personaje ya armado.
 static func _dress(root: Node3D, hat: String, outfit: String, ghost: bool) -> void:
-	var hat_node := Cosmetics.build_hat(hat, ghost)
-	if hat_node != null:
-		root.add_child(hat_node)
-	var outfit_node := Cosmetics.build_outfit(outfit, ghost)
-	if outfit_node != null:
-		root.add_child(outfit_node)
+	_poner_cosmetico(root, Cosmetics.build_hat(hat, ghost))
+	_poner_cosmetico(root, Cosmetics.build_outfit(outfit, ghost))
+
+
+## Un gorro o una prenda sobre el personaje. Las partes del cosmético que se llaman como las del cuerpo que giran (mangas, hombreras y brazaletes en `brazo_i` y `brazo_d`)
+## se cuelgan de esas partes del personaje: así se mueven con él.
+static func _poner_cosmetico(root: Node3D, cosmetico: Node3D) -> void:
+	if cosmetico == null:
+		return
+	for parte in cosmetico.get_children():
+		var propia := root.get_node_or_null(str(parte.name)) as Node3D
+		if propia != null and ModelLib.MOVING_PARTS.has(str(parte.name)):
+			for malla in parte.get_children():
+				parte.remove_child(malla)
+				propia.add_child(malla)
+			cosmetico.remove_child(parte)
+			parte.queue_free()
+	root.add_child(cosmetico)
 
 
 ## El diseño de siempre, armado con cajas en código (el que se pasa al editor con model_import.gd).
@@ -121,12 +133,7 @@ static func build_from_code(id: String, hat := "", outfit := "", ghost := false)
 			_box(tail, Vector3(0.07, 0.07, 0.2), Vector3(0, 0.02, -0.1), fur, ghost)
 			_box(tail, Vector3(0.07, 0.16, 0.07), Vector3(0, 0.1, -0.2), dark, ghost)
 	# --- ropa ---
-	var hat_node := Cosmetics.build_hat(hat, ghost)
-	if hat_node != null:
-		root.add_child(hat_node)
-	var outfit_node := Cosmetics.build_outfit(outfit, ghost)
-	if outfit_node != null:
-		root.add_child(outfit_node)
+	_dress(root, hat, outfit, ghost)
 	return root
 
 
@@ -172,12 +179,7 @@ static func _build_human(ch: Dictionary, hat: String, outfit: String, ghost: boo
 		for x in [-0.14, 0.0, 0.14]:
 			_box(root, Vector3(0.08, 0.07, 0.08), Vector3(x, 0.8, 0.02 - absf(x) * 0.2), hair, ghost)   # mechones de punta
 		_box(root, Vector3(0.3, 0.09, 0.07), Vector3(0, 0.43, -0.15), ch.shirt_dark, ghost)         # la capucha del buzo
-	var hat_node := Cosmetics.build_hat(hat, ghost)
-	if hat_node != null:
-		root.add_child(hat_node)
-	var outfit_node := Cosmetics.build_outfit(outfit, ghost)
-	if outfit_node != null:
-		root.add_child(outfit_node)
+	_dress(root, hat, outfit, ghost)
 	return root
 
 

@@ -249,9 +249,9 @@ static func _animal(partes: Dictionary, ch: Dictionary, sd: int) -> void:
 			_p(c, -1, 25, 9, claro.darkened(0.15), 0.0)
 			for lado: int in [-1, 1]:
 				var xo: int = 4 if lado > 0 else -7
-				_caja(c, xo, xo + 3, 37, 52, -2, 1, pelaje, 0.04, sd)           # orejas largas
-				_caja(c, xo + 1, xo + 2, 39, 50, 2, 2, rosa, 0.03, sd)
-				_caja(c, xo + (1 if lado > 0 else -1), xo + (4 if lado > 0 else 2), 51, 54, -2, 1, pelaje, 0.04, sd)   # (la punta se dobla un poco)
+				_caja(c, xo, xo + 3, 37, 47, -2, 1, pelaje, 0.04, sd)           # orejas largas
+				_caja(c, xo + 1, xo + 2, 39, 45, 2, 2, rosa, 0.03, sd)
+				_caja(c, xo + (1 if lado > 0 else -1), xo + (4 if lado > 0 else 2), 48, 50, -2, 1, pelaje, 0.04, sd)   # (la punta se dobla un poco)
 			var cola := {}
 			_caja(cola, -3, 3, 9, 15, -13, -8, claro, 0.06, sd, true)
 			partes["cola"] = cola
