@@ -2,7 +2,7 @@ extends Node3D
 ## Galería de bloques (herramienta de desarrollo): el arte de 10 x 10 x 10 de cada tipo de bloque (block_art.gd), corrupto y purificado (Farolín espera sentado sobre el checkpoint y el portal corruptos), en los cinco niveles de corrupción
 ## (una columna por cada tres etapas), con la luz del juego. Mouse: arrastrar con el botón izquierdo o derecho gira e inclina; rueda acerca. Teclas: las flechas giran e inclinan
 ## la cámara (izquierda y derecha giran, arriba y abajo inclinan; se mantienen apretadas), WASD mueven la cámara por el espacio (con Shift, más rápido; con Espacio sube y con Ctrl baja),
-## + y - acercan y alejan, Q y E giran 45°,
+## + y - acercan y alejan, Q y E giran 45°, T hace que Farolín salte y encienda el farolito,
 ## 1 a 5 ponen el fondo de esa etapa (para ver el contraste), F alterna el remolino del fondo, R vuelve la cámara, Esc sale.
 ## Abrir: herramientas\galeria_bloques.bat (o `godot --path . res://scenes/galeria_bloques.tscn`).
 
@@ -24,19 +24,23 @@ var yaw := 45.0
 var pitch := 35.264
 var zoom := 9.0
 var _etapa := 1
+var _farolines: Array[Dictionary] = []   # los Farolín de la galería: {nodo, punto, soplar}
 var _centro := Vector3.ZERO   # donde está el pivote al empezar (R vuelve acá)
 const FLECHAS_VEL := 110.0   # grados por segundo con las flechas
 
 
 ## Farolín sentado en una esquina de la cara de arriba del bloque (como espera en el checkpoint y en el bloque de salida): sólo con los bloques corruptos, porque al purificarse se va.
-func _poner_farolin(centro: Vector3) -> void:
+func _poner_farolin(centro: Vector3, soplar := false) -> void:
 	var esq := Vector2(-1.0, -1.0)
 	var ang := atan2(-esq.x, -esq.y)   # (de la esquina hacia el centro del bloque)
 	var pos := centro + Vector3(0.27 * esq.x, 0.5, 0.27 * esq.y)
+	var base := Node3D.new()
+	base.position = pos
+	base.rotation = Vector3(deg_to_rad(-10.0), ang, 0.0)   # (apenas echado hacia atrás, contra el tronco)
+	add_child(base)
 	var faro := Farolin.build(-1, true)
-	faro.position = pos
-	faro.rotation = Vector3(deg_to_rad(-10.0), ang, 0.0)   # (apenas echado hacia atrás, contra el tronco)
-	add_child(faro)
+	base.add_child(faro)
+	_farolines.append({"nodo": faro, "punto": centro + Vector3(0.0, 0.5, 0.0), "soplar": soplar})
 	var tronco := MeshInstance3D.new()
 	var cil := CylinderMesh.new()
 	cil.top_radius = 0.065
@@ -49,11 +53,7 @@ func _poner_farolin(centro: Vector3) -> void:
 	tronco.material_override = corteza
 	tronco.position = Vector3(0.0, 0.065, -0.17)   # (detrás de Farolín, atravesado)
 	tronco.rotation_degrees.z = 90.0
-	var pivote := Node3D.new()
-	pivote.position = pos
-	pivote.rotation.y = ang
-	pivote.add_child(tronco)
-	add_child(pivote)
+	base.add_child(tronco)
 
 
 func _ready() -> void:
@@ -82,7 +82,7 @@ func _ready() -> void:
 					cubo.position = _celda(nivel, fila)
 					add_child(cubo)
 					if estado == Art.Estado.CORRUPTO:
-						_poner_farolin(_celda(nivel, fila))
+						_poner_farolin(_celda(nivel, fila), true)
 					continue
 				var m := MeshInstance3D.new()
 				m.mesh = Art.malla_bloque(tipo, estado, nivel, 1 + nivel)
@@ -192,6 +192,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 		elif k == KEY_F:
 			fondo.visible = not fondo.visible
 			env.background_mode = Environment.BG_CANVAS if fondo.visible else Environment.BG_COLOR
+		elif k == KEY_T:   # Farolín salta y enciende el farolito (el checkpoint) o sopla (el portal)
+			for f in _farolines:
+				(f.nodo as Node3D).celebrar(f.punto, f.soplar)
 		elif k == KEY_R:
 			pivot.position = _centro
 			yaw = 45.0

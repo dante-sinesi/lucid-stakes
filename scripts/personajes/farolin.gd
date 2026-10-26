@@ -168,8 +168,8 @@ static func build(v := -1, seated := false) -> Node3D:
 			_box(r.frown, Vector3(0, 0.25, 0.092), Vector3(0.09, 0.02, 0.012), dark)
 			_box(r.frown, Vector3(-0.045, 0.235, 0.092), Vector3(0.02, 0.02, 0.012), dark)
 			_box(r.frown, Vector3(0.045, 0.235, 0.092), Vector3(0.02, 0.02, 0.012), dark)
-	_box(r, Vector3(-0.145, 0.24, 0), Vector3(0.05, 0.13, 0.05), iron2)  # bracitos
-	_box(r, Vector3(0.145, 0.24, 0), Vector3(0.05, 0.13, 0.05), iron2)
+	r.brazo_i = _brazo(r, -0.145, iron2)   # bracitos (cada uno cuelga de un pivote en el hombro, para poder moverlos)
+	r.brazo_d = _brazo(r, 0.145, iron2)
 	var light := OmniLight3D.new()
 	light.position = Vector3(0, 0.28, 0.15)
 	light.light_color = Color(1.0, 0.75, 0.35)
@@ -190,5 +190,24 @@ static func _sentar(r: Node3D) -> void:
 			c.queue_free()   # (las patitas de pie)
 		elif c is Node3D:
 			c.position.y -= 0.09   # (el farol, la cara y la luz)
-	_box(r, Vector3(-0.06, 0.03, 0.12), Vector3(0.06, 0.06, 0.2), iron2)
-	_box(r, Vector3(0.06, 0.03, 0.12), Vector3(0.06, 0.06, 0.2), iron2)
+	r.pata_i = _pata_sentada(r, -0.06, iron2)
+	r.pata_d = _pata_sentada(r, 0.06, iron2)
+	r.sentado = true
+
+
+## Un bracito colgando de un pivote en el hombro (gira con `rotation.z`).
+static func _brazo(r: Node3D, x: float, color: Color) -> Node3D:
+	var pivote := Node3D.new()
+	pivote.position = Vector3(x, 0.305, 0)
+	r.add_child(pivote)
+	_box(pivote, Vector3(0, -0.065, 0), Vector3(0.05, 0.13, 0.05), color)
+	return pivote
+
+
+## Una patita estirada hacia adelante, con el pivote en la cadera (gira con `rotation.x`).
+static func _pata_sentada(r: Node3D, x: float, color: Color) -> Node3D:
+	var pivote := Node3D.new()
+	pivote.position = Vector3(x, 0.03, 0.02)
+	r.add_child(pivote)
+	_box(pivote, Vector3(0, 0, 0.1), Vector3(0.06, 0.06, 0.2), color)
+	return pivote
