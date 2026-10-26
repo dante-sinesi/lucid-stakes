@@ -29,11 +29,12 @@ const PALETA := {
 
 ## La corrupción de cada nivel. Los pasos son parejos para que se note el cambio de una etapa a la siguiente; el purificado baja más rápido al principio (el de la primera etapa
 ## todavía conserva bastante: se ve más corrupto que el de la segunda).
-## El bloque pesado (hierro): acero azulado cuando está limpio, metal oscuro cuando está corrupto; marco más oscuro, juntas entre placas y remaches dorados.
+## El bloque pesado (hierro): acero azulado cuando está limpio y metal azul oscuro (no negro: no se confunde con la obsidiana) cuando está corrupto; marco más oscuro en todas las
+## aristas, esquinas y remaches dorados por los bordes, y cuatro tornillos en la cara de arriba.
 const PALETA_HIERRO := {
 	"acero": [Color(0.50, 0.55, 0.67), Color(0.54, 0.59, 0.71), Color(0.58, 0.63, 0.75)],
 	"acero_limpio": [Color(0.55, 0.60, 0.72), Color(0.59, 0.64, 0.76), Color(0.63, 0.68, 0.80)],
-	"corrupto": [Color(0.11, 0.11, 0.16), Color(0.15, 0.15, 0.21), Color(0.20, 0.20, 0.27)],
+	"corrupto": [Color(0.16, 0.20, 0.30), Color(0.19, 0.23, 0.34), Color(0.23, 0.27, 0.38)],
 	"remache": Color(0.86, 0.70, 0.30),
 	"cicatriz": Color(0.38, 0.41, 0.55),
 }
@@ -96,11 +97,11 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 	var vox := {}
 	var hierro := tipo == "hierro"   # (el hierro se desgasta mucho menos: es un cubo de placas)
 	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
-	var p_arista := lerpf(0.0, 0.15, c) if hierro else lerpf(0.03, 0.38, c)
-	var p_cara := lerpf(0.0, 0.03, c) if hierro else lerpf(0.01, 0.06, c)
-	var p_esquina := lerpf(0.0, 0.7, c) if hierro else lerpf(0.15, 1.0, c)
-	var n_mordiscos := roundi(lerpf(0.0, 2.0, c)) if hierro else roundi(lerpf(0.0, 3.0, c))
-	var radio_mordisco := lerpf(1.4, 1.8, c) if hierro else lerpf(1.4, 2.0, c)
+	var p_arista := 0.0 if hierro else lerpf(0.03, 0.38, c)   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
+	var p_cara := lerpf(0.0, 0.04, c) if hierro else lerpf(0.01, 0.06, c)
+	var p_esquina := 0.0 if hierro else lerpf(0.15, 1.0, c)
+	var n_mordiscos := 0 if hierro else roundi(lerpf(0.0, 3.0, c))
+	var radio_mordisco := lerpf(1.4, 2.0, c)
 	var mordiscos: Array[Vector3] = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = sd
@@ -142,7 +143,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 				var p := _de_cara(cara, uv)
 				var nucleo := (i % 9 == 4)
 				i += 1
-				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles:
+				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles or (hierro and _bordes(p) >= 2):   # (las grietas del hierro no tocan el marco ni los remaches)
 					continue
 				_grieta(vox, p, cara, nucleo, c, sd, tipo)
 	return vox
@@ -160,27 +161,26 @@ static func _color_base(p: Vector3i, c: float, sd: int) -> Color:
 	return col
 
 
-## El color del hierro en un minibloque: acero azulado o metal oscuro según la corrupción (rampa entre 0,5 y 1); marco de un minibloque más oscuro, una junta que divide
-## cada cara en placas y cuatro remaches dorados por cara (que también se oscurecen con la corrupción).
+## El color del hierro en un minibloque: acero azulado o metal azul oscuro según la corrupción (rampa entre 0,5 y 1). Las aristas forman un marco más oscuro, las esquinas
+## y dos remaches por arista son dorados, y la cara de arriba lleva cuatro tornillos (todo se oscurece un poco con la corrupción, pero se sigue leyendo).
 static func _color_hierro(p: Vector3i, c: float, sd: int) -> Color:
 	var r := _h(p.x, p.y, p.z, sd + 3)
 	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
 	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
 	var acero: Color = (PALETA_HIERRO.acero[i] as Color).lerp(PALETA_HIERRO.acero_limpio[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
 	var col := acero.lerp(PALETA_HIERRO.corrupto[i], oscuro)
-	var u := p.x
-	var v := p.z
-	if p.y != N - 1:
-		if p.x == 0 or p.x == N - 1:
-			u = p.z
-			v = p.y
-		else:
-			u = p.x
-			v = p.y
-	if (u == 2 or u == 7) and (v == 2 or v == 7):
-		return (PALETA_HIERRO.remache as Color).lerp(col, oscuro * 0.65)
-	if u == 0 or u == N - 1 or v == 0 or v == N - 1 or u == 4 or v == 4:
-		return col.darkened(0.30)
+	var remache: Color = (PALETA_HIERRO.remache as Color).lerp(col, oscuro * 0.45)
+	var b := _bordes(p)
+	if b == 3:
+		return remache   # (las esquinas)
+	if b == 2:
+		# a lo largo de la arista, dos remaches (en 3 y 6); el resto es el marco oscuro
+		var largo := p.x if (p.y == 0 or p.y == N - 1) and (p.z == 0 or p.z == N - 1) else (p.y if (p.x == 0 or p.x == N - 1) and (p.z == 0 or p.z == N - 1) else p.z)
+		if largo == 3 or largo == 6:
+			return remache
+		return col.darkened(0.38)
+	if p.y == N - 1 and (p.x == 2 or p.x == 7) and (p.z == 2 or p.z == 7):
+		return remache.darkened(0.15)   # (los tornillos de arriba)
 	if _centro_arriba(p) and oscuro < 0.5:
 		return col.lightened(0.05)
 	return col
