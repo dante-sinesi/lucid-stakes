@@ -228,9 +228,13 @@ func choose(id: String) -> void:
 ## El animalito en 3D dentro de su propia mini-escena: gira despacio (el grande) o se dibuja una sola vez (los casilleros).
 class _Preview extends SubViewportContainer:
 	const Characters := preload("res://scripts/personajes/characters.gd")
+	const Animacion := preload("res://scripts/personajes/animacion.gd")
+	const DURACIONES := {"caminar": 1.2, "desactivar": 1.4}   # (las demás, 0,9 s: más lentas que en la torre para que se aprecien)
 	var spin := false
 	var _vp: SubViewport
 	var _model: Node3D
+	var _animador: Animacion
+	var _proxima := 0.0
 	var _yaw := 0.6
 
 	func _init() -> void:
@@ -265,7 +269,15 @@ class _Preview extends SubViewportContainer:
 	func show_model(ch: String, hat: String, outfit: String, dark := false) -> void:
 		if _model != null:
 			_model.queue_free()
-		_model = Characters.build(ch, hat, outfit)
+		var cuerpo := Characters.build(ch, hat, outfit)
+		if spin:   # el grande: el giro va en un nodo aparte y el cuerpo hace sus animaciones de la torre (cada tanto una distinta)
+			_model = Node3D.new()
+			_model.add_child(cuerpo)
+			_animador = Animacion.new(cuerpo)
+			_model.add_child(_animador)
+			_proxima = 1.2
+		else:
+			_model = cuerpo
 		_model.rotation.y = _yaw
 		_vp.add_child(_model)
 		if dark:   # lo que no se tiene: todo gris oscuro
@@ -285,6 +297,12 @@ class _Preview extends SubViewportContainer:
 		if _model != null:
 			_yaw += delta * 0.7
 			_model.rotation.y = _yaw
+		if _animador != null:
+			_proxima -= delta
+			if _proxima <= 0.0:
+				_proxima = 2.6
+				var tipo: String = Animacion.TIPOS[randi() % Animacion.TIPOS.size()]
+				_animador.reproducir(tipo, DURACIONES.get(tipo, 0.9))
 
 
 ## Un casillero: la miniatura 3D, una barrita con el color de la rareza y un marco dorado si es lo que llevás.
