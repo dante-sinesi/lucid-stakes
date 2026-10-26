@@ -177,16 +177,17 @@ static func bomba(c: float, semilla: int, desactivada: bool) -> Dictionary:
 				var v := 0.30 + r * 0.08
 				var col: Color
 				if desactivada:
-					col = Color(v * 1.15, v * 1.35, v * 1.2).lerp(Color(0.12, 0.13, 0.16), oscuro)
+					var limpio := clampf(1.0 - c * 2.0, 0.0, 1.0)   # (0 al principio, 1 con la bomba muy limpia)
+					col = Color(v * 1.15, v * 1.35, v * 1.2).lerp(Color(0.12, 0.13, 0.16), oscuro).lerp(Color(0.62, 0.78, 0.68) * (0.85 + r * 0.15), limpio)
 				else:
 					col = Color(0.13 + r * 0.05, 0.13 + r * 0.05, 0.17 + r * 0.05).lerp(Color(0.05, 0.05, 0.08), oscuro)
 				if y == 4 and superficie:   # el aro
-					col = Color(0.55, 0.12, 0.08) if not desactivada else Color(0.28, 0.45, 0.32)
+					col = Color(0.55, 0.12, 0.08) if not desactivada else Color(0.28, 0.45, 0.32).lerp(Color(0.35, 0.95, 0.5), clampf(1.0 - c * 2.0, 0.0, 1.0)).lerp(Color(0.4, 0.14, 0.1), clampf((c - 0.25) * 4.0, 0.0, 1.0))
 					if not desactivada:
 						col = col.lerp(Color(1.0, 0.3, 0.1), oscuro)
 						col.a = lerpf(1.0, 0.5, oscuro)
-				elif superficie and not desactivada and y < 8 and r > 1.0 - c * 0.14:   # grietas de fuego
-					col = Color(1.0, 0.32, 0.1, 0.45)
+				elif superficie and y < 8 and r > 1.0 - c * 0.14:   # grietas de fuego (en la desactivada, brasas que se van apagando: cicatrices oscuras y sólo al principio un resto de brillo)
+					col = Color(1.0, 0.32, 0.1, 0.45) if not desactivada else Color(0.42, 0.14, 0.08, 1.0 if c < 0.45 else 0.7)
 				vox[p] = col
 	vox[Vector3i(4, 8, 4)] = Color(0.5, 0.5, 0.5) if desactivada else Color(0.55, 0.25, 0.1)
 	vox[Vector3i(4, 9, 4)] = Color(0.3, 0.85, 0.4) if desactivada else Color(1.0, 0.8, 0.2, 0.4)
