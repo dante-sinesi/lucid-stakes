@@ -97,6 +97,12 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 			var pura_n: bool = t.purificados.has(t.ids.get(c, -1))
 			m.mesh = BlockArt.malla_bloque("hierro" if letra == "h" else ("hielo" if letra == "i" else ("arenisca" if letra == "c" else ("trampa" if letra == "t" else "piedra"))), BlockArt.Estado.PURIFICADO if pura_n else BlockArt.Estado.CORRUPTO, BlockArt.nivel_de_etapa(maxi(etapa_arte, 1)), absi(c.x * 31 + c.y * 17 + c.z * 7) % VARIANTES_ARTE)
 			m.material_override = Escena.material_hielo() if letra == "i" else Escena.material(Color.WHITE, false)   # (el hielo es translúcido y brillante)
+			if letra == "i":   # (las caras de atrás del hielo, en otra malla igual que se dibuja antes)
+				var atras := MeshInstance3D.new()
+				atras.mesh = m.mesh
+				atras.material_override = Escena.material_hielo(true)
+				atras.position = world_pos(c)
+				parent.add_child(atras)
 		else:
 			m.mesh = BlockModels.mesh_for(model, estado_modelo, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
 			m.material_override = _material_brillo(tint, kind == 1, glow, energia) if energia > 0.0 else Escena.material(tint, kind == 1)

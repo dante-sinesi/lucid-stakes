@@ -53,6 +53,12 @@ func _ready() -> void:
 				m.material_override = Escena.material_hielo() if tipo == "hielo" else Escena.material(Color.WHITE, false)
 				m.position = _celda(nivel, fila)
 				add_child(m)
+				if tipo == "hielo":   # (las caras de atrás del hielo, en otra malla que se dibuja antes)
+					var atras := MeshInstance3D.new()
+					atras.mesh = m.mesh
+					atras.material_override = Escena.material_hielo(true)
+					atras.position = m.position
+					add_child(atras)
 			_rotulo("%s · %s" % [TIPOS[tipo], "corrupto" if estado == Art.Estado.CORRUPTO else "purificado"], _celda(-0.55, fila) + Vector3(-0.6, 0.0, 0.6))
 			fila += 1
 	for nivel in Art.NIVELES:
