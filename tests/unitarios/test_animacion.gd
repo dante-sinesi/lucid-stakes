@@ -3,7 +3,6 @@ extends SceneTree
 ## Uso: GAME_SANDBOX=1 godot --headless --path . -s tests/unitarios/test_animacion.gd
 const Characters := preload("res://scripts/personajes/characters.gd")
 const Animacion := preload("res://scripts/personajes/animacion.gd")
-const Settings := preload("res://scripts/datos/settings.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
 const Motor := preload("res://torre/motor.gd")
 
@@ -32,8 +31,6 @@ func _casi_reposo(m: Node3D) -> bool:
 
 
 func _init() -> void:
-	Settings.set_value("animaciones_exageradas", true)
-	check(Animacion.exageradas(), "por defecto las animaciones son exageradas")
 	for id in ["dante", "gaby", "gato", "perro", "conejo"]:
 		var m := Characters.build(id, "", "")
 		var raiz := Node3D.new()

@@ -9,10 +9,9 @@
 - Estados que se quedan: **colgado** (brazos arriba, patitas que se balancean) y **asustado** (dentro de la zona de una bomba: tiembla con los brazos medio levantados).
 - **Quieto:** respira y, tras 3 segundos, hace un pasatiempo al azar (mirar, estirarse, rascarse, saludar).
 
-## Estilo (Opciones > General > Animaciones del personaje)
+## Estilo
 
-- **Exageradas** (por defecto): poses grandes, saltitos y, al agacharse (trepar, catapulta), el cuerpo se aplasta.
-- **Sutiles:** poses al 45 %, sin saltitos ni deformar el cuerpo. Ajuste `animaciones_exageradas`.
+Exagerado: poses grandes, saltitos y, al agacharse (trepar, catapulta), el cuerpo se aplasta. No hay ajuste para elegirlo: `pose()` acepta `amp` y `deforma` sólo para probar poses más chicas.
 
 ## Poses
 

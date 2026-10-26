@@ -2,10 +2,8 @@ extends Node
 ## Las animaciones del personaje al hacer acciones (empujar, tirar, trepar, bajar, colgarse, desplazarse colgado, resbalar, catapulta, desactivar una bomba) y mientras espera
 ## (respira y, tras unos segundos quieto, hace algún pasatiempo). Se agrega como hijo del nodo del personaje y mueve las partes del modelo (pata_i/d, brazo_i/d, cola) y el modelo mismo
 ## (giro, altura, escala). Una pose es una función del tiempo normalizado `k` (0 a 1): `pose()`; las acciones la recorren con un tween y la galería de poses la usa para sacar fotos.
-## Estilo: "exageradas" (poses grandes, saltitos, aplastar al agacharse) o "sutiles" (poses chicas, sin saltitos ni deformar el cuerpo): Opciones > General, ajuste `animaciones_exageradas`.
+## Estilo exagerado: poses grandes, saltitos y el cuerpo se aplasta al agacharse (`amp` y `deforma` de `pose()` permiten probar poses más chicas).
 ## Docs: docs/animaciones_personaje.md.
-
-const Settings := preload("res://scripts/datos/settings.gd")
 
 const TIPOS := ["caminar", "empujar", "tirar", "trepar", "bajar", "colgarse", "desplazar", "resbalar", "catapulta", "desactivar"]
 const PASATIEMPOS := ["mirar", "estirar", "rascar", "saludar"]
@@ -27,11 +25,6 @@ func _init(m: Node3D = null) -> void:
 	modelo = m
 
 
-## Las animaciones exageradas (el ajuste del jugador).
-static func exageradas() -> bool:
-	return bool(Settings.get_value("animaciones_exageradas"))
-
-
 ## Reproduce la animación de una acción (`dur`: lo que dura, en segundos). Al terminar el personaje vuelve a su pose de reposo (o de colgado).
 func reproducir(tipo: String, dur: float) -> void:
 	if modelo == null or not is_instance_valid(modelo):
@@ -40,11 +33,9 @@ func reproducir(tipo: String, dur: float) -> void:
 	_ocupado = true
 	_quieto = 0.0
 	_pasatiempo = ""
-	var amp := 1.0 if exageradas() else 0.45
-	var deforma := exageradas()
 	_tw = create_tween()
 	_tw.tween_method(func(k: float) -> void:
-		pose(modelo, tipo, k, amp, deforma)
+		pose(modelo, tipo, k)
 		_copiar(), 0.0, 1.0, dur)
 	_tw.tween_callback(_terminar)
 
@@ -158,7 +149,7 @@ static func pose(m: Node3D, tipo: String, k: float, amp := 1.0, deforma := true)
 	var e := sin(PI * k)   # sube y vuelve
 	var s := e * amp
 	match tipo:
-		"caminar":   # el paso de siempre (patas y brazos cruzados) y, en las exageradas, un rebotito
+		"caminar":   # el paso de siempre (patas y brazos cruzados) y un rebotito
 			pi.rotation.x = 0.7 * e
 			pd.rotation.x = -0.7 * e
 			bi.rotation.x = -0.7 * e
