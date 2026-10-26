@@ -32,6 +32,15 @@ func _init() -> void:
 		if (c as Color).a < 1.0:
 			luz_pura += 1
 	check(luz > 8 and luz_pura == 0, "el corrupto tiene vetas que brillan y el purificado ya no (%d y %d)" % [luz, luz_pura])
+	var brillo_nivel: Array[float] = []
+	for nivel in Art.NIVELES:
+		var total := 0.0
+		for semilla in 12:
+			for c in Art.piedra(Art.Estado.CORRUPTO, nivel, semilla).values():
+				total += 1.0 - (c as Color).a
+		brillo_nivel.append(total)
+	check(brillo_nivel[0] > brillo_nivel[2] and brillo_nivel[2] > brillo_nivel[4] and brillo_nivel[4] > 0.0, "la corrupción (el magma que brilla) baja nivel a nivel y no desaparece (%s)" % str(brillo_nivel))
+	check(Art.nivel_de_etapa(1) == 0 and Art.nivel_de_etapa(3) == 0 and Art.nivel_de_etapa(4) == 1 and Art.nivel_de_etapa(15) == 4, "un nivel cada tres etapas")
 	check(Art.malla_piedra(Art.Estado.CORRUPTO, 0, 1).get_surface_count() == 1, "la malla se arma")
 	print("tests del arte de bloques terminados, fallos: ", fallos)
 	quit(1 if fallos > 0 else 0)
