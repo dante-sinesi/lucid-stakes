@@ -122,4 +122,10 @@ const TABLE := {
 	"Pagar %d": "Pay %d",
 	"Dejaste que la luz se apagara.": "You let the light go out.",
 	"Perdiste una vida: vuelves a subir la torre": "You lost a life: you climb the tower again",
+	"CUMPLIDO": "COMPLETED",
+	"FALLIDO": "FAILED",
+	"Cobrado": "Collected",
+	"Fianza perdida": "Deposit lost",
+	"Sin recompensa": "No reward",
+	"Presiona Espacio para continuar la torre": "Press Space to continue the tower",
 }

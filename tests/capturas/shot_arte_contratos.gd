@@ -17,7 +17,8 @@ class _Hoja extends Control:
 		for i in 4:   # los papeles, uno por rareza
 			Arte.dibujar_papel(self, Vector2(20 + i * 125, 20), 6.0, i, objs[i], i * 5 + 1)
 		Arte.dibujar_papel(self, Vector2(540, 20), 6.0, Arte.Rareza.RARA, "sin_empujar", 77, false)   # uno activo (sin chinche) y cobrado
-		Arte.dibujar_cobrado(self, Vector2(540 + 6.0 * 8.5, 20 + 6.0 * 12), 6.0, 1.0)
+		Arte.dibujar_sello_texto(self, Vector2(540 + 6.0 * 8.5, 20 + 6.0 * 12), 2.0, "CUMPLIDO", Color(0.15, 0.62, 0.30))
+		Arte.dibujar_sello_mano(self, Vector2(1180, 20), 5.0, Color(0.15, 0.62, 0.30))
 		for i in 4:   # los sellos, grandes
 			Arte.dibujar_sello(self, i, Vector2(700 + i * 95, 30), 10.0)
 		var sx := 700.0

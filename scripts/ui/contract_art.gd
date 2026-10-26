@@ -12,6 +12,7 @@ const OUTLINE := Color(0.09, 0.04, 0.15)
 # ---- el papel -------------------------------------------------------------------------------------------------------------------------
 const PAPEL_COLS := 17
 const PAPEL_ROWS := 22
+const PAPEL_ROWS_GRANDE := 32   # el papel de la pantalla del contrato resuelto: más alto, con lugar para el texto entero
 const PAPEL := Color(0.93, 0.87, 0.72)
 const PAPEL_SOMBRA := Color(0.78, 0.70, 0.54)
 const TINTA := Color(0.30, 0.22, 0.16)
@@ -104,9 +105,9 @@ static func dibujar_sello(ci: CanvasItem, rareza: int, pos: Vector2, s: float) -
 
 ## El papel de la cartelera con su ícono de objetivo y su sello. `colgado`: con la chinche arriba; si no (activo), sin ella. `ancho`/`alto` en cubitos.
 ## Los textos los dibuja quien lo usa (`texto_cells`).
-static func dibujar_papel(ci: CanvasItem, pos: Vector2, s: float, rareza: int, objetivo: String, semilla := 0, colgado := true) -> void:
+static func dibujar_papel(ci: CanvasItem, pos: Vector2, s: float, rareza: int, objetivo: String, semilla := 0, colgado := true, renglones := true, filas := PAPEL_ROWS) -> void:
 	var cols := PAPEL_COLS
-	var rows := PAPEL_ROWS
+	var rows := filas
 	ci.draw_rect(Rect2(pos + Vector2(s * 0.8, s * 1.2), Vector2(cols, rows) * s), Color(0, 0, 0, 0.55))   # sombra dura
 	for y in rows:
 		for x in cols:
@@ -138,29 +139,54 @@ static func dibujar_papel(ci: CanvasItem, pos: Vector2, s: float, rareza: int, o
 		Draw.cube(ci, pos + Vector2(3, y) * s, s, TINTA.lightened(0.25), true)
 		Draw.cube(ci, pos + Vector2(13, y) * s, s, TINTA.lightened(0.25), true)
 	dibujar_objetivo(ci, objetivo, pos + Vector2(4, 5) * s, s)
-	for i in 3:   # renglones de texto de relleno
+	for i in (3 if renglones else 0):   # renglones de texto de relleno
 		var largo := 5 + int(Draw.noise(i, 7, semilla) * 5.0)
 		for x in largo:
 			ci.draw_rect(Rect2(pos + Vector2(3 + x, 16 + i * 2) * s + Vector2(0, s * 0.25), Vector2(s, s * 0.5)), TINTA.lightened(0.15))
 	dibujar_sello(ci, rareza, pos + Vector2(cols - 8, rows - 8) * s, s)
 
 
-## El sello de "COBRADO": la palabra en tinta roja dentro de un marco, inclinada. `fuerza` (0..1): con 1 queda entero; menos, se ve más pálido (para animarlo al apoyarse).
-static func dibujar_cobrado(ci: CanvasItem, centro: Vector2, s: float, fuerza := 1.0, grados := -9.0) -> void:
-	var lay: Dictionary = VFont.layout(["COBRADO"])
+## Un sello de tinta con una palabra ("CUMPLIDO", "FALLIDO"): la palabra dentro de un marco doble, inclinada, con la tinta fallando un poco como un sello de goma. `centro` es el centro del
+## sello; `s` el lado del cubito; `fuerza` (0..1) lo hace más pálido (para animarlo al apoyarse).
+static func dibujar_sello_texto(ci: CanvasItem, centro: Vector2, s: float, texto: String, tinta: Color, fuerza := 1.0, grados := -9.0) -> void:
+	var lay: Dictionary = VFont.layout([texto])
 	var celdas: Array = lay.cells
 	var ancho: int = lay.size.x
 	var alto: int = lay.size.y
-	var tinta := Color(0.80, 0.12, 0.14, fuerza)
+	var col := Color(tinta.r, tinta.g, tinta.b, fuerza)
 	ci.draw_set_transform(centro, deg_to_rad(grados), Vector2.ONE)
 	var o := -Vector2(ancho + 6, alto + 6) * s * 0.5
 	for x in range(ancho + 6):   # el marco doble
 		for y in [0, 1, alto + 4, alto + 5]:
-			ci.draw_rect(Rect2(o + Vector2(x, y) * s, Vector2(s, s)), tinta)
+			ci.draw_rect(Rect2(o + Vector2(x, y) * s, Vector2(s, s)), col)
 	for y in range(alto + 6):
 		for x in [0, 1, ancho + 4, ancho + 5]:
-			ci.draw_rect(Rect2(o + Vector2(x, y) * s, Vector2(s, s)), tinta)
+			ci.draw_rect(Rect2(o + Vector2(x, y) * s, Vector2(s, s)), col)
 	for c: Vector2i in celdas:
-		if Draw.noise(c.x, c.y, 41) > 0.03:   # la tinta falla un poco: parece un sello de goma
-			ci.draw_rect(Rect2(o + Vector2(c.x + 3, c.y + 3) * s, Vector2(s, s)), tinta)
+		if Draw.noise(c.x, c.y, 41) > 0.03:
+			ci.draw_rect(Rect2(o + Vector2(c.x + 3, c.y + 3) * s, Vector2(s, s)), col)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## El sello de mano, de minibloques (16 x 15): el pomo de madera, el cuello, la brida de metal y la base con la tinta abajo. La esquina de arriba a la izquierda va en `pos`; el punto que
+## toca el papel es el medio del borde de abajo (`SELLO_MANO_CONTACTO`, en cubitos).
+const SELLO_MANO_COLS := 16
+const SELLO_MANO_ROWS := 15
+const SELLO_MANO_CONTACTO := Vector2(8.0, 15.0)
+static func dibujar_sello_mano(ci: CanvasItem, pos: Vector2, s: float, tinta: Color) -> void:
+	var madera := Color(0.50, 0.30, 0.16)
+	var metal := Color(0.66, 0.68, 0.76)
+	var cuerpo: Array = []   # [x0, y0, x1, y1, color] (x1 e y1 no incluidos)
+	cuerpo.append([4, 0, 12, 5, madera])
+	cuerpo.append([5, 0, 7, 4, madera.lightened(0.18)])   # el brillo del pomo
+	cuerpo.append([6, 5, 10, 9, madera.darkened(0.12)])
+	cuerpo.append([2, 9, 14, 11, metal.lightened(0.1)])
+	cuerpo.append([0, 11, 16, 14, metal])
+	cuerpo.append([0, 14, 16, 15, tinta])
+	var off := Vector2(maxf(1.0, s * 0.45), maxf(1.0, s * 0.65))
+	for r in cuerpo:   # sombra dura
+		ci.draw_rect(Rect2(pos + Vector2(r[0], r[1]) * s + off, Vector2(r[2] - r[0], r[3] - r[1]) * s), Color(0, 0, 0, 0.45))
+	for r in cuerpo:
+		for y in range(r[1], r[3]):
+			for x in range(r[0], r[2]):
+				Draw.cube(ci, pos + Vector2(x, y) * s, s, r[4], true)
