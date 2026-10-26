@@ -107,9 +107,10 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 ### Rareza: el sello del papel
 - La rareza se ve en un **sello** sobre la hoja que cambia de color: **gris** (común), **azul** (raro), **violeta** (épico).
 - La rareza no se elige: sale de lo que paga el objetivo (ver "Recompensa y dificultad de la tarea"). Cuanto más difícil la tarea, más paga y más raro el sello; y todo escala con la etapa.
-- Hay una cuarta rareza, **imposible**, para contratos que **no se pueden cumplir sin una build dedicada** (por ejemplo, subir la torre sin gastar movimientos de escalada). No sale del porcentaje: es una marca del objetivo (`imposible`) que además **declara qué ítems lo hacen posible** (boosts o consumibles). Su sello es **negro** (decisión de Dante), que se distingue del gris, el azul y el violeta.
-- Reglas de los imposibles: no aparecen en la taberna; **a lo sumo uno colgado a la vez**; con poco peso en el sorteo; pagan mucho más que cualquier otro (del orden de una torre entera o más: 100 % a 150 % de lo que rinde en esa etapa, antes de Contratista o Sello de oro). Como la cartelera es persistente, uno puede quedarse colgado hasta que el jugador tenga la build, o rechazarse si ocupa lugar.
-- Cada objetivo imposible se prueba con el bot jugando con la build que declara, para asegurar que **sí** se puede cumplir.
+- Hay una cuarta rareza, **imposible**: un contrato con un objetivo que **sin multiplicadores no se alcanza** (o es casi inalcanzable). Ejemplo: "obtener 2000 de claridad purificando en la siguiente torre" es muy difícil sin un consumible y un boost que multipliquen la claridad al purificar. **No hay que tener una build para aceptarlo ni para que aparezca**: lo ve cualquiera y decide si se anima (o si lo deja colgado hasta tener los multiplicadores, o lo rechaza). Su sello es **negro** (decisión de Dante), que se distingue del gris, el azul y el violeta.
+- Cómo se define: los objetivos con un número de claridad se escriben como un **múltiplo de lo que rinde una torre en esa etapa por la ruta óptima** (tabla de la sección 1), para que escalen solos con la etapa. Como jugar la ruta óptima rinde 1×, algo ~1× ya es de los difíciles y un múltiplo grande (del orden de 3× o más; los 2000 del ejemplo son unas 4× en la etapa 5, donde rinde 463) pasa a ser imposible sin multiplicar. Lo que cuenta como imposible es una marca del objetivo, no una regla de la etapa.
+- Reglas de los imposibles: a lo sumo **uno colgado a la vez**, con poco peso en el sorteo, y pagan mucho más que cualquier otro (100 % a 150 % de lo que rinde una torre, antes de Contratista o Sello de oro; más si el umbral es mayor). Pueden tomarse también con fianza en los casinos donde la hay.
+- Cada objetivo imposible se prueba con el bot jugando con una build de ejemplo (por ejemplo, Cosecha doble, Midas y Poción de cosecha) para comprobar que **es alcanzable**: imposible sin multiplicadores no quiere decir imposible del todo.
 
 ### Límite
 - **2 contratos activos** a la vez. El boost **"Caza recompensas"** da **+1** a la cantidad de contratos que se pueden aceptar.
@@ -182,7 +183,7 @@ Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino,
 - `FIANZA_MULT` (×1,5 de partida) y si `FIANZA_FRACCION` (50 %) se queda fijo o pasa a depender de algo.
 - Rareza y nombre del consumible "Sello de oro" (×5), y si se puede acumular más de uno.
 - Si rotar tiene que respetar a los papeles guardados o los tira (por ahora los tira) y si el primer casino arranca con la cartelera llena o con 2 papeles.
-- Lista de objetivos imposibles y las builds que los habilitan; desde qué casino aparecen (por ahora, desde el salón).
+- Lista de objetivos imposibles y el múltiplo de claridad que los vuelve imposibles; la build de ejemplo con la que se prueba que son alcanzables.
 - Que el boost "Contratista" (cada contrato paga el doble) exista, su nombre y su rareza.
 - Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
 - Si algún boost debería ser exclusivo de un casino (sin limitar lo que sale en los demás).
