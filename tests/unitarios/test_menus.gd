@@ -65,7 +65,7 @@ func test_start() -> void:
 	main.difficulty_screen._open_t = -10.0   # (La Pesadilla pregunta la dificultad primero)
 	var teclas := []
 	main.difficulty_screen.chosen.connect(func(id): teclas.append(id))
-	for k in [KEY_S, KEY_S]:   # con WASD se baja dos veces y Espacio elige "Difícil", no "Medio"
+	for k in [KEY_S]:   # con WASD se baja una vez (de Medio a Difícil) y Espacio elige "Difícil", no "Medio"
 		var ev := InputEventKey.new()
 		ev.keycode = k
 		ev.pressed = true
