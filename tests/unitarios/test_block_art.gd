@@ -105,6 +105,22 @@ func _init() -> void:
 			check(arriba_t and tr.size() > 600 and abajo < arriba_n, "trampa estado %d semilla %d: arriba entera y desvanecida hacia abajo (%d abajo, %d arriba)" % [estado, semilla, abajo, arriba_n])
 	check(Art._opacidad_trampa(Vector3i(3, 9, 3), Color.WHITE) == 1.0 and Art._opacidad_trampa(Vector3i(0, 0, 0), Color.WHITE) < 0.2 and Art._opacidad_trampa(Vector3i(0, 5, 0), Color.WHITE) < Art._opacidad_trampa(Vector3i(0, 8, 0), Color.WHITE), "la trampa es opaca arriba y casi transparente en la base")
 	check(Art.bloque("trampa", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("trampa", Art.Estado.PURIFICADO, 0, 2), "en la trampa también el corrupto del final es el purificado del principio")
+	for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+		for semilla in 8:
+			var pi: Dictionary = Art.bloque("pinchos", estado, 0, semilla)
+			var base_ok := true
+			for x in range(1, Art.N - 1):
+				for z in range(1, Art.N - 1):
+					base_ok = base_ok and pi.has(Vector3i(x, Art.TOPE_PINCHOS, z))
+			var puas := 0
+			var arriba_p := 0
+			for q in pi:
+				if q.y > Art.TOPE_PINCHOS:
+					puas += 1
+				if q.y == Art.TOPE_PINCHOS + 2:
+					arriba_p += 1
+			check(base_ok and puas == 5 * 5 and arriba_p == 5, "pinchos estado %d semilla %d: la base entera hasta el piso %d y cinco púas (%d minibloques, %d puntas)" % [estado, semilla, Art.TOPE_PINCHOS, puas, arriba_p])
+	check(Art.bloque("pinchos", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("pinchos", Art.Estado.PURIFICADO, 0, 2), "en los pinchos también el corrupto del final es el purificado del principio")
 	check(Art.bloque("hierro", Art.Estado.PURIFICADO, 2, 1) != Art.bloque("piedra", Art.Estado.PURIFICADO, 2, 1), "el hierro no es la piedra")
 	check(Art.bloque("hierro", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hierro", Art.Estado.PURIFICADO, 0, 2), "en el hierro también el corrupto del final es el purificado del principio")
 	check(Art.malla_bloque("hierro", Art.Estado.CORRUPTO, 0, 1).get_surface_count() == 1, "la malla del hierro se arma")

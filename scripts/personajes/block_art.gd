@@ -70,6 +70,19 @@ const PALETA_TRAMPA := {
 	"cicatriz": Color(0.42, 0.44, 0.58),
 }
 
+## Los pinchos: una base de acero oscuro de siete minibloques de alto y, encima, cinco púas (una en cada esquina y una en el centro) que llegan hasta arriba de todo; plateadas y brillantes
+## cuando están limpias y negras, con la punta de magma, cuando están corruptas. Nadie se para encima: la cara que se pisa es la de la base, tapada por las púas.
+const PALETA_PINCHOS := {
+	"base": [Color(0.34, 0.36, 0.46), Color(0.38, 0.40, 0.50), Color(0.42, 0.44, 0.54)],
+	"base_limpia": [Color(0.40, 0.42, 0.52), Color(0.44, 0.46, 0.56), Color(0.48, 0.50, 0.60)],
+	"corrupto": [Color(0.08, 0.08, 0.12), Color(0.11, 0.10, 0.15), Color(0.14, 0.13, 0.19)],
+	"pua": Color(0.74, 0.77, 0.86),
+	"punta": Color(0.92, 0.95, 1.0),
+	"pua_corrupta": Color(0.15, 0.12, 0.20),
+	"cicatriz": Color(0.28, 0.30, 0.40),
+}
+const TOPE_PINCHOS := 6   # el último piso de la base (los pisos 7 y 8 son las púas)
+
 const CORRUPCION_CORRUPTO := [1.0, 0.83, 0.70, 0.60, 0.50]
 const CORRUPCION_PURIFICADO := [0.50, 0.33, 0.20, 0.10, 0.0]
 
@@ -132,7 +145,12 @@ static func trampa(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla, "trampa")
 
 
-## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo", "arenisca" o "trampa") en un estado y nivel.
+## Los minibloques de un bloque de pinchos: {Vector3i: Color}.
+static func pinchos(estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	return piedra_con(corrupcion(estado, nivel), semilla, "pinchos")
+
+
+## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo", "arenisca", "trampa" o "pinchos") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla, tipo)
 
@@ -144,6 +162,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 	var hierro := tipo == "hierro"   # (el hierro se desgasta mucho menos: es un cubo de placas)
 	var es_hielo := tipo == "hielo"   # (el hielo se astilla en las aristas)
 	var arena := tipo == "arenisca"   # (la arenisca se desmorona: más que la piedra)
+	var pinchos := tipo == "pinchos"   # (una base de siete minibloques de alto con cinco púas encima)
 	var trampa := tipo == "trampa"   # (la trampa se desvanece hacia abajo: translúcida y con huecos; la cara de arriba, que se pisa, queda entera)
 	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
 	var p_arista := 0.0 if hierro else (lerpf(0.0, 0.30, c) if es_hielo else (lerpf(0.18, 0.45, c) if arena else (lerpf(0.0, 0.2, c) if trampa else lerpf(0.03, 0.38, c))))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
@@ -160,8 +179,11 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 		for y in N:
 			for z in N:
 				var p := Vector3i(x, y, z)
+				if pinchos and y > TOPE_PINCHOS:
+					continue
 				var b := _bordes(p)
-				if not _centro_arriba(p):
+				var protegido := (y == TOPE_PINCHOS and x >= 1 and x <= N - 2 and z >= 1 and z <= N - 2) if pinchos else _centro_arriba(p)
+				if not protegido:
 					var r := _h(x, y, z, sd)
 					if b == 3 and r < p_esquina:
 						continue
@@ -175,9 +197,11 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 							mordido = true
 					if mordido and p.y < N - 1:
 						continue
-				vox[p] = _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else (_color_trampa(p, c, sd) if trampa else _color_base(p, c, sd))))
+				vox[p] = _color_pinchos(p, c, sd) if pinchos else _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else (_color_trampa(p, c, sd) if trampa else _color_base(p, c, sd))))
 	if arena:
 		_fisuras(vox, sd)
+	if pinchos:
+		_puas(vox, c)
 	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), siempre los mismos para una semilla (un bloque que se limpia
 	# conserva sus grietas, cada vez más cortadas y apagadas); con mucha corrupción son vetas hundidas con magma que brilla, y con poca, cicatrices con algún resto de vena
 	var rng_g := RandomNumberGenerator.new()
@@ -194,7 +218,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 				var p := _de_cara(cara, uv)
 				var nucleo := (i % 9 == 4)
 				i += 1
-				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles or (hierro and _bordes(p) >= 2):   # (las grietas del hierro no tocan el marco ni los remaches)
+				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles or (hierro and _bordes(p) >= 2) or (pinchos and p.y > TOPE_PINCHOS):   # (las púas no se agrietan; las grietas del hierro no tocan el marco ni los remaches)
 					continue
 				_grieta(vox, p, cara, nucleo, c, sd, tipo)
 	if trampa:   # (la trampa se deshace de abajo hacia arriba: cuanto más abajo, más minibloques faltan, y los que quedan se ven cada vez más transparentes (ver `_opacidad_trampa`))
@@ -383,6 +407,32 @@ static func _opacidad_trampa(p: Vector3i, color: Color) -> float:
 ## ¿Este tipo de bloque se dibuja translúcido (con dos mallas, una con las caras de atrás y otra con las de adelante)?
 static func es_translucido(tipo: String) -> bool:
 	return tipo == "hielo" or tipo == "trampa"
+
+
+## El color de la base de los pinchos: acero oscuro azulado (o casi negro con corrupción, rampa entre 0,5 y 1); el borde de arriba de la base, un poco más oscuro.
+static func _color_pinchos(p: Vector3i, c: float, sd: int) -> Color:
+	var r := _h(p.x, p.y, p.z, sd + 3)
+	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
+	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
+	var base: Color = (PALETA_PINCHOS.base[i] as Color).lerp(PALETA_PINCHOS.base_limpia[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
+	var col := base.lerp(PALETA_PINCHOS.corrupto[i], oscuro)
+	if p.y == TOPE_PINCHOS and _bordes(p) >= 1 and (p.x == 0 or p.x == N - 1 or p.z == 0 or p.z == N - 1):
+		col = col.darkened(0.25)   # (el borde de la base)
+	return col
+
+
+## Las cinco púas: cada una de 2 x 2 minibloques de base y uno más de alto, que se afinan hasta una punta de uno (pisos 7 y 8). Plateadas con la punta casi blanca; con corrupción, negras con la punta de magma
+## (que brilla); en los niveles intermedios, un poco de cada.
+static func _puas(vox: Dictionary, c: float) -> void:
+	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
+	var cuerpo: Color = (PALETA_PINCHOS.pua as Color).lerp(PALETA_PINCHOS.pua_corrupta, oscuro)
+	var punta: Color = (PALETA_PINCHOS.punta as Color).lerp(PALETA.vena, oscuro)
+	punta.a = lerpf(1.0, 0.45, oscuro)   # (la punta corrupta brilla)
+	for esquina in [Vector2i(1, 1), Vector2i(1, 7), Vector2i(7, 1), Vector2i(7, 7), Vector2i(4, 4)]:
+		for dx in 2:
+			for dz in 2:
+				vox[Vector3i(esquina.x + dx, TOPE_PINCHOS + 1, esquina.y + dz)] = cuerpo
+		vox[Vector3i(esquina.x, TOPE_PINCHOS + 2, esquina.y)] = punta
 
 
 ## Un camino al azar sobre una cara de 10 x 10, en ocho direcciones: sigue derecho casi siempre y gira de a 45 grados, así las grietas hacen curvas.

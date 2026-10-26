@@ -15,3 +15,7 @@ Código: `scripts/personajes/block_art.gd`. Los bloques de siempre (`block_model
 
 ## Cómo seguir con otros bloques
 Cada tipo necesita su versión corrupta y su versión purificada sobre la misma escala. Se agregan a `block_art.gd` (o a un módulo hermano) y se enganchan en `Vista.poblar`. Capturas de revisión: `tests/capturas/shot_bloque.gd` (`niveles` muestra las cinco etapas lado a lado). Pruebas: `tests/unitarios/test_block_art.gd`.
+
+## Pinchos (`pinchos`)
+
+Una base de acero oscuro de siete minibloques de alto (`TOPE_PINCHOS`) con cinco púas encima (cuatro en las esquinas y una en el centro; un piso de 2x2 y un minibloque de punta, hasta el piso 8, con 2x2 en el primer piso de cada púa y la punta de uno encima). Limpios: púas plateadas con la punta casi blanca. Corruptos: base casi negra, púas de obsidiana y puntas de magma que brillan. Las púas no se agrietan; las grietas y el magma van en la base. Se usa en la torre con la letra `s`.
