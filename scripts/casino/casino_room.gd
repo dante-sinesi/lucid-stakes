@@ -11,6 +11,7 @@ extends RefCounted
 
 const Stages := preload("res://scripts/datos/stages.gd")
 const Arte := preload("res://scripts/ui/contract_art.gd")
+const Muebles := preload("res://scripts/casino/casino_muebles.gd")
 const CELL_VOX := 5            # minibloques por celda
 const VOXEL := 0.2
 
@@ -460,7 +461,7 @@ static func _decorar(d: Dictionary, wall: Dictionary, lit: Dictionary, west: boo
 					_box(lit, a + 1, H - 3, 2, a + 3, H - 2, 3, L.lamp)
 
 
-static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
+static func build_voxels(stage := 8, tier_override := -1, muebles := true) -> Dictionary:   # (`muebles` falso: sólo la sala, para ponerle los muebles finos de `build_detalle`)
 	var lay := layout(stage, tier_override)
 	var L := look(stage, int(lay.tier))
 	var cor: float = L.corruption
@@ -517,6 +518,51 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 		for z in range(1 * CELL_VOX, (lay.table.position.y - 2) * CELL_VOX):
 			_box(solid, ex + 1, 2, z, ex + CELL_VOX - 1, 3, z + 1, L.carpet)
 
+	if muebles:
+		_muebles_basicos(solid, glow, lay, L)
+
+	# Portales: el de salida en la pared norte (frente a EXIT) y el de llegada en la pared oeste (frente a ENTRY, sólo estético). Acá van sólo los marcos;
+	# el interior, de ondas que se mueven, lo arma casino_scene.gd (shaders/portal.gdshader). Cuanto más avanzado el run, más claros; el de salida es algo más claro.
+	_box(wn, door_x - 1, 2, 0, door_x, H, 2, L.gold)
+	_box(wn, door_x + CELL_VOX, 2, 0, door_x + CELL_VOX + 1, H, 2, L.gold)
+	_box(wn, door_x, 12, 0, door_x + CELL_VOX, H, 2, L.gold)
+	_box(ww, 0, 2, door_z - 1, 2, H, door_z, L.gold)
+	_box(ww, 0, 2, door_z + CELL_VOX, 2, H, door_z + CELL_VOX + 1, L.gold)
+	_box(ww, 0, 12, door_z, 2, H, door_z + CELL_VOX, L.gold)
+
+	for x in range(door_x, door_x + CELL_VOX):   # los vanos de las puertas quedan abiertos (ahí va el portal de ondas)
+		for y in range(2, 12):
+			for z in 2:
+				wn.erase(Vector3i(x, y, z))
+	for z in range(door_z, door_z + CELL_VOX):
+		for y in range(2, 12):
+			for x in 2:
+				ww.erase(Vector3i(x, y, z))
+	for p in glow:  # lo que brilla prevalece: un minibloque no puede ser a la vez sólido y luminoso
+		solid.erase(p)
+		ww.erase(p)
+		wn.erase(p)
+	for g in [gw, gn]:
+		for p in g:
+			solid.erase(p)
+			ww.erase(p)
+			wn.erase(p)
+	# "solid" y "glow" traen todo junto; "west" y "north" repiten lo que es de cada pared (para ocultarlas).
+	var all_solid := solid.duplicate()
+	var all_glow := glow.duplicate()
+	all_solid.merge(ww)
+	all_solid.merge(wn)
+	all_glow.merge(gw)
+	all_glow.merge(gn)
+	return {"solid": all_solid, "glow": all_glow,
+			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
+
+
+## Los muebles del modelo base (los de `build_detalle` los arma casino_muebles.gd con el doble de resolución): mesa de la ruleta, crupier, tragamonedas, mesas de cartas, estación, obstáculos y faroles.
+static func _muebles_basicos(solid: Dictionary, glow: Dictionary, lay: Dictionary, L: Dictionary) -> void:
+	var tier: int = lay.tier
+	var H: int = WALL_H[tier]
+	var dy: int = lay.table_h
 	# Mesa de la ruleta.
 	var tx0: int = lay.table.position.x * CELL_VOX
 	var tz0: int = lay.table.position.y * CELL_VOX
@@ -655,47 +701,12 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 				_box(solid, ox + 1, top - 2, oz + 1, ox + 5, top, oz + 5, L.gold)
 				glow[Vector3i(ox + 2, top, oz + 2)] = L.lamp
 
-	# Portales: el de salida en la pared norte (frente a EXIT) y el de llegada en la pared oeste (frente a ENTRY, sólo estético). Acá van sólo los marcos;
-	# el interior, de ondas que se mueven, lo arma casino_scene.gd (shaders/portal.gdshader). Cuanto más avanzado el run, más claros; el de salida es algo más claro.
-	_box(wn, door_x - 1, 2, 0, door_x, H, 2, L.gold)
-	_box(wn, door_x + CELL_VOX, 2, 0, door_x + CELL_VOX + 1, H, 2, L.gold)
-	_box(wn, door_x, 12, 0, door_x + CELL_VOX, H, 2, L.gold)
-	_box(ww, 0, 2, door_z - 1, 2, H, door_z, L.gold)
-	_box(ww, 0, 2, door_z + CELL_VOX, 2, H, door_z + CELL_VOX + 1, L.gold)
-	_box(ww, 0, 12, door_z, 2, H, door_z + CELL_VOX, L.gold)
-
 	# Faroles de pie: uno en cada celda de `lamps` (junto a las puertas), parados en el medio de la celda.
 	for lamp in lay.get("lamps", []):
 		var lx: int = lamp.x * CELL_VOX + 2
 		var lz: int = lamp.y * CELL_VOX + 2
 		_box(solid, lx, 2, lz, lx + 1, 9, lz + 1, (L.gold as Color).darkened(0.3))
 		_box(glow, lx - 1, 9, lz - 1, lx + 2, 11, lz + 2, L.lamp)
-	for x in range(door_x, door_x + CELL_VOX):   # los vanos de las puertas quedan abiertos (ahí va el portal de ondas)
-		for y in range(2, 12):
-			for z in 2:
-				wn.erase(Vector3i(x, y, z))
-	for z in range(door_z, door_z + CELL_VOX):
-		for y in range(2, 12):
-			for x in 2:
-				ww.erase(Vector3i(x, y, z))
-	for p in glow:  # lo que brilla prevalece: un minibloque no puede ser a la vez sólido y luminoso
-		solid.erase(p)
-		ww.erase(p)
-		wn.erase(p)
-	for g in [gw, gn]:
-		for p in g:
-			solid.erase(p)
-			ww.erase(p)
-			wn.erase(p)
-	# "solid" y "glow" traen todo junto; "west" y "north" repiten lo que es de cada pared (para ocultarlas).
-	var all_solid := solid.duplicate()
-	var all_glow := glow.duplicate()
-	all_solid.merge(ww)
-	all_solid.merge(wn)
-	all_glow.merge(gw)
-	all_glow.merge(gn)
-	return {"solid": all_solid, "glow": all_glow,
-			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
 
 
 ## El mueble de una estación de servicio, en su celda (contra la pared oeste): el yunque del taller con su brasero.
@@ -723,7 +734,7 @@ const CELL_FINO := CELL_VOX * ESCALA
 
 
 static func build_detalle(stage := 8, tier_override := -1, tablon := {}) -> Dictionary:   # (`tablon`: {papeles} con lo que cuelga del tablón; sin eso queda el corcho vacío)
-	var base := build_voxels(stage, tier_override)
+	var base := build_voxels(stage, tier_override, false)
 	var lay := layout(stage, tier_override)
 	var L := look(stage, int(lay.tier))
 	var out := {
@@ -732,6 +743,7 @@ static func build_detalle(stage := 8, tier_override := -1, tablon := {}) -> Dict
 		"north": {"solid": _ampliar(base.north.solid), "glow": _ampliar(base.north.glow)},
 	}
 	_marcar_juntas(out.solid, lay)
+	Muebles.armar(out.solid, out.glow, lay, L)   # (los muebles ya se arman en la resolución fina: no pasan por `_ampliar`)
 	if tablon.has("papeles") and lay.has("tablon"):   # (la escena del casino lo arma aparte con `build_tablon`, que cambia durante la visita)
 		var tab := build_tablon(stage, tier_override, tablon.papeles)
 		out.solid.merge(tab.solid)

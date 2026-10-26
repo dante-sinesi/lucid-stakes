@@ -5,8 +5,6 @@ const Room := preload("res://scripts/casino/casino_room.gd")
 const VoxelMesh := preload("res://scripts/ui/voxel_mesh.gd")
 const Arte := preload("res://scripts/ui/contract_art.gd")
 
-# la celda del tablón, sobre la pared del norte
-const CELDAS := [Vector2i(2, 0), Vector2i(3, 0), Vector2i(3, 0), Vector2i(4, 0)]
 
 
 func _init() -> void:
@@ -21,7 +19,7 @@ func _init() -> void:
 	var papeles := []
 	for i in rarezas[tier].size():
 		papeles.append({"rareza": rarezas[tier][i], "objetivo": objs[i]})
-	var data: Dictionary = Room.build_voxels(stage, tier) if base else Room.build_detalle(stage, tier, {"cell": CELDAS[tier], "papeles": papeles})
+	var data: Dictionary = Room.build_voxels(stage, tier) if base else Room.build_detalle(stage, tier, {"papeles": papeles})
 	var voxel: float = Room.VOXEL if base else Room.VOXEL_FINO
 	var lay: Dictionary = Room.layout(stage, tier)
 	var mundo := Node3D.new()
@@ -67,7 +65,7 @@ func _init() -> void:
 	cam.position = Vector3(0, 0, 40)
 	pitch.add_child(cam)
 	if cerca:   # (de cerca: centrada en el tablón)
-		pivot.position = Vector3((CELDAS[tier].x + 0.5) * Room.CELL_VOX * Room.VOXEL, 1.0, 0.8)
+		pivot.position = Vector3(0.8, 1.0, (Room.TABLON.y + 0.5) * Room.CELL_VOX * Room.VOXEL)
 		cam.size = 5.0
 	for a in args:   # "foco:X:Z:TAMAÑO": mira un punto de la sala (en unidades del mundo) con ese tamaño de cámara
 		if a.begins_with("foco:"):
