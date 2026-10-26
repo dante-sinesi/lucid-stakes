@@ -37,24 +37,24 @@ Conclusiones:
 - Se saca la tragamonedas de la taberna (queda solo la ruleta). El salón en adelante conserva sus mesas.
 
 ### Las reglas de la casa se van
-- Se eliminan las cuatro reglas (`casino_rules.gd`: Racha, Apuesta libre, Jackpot) y todo lo que depende de "aceptar la regla con el tabernero". Pasan a **boosts y/o consumibles**, con distinto porcentaje de aparición:
+- Se eliminan las reglas (`casino_rules.gd`: Racha, Apuesta libre, Jackpot) y todo lo que depende de "aceptar la regla con el tabernero". **Racha** y **Jackpot** pasan a boosts y/o consumibles, con distinto porcentaje de aparición; **Apuesta libre desaparece del todo**, sin boost ni consumible (decisión de Dante: quien quiera ganar cinco veces, juega cinco veces). Con ella se va la apuesta de 1, 2, 3 o 5 fichas juntas de las tragamonedas y el blackjack (`stake`).
 
 | Regla | Qué hacía | Consumible (esta visita) | Boost (siempre) |
 |---|---|---|---|
 | Racha | cada apuesta ganada seguida suma +10 % al pago de la siguiente, hasta +50 %; perder la corta | común | raro |
-| Apuesta libre | en tragamonedas y blackjack se pueden apostar 1, 2, 3 o 5 fichas juntas (paga proporcional) | común | por decidir (ver abajo) |
 | Jackpot | parte de lo que se pierde va a un pozo; el premio mayor (tres coronas, blackjack o pleno) se lo lleva | — | épico |
-
-- **Qué es Apuesta libre:** hoy cada jugada de tragamonedas o blackjack cuesta una ficha. Con la regla se elige apostar 1, 2, 3 o 5 fichas juntas y el pago es proporcional. **No mejora el rendimiento esperado**: solo mueve más claridad por jugada (más varianza). Su utilidad real es amplificar otros efectos (Mesa caliente +25 %, Red de seguridad, Racha). Por eso encaja mejor como consumible que como boost. *Pendiente decidir si tiene versión boost.*
+| Apuesta libre | — | se elimina | se elimina |
 
 ### La Caja fuerte se va
-- Se saca el servicio `caja` (`casino_services.gd`, `run.vault`, `vault_stage`). Lo absorben:
-  - **Consumible "Alcancía"**: guardas claridad y la cobras con interés (hoy 15 %) en el próximo casino. Mientras tanto no está disponible: ni para jugar ni para pagar el peaje.
-  - **Boost**: el **Interés** que ya existe (la claridad que sobra al salir crece 25 %, con tope). No hace falta uno nuevo.
-- **Cuidado:** reintentar ya **no cuesta claridad** (`restart_cost(true)` devuelve 0; cuesta una vida). Las descripciones y textos de la Caja fuerte que dicen "mientras tanto no sirve para reintentar" ya no valen y no se copian.
+- Se saca el servicio `caja` (`casino_services.gd`, `run.vault`, `vault_stage`, el guardado y la pantalla). Ya no se guarda ni se retira claridad: nada queda "apartado".
+- Lo absorbe un efecto simple: **al terminar la torre y entrar al casino se acredita un porcentaje de la claridad con la que se entró a esa torre** (hoy la Caja pagaba 15 % de interés, `VAULT_INTEREST`). Se anota la claridad al empezar la torre y se acredita al entrar al casino, con un aviso corto de lo cobrado.
+  - **Boost "Caja fuerte"**: en cada casino.
+  - **Consumible "Alcancía"**: una sola vez, con un porcentaje mayor.
+- Distinto del boost **Interés** que ya existe (la claridad que sobra *al salir* del casino crece 25 %, con tope): momento y base distintos. Los dos conviven.
+- **Cuidado:** reintentar ya **no cuesta claridad** (`restart_cost(true)` devuelve 0; cuesta una vida). Los textos de la Caja fuerte que dicen "mientras tanto no sirve para reintentar" ya no valen y no se copian.
 
 ### El Taller
-- Sigue donde está (salón). *Pendiente: confirmar con Dante.*
+- Se queda **solo en el segundo casino (el salón)**, como hasta ahora.
 
 ## 3. Ficha chica
 
@@ -94,7 +94,7 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 - La dificultad de la tarea y la recompensa suben con la rareza y con la etapa.
 
 ### Límite
-- **2 contratos activos** a la vez. Un boost o un consumible puede subir el límite (por definir cuáles).
+- **2 contratos activos** a la vez. El boost **"Caza recompensas"** da **+1** a la cantidad de contratos que se pueden aceptar.
 
 ### Cobro y animación
 - Se cobra **en cuanto se cumple**, dentro de la torre. Aviso corto sin texto de depuración en el HUD.
@@ -120,7 +120,7 @@ Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar
 | Mesas | ruleta con ficha chica | ruleta, tragamonedas, blackjack | ídem | ídem |
 | Premios de la ruleta | solo comunes y consumibles | por definir | por definir | por definir |
 | Tablón | 3 papeles | 4 | 5 (fianza) | 6 (fianza) |
-| Estación | — | Taller | por definir | por definir |
+| Estación | — | Taller | — | — |
 
 Ideas para diferenciar más, **sin decidir**: premios por rareza según el casino (épicos solo desde cierto casino, boosts exclusivos del gran casino), un servicio propio del gran casino (fundir dos boosts en uno mejor), una mesa VIP, vista previa de lo que vende el casino siguiente, y un crupier con personalidad en cada casino.
 
@@ -128,14 +128,14 @@ Ideas para diferenciar más, **sin decidir**: premios por rareza según el casin
 
 - Textos en español neutro (tuteo); toda frase nueva con su entrada en `scripts/idioma/loc_en*.gd`.
 - Al cambiar premios o servicios, regenerar el catálogo (`herramientas\catalogo.bat`).
-- Pruebas y capturas con `GAME_SANDBOX=1`; limpiar tests que dependan de las reglas o la Caja (`test_casino*`, `test_scenarios`, etc.).
+- Pruebas y capturas con `GAME_SANDBOX=1`; limpiar tests que dependan de las reglas, la apuesta de varias fichas o la Caja (`test_casino*`, `test_scenarios`, etc.).
 - Guardado: los runs viejos con `vault` o `casino_visit` deben cargar sin romperse.
 - Nada viejo en el repositorio: lo que se quita se borra de verdad.
 
 ## 7. Orden de trabajo propuesto
 
 1. **Taberna y ficha chica:** sacar la tragamonedas de la taberna, multiplicador de ficha de las etapas 1 a 3, vitrina de la taberna con premios chicos.
-2. **Reglas y Caja fuerte → boosts y consumibles:** quitar `casino_rules`, la regla aceptada con el tabernero y la Caja; agregar los ítems nuevos.
+2. **Reglas y Caja fuerte → boosts y consumibles:** quitar `casino_rules`, la regla aceptada con el tabernero, la apuesta de varias fichas y la Caja; agregar los ítems nuevos (Racha, Jackpot, Caja fuerte, Alcancía, Caza recompensas).
 3. **Contratos, versión mínima:** modelo de datos, sorteo por casino, estación del tablón con su pantalla, 2 activos, cobro al cumplirse.
 4. **Presentación:** sello de rareza, animación del sello "COBRADO", pausa con los contratos activos.
 5. **Fianza** en los dos últimos casinos.
@@ -144,9 +144,8 @@ Ideas para diferenciar más, **sin decidir**: premios por rareza según el casin
 
 ## 8. Pendientes de decisión
 
-- ¿Apuesta libre tiene versión boost, o solo consumible?
-- ¿El Taller se queda? ¿Qué estación tienen el casino y el gran casino?
-- Qué boost o consumible sube el límite de contratos activos.
-- Tamaño y premio de la fianza.
+- Fianza: cuánto cuesta (el "tamaño") y cuánto más paga (el "premio"). Ejemplo para discutirlo: contrato raro de la etapa 12, recompensa base 145. Con fianza de 145, si se cumple se recibe la fianza de vuelta más el doble de la recompensa (290), neto +290 en vez de +145; si no se cumple se pierden los 145. Con esos números conviene tomarla si la probabilidad de cumplir supera el 50 %.
+- Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
 - Premios por rareza según el casino.
+- Si el casino y el gran casino llevan alguna estación (hoy, sin la Caja fuerte, no tienen ninguna).
 - Cuándo recalibrar el peaje (hoy es el 77 % de lo que rinde la torre en la etapa 1).
