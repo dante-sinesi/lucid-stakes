@@ -135,6 +135,15 @@ func _init() -> void:
 				plato_ok = plato_ok and ca.has(Vector3i(x, Art.N - 1, z))
 		check(plato_ok and ca.has(Vector3i(1, 3, 1)), "catapulta estado %d: el plato de arriba está entero y hay resortes" % estado)
 	check(Art.bloque("catapulta", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("catapulta", Art.Estado.PURIFICADO, 0, 2), "en la catapulta también el corrupto del final es el purificado del principio")
+	for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+		var ck: Dictionary = Art.bloque("checkpoint", estado, 0, 1)
+		var ck_ok := true
+		for x in range(1, Art.N - 1):
+			for z in range(1, Art.N - 1):
+				ck_ok = ck_ok and ck.has(Vector3i(x, Art.N - 1, z))
+		check(ck_ok, "checkpoint estado %d: la cara de arriba, que se pisa, está entera" % estado)
+	check(Art.bloque("checkpoint", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("checkpoint", Art.Estado.PURIFICADO, 0, 2), "en el checkpoint también el corrupto del final es el purificado del principio")
+	check(not Art.bloque("portal", Art.Estado.PURIFICADO).has(Vector3i(4, Art.N - 1, 4)), "el portal tiene la cara de arriba abierta para las ondas")
 	check(Art.bloque("pinchos", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("pinchos", Art.Estado.PURIFICADO, 0, 2), "en los pinchos también el corrupto del final es el purificado del principio")
 	check(Art.bloque("hierro", Art.Estado.PURIFICADO, 2, 1) != Art.bloque("piedra", Art.Estado.PURIFICADO, 2, 1), "el hierro no es la piedra")
 	check(Art.bloque("hierro", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hierro", Art.Estado.PURIFICADO, 0, 2), "en el hierro también el corrupto del final es el purificado del principio")

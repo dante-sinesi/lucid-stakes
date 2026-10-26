@@ -2,6 +2,8 @@ extends Node3D
 ## La escena principal: el menú, el run (etapas, torre, casino, peaje), los menús de pausa y de fin, el tutorial y el guardado. La torre se juega en torre/torre_juego.gd.
 
 const TorreJuego := preload("res://torre/torre_juego.gd")   # la torre (salas apiladas, sin núcleo): ver docs/reglas_torre.md
+const Escena := preload("res://torre/escena.gd")
+const BlockArt := preload("res://scripts/personajes/block_art.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
 const Controls := preload("res://scripts/entrada/controls.gd")
 const Graphics := preload("res://scripts/ui/graphics.gd")
@@ -75,10 +77,7 @@ const CASINO_SUN_WARM := 0.6
 var generating := false
 var toll_in_tests := false   # las pruebas no cobran el peaje de Farolín salvo que se pida
 var goal_mat: ShaderMaterial   # el material del portal de salida (apagado hasta que alcance para el peaje)
-const PORTAL_SHADER := preload("res://shaders/portal.gdshader")
 var cam: Camera3D
-var _goal_mat: StandardMaterial3D
-const GOAL_TOP_LIFT := 0.52   # a qué altura (desde el centro del cubo de salida) va la losa de ondas de su cara de arriba
 var seed_value := 1
 var stage_number := 1      # etapa (1..15) que se genera: define la dificultad, el largo de la torre y las mecánicas
 var hud: Control              # texto de depuración (semilla, contadores...): sólo se ve con F2 en las compilaciones de desarrollo
@@ -241,10 +240,6 @@ func _build_environment() -> void:
 	cam.position = Vector3(0, 0, 40)
 	add_child(cam)
 	cam.make_current()
-	_goal_mat = StandardMaterial3D.new()   # el dorado de los bordes del cubo-portal
-	_goal_mat.albedo_color = Color(1.0, 0.85, 0.2)
-	_goal_mat.emission_enabled = true
-	_goal_mat.emission = Color(1.0, 0.8, 0.1)
 
 
 ## Pone en marcha los gráficos del jugador en lo que es de esta escena (grupo "graphics"; ver graphics.gd).
@@ -479,16 +474,11 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	_descubrir_bloques()
 
 
-## El cubo-portal del final de la torre (el mismo del juego de siempre: luminoso, con bordes dorados y las ondas arriba), siempre encendido (Farolín cobra en el casino).
+## El cubo-portal del final de la torre (de minibloques, con las ondas animadas arriba; sus colores combinan con la etapa), siempre encendido (Farolín cobra en el casino).
 func _cubo_portal() -> Node3D:
-	goal_mat = ShaderMaterial.new()
-	goal_mat.shader = PORTAL_SHADER
-	goal_mat.set_shader_parameter("col_a", Color(0.95, 0.78, 0.3))
-	goal_mat.set_shader_parameter("col_b", Color(1.0, 0.93, 0.6))
-	goal_mat.set_shader_parameter("col_c", Color(1.0, 1.0, 0.92))
-	goal_mat.set_shader_parameter("cells", Vector2(5.0, 5.0))
-	goal_mat.set_shader_parameter("lit", 1.0)
-	return _make_goal_cube()
+	var g := Escena.cubo_portal(BlockArt.nivel_de_etapa(maxi(stage_number, 1)))
+	goal_mat = g.get_node("ondas").material_override
+	return g
 
 
 ## Saca la escena de la torre (y, si se pide, devuelve la cámara del juego).
@@ -756,53 +746,6 @@ func _apply_casino_light() -> void:
 
 
 ## El cubo de salida: un cubo claro y luminoso con bordes dorados y, en la cara de arriba, las ondas del portal (como las puertas del casino).
-func _make_goal_cube() -> Node3D:
-	var g := Node3D.new()
-	g.name = "goal"
-	var body := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3.ONE * 1.015
-	body.mesh = bm
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.97, 0.86)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.93, 0.7)
-	mat.emission_energy_multiplier = 0.9
-	mat.roughness = 0.4
-	body.material_override = mat
-	g.add_child(body)
-	for axis in 3:   # los 12 bordes dorados
-		for a in [-0.5, 0.5]:
-			for b in [-0.5, 0.5]:
-				var bar := MeshInstance3D.new()
-				var m := BoxMesh.new()
-				var size := Vector3.ONE * 0.075
-				size[axis] = 1.07
-				m.size = size
-				bar.mesh = m
-				bar.material_override = _goal_mat
-				var p := Vector3.ZERO
-				p[(axis + 1) % 3] = a
-				p[(axis + 2) % 3] = b
-				bar.position = p
-				g.add_child(bar)
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.86, 0.86)
-	var top := MeshInstance3D.new()
-	top.mesh = quad
-	top.material_override = goal_mat
-	top.rotation_degrees.x = -90.0
-	top.position = Vector3(0, GOAL_TOP_LIFT, 0)
-	g.add_child(top)
-	var light := OmniLight3D.new()
-	light.light_color = Color(1.0, 0.9, 0.6)
-	light.omni_range = 3.2
-	light.light_energy = 0.6
-	light.position = Vector3(0, 0.9, 0)
-	g.add_child(light)
-	return g
-
-
 func _flash_gain(text: String, gain := 0) -> void:
 	var w := gain_weight(gain)
 	gain_label.cube = 3.0 + 3.0 * w   # (una ganancia grande se ve más grande, dura más y suena más fuerte)
