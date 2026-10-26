@@ -208,6 +208,14 @@ func _ready() -> void:
 		open_main_menu()
 
 
+## Dónde está la cámara de la torre, según su derecha y su arriba (el fondo mueve sus capas con paralaje); cero si no hay torre.
+func _camara_para_fondo() -> Vector2:
+	if torre == null or torre.pivot == null or torre.cam == null:
+		return Vector2.ZERO
+	var b: Basis = torre.cam.global_transform.basis
+	return Vector2(torre.pivot.position.dot(b.x), torre.pivot.position.dot(b.y))
+
+
 func _build_environment() -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
@@ -219,6 +227,7 @@ func _build_environment() -> void:
 	we.environment = env
 	add_child(we)
 	fondo = FondoAnimado.new(env)
+	fondo.camara_fn = _camara_para_fondo
 	add_child(fondo)
 
 	var sun := DirectionalLight3D.new()
