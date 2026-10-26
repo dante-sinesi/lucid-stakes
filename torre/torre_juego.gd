@@ -135,11 +135,11 @@ func _ready() -> void:
 	gato = Characters.build(id_personaje, gorro, prenda)
 	gato_nodo.add_child(gato)
 	animador = Animacion.new(gato)
-	animador.sombra = silueta
 	gato_nodo.add_child(animador)
 	silueta = Characters.build(id_personaje, gorro, prenda, true)   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego; Opciones > Gráficos > Transparencia del personaje)
 	silueta.visible = bool(Graphics.value("silhouette")) if en_juego else true
 	gato_nodo.add_child(silueta)
+	animador.sombra = silueta   # (la silueta repite las animaciones)
 	# Farolín espera sentado, apoyado en un tronquito, en una esquina del bloque de salida y mirando hacia el centro del cubo
 	farolin = Node3D.new()
 	farolin.visible = false
