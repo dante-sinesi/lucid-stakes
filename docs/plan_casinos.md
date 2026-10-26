@@ -182,7 +182,7 @@ Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino,
 1. **Taberna y ficha chica:** sacar la tragamonedas de la taberna y poner el multiplicador de ficha de las etapas 1 a 3 (sin limitar los premios).
 2. **Reglas y Caja fuerte → boosts y consumibles:** quitar `casino_rules`, la regla aceptada con el tabernero, la apuesta de varias fichas y la Caja; agregar los ítems nuevos (Racha, Jackpot, Caja fuerte, Alcancía, Caza recompensas).
 3. **Contratos, versión mínima:** modelo de datos, sorteo por casino, estación del tablón con su pantalla, 2 activos, cobro al cumplirse.
-4. **Presentación:** sello de rareza, animación del sello "COBRADO", pausa con los contratos activos.
+4. **Presentación:** sello de rareza, pantalla del contrato resuelto (sello CUMPLIDO o FALLIDO y contador), pausa con los contratos activos.
 5. **Fianza** en los dos últimos casinos.
 6. **Diferenciar los casinos** (premios y estaciones por casino).
 7. **Balance:** recalibrar la curva del peaje con el ingreso medido (`income_base` / `income_slope`) y repetir el bot de runs completos (`bot.md`).
