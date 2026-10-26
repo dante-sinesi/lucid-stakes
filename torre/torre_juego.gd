@@ -69,6 +69,7 @@ var _lento := 1.0            # cuánto se alarga lo que pasa en la última acci�
 const CAMARA_LENTA := 3.0
 const EMPUJE_LENTO := 8.0   # y el movimiento del bloque empujado o tirado (y del personaje que lo mueve) va más lento todavía: es lo que explica la derrota
 var _lento_mov := 1.0
+var mancha: MeshInstance3D   # la sombra de contacto del personaje: una mancha oscura en la cara de arriba del bloque que pisa (con vista isométrica sin perspectiva, es lo que dice en qué celda está)
 var mira := Vector3i(0, 0, 1)
 var _camara_tween: Tween
 var _paso_tween: Tween
@@ -144,6 +145,8 @@ func _ready() -> void:
 	silueta.visible = bool(Graphics.value("silhouette")) if en_juego else true
 	gato_nodo.add_child(silueta)
 	animador.sombra = silueta   # (la silueta repite las animaciones)
+	mancha = _crear_mancha()
+	add_child(mancha)
 	# Farolín espera sentado, apoyado en un tronquito, en una esquina del bloque de salida y mirando hacia el centro del cubo
 	farolin = Node3D.new()
 	farolin.visible = false
@@ -315,6 +318,40 @@ func _pos_gato() -> Vector3:
 	var j: Vector3i = t.motor.jugador
 	var off := float(int(t.sala_actual().off))
 	return Vector3(j.x + 0.5, j.y + off, j.z + 0.5) + Vector3(t.motor.colgado) * 0.22
+
+
+## La mancha de sombra: un disco difuso y oscuro que se apoya sobre el bloque que pisa el personaje.
+func _crear_mancha() -> MeshInstance3D:
+	var sh := Shader.new()
+	sh.code = "shader_type spatial;\nrender_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;\nvoid fragment() {\n\tfloat d = length(UV - vec2(0.5)) * 2.0;\n\tALBEDO = vec3(0.0);\n\tALPHA = 0.85 * (1.0 - smoothstep(0.4, 1.0, d));\n}\n"
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.render_priority = 2
+	var q := QuadMesh.new()
+	q.size = Vector2(1.0, 1.0)
+	var m := MeshInstance3D.new()
+	m.mesh = q
+	m.material_override = mat
+	m.rotation_degrees.x = -90.0
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	m.visible = false
+	return m
+
+
+## Cada cuadro: la mancha va bajo los pies del personaje, sobre la cara de arriba del bloque que pisa (se esconde si cuelga, se cae o no hay bloque debajo).
+func _poner_mancha() -> void:
+	if mancha == null or t == null:
+		return
+	var j: Vector3i = t.motor.jugador
+	var tope := -1000
+	if not (t.muerta or _cayendo) and t.motor.colgado == Vector3i.ZERO:
+		for y in range(j.y, j.y - 12, -1):
+			if t.motor.bloques.has(Vector3i(j.x, y - 1, j.z)):
+				tope = y
+				break
+	mancha.visible = tope > -1000
+	if mancha.visible:
+		mancha.position = Vector3(gato_nodo.position.x, float(tope) + float(int(t.sala_actual().off)) + 0.02, gato_nodo.position.z)
 
 
 func _poner_gato(animar: bool) -> void:
@@ -494,6 +531,7 @@ func _process(delta: float) -> void:
 		var foco := gato_nodo.position + Vector3(0, 0.5, 0)
 		pivot.position = pivot.position.lerp(foco, 1.0 - exp(-14.0 * delta))
 	_temblar()
+	_poner_mancha()
 	_pista_proceso()
 	if not activa:
 		return

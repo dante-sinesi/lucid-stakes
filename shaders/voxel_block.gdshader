@@ -18,6 +18,7 @@ uniform vec4 glow_color : source_color = vec4(0.0);
 uniform float glow_energy = 0.0;
 uniform float roughness_value = 0.8;
 uniform float rim = 0.0;   // brillo del canto (el hielo): se suma una luz fría donde la cara se ve de costado
+uniform float face_lift = 1.0;   // cuánto se levanta el piso de luz de las caras (0 lo apaga)
 uniform float shake = 0.0;   // temblor (la fila de abajo está por caer): cuánto se sacude cada bloque, en unidades
 
 void vertex() {
@@ -41,5 +42,8 @@ void fragment() {
 	ALBEDO = COLOR.rgb * tint.rgb * (1.0 - f);
 	ROUGHNESS = roughness_value;
 	// El alfa del color del vértice marca los minibloques que brillan (las vetas del arte de 10x10x10): cuanto menor, más emiten su propio color.
-	EMISSION = glow_color.rgb * glow_energy + vec3(0.45, 0.75, 1.0) * pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5) * rim + COLOR.rgb * (1.0 - COLOR.a) * 1.6;
+	// Un piso de luz según hacia dónde mira la cara (arriba la más clara, luego un costado y el otro casi nada): los bloques corruptos son casi negros y, sin esto, la luz del sol no los diferencia entre sí y no se entiende cuál está delante.
+	vec3 n_mundo = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	float piso = 0.11 * max(n_mundo.y, 0.0) + 0.06 * max(dot(n_mundo, normalize(vec3(-0.5, 0.0, 0.85))), 0.0) + 0.02;
+	EMISSION = vec3(0.62, 0.58, 0.85) * piso * face_lift + glow_color.rgb * glow_energy + vec3(0.45, 0.75, 1.0) * pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5) * rim + COLOR.rgb * (1.0 - COLOR.a) * 1.6;
 }
