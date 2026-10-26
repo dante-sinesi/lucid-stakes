@@ -240,6 +240,8 @@ func _refrescar(animar := false) -> void:
 		for i in estaticas.size():
 			if estaticas[i] != null and is_instance_valid(estaticas[i]):
 				estaticas[i].visible = i >= t.indice
+		if portal != null and is_instance_valid(portal):
+			portal.visible = true
 	else:
 		_ocultar_arriba()
 	_poner_farolin()
@@ -427,6 +429,8 @@ func _ocultar_arriba() -> void:
 		var n = estaticas[i]
 		if n != null and is_instance_valid(n):
 			n.visible = i > t.indice and not desde_arriba
+	if portal != null and is_instance_valid(portal):   # (el portal está sobre la última sala: si todavía no se llegó a ella, se oculta con las demás)
+		portal.visible = not (desde_arriba and t.indice < t.salas.size() - 1)
 
 
 func _process(delta: float) -> void:
