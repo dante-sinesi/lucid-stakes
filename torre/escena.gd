@@ -1,7 +1,9 @@
 extends RefCounted
 ## Lo común de la vista 3D de las salas (la torre dentro del juego y el Estudio): el shader y los materiales de los bloques, la luz, la cámara de una vista y el rayo para elegir una cara.
 
+const BlockArt := preload("res://scripts/personajes/block_art.gd")
 const BLOCK_SHADER := preload("res://shaders/voxel_block.gdshader")
+const PORTAL_SHADER := preload("res://shaders/portal.gdshader")
 const HIELO_SHADER := preload("res://shaders/voxel_hielo.gdshader")
 const HIELO_ATRAS_SHADER := preload("res://shaders/voxel_hielo_atras.gdshader")
 
@@ -109,3 +111,38 @@ static func pick_face(cam: Camera3D, pos: Vector2, st) -> Dictionary:
 		prev = c
 		t += 0.04
 	return {"hit": Vector3i(-1000, 0, 0), "prev": Vector3i(-1000, 0, 0)}
+
+
+## El cubo-portal del final de la torre en un nivel de arte (0 a 4): el cubo de minibloques con la losa de ondas animada en la cara de arriba y una luz suave. Devuelve el nodo y
+## deja el material de las ondas en `material_ondas` de la escena que lo pide (ver `main.gd`).
+static func cubo_portal(nivel: int) -> Node3D:
+	var col := BlockArt.colores_portal(nivel)
+	var g := Node3D.new()
+	g.name = "goal"
+	var cuerpo := MeshInstance3D.new()
+	cuerpo.mesh = BlockArt.malla_bloque("portal", BlockArt.Estado.PURIFICADO, nivel, 0)
+	cuerpo.material_override = material(Color.WHITE, false)
+	g.add_child(cuerpo)
+	var ondas := ShaderMaterial.new()
+	ondas.shader = PORTAL_SHADER
+	ondas.set_shader_parameter("col_a", col.a)
+	ondas.set_shader_parameter("col_b", col.b)
+	ondas.set_shader_parameter("col_c", col.c)
+	ondas.set_shader_parameter("cells", Vector2(8.0, 8.0))
+	ondas.set_shader_parameter("lit", 1.0)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.8, 0.8)
+	var losa := MeshInstance3D.new()
+	losa.mesh = quad
+	losa.material_override = ondas
+	losa.rotation_degrees.x = -90.0
+	losa.position = Vector3(0, 0.45, 0)
+	losa.name = "ondas"
+	g.add_child(losa)
+	var luz := OmniLight3D.new()
+	luz.light_color = (col.luz as Color).lerp(Color.WHITE, 0.3)
+	luz.omni_range = 3.2
+	luz.light_energy = 0.6
+	luz.position = Vector3(0, 0.9, 0)
+	g.add_child(luz)
+	return g

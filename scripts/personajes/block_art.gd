@@ -153,7 +153,7 @@ static func pinchos(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 ## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo", "arenisca", "trampa" o "pinchos") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	if tipo == "portal":
-		return portal()
+		return portal(nivel)
 	if tipo == "catapulta":
 		return catapulta(corrupcion(estado, nivel), semilla)
 	if tipo == "bomba":
@@ -554,8 +554,22 @@ static func _farolito(vox: Dictionary, c: float) -> void:
 				vox[p] = (vox[p] as Color).darkened(0.3)
 
 
-## El cubo-portal del final de la torre: un marco dorado en las doce aristas, las caras de luz crema (que brillan) y la de arriba abierta (ahí van las ondas del portal).
-static func portal() -> Dictionary:
+## Los colores del portal en un nivel (1 de cada 3 etapas): combina con el entorno, violeta y de un dorado apagado en las primeras etapas, y cada vez más claro y dorado hacia el final.
+## Devuelve {"marco": Color, "luz": Color, "a": Color, "b": Color, "c": Color} (los tres últimos son los de las ondas).
+static func colores_portal(nivel: int) -> Dictionary:
+	var t := pow(clampf(float(nivel) / float(NIVELES - 1), 0.0, 1.0), 1.8)   # (se mantiene violeta más tiempo y recién al final se vuelve claro)
+	return {
+		"marco": Color(0.52, 0.40, 0.26).lerp(Color(0.95, 0.78, 0.3), t),
+		"luz": Color(0.46, 0.30, 0.78).lerp(Color(1.0, 0.95, 0.78), t),
+		"a": Color(0.16, 0.07, 0.32).lerp(Color(0.95, 0.78, 0.3), t),
+		"b": Color(0.40, 0.18, 0.68).lerp(Color(1.0, 0.93, 0.6), t),
+		"c": Color(0.70, 0.50, 0.95).lerp(Color(1.0, 1.0, 0.92), t),
+	}
+
+
+## El cubo-portal del final de la torre: un marco en las doce aristas y caras de luz que brillan; la de arriba queda abierta (ahí van las ondas del portal, ver `Escena.cubo_portal`).
+static func portal(nivel := 0) -> Dictionary:
+	var col := colores_portal(nivel)
 	var vox := {}
 	for x in N:
 		for y in N:
@@ -566,9 +580,11 @@ static func portal() -> Dictionary:
 					continue
 				var h := _h(x, y, z, 5)
 				if b >= 2:
-					vox[p] = Color(0.95, 0.78, 0.3).lightened(h * 0.1).darkened(0.1 if b == 3 else 0.0)
+					vox[p] = (col.marco as Color).lightened(h * 0.1).darkened(0.1 if b == 3 else 0.0)
 				elif y != N - 1:
-					vox[p] = Color(1.0, 0.95, 0.78, 0.55 + h * 0.1)   # (cara de luz)
+					var luz: Color = col.luz
+					luz.a = 0.55 + h * 0.1
+					vox[p] = luz   # (cara de luz)
 	return vox
 
 

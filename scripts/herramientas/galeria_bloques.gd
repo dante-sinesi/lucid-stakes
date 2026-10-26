@@ -48,6 +48,11 @@ func _ready() -> void:
 	for tipo in TIPOS:
 		for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
 			for nivel in Art.NIVELES:
+				if tipo == "portal":   # (con las ondas animadas arriba)
+					var cubo := Escena.cubo_portal(nivel)
+					cubo.position = _celda(nivel, fila)
+					add_child(cubo)
+					continue
 				var m := MeshInstance3D.new()
 				m.mesh = Art.malla_bloque(tipo, estado, nivel, 1 + nivel)
 				m.material_override = Escena.material_translucido(tipo) if Art.es_translucido(tipo) else Escena.material(Color.WHITE, false)
