@@ -23,3 +23,7 @@ Una base de acero oscuro de siete minibloques de alto (`TOPE_PINCHOS`) con cinco
 ## Bomba (`bomba`)
 
 Una bola de hierro de 10x10x10 con la tapa (y el piso) aplanados, un aro en el medio y una mecha con chispa arriba. La activa es la versión corrupta: casi negra, con el aro y las grietas de fuego, y la chispa brilla; con las etapas se aclara. La desactivada (`d`) es la purificada: acero gris verdoso, aro apagado y un punto verde en la mecha. Se usa en la torre con las letras `b` y `d`.
+
+## Catapulta (`catapulta`)
+
+Una placa de abajo, un plato de arriba (la cara que se pisa queda entera) y cuatro resortes en las esquinas con uno más fino en el medio. Limpia: placas naranjas y resortes plateados. Corrupta: placas casi negras con grietas de magma, resortes de hierro oscuro con tramos rotos y alguna grieta de magma. Se usa en la torre con la letra `k`.

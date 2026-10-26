@@ -152,9 +152,54 @@ static func pinchos(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 
 ## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo", "arenisca", "trampa" o "pinchos") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	if tipo == "catapulta":
+		return catapulta(corrupcion(estado, nivel), semilla)
 	if tipo == "bomba":
 		return bomba(corrupcion(estado, nivel), semilla, estado == Estado.PURIFICADO)
 	return piedra_con(corrupcion(estado, nivel), semilla, tipo)
+
+
+## La catapulta: una placa de abajo, un plato de arriba (que se pisa: la cara de arriba queda entera) y cuatro resortes en las esquinas con uno más fino en el medio. Limpia: placas
+## naranjas y resortes plateados. Corrupta: placas casi negras con grietas de magma y resortes de hierro oscuro, con tramos rotos y alguna grieta de magma.
+static func catapulta(c: float, semilla: int) -> Dictionary:
+	var sd := semilla * 31 + 7
+	var vox := {}
+	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
+	var naranja := Color(1.0, 0.6, 0.15)
+	var placa_oscura := Color(0.10, 0.08, 0.14)
+	for x in N:
+		for z in N:
+			for y: int in [0, 1, 8, 9]:
+				var p := Vector3i(x, y, z)
+				var r := _h(x, y, z, sd + 3)
+				var borde := x == 0 or x == N - 1 or z == 0 or z == N - 1
+				var tapa := y == N - 1 and not borde   # (lo que se pisa: siempre entero)
+				if not tapa and (_bordes(p) >= 2 or borde) and r < c * 0.12:
+					continue   # (la corrupción desgasta los bordes de las placas)
+				var base := naranja.darkened(0.2 if y < 2 else 0.0).lightened(0.0 if y != N - 1 or borde else (0.25 if x >= 3 and x <= 6 and z >= 3 and z <= 6 else 0.1))
+				base = base.lightened(r * 0.06)
+				var col := base.lerp(placa_oscura.lightened(r * 0.25), clampf(c * 1.6, 0.0, 1.0) * (0.55 + 0.45 * oscuro))
+				if not tapa and c > 0.2 and r > 1.0 - c * 0.16:   # grietas de magma en los costados y el borde de las placas
+					col = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.5)
+				vox[p] = col
+	var resortes := [Vector2i(1, 1), Vector2i(1, 7), Vector2i(7, 1), Vector2i(7, 7), Vector2i(4, 4)]
+	for e in resortes:
+		var ancho := 2
+		for y in range(2, 8):
+			for dx in ancho:
+				for dz in ancho:
+					var q := Vector3i(e.x + dx, y, e.y + dz)
+					var r := _h(q.x, q.y, q.z, sd + 11)
+					if y == 4 and r < c * 0.45 and (dx + dz) == 1:
+						continue   # (un tramo roto)
+					var aro := y % 2 == 0
+					var plata := Color(0.82, 0.82, 0.88) if aro else Color(0.62, 0.62, 0.7)
+					var hierro := Color(0.20, 0.18, 0.24) if aro else Color(0.12, 0.11, 0.16)
+					var col := plata.lerp(hierro, clampf(c * 1.6, 0.0, 1.0) * (0.55 + 0.45 * oscuro))
+					if c > 0.2 and r > 1.0 - c * 0.1:
+						col = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.5)   # (alguna grieta de magma en los resortes corruptos)
+					vox[q] = col
+	return vox
 
 
 ## La bomba: una bola de hierro (con el piso de abajo y la tapa de arriba aplanados: la tapa se pisa), un aro en el medio y una mecha con chispa. Activa (corrupta): casi negra, con

@@ -127,6 +127,14 @@ func _init() -> void:
 			for z in range(3, 7):
 				tapa_ok = tapa_ok and bo.has(Vector3i(x, 8, z))
 		check(tapa_ok and bo.has(Vector3i(4, 9, 4)), "bomba estado %d: la tapa que se pisa está entera y tiene su chispa" % estado)
+	for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+		var ca: Dictionary = Art.bloque("catapulta", estado, 0, 1)
+		var plato_ok := true
+		for x in range(1, Art.N - 1):
+			for z in range(1, Art.N - 1):
+				plato_ok = plato_ok and ca.has(Vector3i(x, Art.N - 1, z))
+		check(plato_ok and ca.has(Vector3i(1, 3, 1)), "catapulta estado %d: el plato de arriba está entero y hay resortes" % estado)
+	check(Art.bloque("catapulta", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("catapulta", Art.Estado.PURIFICADO, 0, 2), "en la catapulta también el corrupto del final es el purificado del principio")
 	check(Art.bloque("pinchos", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("pinchos", Art.Estado.PURIFICADO, 0, 2), "en los pinchos también el corrupto del final es el purificado del principio")
 	check(Art.bloque("hierro", Art.Estado.PURIFICADO, 2, 1) != Art.bloque("piedra", Art.Estado.PURIFICADO, 2, 1), "el hierro no es la piedra")
 	check(Art.bloque("hierro", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hierro", Art.Estado.PURIFICADO, 0, 2), "en el hierro también el corrupto del final es el purificado del principio")
