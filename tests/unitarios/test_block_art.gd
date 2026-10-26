@@ -87,18 +87,20 @@ func _init() -> void:
 					arriba_ar = arriba_ar and (ar.has(sup_ar) or (ar.has(sup_ar + Vector3i(0, -1, 0)) and (ar[sup_ar + Vector3i(0, -1, 0)] as Color).a < 1.0))
 			check(arriba_ar and ar.size() > 500, "arenisca estado %d semilla %d: arriba completo y sin huecos (%d)" % [estado, semilla, ar.size()])
 	check(Art.bloque("arenisca", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("arenisca", Art.Estado.PURIFICADO, 0, 2), "en la arenisca también el corrupto del final es el purificado del principio")
-	for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
-		for semilla in 8:
-			var tr: Dictionary = Art.bloque("trampa", estado, 0, semilla)
-			var cruz := 0
-			var esperadas := 0
-			for x in range(1, Art.N - 1):
-				for z in range(1, Art.N - 1):
-					if Art._es_cruz(Vector3i(x, Art.N - 1, z)):
-						esperadas += 1
-					if tr.has(Vector3i(x, Art.N - 1, z)) and tr[Vector3i(x, Art.N - 1, z)] == Art._color_cruz(Art.corrupcion(estado, 0)):
-						cruz += 1
-			check(cruz == esperadas and esperadas >= 14 and tr.size() > 700, "trampa estado %d semilla %d: la cruz de arriba se ve (%d minibloques) y no hay huecos (%d)" % [estado, semilla, cruz, tr.size()])
+	for tipo_t in ["trampa", "trampa2"]:
+		for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+			for semilla in 8:
+				var tr: Dictionary = Art.bloque(tipo_t, estado, 0, semilla)
+				var marcas := 0
+				var esperadas := 0
+				for x in range(1, Art.N - 1):
+					for z in range(1, Art.N - 1):
+						var q := Vector3i(x, Art.N - 1, z)
+						if Art._es_marca(q, tipo_t == "trampa2"):
+							esperadas += 1
+							if tr.has(q) and tr[q] == Art._color_marca(q, Art.corrupcion(estado, 0)):
+								marcas += 1
+				check(marcas == esperadas and esperadas >= 8 and tr.size() > 700, "%s estado %d semilla %d: las marcas de arriba se ven enteras (%d de %d) y no hay huecos (%d)" % [tipo_t, estado, semilla, marcas, esperadas, tr.size()])
 	check(Art.bloque("trampa", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("trampa", Art.Estado.PURIFICADO, 0, 2), "en la trampa también el corrupto del final es el purificado del principio")
 	check(Art.bloque("hierro", Art.Estado.PURIFICADO, 2, 1) != Art.bloque("piedra", Art.Estado.PURIFICADO, 2, 1), "el hierro no es la piedra")
 	check(Art.bloque("hierro", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hierro", Art.Estado.PURIFICADO, 0, 2), "en el hierro también el corrupto del final es el purificado del principio")
