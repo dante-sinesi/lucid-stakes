@@ -9,11 +9,10 @@ extends RefCounted
 const Loc := preload("res://scripts/idioma/loc.gd")
 const Items := preload("res://scripts/datos/items.gd")
 const Roulette := preload("res://scripts/casino/roulette.gd")
+const RunState := preload("res://scripts/datos/run_state.gd")
 
 enum Rareza { COMUN, RARA, EPICA, IMPOSIBLE }
 
-## Lo que rinde una torre por la ruta mínima, sin boosts (medido con el bot; docs/plan_casinos.md): la unidad de las recompensas y de lo que se pide de claridad.
-const INGRESO: Array[int] = [167, 283, 315, 439, 463, 546, 565, 621, 609, 709, 783, 727, 841, 832, 927]
 const PCT_RECOMPENSA: Array[float] = [0.10, 0.20, 0.35, 1.00]   # por rareza, si el objetivo no trae las suyas
 const NUEVOS_POR_TORRE := 2          # papeles nuevos que aparecen en los huecos de la cartelera en cada visita (la primera la llena)
 const LIMITE_BASE := 2               # contratos activos a la vez (el boost Caza recompensas suma uno cada vez)
@@ -74,7 +73,7 @@ static func cartelera(run) -> Array:
 
 ## Lo que rinde la torre que viene después del casino de la etapa `stage`.
 static func ingreso(stage: int) -> int:
-	return INGRESO[clampi(stage + 1, 1, INGRESO.size()) - 1]
+	return RunState.INGRESO_MEDIDO[clampi(stage + 1, 1, RunState.INGRESO_MEDIDO.size()) - 1]   # (la unidad de las recompensas y de lo que se pide de claridad)
 
 
 ## La recompensa de un papel (en claridad) si se acepta en el casino de la etapa `stage`.

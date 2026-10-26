@@ -11,7 +11,7 @@ Todo el balance vive en variables (`static var`) para poder probarlo con el bot 
 
 ## El peaje: una colina y una pared
 
-- `income_base` 340 + `income_slope` 25 × etapa es lo que rinde una torre sin boosts (recta de referencia); el máximo que se puede juntar sin boosts es 1,5 veces esa recta (`income_ceil`).
+- `RunState.INGRESO_MEDIDO` (tabla por etapa, de 167 a 927, medida con el bot por la ruta óptima de cada sala; `income_fit`, escalable con `income_scale`) es lo que rinde una torre sin boosts (referencia); `wall_growth` es 1,25 y con eso el bot de runs completos gana el 4,7 a 5,3 % (objetivo 3 a 7 %); el máximo que se puede juntar sin boosts es 1,5 veces esa recta (`income_ceil`).
 - Antes de la pared el precio va del 35 % (`pre_wall_from`) al 100 % (`pre_wall_to`) de lo que rinde una torre. La etapa 8 (`WALL_STAGE`) es la **pared**: su precio (`wall_toll()`) es lo que no se puede pagar sin boosts aunque se junte el máximo en cada torre y no se gaste nada; de la etapa 4 a la 8 sube en colina (`hill_power` 1,25, más tarde cuanto mayor), y después de la pared crece 20 % por etapa (`wall_growth`).
 - Espíritu de Balatro (decisión de Dante): después de la pared el juego puede romperse de forma absurda con los puntos, pero no al principio, y **superar el run completo no tiene que ser fácil**. Objetivo: que gane el 3 a 7 % de los runs de un bot casi perfecto.
 - Descuentos: *Descuento de Farolín* 15 % (hasta 2), *Soborno* 30 %; *Interés* hace crecer 25 % la claridad que queda al salir (tope 150).

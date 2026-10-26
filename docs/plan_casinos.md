@@ -26,7 +26,7 @@ Bot que juega cada sala por su **ruta mínima**, sin titubeos, sin muertes y sin
 
 Conclusiones:
 
-- La curva del peaje (`RunState.income_fit`: `income_base` 340 + `income_slope` 25 × etapa = 365 en la etapa 1) se ajustó con la torre vieja. Con la torre nueva sobreestima las primeras etapas unas 2,2 veces y subestima las últimas.
+- La curva del peaje se ajustó con la torre vieja y sobreestimaba las primeras etapas; ya se reemplazó por el ingreso medido (`RunState.INGRESO_MEDIDO`).
 - El peaje de la etapa 1 es el 77 % de lo que rinde la torre, cuando el diseño decía 35 %. La "pared" llega en la etapa 5, no en la 8.
 - La ficha ya es ~20 % del ingreso desde la etapa 4; el problema de la ficha es solo de las etapas 1 a 3.
 - El comentario de `Roulette` sobre cuánto rinde una torre también está desactualizado.
@@ -194,7 +194,7 @@ Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino,
 4. **Presentación:** sello de rareza, pantalla del contrato resuelto (sello CUMPLIDO o FALLIDO y contador), pausa con los contratos activos.
 5. **Fianza** en los dos últimos casinos.
 6. **Diferenciar los casinos** (premios y estaciones por casino).
-7. **Balance:** recalibrar la curva del peaje con el ingreso medido (`income_base` / `income_slope`) y repetir el bot de runs completos (`bot.md`).
+7. **Balance (hecho):** el peaje usa el ingreso medido (`RunState.INGRESO_MEDIDO`) y `wall_growth` 1,25; el bot de runs completos gana el 4,7 a 5,3 %. Falta calibrar con partidas reales.
 
 ## 8. Pendientes de decisión
 

@@ -86,24 +86,25 @@ func apply_interest() -> int:
 	return g
 
 
-## La curva de Farolín (docs/diseno.md §46). Se construye sobre lo que rinde una torre (medido con tests/sim_ingresos.gd: la recta `INCOME_BASE + INCOME_SLOPE × etapa`;
-## lo más que se vio fue 1,5 veces la recta) y tiene una pared: **a partir de la etapa WALL_STAGE no se puede pagar sin boosts ni consumibles que suban la ganancia**,
+## La curva de Farolín (docs/diseno.md §46). Se construye sobre lo que rinde una torre (`INGRESO_MEDIDO`;
+## lo más que se juntó fue 1,5 veces eso) y tiene una pared: **a partir de la etapa WALL_STAGE no se puede pagar sin boosts ni consumibles que suban la ganancia**,
 ## ni siquiera juntando lo máximo en cada torre y sin gastar nada en el casino.
-static var income_base := 340.0     # (variables, no constantes: el bot las cambia por variable de entorno para probar curvas, tests/sondas/bot_runs.gd)
-static var income_slope := 25.0
+## Lo que rinde una torre por etapa siguiendo el camino mínimo de cada sala, sin boosts (medido con el bot de `tests/sondas`, 10 torres por etapa en dificultad media; docs/plan_casinos.md).
+const INGRESO_MEDIDO: Array[int] = [167, 283, 315, 439, 463, 546, 565, 621, 609, 709, 783, 727, 841, 832, 927]
+static var income_scale := 1.0      # (variables, no constantes: el bot las cambia por variable de entorno para probar curvas, tests/sondas/bot_runs.gd)
 static var income_ceil := 1.5       # lo máximo que junta una torre sin boosts, sobre la recta
 const WALL_STAGE := 8          # desde acá hay que tener boosts que disparen la ganancia
 const HILL_START := 3          # hasta esta etapa el precio es el de siempre; de ahí sube de a poco hasta la pared (la colina)
 static var hill_power := 1.25        # 1 = geométrico parejo; más: sube más tarde
-static var wall_growth := 1.20      # lo que crece el precio cada etapa después de la pared
+static var wall_growth := 1.25      # lo que crece el precio cada etapa después de la pared
 static var wall_margin := 50        # lo que se pasa del presupuesto máximo el precio de la pared
 static var pre_wall_from := 0.35    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
 static var pre_wall_to := 1.00      # ...y esta en la etapa anterior a la pared
 
 
-## Lo que rinde una torre de esa etapa en promedio (la recta de las torres medidas).
+## Lo que rinde una torre de esa etapa en promedio.
 static func income_fit(stage: int) -> float:
-	return income_base + income_slope * float(maxi(stage, 1))
+	return float(INGRESO_MEDIDO[clampi(stage, 1, INGRESO_MEDIDO.size()) - 1]) * income_scale
 
 
 ## Lo máximo que puede juntar una torre de esa etapa sin boosts (juego perfecto, con un margen sobre lo medido).
