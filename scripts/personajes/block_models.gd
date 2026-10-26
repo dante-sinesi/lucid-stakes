@@ -246,7 +246,8 @@ static func _build(kind: int, state: int, variant := 0) -> ArrayMesh:
 	return st.commit()
 
 
-static func _add_face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color) -> void:
+## `n`: minibloques por lado del modelo (los de siempre son de 5; el arte nuevo de los bloques, `block_art.gd`, es de 10).
+static func _add_face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color, n_lado := N) -> void:
 	var n := Vector3(d)
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO
@@ -259,8 +260,9 @@ static func _add_face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color) -> vo
 	else:
 		a = Vector3(1, 0, 0)
 		b = Vector3(0, 1, 0)
-	var center := (Vector3(p) + Vector3(0.5, 0.5, 0.5) + n * 0.5 - Vector3(N, N, N) * 0.5) * VOXEL
-	var h := VOXEL * 0.5
+	var vox := 0.96 / float(n_lado)
+	var center := (Vector3(p) + Vector3(0.5, 0.5, 0.5) + n * 0.5 - Vector3(n_lado, n_lado, n_lado) * 0.5) * vox
+	var h := vox * 0.5
 	var v0 := center - a * h - b * h
 	var v1 := center + a * h - b * h
 	var v2 := center + a * h + b * h

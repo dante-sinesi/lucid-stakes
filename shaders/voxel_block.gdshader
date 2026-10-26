@@ -39,5 +39,6 @@ void fragment() {
 	}
 	ALBEDO = COLOR.rgb * tint.rgb * (1.0 - f);
 	ROUGHNESS = roughness_value;
-	EMISSION = glow_color.rgb * glow_energy;
+	// El alfa del color del vértice marca los minibloques que brillan (las vetas del arte de 10x10x10): cuanto menor, más emiten su propio color.
+	EMISSION = glow_color.rgb * glow_energy + COLOR.rgb * (1.0 - COLOR.a) * 1.6;
 }
