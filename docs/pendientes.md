@@ -22,6 +22,8 @@ Decisiones abiertas: cuántos entran en la primera tanda y si van al casino como
 
 ## Cosas del juego a revisar
 
+- **El Taller no destaca:** el mueble del salón no llama a descubrirse; darle más personalidad (forma, luces, animación, un personaje) cuando se termine el rediseño de los casinos.
+- **Casinos, lo que falta del plan (`plan_casinos.md`):** recalibrar el peaje con el ingreso medido y volver a correr el bot (sobre todo con la ficha chica); refinar los muebles de las salas a la nueva resolución; que el bot juegue contratos; decidir qué estación (si alguna) tienen el casino y el gran casino.
 - Los bloques ya no se aclaran con la etapa (solo el fondo y la luz): decidir si se retoma. Revisar también la ayuda de profundidad con la cámara de la torre.
 - La ayuda de texto de los menús no menciona WASD.
 - Música: decidir tempo, volumen y si se agrega percusión (se probaron variantes al 90, 80 y 70 % sin preferencia clara: `herramientas/musica/render_estaciones.py --tempo=0.8 --solo-previa`).

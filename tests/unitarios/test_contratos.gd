@@ -86,6 +86,16 @@ func test_cartelera() -> void:
 		check(cuenta <= 1, "a lo sumo un imposible colgado (%d)" % cuenta)
 		imposibles += cuenta
 	check(imposibles > 0, "en el gran casino salen imposibles de vez en cuando")
+	var repetidos := 0
+	for i in 40:
+		var gran := make_run(13)
+		Contratos.entrar(gran, rng_con(300 + i), 3)
+		var vistos := {}
+		for p in Contratos.cartelera(gran):
+			if vistos.has(str(p.obj)):
+				repetidos += 1
+			vistos[str(p.obj)] = true
+	check(repetidos == 0, "no cuelgan dos papeles del mismo objetivo (%d repetidos)" % repetidos)
 	var tempranos := make_run(1)
 	for i in 30:
 		for k in 3:

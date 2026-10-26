@@ -29,6 +29,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Mano de 23 | En el blackjack el tope es 23 en vez de 21: te plantas o te pasas recién después. | Épico |
 | Mesa caliente | Todo lo que ganas en el casino paga un 25 % más. | Épico |
 | Pozo del jackpot | Lo que pierdes en el casino va en parte a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva. | Épico |
+| Contratista | Cada contrato paga el doble. | Épico |
 | Pies de luz | Purificar un bloque da +1 de claridad. | Raro |
 | Paso firme | Trepar y bajar un piso no cuenta como movimiento de la sala. | Raro |
 | Reflejos | Las cuentas de las bombas empiezan 3 movimientos más altas. | Raro |
@@ -47,6 +48,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Casilla de regalo | En la ruleta, cada apuesta cubre una casilla más sin costo. | Raro |
 | Racha de la casa | En el casino, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta. | Raro |
 | Caja fuerte | Al entrar al casino cobras un 15 % de la claridad con la que empezaste la torre. | Raro |
+| Caza recompensas | Puedes tener un contrato activo más. Se acumula (hasta 2). | Raro (se acumula) |
 | Aire extra | Cada sala tiene 4 movimientos más. | Común |
 | Ahorro | Cada etapa arrancas con 20 de claridad. | Común |
 | Bolsillo de luz | Empiezas cada torre con claridad de regalo. | Común |
@@ -65,6 +67,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Lluvia de luz | Purifica todos los bloques de tu capa. | Raro |
 | Soborno | Se usa en el casino: Farolín cobra un 30 % menos esta vez. | Raro |
 | Doble o nada | Se usa en el casino: lo que ganas en las mesas el resto de la visita vale el doble. | Raro |
+| Sello de oro | Se usa en el casino: el próximo contrato que cobres paga cinco veces más. | Raro |
 | Saquito de oro | Devuelve 6 veces lo que pagaste por la ficha, en claridad. | Raro |
 | Freno | Suma 5 movimientos a la sala en la que estás. | Común |
 | Desarmar | Desactiva una bomba a la vista. | Común |

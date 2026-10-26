@@ -506,13 +506,18 @@ class Cartelera extends Control:
 		papeles = lista
 		sel = elegido
 		stage = etapa
-		custom_minimum_size = Vector2(maxf(papeles.size(), 1) * (Arte.PAPEL_COLS * CUBO + SEPARACION), Arte.PAPEL_ROWS * CUBO + 24.0)
+		custom_minimum_size = Vector2(900.0, Arte.PAPEL_ROWS * CUBO + 24.0)
 		queue_redraw()
+
+	## Dónde empieza el primer papel: la fila de papeles queda centrada.
+	func _x0() -> float:
+		var total := papeles.size() * Arte.PAPEL_COLS * CUBO + maxf(papeles.size() - 1.0, 0.0) * SEPARACION
+		return maxf((size.x - total) * 0.5, 12.0)
 
 	func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			var paso := Arte.PAPEL_COLS * CUBO + SEPARACION
-			var i := int((event.position.x - 12.0) / paso)
+			var i := int((event.position.x - _x0() + SEPARACION * 0.5) / paso)
 			if i >= 0 and i < papeles.size():
 				pressed.emit(i)
 
@@ -520,7 +525,7 @@ class Cartelera extends Control:
 		var ancho := Arte.PAPEL_COLS * CUBO
 		var alto := Arte.PAPEL_ROWS * CUBO
 		for i in papeles.size():
-			var pos := Vector2(12.0 + i * (ancho + SEPARACION), 12.0)
+			var pos := Vector2(_x0() + i * (ancho + SEPARACION), 12.0)
 			var p = papeles[i]
 			if i == sel:
 				draw_rect(Rect2(pos - Vector2(8, 8), Vector2(ancho + 16, alto + 16)), Color(1.0, 0.85, 0.40, 0.35))

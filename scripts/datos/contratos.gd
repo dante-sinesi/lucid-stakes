@@ -96,7 +96,7 @@ static func _n_de(def: Dictionary, rareza: int, stage: int) -> int:
 
 
 ## Sortea un papel nuevo para un casino de ese nivel y etapa. `hay_imposible`: ya hay uno colgado (a lo sumo uno).
-static func sortear(run, rng: RandomNumberGenerator, tier: int, hay_imposible := false) -> Dictionary:
+static func sortear(run, rng: RandomNumberGenerator, tier: int, hay_imposible := false, evitar: Array = []) -> Dictionary:
 	var estado := _estado(run)
 	var pesos: Array = PESOS_RAREZA[clampi(tier, 0, 3)]
 	var r := 0
@@ -120,11 +120,22 @@ static func sortear(run, rng: RandomNumberGenerator, tier: int, hay_imposible :=
 			var def2: Dictionary = OBJETIVOS[id]
 			if def2.ns[r] != null and int(def2.desde) <= run.stage + 1:
 				posibles.append(id)
+	var distintos: Array[String] = posibles.filter(func(id): return not evitar.has(id))   # (que no cuelguen dos papeles del mismo objetivo si se puede)
+	if not distintos.is_empty():
+		posibles = distintos
 	var obj: String = posibles[rng.randi() % posibles.size()]
 	var d: Dictionary = OBJETIVOS[obj]
 	var papel := {"id": int(estado.siguiente_id), "obj": obj, "r": r, "n": _n_de(d, r, run.stage), "pct": PCT_RECOMPENSA[r], "monto": 0, "fianza": 0}
 	estado.siguiente_id = int(estado.siguiente_id) + 1
 	return papel
+
+
+static func _objetivos_colgados(estado: Dictionary) -> Array:
+	var out: Array = []
+	for p in estado.cartelera:
+		if p != null:
+			out.append(str(p.obj))
+	return out
 
 
 static func _hay_imposible(estado: Dictionary) -> bool:
@@ -150,7 +161,7 @@ static func entrar(run, rng: RandomNumberGenerator, tier: int) -> int:
 	estado.iniciada = true
 	for k in cuantos:
 		var i: int = huecos[k]
-		estado.cartelera[i] = sortear(run, rng, tier, _hay_imposible(estado))
+		estado.cartelera[i] = sortear(run, rng, tier, _hay_imposible(estado), _objetivos_colgados(estado))
 	return cuantos
 
 
@@ -214,11 +225,13 @@ static func rotar(run, rng: RandomNumberGenerator, tier: int) -> Dictionary:
 	run.spend(costo)
 	estado.rotaciones = int(estado.rotaciones) + 1
 	var imposible := false   # (a lo sumo un papel negro colgado)
+	var objetivos: Array = []
 	for i in estado.cartelera.size():
 		if estado.cartelera[i] == null:
 			continue
-		var nuevo := sortear(run, rng, tier, imposible)
+		var nuevo := sortear(run, rng, tier, imposible, objetivos)
 		imposible = imposible or int(nuevo.r) == Rareza.IMPOSIBLE
+		objetivos.append(str(nuevo.obj))
 		estado.cartelera[i] = nuevo
 	return {"ok": true, "error": "", "costo": costo}
 
