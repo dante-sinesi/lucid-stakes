@@ -26,4 +26,4 @@ Una bola de hierro de 10x10x10 con la tapa (y el piso) aplanados, un aro en el m
 
 ## Catapulta (`catapulta`)
 
-Una placa de abajo, un plato de arriba (la cara que se pisa queda entera) y cuatro resortes en las esquinas con uno más fino en el medio. Limpia: placas naranjas y resortes plateados. Corrupta: placas casi negras con grietas de magma, resortes de hierro oscuro con tramos rotos y un aro de fuego. Se usa en la torre con la letra `k`.
+Una placa de abajo, un plato de arriba (la cara que se pisa queda entera) y cuatro resortes en las esquinas con uno más fino en el medio. Limpia: placas naranjas y resortes plateados. Corrupta: placas casi negras con grietas de magma, resortes de hierro oscuro con tramos rotos y alguna grieta de magma. Se usa en la torre con la letra `k`.

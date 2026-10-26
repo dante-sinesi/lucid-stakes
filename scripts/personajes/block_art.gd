@@ -160,7 +160,7 @@ static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dicti
 
 
 ## La catapulta: una placa de abajo, un plato de arriba (que se pisa: la cara de arriba queda entera) y cuatro resortes en las esquinas con uno más fino en el medio. Limpia: placas
-## naranjas y resortes plateados. Corrupta: placas casi negras con grietas de magma y resortes de hierro oscuro, con tramos rotos y algún aro de fuego.
+## naranjas y resortes plateados. Corrupta: placas casi negras con grietas de magma y resortes de hierro oscuro, con tramos rotos y alguna grieta de magma.
 static func catapulta(c: float, semilla: int) -> Dictionary:
 	var sd := semilla * 31 + 7
 	var vox := {}
@@ -196,8 +196,8 @@ static func catapulta(c: float, semilla: int) -> Dictionary:
 					var plata := Color(0.82, 0.82, 0.88) if aro else Color(0.62, 0.62, 0.7)
 					var hierro := Color(0.20, 0.18, 0.24) if aro else Color(0.12, 0.11, 0.16)
 					var col := plata.lerp(hierro, clampf(c * 1.6, 0.0, 1.0) * (0.55 + 0.45 * oscuro))
-					if oscuro > 0.3 and y == 5 and not aro:
-						col = Color(1.0, 0.45, 0.12, 0.5)   # (un aro de fuego en los resortes corruptos)
+					if c > 0.2 and r > 1.0 - c * 0.1:
+						col = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.5)   # (alguna grieta de magma en los resortes corruptos)
 					vox[q] = col
 	return vox
 
