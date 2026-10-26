@@ -10,6 +10,7 @@ const BlockArt := preload("res://scripts/personajes/block_art.gd")
 static var etapa_arte := 0
 const VARIANTES_ARTE := 8   # diseños distintos del bloque de piedra (cada bloque toma uno según su celda)
 const Reglas := preload("res://torre/reglas.gd")
+const Tipos := preload("res://torre/tipos.gd")
 
 const KIND_DE_LETRA := {"n": 0, "i": 1, "c": 4, "h": 5, "t": 6, "s": 7, "k": 3, "p": 0, "f": 0}
 
@@ -119,7 +120,7 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		parent.add_child(m)
 		if letra.length() >= 2 and letra[0] == "b":
 			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador))
-			parent.add_child(_zona(c))
+			parent.add_child(_zona(c, t))
 	if con_jugador:
 		parent.add_child(_figura_jugador(t))
 	if mostrar_referencia:
@@ -143,20 +144,46 @@ static func _figura_jugador(t) -> MeshInstance3D:
 	return p
 
 
-## La zona de una bomba: una esfera roja translúcida (radio² 5) alrededor del bloque; mientras el jugador está adentro corre la mecha.
-static func _zona(c: Vector3i) -> MeshInstance3D:
-	var sp := SphereMesh.new()
-	sp.radius = sqrt(5.0)
-	sp.height = sqrt(5.0) * 2.0
-	var mi := MeshInstance3D.new()
-	mi.mesh = sp
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1.0, 0.15, 0.1, 0.16)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mi.material_override = mat
+## La zona de una bomba: bloques rojos translúcidos en el aire de su zona (radio² 5, donde no hay bloque) que se encienden y se apagan despacio sin llegar a desaparecer
+## ni a quedar sólidos; mientras el jugador está adentro corre la mecha.
+static var _mat_zona: ShaderMaterial = null
+
+
+static func _zona(c: Vector3i, t) -> Node3D:
+	if _mat_zona == null:
+		var sh := Shader.new()
+		sh.code = "shader_type spatial;
+render_mode unshaded, cull_back, shadows_disabled;
+void fragment() {
+	float k = 0.5 - 0.5 * cos(TIME * 6.2832 * 0.45);
+	ALBEDO = vec3(1.0, 0.1, 0.06);
+	ALPHA = mix(0.04, 0.2, k);
+}
+"
+		_mat_zona = ShaderMaterial.new()
+		_mat_zona.shader = sh
+	var aire: Array[Vector3i] = []
+	for dx in range(-2, 3):
+		for dy in range(-2, 3):
+			for dz in range(-2, 3):
+				var d := Vector3i(dx, dy, dz)
+				if d != Vector3i.ZERO and dx * dx + dy * dy + dz * dz <= Tipos.BOMBA_R2 and not t.bloques.has(c + d):
+					aire.append(d)
+	var mi := Node3D.new()
 	mi.position = Vector3(c.x + 0.5, c.y + 0.5, c.z + 0.5)
+	var cubo := BoxMesh.new()
+	cubo.size = Vector3(0.94, 0.94, 0.94)
+	cubo.material = _mat_zona
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = cubo
+	mm.instance_count = aire.size()
+	for k in aire.size():
+		mm.set_instance_transform(k, Transform3D(Basis(), Vector3(aire[k])))
+	var cubos := MultiMeshInstance3D.new()
+	cubos.multimesh = mm
+	cubos.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.add_child(cubos)
 	# el centro: una bolita brillante que se ve aunque otros bloques la tapen (la bomba suele quedar metida en la pila)
 	var nucleo := MeshInstance3D.new()
 	var ns := SphereMesh.new()

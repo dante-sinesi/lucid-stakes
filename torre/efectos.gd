@@ -88,11 +88,12 @@ func sonido(m, modo: int, antes_y: int) -> void:
 ## Los efectos visuales de una acción: estirar al dar el paso, aplastar y polvo al aterrizar, polvo de los bloques que se movieron, partículas de lo que se purificó,
 ## la explosión de una bomba y los bloques que caen al vacío. `off`: el desplazamiento de altura de la sala donde pasó.
 ## `demora`: los bloques que se pierden empiezan a caer cuando termina de moverse el bloque que empujaste.
-func visuales(m, antes_y: int, off: float, demora := 0.0, lento := 1.0) -> void:
-	var fell := maxi(0, antes_y - m.jugador.y)
-	juice.step(fell)
-	if fell > 0:
-		juice.land(fell)
+func visuales(m, antes_y: int, off: float, demora := 0.0, lento := 1.0, muerte := false) -> void:
+	if not muerte:   # (al perder el personaje no da el paso ni aterriza: lo mueve la animación de la derrota, y el golpe de la caída taparía el movimiento del bloque)
+		var fell := maxi(0, antes_y - m.jugador.y)
+		juice.step(fell)
+		if fell > 0:
+			juice.land(fell)
 	for c in m.ultimos_movidos:
 		juice.dust(_w(c, off) + Vector3(0, -0.45, 0), 4, 0.6)
 	for c in m.ultimas_celdas_purificadas:
@@ -177,12 +178,16 @@ func caida_de_bloque(m, celda: Vector3i, letra: String, off: float, demora := 0.
 	var pivote := Node3D.new()   # (gira alrededor del centro del bloque)
 	pivote.position = _w(celda, off)
 	e.add_child(pivote)
+	var i_mov: int = m.ultimos_movidos.find(celda)
+	if i_mov >= 0 and demora > 0.0:   # lo empujaste (o tiraste) y por eso se perdió: primero se lo ve recorrer su camino, recién después cae
+		pivote.position = _w(m.ultimos_origenes[i_mov], off)
+		pivote.create_tween().tween_property(pivote, "position", _w(celda, off), demora).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	var contenido := Node3D.new()
 	contenido.position = -Vector3(celda.x + 0.5, celda.y + 0.5, celda.z + 0.5)
 	pivote.add_child(contenido)
 	Vista.poblar(contenido, falso, {}, false, false, false, true)
 	var tw := pivote.create_tween().set_parallel(true)
-	tw.tween_property(pivote, "position:y", pivote.position.y - 14.0, 0.8 * lento).set_delay(demora).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(pivote, "position:y", _w(celda, off).y - 14.0, 0.8 * lento).set_delay(demora).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_property(pivote, "rotation:x", randf_range(-1.5, 1.5), 0.8 * lento).set_delay(demora)
 	tw.tween_property(pivote, "rotation:z", randf_range(-1.5, 1.5), 0.8 * lento).set_delay(demora)
 	tw.chain().tween_callback(pivote.queue_free)

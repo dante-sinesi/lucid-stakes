@@ -45,6 +45,7 @@ var ultimas_celdas_purificadas: Array = []   # celdas de los bloques que se puri
 var rastro: Array = []                 # las celdas por las que pasó el jugador en la última acción (saltos, deslizamientos y caídas se animan celda por celda)
 var luz_propia := false  # boost Luz propia: también se purifican los vecinos de lo que se pisa
 var ultimos_purificados: Array = []   # las letras de los bloques que se purificaron en la última acción (para la claridad)
+var ultimos_origenes: Array = []         # de dónde salió cada uno de esos bloques (mismo orden que `ultimos_movidos`)
 var agarro := false      # en la última acción se movió un bloque (empujar o tirar)
 var purificados := {}    # los bloques que el jugador ya pisó o de los que se colgó (número -> true): el aspecto de la torre lo usa
 
@@ -117,6 +118,7 @@ func actuar(d: Vector3i, modo: Modo = Modo.MOVER) -> Dictionary:
 	ultimos_purificados = []
 	agarro = false
 	ultimos_movidos = []
+	ultimos_origenes = []
 	tipo_agarre = ""
 	trampa_rota = false
 	resbalo = false
@@ -348,6 +350,7 @@ func _mover(de: Vector3i, a: Vector3i) -> void:
 	bloques[a] = tipo
 	agarro = true
 	ultimos_movidos.append(a)
+	ultimos_origenes.append(de)
 	tipo_agarre = "pull" if a == jugador else "push"   # (al tirar, el bloque llega a la celda donde estabas)
 	if ids.has(de):
 		ids[a] = ids[de]
