@@ -56,7 +56,7 @@ const PALETA_HIELO := {
 const PALETA_ARENA := {
 	"arena": [Color(0.66, 0.54, 0.39), Color(0.70, 0.58, 0.43), Color(0.74, 0.62, 0.47)],
 	"arena_limpia": [Color(0.72, 0.60, 0.44), Color(0.76, 0.64, 0.48), Color(0.80, 0.68, 0.52)],
-	"corrupto": [Color(0.34, 0.17, 0.08), Color(0.40, 0.21, 0.10), Color(0.47, 0.26, 0.12)],   # (marrón rojizo de óxido: no se confunde con la obsidiana violeta)
+	"corrupto": [Color(0.30, 0.20, 0.12), Color(0.36, 0.24, 0.15), Color(0.42, 0.29, 0.18)],   # (marrón tierra: no se confunde con la obsidiana violeta)
 	"grieta": Color(0.20, 0.10, 0.05),
 	"cicatriz": Color(0.50, 0.38, 0.26),
 }
@@ -161,6 +161,8 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 					if mordido and p.y < N - 1:
 						continue
 				vox[p] = _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else _color_base(p, c, sd)))
+	if arena:
+		_estratos(vox)
 	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), siempre los mismos para una semilla (un bloque que se limpia
 	# conserva sus grietas, cada vez más cortadas y apagadas); con mucha corrupción son vetas hundidas con magma que brilla, y con poca, cicatrices con algún resto de vena
 	var rng_g := RandomNumberGenerator.new()
@@ -256,6 +258,31 @@ static func _color_hielo(p: Vector3i, c: float, sd: int) -> Color:
 	return col
 
 
+## Los estratos de la arenisca: tres ranuras horizontales (en las alturas 2, 5 y 8) le dan la vuelta al bloque hundiendo un minibloque la superficie de los costados y oscureciendo
+## el fondo, así el bloque se ve hecho de losas apiladas (una silueta propia, no sólo un color). La cara de arriba no se toca.
+static func _estratos(vox: Dictionary) -> void:
+	for y in [2, 5, 8]:
+		for i in N:
+			for borde in [Vector3i(0, y, i), Vector3i(N - 1, y, i), Vector3i(i, y, 0), Vector3i(i, y, N - 1)]:
+				if not vox.has(borde) or _bordes(borde) >= 3:
+					continue
+				var dentro: Vector3i = borde + _hacia_adentro_de(borde)
+				vox.erase(borde)
+				if vox.has(dentro):
+					vox[dentro] = (vox[dentro] as Color).darkened(0.30)
+
+
+## Hacia dónde queda el interior desde un minibloque del borde de un costado.
+static func _hacia_adentro_de(p: Vector3i) -> Vector3i:
+	if p.x == 0:
+		return Vector3i(1, 0, 0)
+	if p.x == N - 1:
+		return Vector3i(-1, 0, 0)
+	if p.z == 0:
+		return Vector3i(0, 0, 1)
+	return Vector3i(0, 0, -1)
+
+
 ## El color de la arenisca en un minibloque: arena cálida (más clara cuanto más limpia) o marrón oscuro con la corrupción (rampa entre 0,5 y 1), en capas horizontales
 ## (cada tres minibloques una franja un poco más oscura, como los sedimentos).
 static func _color_arena(p: Vector3i, c: float, sd: int) -> Color:
@@ -347,6 +374,12 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 	if tipo == "arenisca":   # (la grieta honda de la arenisca sigue ahí aunque se limpie: en los costados se hunde un minibloque y arriba queda una línea oscura a ras)
 		if cara != 0:
 			var dentro_a := p + _hacia_adentro(cara)
+			var dentro_b := dentro_a + _hacia_adentro(cara)
+			if vox.has(dentro_a) and vox.has(dentro_b):   # (la fisura es honda: dos minibloques, con el fondo muy oscuro)
+				vox.erase(p)
+				vox.erase(dentro_a)
+				vox[dentro_b] = (PALETA_ARENA.grieta as Color).darkened(0.2)
+				return
 			if vox.has(dentro_a):
 				vox.erase(p)
 				vox[dentro_a] = (PALETA_ARENA.grieta as Color).lerp(PALETA_ARENA.cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.4)
