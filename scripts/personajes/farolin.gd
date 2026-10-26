@@ -4,6 +4,7 @@ extends RefCounted
 ## como la del tabernero) y `toll_dialog()` arma lo que dice y las salidas que ofrece cuando se llega a la puerta (pagar, rehacer la torre o abandonar).
 
 const Loc := preload("res://scripts/idioma/loc.gd")
+const BlockModels := preload("res://scripts/personajes/block_models.gd")
 
 const SPEAKER := "Farolín"
 
@@ -193,6 +194,41 @@ static func _sentar(r: Node3D) -> void:
 	r.pata_i = _pata_sentada(r, -0.06, iron2)
 	r.pata_d = _pata_sentada(r, 0.06, iron2)
 	r.sentado = true
+
+
+## El tronquito en el que se apoya Farolín cuando espera sentado: un tronco de minicubos (12 de largo por 4 de grosor, esquinas redondeadas) con la corteza a manchas, un nudo y los
+## extremos cortados con sus anillos. Mide unos 0,36 de largo, acostado a lo largo de x, centrado en el origen.
+static func tronco() -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var vox := {}
+	for x in 12:
+		for y in range(4, 8):
+			for z in range(4, 8):
+				if (y == 4 or y == 7) and (z == 4 or z == 7):
+					continue   # (las esquinas, redondeadas)
+				var r := fposmod(sin(float(x * 12 + y * 5 + z * 3) * 12.9898) * 43758.5453, 1.0)
+				var col := Color(0.40, 0.25, 0.12).lightened(r * 0.18)
+				if (y == 4 or y == 7 or z == 4 or z == 7) and r > 0.8:
+					col = col.darkened(0.25)   # (manchas de corteza)
+				if x == 0 or x == 11:   # los extremos cortados: madera clara con un anillo y el centro más oscuro
+					var centro := (y == 5 or y == 6) and (z == 5 or z == 6)
+					col = Color(0.55, 0.36, 0.19) if centro else Color(0.78, 0.58, 0.34)
+				if x == 7 and y == 7 and z == 5:
+					col = Color(0.22, 0.13, 0.06)   # (un nudo)
+				vox[Vector3i(x, y, z)] = col
+	for p in vox:
+		for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+			if not vox.has(p + d):
+				BlockModels._add_face(st, p, d, vox[p], 12)
+	var m := MeshInstance3D.new()
+	m.mesh = st.commit()
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 1.0
+	m.material_override = mat
+	m.scale = Vector3.ONE * 0.375
+	return m
 
 
 ## Un bracito colgando de un pivote en el hombro (gira con `rotation.z`).

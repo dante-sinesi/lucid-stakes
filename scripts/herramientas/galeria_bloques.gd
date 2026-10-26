@@ -41,18 +41,8 @@ func _poner_farolin(centro: Vector3, soplar := false) -> void:
 	var faro := Farolin.build(-1, true)
 	base.add_child(faro)
 	_farolines.append({"nodo": faro, "punto": centro + Vector3(0.0, 0.5, 0.0), "soplar": soplar})
-	var tronco := MeshInstance3D.new()
-	var cil := CylinderMesh.new()
-	cil.top_radius = 0.065
-	cil.bottom_radius = 0.065
-	cil.height = 0.36
-	tronco.mesh = cil
-	var corteza := StandardMaterial3D.new()
-	corteza.albedo_color = Color(0.42, 0.27, 0.13)
-	corteza.roughness = 1.0
-	tronco.material_override = corteza
+	var tronco := Farolin.tronco()
 	tronco.position = Vector3(0.0, 0.065, -0.17)   # (detrás de Farolín, atravesado)
-	tronco.rotation_degrees.z = 90.0
 	base.add_child(tronco)
 
 
