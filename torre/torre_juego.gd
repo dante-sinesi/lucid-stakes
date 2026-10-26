@@ -643,7 +643,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 			if motor_antes.ultimos_movidos.has(p[0]):
 				_dur_empuje = maxf(_dur_empuje, maxf(STEP_TIME, 0.07) * _lento_mov)
 	efectos.sonido(motor_antes, modo, antes_y)   # (el motor de antes guarda lo que pasó en la acción, aunque la sala haya cambiado)
-	efectos.visuales(motor_antes, antes_y, off_antes, _dur_empuje, _lento)
+	efectos.visuales(motor_antes, antes_y, off_antes, _dur_empuje, _lento, str(r.evento) == "muerte")
 	if str(r.evento) == "torre":
 		efectos.juice.gold_burst(portal.position if portal != null else gato_nodo.position)
 		efectos.juice.zoom_punch(0.05)

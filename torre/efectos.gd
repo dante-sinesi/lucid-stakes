@@ -88,11 +88,12 @@ func sonido(m, modo: int, antes_y: int) -> void:
 ## Los efectos visuales de una acción: estirar al dar el paso, aplastar y polvo al aterrizar, polvo de los bloques que se movieron, partículas de lo que se purificó,
 ## la explosión de una bomba y los bloques que caen al vacío. `off`: el desplazamiento de altura de la sala donde pasó.
 ## `demora`: los bloques que se pierden empiezan a caer cuando termina de moverse el bloque que empujaste.
-func visuales(m, antes_y: int, off: float, demora := 0.0, lento := 1.0) -> void:
-	var fell := maxi(0, antes_y - m.jugador.y)
-	juice.step(fell)
-	if fell > 0:
-		juice.land(fell)
+func visuales(m, antes_y: int, off: float, demora := 0.0, lento := 1.0, muerte := false) -> void:
+	if not muerte:   # (al perder el personaje no da el paso ni aterriza: lo mueve la animación de la derrota, y el golpe de la caída taparía el movimiento del bloque)
+		var fell := maxi(0, antes_y - m.jugador.y)
+		juice.step(fell)
+		if fell > 0:
+			juice.land(fell)
 	for c in m.ultimos_movidos:
 		juice.dust(_w(c, off) + Vector3(0, -0.45, 0), 4, 0.6)
 	for c in m.ultimas_celdas_purificadas:
