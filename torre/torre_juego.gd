@@ -391,7 +391,7 @@ func _punto_en(pts: Array[Vector3], k: float) -> Vector3:
 
 
 func _poner_camara(animar: bool) -> void:
-	var foco := _pos_gato() + Vector3(0, 0.5, 0)
+	var foco := (gato_nodo.position if en_juego and t.muerta else _pos_gato()) + Vector3(0, 0.5, 0)   # (al perder el personaje sigue donde estaba: la cámara no salta hasta donde caería)
 	var tam := zoom
 	if panorama:
 		var alto := float(t.total_pisos())

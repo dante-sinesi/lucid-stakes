@@ -28,10 +28,7 @@ func _init() -> void:
 	await create_timer(0.3).timeout
 	var r: Dictionary = main.torre.accion(Vector3i(1, 0, 0), Motor.Modo.AGARRAR)
 	print(main.torre.t.motor.bloques, main.torre.t.motor.jugador, " evento=", r.get("evento"), " ok=", r.get("ok"), " tipo=", main.torre._tipo_anim)
-	if str(r.get("evento")) == "muerte":
-		var previo: float = main.torre.animar_derrota("prueba")
-		print("previo=", previo)
-	for k in 12:
-		await create_timer(0.4).timeout
+	for k in 16:
+		await create_timer(0.1).timeout
 		root.get_texture().get_image().save_png("%s_%02d.png" % [pref, k])
 	quit(0)
