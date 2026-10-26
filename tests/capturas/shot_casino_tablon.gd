@@ -69,6 +69,11 @@ func _init() -> void:
 	if cerca:   # (de cerca: centrada en el tablón)
 		pivot.position = Vector3((CELDAS[tier].x + 0.5) * Room.CELL_VOX * Room.VOXEL, 1.0, 0.8)
 		cam.size = 5.0
+	for a in args:   # "foco:X:Z:TAMAÑO": mira un punto de la sala (en unidades del mundo) con ese tamaño de cámara
+		if a.begins_with("foco:"):
+			var partes := a.split(":")
+			pivot.position = Vector3(float(partes[1]), 1.0, float(partes[2]))
+			cam.size = float(partes[3])
 	cam.make_current()
 	await create_timer(0.6).timeout
 	root.get_texture().get_image().save_png(args[0])

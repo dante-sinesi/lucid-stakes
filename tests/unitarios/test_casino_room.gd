@@ -22,6 +22,7 @@ func _init() -> void:
 	test_tiers()
 	test_mesh()
 	test_rediseno()
+	test_paredes()
 	test_detalle()
 	print("tests de la sala del casino terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
@@ -294,3 +295,31 @@ func test_detalle() -> void:
 		for p in con.fino:   # (los papeles del tablón están contra la pared oeste)
 			west_x = maxi(west_x, p.x)
 		check(west_x < 12 * 3, "etapa %d: los papeles están pegados a la pared oeste" % st)
+
+
+## Las paredes del fondo: ninguna decoración pisa a otra ni a un mueble, una puerta o un farol, y los faroles de pie y las columnas no cierran el paso.
+func test_paredes() -> void:
+	for st in [1, 5, 9, 13]:
+		var lay := Room.layout(st)
+		for tardio in [false, true]:
+			var deco := Room.paredes(lay, tardio)
+			for pared in ["norte", "oeste"]:
+				var tramos: Array = []
+				for d in deco[pared].decor:
+					check(int(d.desde) < int(d.hasta), "etapa %d %s: el tramo de %s tiene sentido" % [st, pared, d.tipo])
+					tramos.append([int(d.desde), int(d.hasta), str(d.tipo)])
+				for i in tramos.size():
+					for j in range(i + 1, tramos.size()):
+						check(tramos[i][1] <= tramos[j][0] or tramos[j][1] <= tramos[i][0], "etapa %d %s: %s y %s no se pisan" % [st, pared, tramos[i][2], tramos[j][2]])
+					for m in deco[pared].muebles:
+						check(tramos[i][1] <= int(m[0]) or int(m[1]) <= tramos[i][0], "etapa %d %s: %s no pisa un mueble ni una puerta (%s)" % [st, pared, tramos[i][2], str(m)])
+		var libre := Room.reachable(lay.entry, lay)
+		for lamp in lay.get("lamps", []):
+			check(Room.in_room(lamp, lay) and not Room.walkable(lamp, lay), "etapa %d: el farol de %s ocupa su celda" % [st, str(lamp)])
+			var junto := false
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				junto = junto or libre.has(lamp + d)
+			check(junto, "etapa %d: se llega caminando hasta el farol de %s" % [st, str(lamp)])
+		for o in lay.obstacles:
+			if st == 13:
+				check(o.x != 0 and o.y != 0, "el gran casino no tiene columnas contra las paredes del fondo: %s" % str(o))
