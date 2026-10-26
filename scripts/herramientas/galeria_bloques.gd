@@ -12,7 +12,7 @@ const Main := preload("res://scripts/main.gd")
 const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
 
 ## Los tipos que ya tienen arte nuevo (se suman acá a medida que se hacen).
-const TIPOS := {"piedra": "Piedra común", "hierro": "Pesado", "hielo": "Hielo", "arenisca": "Agrietado"}
+const TIPOS := {"piedra": "Piedra común", "hierro": "Pesado", "hielo": "Hielo", "arenisca": "Agrietado", "trampa": "Trampa"}
 const ETAPAS := [1, 4, 7, 10, 13]   # (la primera etapa de cada nivel)
 
 var env: Environment

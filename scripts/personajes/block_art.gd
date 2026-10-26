@@ -61,6 +61,16 @@ const PALETA_ARENA := {
 	"cicatriz": Color(0.50, 0.38, 0.26),
 }
 
+## La trampa: piedra gris azulada (más neutra que la piedra común) con una X por todas lados: arriba, una cruz roja (el aviso de que se desarma al pisarla) y en cada costado una X de juntas
+## oscuras (las tapas de la trampa). Corrupta, el gris se oscurece y la X de arriba sigue brillando en rojo.
+const PALETA_TRAMPA := {
+	"piedra": [Color(0.56, 0.58, 0.70), Color(0.60, 0.62, 0.74), Color(0.64, 0.66, 0.78)],
+	"piedra_limpia": [Color(0.62, 0.64, 0.76), Color(0.66, 0.68, 0.80), Color(0.70, 0.72, 0.84)],
+	"corrupto": [Color(0.09, 0.09, 0.14), Color(0.12, 0.12, 0.18), Color(0.16, 0.16, 0.23)],
+	"cruz": Color(0.95, 0.22, 0.12),
+	"cicatriz": Color(0.42, 0.44, 0.58),
+}
+
 const CORRUPCION_CORRUPTO := [1.0, 0.83, 0.70, 0.60, 0.50]
 const CORRUPCION_PURIFICADO := [0.50, 0.33, 0.20, 0.10, 0.0]
 
@@ -118,7 +128,12 @@ static func arenisca(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla, "arenisca")
 
 
-## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo" o "arenisca") en un estado y nivel.
+## Los minibloques de una trampa: {Vector3i: Color}.
+static func trampa(estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	return piedra_con(corrupcion(estado, nivel), semilla, "trampa")
+
+
+## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo", "arenisca" o "trampa") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla, tipo)
 
@@ -130,11 +145,12 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 	var hierro := tipo == "hierro"   # (el hierro se desgasta mucho menos: es un cubo de placas)
 	var es_hielo := tipo == "hielo"   # (el hielo se astilla en las aristas)
 	var arena := tipo == "arenisca"   # (la arenisca se desmorona: más que la piedra)
+	var trampa := tipo == "trampa"   # (la trampa conserva su forma de cubo: las X se tienen que leer)
 	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
-	var p_arista := 0.0 if hierro else (lerpf(0.0, 0.30, c) if es_hielo else (lerpf(0.18, 0.45, c) if arena else lerpf(0.03, 0.38, c)))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
+	var p_arista := 0.0 if hierro else (lerpf(0.0, 0.30, c) if es_hielo else (lerpf(0.18, 0.45, c) if arena else (lerpf(0.0, 0.2, c) if trampa else lerpf(0.03, 0.38, c))))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
 	var p_cara := lerpf(0.0, 0.04, c) if hierro else (lerpf(0.0, 0.03, c) if es_hielo else lerpf(0.01, 0.06, c))
-	var p_esquina := 0.0 if hierro else (1.0 if es_hielo else (lerpf(0.55, 1.0, c) if arena else lerpf(0.15, 1.0, c)))
-	var n_mordiscos := 0 if (hierro or es_hielo) else (roundi(lerpf(1.0, 3.0, c)) if arena else roundi(lerpf(0.0, 3.0, c)))
+	var p_esquina := 0.0 if hierro else (1.0 if es_hielo else (lerpf(0.55, 1.0, c) if arena else (lerpf(0.0, 0.5, c) if trampa else lerpf(0.15, 1.0, c))))
+	var n_mordiscos := 0 if (hierro or es_hielo or trampa) else (roundi(lerpf(1.0, 3.0, c)) if arena else roundi(lerpf(0.0, 3.0, c)))
 	var radio_mordisco := lerpf(1.4, 2.0, c)
 	var mordiscos: Array[Vector3] = []
 	var rng := RandomNumberGenerator.new()
@@ -160,7 +176,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 							mordido = true
 					if mordido and p.y < N - 1:
 						continue
-				vox[p] = _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else _color_base(p, c, sd)))
+				vox[p] = _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else (_color_trampa(p, c, sd) if trampa else _color_base(p, c, sd))))
 	if arena:
 		_fisuras(vox, sd)
 	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), siempre los mismos para una semilla (un bloque que se limpia
@@ -179,9 +195,14 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 				var p := _de_cara(cara, uv)
 				var nucleo := (i % 9 == 4)
 				i += 1
-				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles or (hierro and _bordes(p) >= 2):   # (las grietas del hierro no tocan el marco ni los remaches)
+				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles or (hierro and _bordes(p) >= 2) or (trampa and _es_cruz(p)):   # (las grietas del hierro no tocan el marco ni los remaches; las de la trampa, su cruz)
 					continue
 				_grieta(vox, p, cara, nucleo, c, sd, tipo)
+	if trampa:   # (la cruz roja se ve siempre entera, pase lo que pase con las grietas)
+		for x in range(1, N - 1):
+			for z in range(1, N - 1):
+				if _es_cruz(Vector3i(x, N - 1, z)):
+					vox[Vector3i(x, N - 1, z)] = PALETA_TRAMPA.cruz
 	return vox
 
 
@@ -326,6 +347,30 @@ static func _color_arena(p: Vector3i, c: float, sd: int) -> Color:
 		col = col.lightened(0.05)
 	if _centro_arriba(p):
 		col = col.lightened(0.05)
+	return col
+
+
+## ¿Es un minibloque de la cruz roja de la trampa (las dos diagonales de la cara de arriba, de dos a tres minibloques de ancho)?
+static func _es_cruz(p: Vector3i) -> bool:
+	return p.y == N - 1 and p.x >= 1 and p.x <= N - 2 and p.z >= 1 and p.z <= N - 2 and (absi(p.x - p.z) <= 1 or absi(p.x + p.z - (N - 1)) <= 1)
+
+
+## El color de la trampa en un minibloque: gris azulado (o gris muy oscuro con corrupción, rampa entre 0,5 y 1); arriba, una cruz roja en diagonal de lado a lado (siempre visible: es la advertencia);
+## en cada costado, una X de juntas oscuras de esquina a esquina.
+static func _color_trampa(p: Vector3i, c: float, sd: int) -> Color:
+	var r := _h(p.x, p.y, p.z, sd + 3)
+	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
+	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
+	var piedra: Color = (PALETA_TRAMPA.piedra[i] as Color).lerp(PALETA_TRAMPA.piedra_limpia[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
+	var col := piedra.lerp(PALETA_TRAMPA.corrupto[i], oscuro)
+	if _es_cruz(p):
+		return PALETA_TRAMPA.cruz
+	if _centro_arriba(p):
+		return col.lightened(0.04)
+	if p.y != N - 1:
+		var u := p.z if (p.x == 0 or p.x == N - 1) else p.x
+		if p.y == u or p.y + u == N - 1:
+			return col.darkened(0.38)   # (la X de juntas del costado)
 	return col
 
 
