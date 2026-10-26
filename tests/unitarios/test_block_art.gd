@@ -56,5 +56,17 @@ func _init() -> void:
 	check(Art.corrupcion(Art.Estado.PURIFICADO, 4) == 0.0 and Art.corrupcion(Art.Estado.CORRUPTO, 0) == 1.0, "los extremos de la escala")
 	check(Art.nivel_de_etapa(1) == 0 and Art.nivel_de_etapa(3) == 0 and Art.nivel_de_etapa(4) == 1 and Art.nivel_de_etapa(15) == 4, "un nivel cada tres etapas")
 	check(Art.malla_piedra(Art.Estado.CORRUPTO, 0, 1).get_surface_count() == 1, "la malla se arma")
+	# el bloque pesado (hierro): la misma escala, la cara de arriba completa y se distingue de la piedra
+	for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+		for semilla in 8:
+			var h: Dictionary = Art.bloque("hierro", estado, 0, semilla)
+			var arriba_h := true
+			for x in range(1, Art.N - 1):
+				for z in range(1, Art.N - 1):
+					arriba_h = arriba_h and h.has(Vector3i(x, Art.N - 1, z))
+			check(arriba_h and h.size() > 700, "hierro estado %d semilla %d: arriba completo y sin huecos (%d)" % [estado, semilla, h.size()])
+	check(Art.bloque("hierro", Art.Estado.PURIFICADO, 2, 1) != Art.bloque("piedra", Art.Estado.PURIFICADO, 2, 1), "el hierro no es la piedra")
+	check(Art.bloque("hierro", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hierro", Art.Estado.PURIFICADO, 0, 2), "en el hierro también el corrupto del final es el purificado del principio")
+	check(Art.malla_bloque("hierro", Art.Estado.CORRUPTO, 0, 1).get_surface_count() == 1, "la malla del hierro se arma")
 	print("tests del arte de bloques terminados, fallos: ", fallos)
 	quit(1 if fallos > 0 else 0)

@@ -29,6 +29,15 @@ const PALETA := {
 
 ## La corrupción de cada nivel. Los pasos son parejos para que se note el cambio de una etapa a la siguiente; el purificado baja más rápido al principio (el de la primera etapa
 ## todavía conserva bastante: se ve más corrupto que el de la segunda).
+## El bloque pesado (hierro): acero azulado cuando está limpio, metal oscuro cuando está corrupto; marco más oscuro, juntas entre placas y remaches dorados.
+const PALETA_HIERRO := {
+	"acero": [Color(0.50, 0.55, 0.67), Color(0.54, 0.59, 0.71), Color(0.58, 0.63, 0.75)],
+	"acero_limpio": [Color(0.55, 0.60, 0.72), Color(0.59, 0.64, 0.76), Color(0.63, 0.68, 0.80)],
+	"corrupto": [Color(0.11, 0.11, 0.16), Color(0.15, 0.15, 0.21), Color(0.20, 0.20, 0.27)],
+	"remache": Color(0.86, 0.70, 0.30),
+	"cicatriz": Color(0.38, 0.41, 0.55),
+}
+
 const CORRUPCION_CORRUPTO := [1.0, 0.83, 0.70, 0.60, 0.50]
 const CORRUPCION_PURIFICADO := [0.50, 0.33, 0.20, 0.10, 0.0]
 
@@ -71,16 +80,27 @@ static func piedra(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla)
 
 
+## Los minibloques de un bloque pesado (hierro): {Vector3i: Color}.
+static func hierro(estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	return piedra_con(corrupcion(estado, nivel), semilla, "hierro")
+
+
+## Los minibloques de un tipo de bloque ("piedra" o "hierro") en un estado y nivel.
+static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	return piedra_con(corrupcion(estado, nivel), semilla, tipo)
+
+
 ## Un bloque de piedra con esa corrupción (0 a 1): la forma se desgasta, la piedra se oscurece y las grietas se llenan de magma a medida que sube.
-static func piedra_con(c: float, semilla := 0) -> Dictionary:
+static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 	var sd := semilla * 31 + 7
 	var vox := {}
+	var hierro := tipo == "hierro"   # (el hierro se desgasta mucho menos: es un cubo de placas)
 	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
-	var p_arista := lerpf(0.03, 0.38, c)
-	var p_cara := lerpf(0.01, 0.06, c)
-	var p_esquina := lerpf(0.15, 1.0, c)
-	var n_mordiscos := roundi(lerpf(0.0, 3.0, c))
-	var radio_mordisco := lerpf(1.4, 2.0, c)
+	var p_arista := lerpf(0.0, 0.15, c) if hierro else lerpf(0.03, 0.38, c)
+	var p_cara := lerpf(0.0, 0.03, c) if hierro else lerpf(0.01, 0.06, c)
+	var p_esquina := lerpf(0.0, 0.7, c) if hierro else lerpf(0.15, 1.0, c)
+	var n_mordiscos := roundi(lerpf(0.0, 2.0, c)) if hierro else roundi(lerpf(0.0, 3.0, c))
+	var radio_mordisco := lerpf(1.4, 1.8, c) if hierro else lerpf(1.4, 2.0, c)
 	var mordiscos: Array[Vector3] = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = sd
@@ -105,7 +125,7 @@ static func piedra_con(c: float, semilla := 0) -> Dictionary:
 							mordido = true
 					if mordido and p.y < N - 1:
 						continue
-				vox[p] = _color_base(p, c, sd)
+				vox[p] = _color_hierro(p, c, sd) if hierro else _color_base(p, c, sd)
 	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), siempre los mismos para una semilla (un bloque que se limpia
 	# conserva sus grietas, cada vez más cortadas y apagadas); con mucha corrupción son vetas hundidas con magma que brilla, y con poca, cicatrices con algún resto de vena
 	var rng_g := RandomNumberGenerator.new()
@@ -124,7 +144,7 @@ static func piedra_con(c: float, semilla := 0) -> Dictionary:
 				i += 1
 				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles:
 					continue
-				_grieta(vox, p, cara, nucleo, c, sd)
+				_grieta(vox, p, cara, nucleo, c, sd, tipo)
 	return vox
 
 
@@ -137,6 +157,32 @@ static func _color_base(p: Vector3i, c: float, sd: int) -> Color:
 	var col := lavanda.lerp(oscura, clampf((c - 0.5) / 0.5, 0.0, 1.0))   # (parejo: cada paso de corrupción se nota igual)
 	if _centro_arriba(p):   # (la cara de arriba, un poco más clara: se lee dónde se pisa)
 		col = col.lightened(0.08) if c > 0.75 else col.lerp(PALETA.pura_arriba, 0.5).darkened(_h(p.x, p.y, p.z, sd + 8) * 0.05)
+	return col
+
+
+## El color del hierro en un minibloque: acero azulado o metal oscuro según la corrupción (rampa entre 0,5 y 1); marco de un minibloque más oscuro, una junta que divide
+## cada cara en placas y cuatro remaches dorados por cara (que también se oscurecen con la corrupción).
+static func _color_hierro(p: Vector3i, c: float, sd: int) -> Color:
+	var r := _h(p.x, p.y, p.z, sd + 3)
+	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
+	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
+	var acero: Color = (PALETA_HIERRO.acero[i] as Color).lerp(PALETA_HIERRO.acero_limpio[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
+	var col := acero.lerp(PALETA_HIERRO.corrupto[i], oscuro)
+	var u := p.x
+	var v := p.z
+	if p.y != N - 1:
+		if p.x == 0 or p.x == N - 1:
+			u = p.z
+			v = p.y
+		else:
+			u = p.x
+			v = p.y
+	if (u == 2 or u == 7) and (v == 2 or v == 7):
+		return (PALETA_HIERRO.remache as Color).lerp(col, oscuro * 0.65)
+	if u == 0 or u == N - 1 or v == 0 or v == N - 1 or u == 4 or v == 4:
+		return col.darkened(0.30)
+	if _centro_arriba(p) and oscuro < 0.5:
+		return col.lightened(0.05)
 	return col
 
 
@@ -193,7 +239,7 @@ static func _hacia_adentro(cara: int) -> Vector3i:
 
 ## Una grieta en un minibloque. Con corrupción de 0,45 o más es una veta: en los costados se hunde un minibloque y el de abajo se llena de magma (brilla con mucha
 ## corrupción y se va apagando); arriba (que se pisa) queda a ras. Con menos es una cicatriz clara con algún resto de vena sin brillo.
-static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: float, sd: int) -> void:
+static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: float, sd: int, tipo := "piedra") -> void:
 	if c >= 0.45:
 		var color: Color = PALETA.nucleo if nucleo else PALETA.vena
 		var apagado := clampf((1.0 - c) / 0.55, 0.0, 1.0)   # (0 con la corrupción al máximo, 1 con 0,45)
@@ -212,7 +258,7 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 					vox[q] = PALETA.halo if _h(q.x, q.y, q.z, 77) < 0.16 else (vox[q] as Color).lerp(PALETA.roca_vena, 0.5)
 		return
 	var resto := _h(p.x, p.y, p.z, sd + 5) < lerpf(0.0, 0.5, c / 0.45)
-	var cicatriz: Color = (PALETA.cicatriz as Color).lerp(Color(0.74, 0.70, 0.86), clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.6)
+	var cicatriz: Color = ((PALETA_HIERRO.cicatriz if tipo == "hierro" else PALETA.cicatriz) as Color).lerp(Color(0.74, 0.70, 0.86), clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.6)
 	var color_resto: Color = (PALETA.resto_vena as Color).lerp(cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.5)
 	if cara != 0 and _h(p.x, p.y, p.z, 41) < 0.22:   # (algunas muescas: la grieta se hundió un minibloque)
 		var dentro := p + _hacia_adentro(cara)
@@ -223,12 +269,17 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 	vox[p] = color_resto if resto else cicatriz
 
 
-## La malla de un bloque de piedra (con la memoria de modelos).
-static func malla_piedra(estado: int, nivel := 0, semilla := 0) -> ArrayMesh:
-	var key := "piedra|%d|%d|%d" % [estado, nivel, semilla]
+## La malla de un bloque ("piedra" o "hierro"), con la memoria de modelos.
+static func malla_bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> ArrayMesh:
+	var key := "%s|%d|%d|%d" % [tipo, estado, nivel, semilla]
 	if not _cache.has(key):
-		_cache[key] = malla(piedra(estado, nivel, semilla))
+		_cache[key] = malla(bloque(tipo, estado, nivel, semilla))
 	return _cache[key]
+
+
+## La malla de un bloque de piedra.
+static func malla_piedra(estado: int, nivel := 0, semilla := 0) -> ArrayMesh:
+	return malla_bloque("piedra", estado, nivel, semilla)
 
 
 ## La malla de un modelo de 10 x 10 x 10 minibloques: sólo se dibujan las caras que se ven.

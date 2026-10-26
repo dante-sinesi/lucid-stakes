@@ -1,6 +1,6 @@
 # Arte de los bloques (10 x 10 x 10 minibloques)
 
-Código: `scripts/personajes/block_art.gd`. Los bloques de siempre (`block_models.gd`) son de 5 x 5 x 5; el arte nuevo se va haciendo tipo por tipo. Hoy sólo está la **piedra común** (`n`), que se dibuja con el arte nuevo en la torre del juego (`Vista.poblar` con `aspecto_juego`); el resto de los tipos y el Estudio de salas siguen con el arte viejo.
+Código: `scripts/personajes/block_art.gd`. Los bloques de siempre (`block_models.gd`) son de 5 x 5 x 5; el arte nuevo se va haciendo tipo por tipo. Hoy están la **piedra común** (`n`) y el **bloque pesado** (`h`, hierro: acero azulado con marco, juntas entre placas y remaches dorados; se desgasta menos que la piedra), que se dibujan con el arte nuevo en la torre del juego (`Vista.poblar` con `aspecto_juego`); el resto de los tipos y el Estudio de salas siguen con el arte viejo.
 
 ## Diseño
 - La **corrupción son las grietas con magma violeta** y la piedra oscura y desgastada. Hay una sola escala de corrupción (`BlockArt.corrupcion`, de 0 limpio a 1 muy corrupto) para los dos estados: el corrupto de la última etapa parece el purificado de la primera.
@@ -11,4 +11,4 @@ Código: `scripts/personajes/block_art.gd`. Los bloques de siempre (`block_model
 - Los minibloques que brillan llevan el alfa menor que 1 en el color del vértice; `voxel_block.gdshader` lo usa como emisión (`COLOR.rgb * (1 - COLOR.a)`).
 
 ## Cómo seguir con otros bloques
-Cada tipo necesita su versión corrupta y su versión purificada sobre la misma escala. Se agregan a `block_art.gd` (o a un módulo hermano) y se enganchan en `Vista.poblar`. Capturas de revisión: `tests/capturas/shot_bloque_piedra.gd` (`niveles` muestra las cinco etapas lado a lado). Pruebas: `tests/unitarios/test_block_art.gd`.
+Cada tipo necesita su versión corrupta y su versión purificada sobre la misma escala. Se agregan a `block_art.gd` (o a un módulo hermano) y se enganchan en `Vista.poblar`. Capturas de revisión: `tests/capturas/shot_bloque.gd` (`niveles` muestra las cinco etapas lado a lado). Pruebas: `tests/unitarios/test_block_art.gd`.
