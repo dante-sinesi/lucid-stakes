@@ -146,22 +146,23 @@ static func _figura_jugador(t) -> MeshInstance3D:
 
 ## La zona de una bomba: bloques rojos translúcidos en el aire de su zona (radio² 5, donde no hay bloque) que se encienden y se apagan despacio sin llegar a desaparecer
 ## ni a quedar sólidos; mientras el jugador está adentro corre la mecha.
-static var _mat_zona: ShaderMaterial = null
+static var _mats_zona := {}   # "adelante" / "atras"
+
+
+## Los dos materiales de la zona (igual que el hielo: las caras de atrás van en otra malla que se dibuja antes, si no las caras translúcidas se ordenan mal y se ve distinto según desde dónde se mira).
+static func _material_zona(atras: bool) -> ShaderMaterial:
+	var clave := "atras" if atras else "adelante"
+	if not _mats_zona.has(clave):
+		var sh := Shader.new()
+		sh.code = "shader_type spatial;\nrender_mode unshaded, %s, shadows_disabled, depth_draw_never;\nvoid fragment() {\n\tfloat k = 0.5 - 0.5 * cos(TIME * 6.2832 * 0.45);\n\tALBEDO = vec3(1.0, 0.1, 0.06);\n\tALPHA = mix(0.03, 0.14, k);\n}\n" % ("cull_front" if atras else "cull_back")
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		mat.render_priority = 0 if atras else 1
+		_mats_zona[clave] = mat
+	return _mats_zona[clave]
 
 
 static func _zona(c: Vector3i, t) -> Node3D:
-	if _mat_zona == null:
-		var sh := Shader.new()
-		sh.code = "shader_type spatial;
-render_mode unshaded, cull_disabled, shadows_disabled;
-void fragment() {
-	float k = 0.5 - 0.5 * cos(TIME * 6.2832 * 0.45);
-	ALBEDO = vec3(1.0, 0.1, 0.06);
-	ALPHA = mix(0.04, 0.2, k);
-}
-"
-		_mat_zona = ShaderMaterial.new()
-		_mat_zona.shader = sh
 	var aire: Array[Vector3i] = []
 	for dx in range(-2, 3):
 		for dy in range(-2, 3):
@@ -173,9 +174,14 @@ void fragment() {
 	mi.position = Vector3(c.x + 0.5, c.y + 0.5, c.z + 0.5)
 	var masa := MeshInstance3D.new()   # (una sola malla con la superficie de afuera de todas las celdas: sin caras de adentro, así no hay líneas entre los cubos y se ve como una masa)
 	masa.mesh = _malla_masa(aire)
-	masa.material_override = _mat_zona
+	masa.material_override = _material_zona(false)
 	masa.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.add_child(masa)
+	var atras := MeshInstance3D.new()
+	atras.mesh = masa.mesh
+	atras.material_override = _material_zona(true)
+	atras.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.add_child(atras)
 	# el centro: una bolita brillante que se ve aunque otros bloques la tapen (la bomba suele quedar metida en la pila)
 	var nucleo := MeshInstance3D.new()
 	var ns := SphereMesh.new()
