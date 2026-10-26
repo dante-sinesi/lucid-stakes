@@ -28,6 +28,11 @@ func _init() -> void:
 		main._sun.shadow_blur = 1.6
 		main._sun.light_energy = 1.6
 		main.env.ambient_light_energy = 0.4
+	if args.size() > 2 and args[2] == "real":   # (la primera sala de verdad, tal como sale en el juego)
+		await create_timer(0.5).timeout
+		root.get_texture().get_image().save_png("%s_real.png" % pref)
+		quit(0)
+		return
 	var m = Motor.crear(8, Vector3i(1, 2, 1))
 	for p in [[1, 1, 1], [2, 1, 1], [2, 2, 2], [1, 1, 3], [3, 1, 3], [3, 2, 3], [0, 1, 2], [2, 3, 3], [4, 1, 1], [4, 2, 1]]:
 		m.poner(Vector3i(p[0], p[1], p[2]), "n")

@@ -67,6 +67,7 @@ var animador: Node           # sus animaciones (animacion.gd)
 var _tipo_anim := "caminar"   # la animación de la última acción
 var _lento := 1.0            # cuánto se alarga lo que pasa en la última acción (cámara lenta cuando empujar o tirar un bloque hace perder la sala, para que se entienda por qué)
 const CAMARA_LENTA := 3.0
+const ALCANCE_SOMBRAS := 12.0   # sólo los bloques de las salas de arriba que están hasta tantos cubos sobre el personaje dan sombra (las salas más altas no oscurecen la sala que se juega)
 const EMPUJE_LENTO := 8.0   # y el movimiento del bloque empujado o tirado (y del personaje que lo mueve) va más lento todavía: es lo que explica la derrota
 var _lento_mov := 1.0
 var mancha: MeshInstance3D   # la sombra de contacto del personaje: una mancha oscura en la cara de arriba del bloque que pisa (con vista isométrica sin perspectiva, es lo que dice en qué celda está)
@@ -250,6 +251,7 @@ func _refrescar(animar := false) -> void:
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
 	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true, portal != null and t.indice == t.salas.size() - 1)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
 	_animar_bloques(animar or t.muerta)
+	_limitar_sombras()
 	_poner_gato(animar)
 	_poner_camara(animar)
 	if panorama:
@@ -352,6 +354,18 @@ func _poner_mancha() -> void:
 	mancha.visible = tope > -1000
 	if mancha.visible:
 		mancha.position = Vector3(gato_nodo.position.x, float(tope) + float(int(t.sala_actual().off)) + 0.02, gato_nodo.position.z)
+
+
+## Los bloques de las salas de arriba dan sombra sólo hasta ALCANCE_SOMBRAS cubos sobre el personaje: más arriba no tapan la luz de la sala que se juega.
+func _limitar_sombras() -> void:
+	var tope := float(int(t.sala_actual().off)) + float(t.motor.jugador.y) + ALCANCE_SOMBRAS
+	for n in estaticas:
+		if n == null or not is_instance_valid(n) or not (n as Node3D).visible:
+			continue
+		for h in n.get_children():
+			var g := h as GeometryInstance3D
+			if g != null:
+				g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if n.position.y + g.position.y <= tope else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func _poner_gato(animar: bool) -> void:
