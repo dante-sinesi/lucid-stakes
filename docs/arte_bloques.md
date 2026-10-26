@@ -19,3 +19,7 @@ Cada tipo necesita su versión corrupta y su versión purificada sobre la misma 
 ## Pinchos (`pinchos`)
 
 Una base de acero oscuro de siete minibloques de alto (`TOPE_PINCHOS`) con cinco púas encima (cuatro en las esquinas y una en el centro; un piso de 2x2 y un minibloque de punta, hasta el piso 8, con 2x2 en el primer piso de cada púa y la punta de uno encima). Limpios: púas plateadas con la punta casi blanca. Corruptos: base casi negra, púas de obsidiana y puntas de magma que brillan. Las púas no se agrietan; las grietas y el magma van en la base. Se usa en la torre con la letra `s`.
+
+## Bomba (`bomba`)
+
+Una bola de hierro de 10x10x10 con la tapa (y el piso) aplanados, un aro en el medio y una mecha con chispa arriba. La activa es la versión corrupta: casi negra, con el aro y las grietas de fuego, y la chispa brilla; con las etapas se aclara. La desactivada (`d`) es la purificada: acero gris verdoso, aro apagado y un punto verde en la mecha. Se usa en la torre con las letras `b` y `d`.
