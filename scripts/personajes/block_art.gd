@@ -517,8 +517,23 @@ static func _color_checkpoint(p: Vector3i, c: float, sd: int) -> Color:
 	var apagado := Color(0.30, 0.22, 0.12).lightened(r * 0.1)
 	var col := oro.lerp(apagado, clampf(c * 1.6, 0.0, 1.0) * (0.55 + 0.45 * clampf((c - 0.5) / 0.5, 0.0, 1.0)))
 	if _bordes(p) >= 2:
-		col = col.darkened(0.2)
-	return col
+		return col.darkened(0.2)
+	# el panel de cada cara: una línea hundida a un minibloque del borde y un remache en sus esquinas
+	var otros: Array[int] = []
+	for e in [p.x, p.y, p.z]:
+		if e != 0 and e != N - 1:
+			otros.append(e)
+	var en_linea := otros.size() == 2 and (otros[0] == 1 or otros[0] == N - 2 or otros[1] == 1 or otros[1] == N - 2)
+	if en_linea:
+		var esquina := (otros[0] == 1 or otros[0] == N - 2) and (otros[1] == 1 or otros[1] == N - 2)
+		return col.lightened(0.35) if esquina else col.darkened(0.16)
+	if otros.size() == 2 and p.y != N - 1:   # en los costados, un rombo hundido con una chapa clara en el medio
+		var rombo := absf(otros[0] - 4.5) + absf(otros[1] - 4.5)
+		if rombo == 3.0:
+			return col.darkened(0.22)
+		if rombo == 1.0:
+			return col.lightened(0.2)
+	return col.lightened((r - 0.5) * 0.12)
 
 
 ## El farolito: un marco más oscuro de 6x6 en la cara de arriba y, en el medio, 2x2 de luz. Encendido (limpio): la luz brilla; apagado (corrupto): un vidrio oscuro con un punto de magma.
