@@ -1,6 +1,7 @@
 extends Node3D
 ## Galería de bloques (herramienta de desarrollo): el arte de 10 x 10 x 10 de cada tipo de bloque (block_art.gd), corrupto y purificado, en los cinco niveles de corrupción
-## (una columna por cada tres etapas), con la luz del juego. Mouse: arrastrar con el botón izquierdo o derecho gira e inclina; rueda acerca. Teclas: Q y E giran 45°,
+## (una columna por cada tres etapas), con la luz del juego. Mouse: arrastrar con el botón izquierdo o derecho gira e inclina; rueda acerca. Teclas: las flechas giran e inclinan
+## la cámara (izquierda y derecha giran, arriba y abajo inclinan; se mantienen apretadas), + y - acercan y alejan, Q y E giran 45°,
 ## 1 a 5 ponen el fondo de esa etapa (para ver el contraste), F alterna el remolino del fondo, R vuelve la cámara, Esc sale.
 ## Abrir: herramientas\galeria_bloques.bat (o `godot --path . res://scenes/galeria_bloques.tscn`).
 
@@ -21,6 +22,7 @@ var yaw := 45.0
 var pitch := 35.264
 var zoom := 9.0
 var _etapa := 1
+const FLECHAS_VEL := 110.0   # grados por segundo con las flechas
 
 
 func _ready() -> void:
@@ -87,6 +89,17 @@ func _poner_fondo(etapa: int) -> void:
 	_etapa = etapa
 	var tono := clampf(float(etapa - 1) / 14.0, 0.0, 1.0)
 	env.background_color = Main.BG_DARK.lerp(Main.BG_LIGHT, smoothstep(0.0, 0.43, tono))
+
+
+func _process(delta: float) -> void:
+	var ax := int(Input.is_physical_key_pressed(KEY_RIGHT)) - int(Input.is_physical_key_pressed(KEY_LEFT))
+	var ay := int(Input.is_physical_key_pressed(KEY_DOWN)) - int(Input.is_physical_key_pressed(KEY_UP))
+	var az := int(Input.is_physical_key_pressed(KEY_EQUAL) or Input.is_physical_key_pressed(KEY_KP_ADD)) - int(Input.is_physical_key_pressed(KEY_MINUS) or Input.is_physical_key_pressed(KEY_KP_SUBTRACT))
+	if ax != 0 or ay != 0 or az != 0:
+		yaw -= ax * FLECHAS_VEL * delta
+		pitch = clampf(pitch + ay * FLECHAS_VEL * 0.7 * delta, -80.0, 85.0)
+		zoom = clampf(zoom * pow(0.6, az * delta), 2.0, 30.0)
+		_poner_camara()
 
 
 func _poner_camara() -> void:
