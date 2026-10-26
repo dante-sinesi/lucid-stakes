@@ -1,8 +1,8 @@
 extends RefCounted
 ## El arte nuevo de los bloques, de 10 x 10 x 10 minibloques (los modelos de siempre, en block_models.gd, son de 5 x 5 x 5).
-## Cada bloque tiene un diseño corrupto y otro purificado. Los colores y la forma de la piedra son siempre los mismos (piedra oscura y desgastada, piedra lavanda clara): la
-## **corrupción son las grietas y el magma violeta de adentro**, y eso es lo que baja con las etapas. Hay cinco niveles, uno cada tres etapas (como las pruebas): en el
-## primero el bloque corrupto está surcado de grietas con magma que brilla; en el último quedan pocas grietas finas y tenues, y el purificado casi no guarda huellas.
+## Cada bloque tiene un diseño corrupto y otro purificado. Los dos son puntos de una misma escala de corrupción (`corrupcion`): la **corrupción son las grietas con magma violeta**
+## y la piedra oscura y desgastada; al limpiarse la piedra se aclara a lavanda, las grietas se apagan y se cicatrizan, y la forma se alisa. Hay cinco niveles, uno cada tres etapas
+## (como las pruebas), y bajan toda la escala: el corrupto de la última etapa parece el purificado de la primera, y el purificado de la última ya casi no tiene huellas.
 ## Los dos estados salen de la misma semilla: el bloque purificado es el corrupto ya curado (las mismas grietas, apagadas y cicatrizadas).
 ## El alfa del color de un minibloque marca que brilla (ver voxel_block.gdshader): las vetas corruptas emiten su propio color.
 ## La cara de arriba se pisa: su centro (8 x 8) queda siempre completo y a la misma altura.
@@ -21,6 +21,7 @@ const PALETA := {
 	"nucleo": Color(1.0, 0.5, 1.0),
 	"halo": Color(0.45, 0.08, 0.60, 0.88),
 	"pura": [Color(0.70, 0.66, 0.84), Color(0.75, 0.71, 0.88), Color(0.80, 0.77, 0.92)],
+	"pura_limpia": [Color(0.84, 0.81, 0.94), Color(0.88, 0.85, 0.97), Color(0.92, 0.90, 0.99)],   # (la piedra ya casi sin corrupción)
 	"pura_arriba": Color(0.88, 0.85, 0.97),
 	"cicatriz": Color(0.50, 0.44, 0.67),
 	"resto_vena": Color(0.62, 0.18, 0.72),
@@ -53,18 +54,28 @@ static func _centro_arriba(p: Vector3i) -> bool:
 	return p.y == N - 1 and p.x >= 1 and p.x <= N - 2 and p.z >= 1 and p.z <= N - 2
 
 
+## Cuánta corrupción tiene un bloque, de 0 (limpio) a 1 (muy corrupto). Es una sola escala para los dos estados: el corrupto de la etapa 1 es el más corrupto (1) y el de
+## la última etapa ya parece el purificado de la primera (0,5); el purificado de la etapa 1 está "ligeramente purificado" (0,5) y el de la última, muy purificado (0).
+static func corrupcion(estado: int, nivel: int) -> float:
+	var t := limpieza(nivel)
+	return lerpf(1.0, 0.5, t) if estado == Estado.CORRUPTO else lerpf(0.5, 0.0, t)
+
+
 ## Los minibloques de un bloque de piedra: {Vector3i: Color}.
 static func piedra(estado: int, nivel := 0, semilla := 0) -> Dictionary:
-	var corrupto := estado == Estado.CORRUPTO
-	var lim := limpieza(nivel)
+	return piedra_con(corrupcion(estado, nivel), semilla)
+
+
+## Un bloque de piedra con esa corrupción (0 a 1): la forma se desgasta, la piedra se oscurece y las grietas se llenan de magma a medida que sube.
+static func piedra_con(c: float, semilla := 0) -> Dictionary:
 	var sd := semilla * 31 + 7
 	var vox := {}
-	# 1) la forma (igual en todas las etapas): las esquinas y aristas se desgastan (mucho en el corrupto, poco en el purificado) y hay mordiscos en las esquinas
-	var p_arista := 0.38 if corrupto else 0.12
-	var p_cara := 0.06 if corrupto else 0.025
-	var p_esquina := 1.0 if corrupto else 0.6
-	var n_mordiscos := 3 if corrupto else 1
-	var radio_mordisco := 2.0 if corrupto else 1.6
+	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
+	var p_arista := lerpf(0.03, 0.38, c)
+	var p_cara := lerpf(0.01, 0.06, c)
+	var p_esquina := lerpf(0.15, 1.0, c)
+	var n_mordiscos := roundi(lerpf(0.0, 3.0, c))
+	var radio_mordisco := lerpf(1.4, 2.0, c)
 	var mordiscos: Array[Vector3] = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = sd
@@ -89,47 +100,39 @@ static func piedra(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 							mordido = true
 					if mordido and p.y < N - 1:
 						continue
-				vox[p] = _color_base(p, estado, sd)
-	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), los mismos en los dos estados (el purificado es el corrupto curado);
-	# en el corrupto son vetas hundidas con magma que brilla (menos, más cortas y más tenues a medida que se avanza), en el purificado quedan cicatrices con algún resto de vena
+				vox[p] = _color_base(p, c, sd)
+	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), siempre los mismos para una semilla (un bloque que se limpia
+	# conserva sus grietas, cada vez más cortadas y apagadas); con mucha corrupción son vetas hundidas con magma que brilla, y con poca, cicatrices con algún resto de vena
 	var rng_g := RandomNumberGenerator.new()
 	rng_g.seed = sd + 100
+	var visibles := clampf(c * 1.5, 0.0, 1.0)   # (qué parte de cada grieta se ve)
 	for cara in 5:
 		var caminos: Array = [_camino(rng_g, 13 + rng_g.randi() % 8), _camino(rng_g, 12 + rng_g.randi() % 8)]
-		var con_segundo := rng_g.randf() < lerpf(0.45, 0.0, lim)
-		var largo_max := roundi(lerpf(40.0, 9.0, lim)) if corrupto else 40
+		var con_segundo := rng_g.randf() < 0.45
 		for k in caminos.size():
-			if corrupto and k == 1 and not con_segundo:
+			if k == 1 and not con_segundo and c > 0.7:
 				continue
 			var i := 0
 			for uv in caminos[k]:
-				if i >= largo_max:
-					break
 				var p := _de_cara(cara, uv)
 				var nucleo := (i % 9 == 4)
 				i += 1
-				if not vox.has(p):
+				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles:
 					continue
-				if _h(p.x, p.y, p.z, sd + 13) > lerpf(1.0, 0.45, lim):   # (a medida que se avanza las grietas se cortan en tramos)
-					continue
-				if corrupto:
-					_vena_corrupta(vox, p, cara, nucleo, lim)
-				else:
-					_cicatriz(vox, p, cara, _h(p.x, p.y, p.z, sd + 5) < lerpf(0.4, 0.06, lim), lim)
+				_grieta(vox, p, cara, nucleo, c, sd)
 	return vox
 
 
-static func _color_base(p: Vector3i, estado: int, sd: int) -> Color:
-	var corrupto := estado == Estado.CORRUPTO
-	var tonos: Array = PALETA.corrupta if corrupto else PALETA.pura
+## El color de la piedra: lavanda cuando está poco corrupta (más clara cuanto más limpia) y obsidiana oscura cuando lo está mucho; el paso se da entre 0,6 y 0,9.
+static func _color_base(p: Vector3i, c: float, sd: int) -> Color:
 	var r := _h(p.x, p.y, p.z, sd + 3)
 	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
-	var c: Color = tonos[i]
-	if not corrupto and _centro_arriba(p):
-		c = (PALETA.pura_arriba as Color).darkened(_h(p.x, p.y, p.z, sd + 8) * 0.06)
-	elif corrupto and _centro_arriba(p):
-		c = c.lightened(0.08)   # (la cara de arriba, un poco más clara: se lee dónde se pisa)
-	return c
+	var lavanda: Color = (PALETA.pura[i] as Color).lerp(PALETA.pura_limpia[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
+	var oscura: Color = PALETA.corrupta[i]
+	var col := lavanda.lerp(oscura, smoothstep(0.6, 0.9, c))
+	if _centro_arriba(p):   # (la cara de arriba, un poco más clara: se lee dónde se pisa)
+		col = col.lightened(0.08) if c > 0.75 else col.lerp(PALETA.pura_arriba, 0.5).darkened(_h(p.x, p.y, p.z, sd + 8) * 0.05)
+	return col
 
 
 ## Un camino al azar sobre una cara de 10 x 10, en ocho direcciones: sigue derecho casi siempre y gira de a 45 grados, así las grietas hacen curvas.
@@ -183,31 +186,29 @@ static func _hacia_adentro(cara: int) -> Vector3i:
 	return Vector3i(0, 0, -1)
 
 
-## Una veta corrupta: en los costados se hunde un minibloque y el de abajo brilla; arriba (que se pisa) brilla a ras. La roca de alrededor se tiñe de violeta
-## (menos cuanto más limpio) y el brillo se apaga a medida que se limpia.
-static func _vena_corrupta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, lim: float) -> void:
-	var color: Color = PALETA.nucleo if nucleo else PALETA.vena
-	color.a = lerpf(0.22 if nucleo else 0.40, 0.70 if nucleo else 0.85, lim)   # (cuanto más alfa, menos emite: el magma se apaga)
-	var objetivo := p
-	if cara != 0:
-		var dentro := p + _hacia_adentro(cara)
-		if vox.has(dentro):
-			vox.erase(p)
-			objetivo = dentro
-	vox[objetivo] = color
-	for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
-		var q: Vector3i = objetivo + d
-		if vox.has(q) and (vox[q] as Color).a >= 1.0:
-			if _h(q.x, q.y, q.z, 77) < lerpf(0.16, 0.0, lim):
-				vox[q] = PALETA.halo
-			elif (vox[q] as Color).r < 0.3:
-				vox[q] = (vox[q] as Color).lerp(PALETA.roca_vena, 0.5 * (1.0 - lim))
-
-
-## Una grieta ya curada: una cicatriz clara y, a veces, un resto de vena que todavía se ve (apagado, sin brillo; menos cuanto más limpio).
-static func _cicatriz(vox: Dictionary, p: Vector3i, cara: int, resto: bool, lim: float) -> void:
-	var cicatriz: Color = (PALETA.cicatriz as Color).lerp(Color(0.74, 0.70, 0.86), lim * 0.6)
-	var color_resto: Color = (PALETA.resto_vena as Color).lerp(cicatriz, lim * 0.5)
+## Una grieta en un minibloque. Con corrupción de 0,45 o más es una veta: en los costados se hunde un minibloque y el de abajo se llena de magma (brilla con mucha
+## corrupción y se va apagando); arriba (que se pisa) queda a ras. Con menos es una cicatriz clara con algún resto de vena sin brillo.
+static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: float, sd: int) -> void:
+	if c >= 0.45:
+		var color: Color = PALETA.nucleo if nucleo else PALETA.vena
+		var apagado := clampf((1.0 - c) / 0.55, 0.0, 1.0)   # (0 con la corrupción al máximo, 1 con 0,45)
+		color.a = lerpf(0.22 if nucleo else 0.40, 1.0, apagado)
+		var objetivo := p
+		if cara != 0:
+			var dentro := p + _hacia_adentro(cara)
+			if vox.has(dentro):
+				vox.erase(p)
+				objetivo = dentro
+		vox[objetivo] = color
+		if c > 0.7:   # (la roca de alrededor se tiñe de violeta y unos pocos minibloques arden más tenues)
+			for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+				var q: Vector3i = objetivo + d
+				if vox.has(q) and (vox[q] as Color).a >= 1.0 and (vox[q] as Color).r < 0.3:
+					vox[q] = PALETA.halo if _h(q.x, q.y, q.z, 77) < 0.16 else (vox[q] as Color).lerp(PALETA.roca_vena, 0.5)
+		return
+	var resto := _h(p.x, p.y, p.z, sd + 5) < lerpf(0.0, 0.5, c / 0.45)
+	var cicatriz: Color = (PALETA.cicatriz as Color).lerp(Color(0.74, 0.70, 0.86), clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.6)
+	var color_resto: Color = (PALETA.resto_vena as Color).lerp(cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.5)
 	if cara != 0 and _h(p.x, p.y, p.z, 41) < 0.22:   # (algunas muescas: la grieta se hundió un minibloque)
 		var dentro := p + _hacia_adentro(cara)
 		if vox.has(dentro):

@@ -28,10 +28,10 @@ func _init() -> void:
 		if (c as Color).a < 1.0:
 			luz += 1
 	var luz_pura := 0
-	for c in Art.piedra(Art.Estado.PURIFICADO, 0, 1).values():
+	for c in Art.piedra(Art.Estado.PURIFICADO, 4, 1).values():
 		if (c as Color).a < 1.0:
 			luz_pura += 1
-	check(luz > 8 and luz_pura == 0, "el corrupto tiene vetas que brillan y el purificado ya no (%d y %d)" % [luz, luz_pura])
+	check(luz > 8 and luz_pura == 0, "el corrupto tiene vetas que brillan y el purificado final ya no (%d y %d)" % [luz, luz_pura])
 	var brillo_nivel: Array[float] = []
 	for nivel in Art.NIVELES:
 		var total := 0.0
@@ -39,7 +39,21 @@ func _init() -> void:
 			for c in Art.piedra(Art.Estado.CORRUPTO, nivel, semilla).values():
 				total += 1.0 - (c as Color).a
 		brillo_nivel.append(total)
-	check(brillo_nivel[0] > brillo_nivel[2] and brillo_nivel[2] > brillo_nivel[4] and brillo_nivel[4] > 0.0, "la corrupción (el magma que brilla) baja nivel a nivel y no desaparece (%s)" % str(brillo_nivel))
+	check(brillo_nivel[0] > brillo_nivel[1] and brillo_nivel[1] > brillo_nivel[2] and brillo_nivel[2] >= brillo_nivel[3] and brillo_nivel[3] >= brillo_nivel[4], "el magma que brilla baja nivel a nivel (%s)" % str(brillo_nivel))
+	# una sola escala de corrupción: el corrupto de la última etapa es como el purificado de la primera, y el purificado de la primera es más corrupto que el de la segunda
+	check(is_equal_approx(Art.corrupcion(Art.Estado.CORRUPTO, 4), Art.corrupcion(Art.Estado.PURIFICADO, 0)), "el corrupto de la última etapa parece el purificado de la primera")
+	check(Art.piedra(Art.Estado.CORRUPTO, 4, 2) == Art.piedra(Art.Estado.PURIFICADO, 0, 2), "...y es el mismo diseño")
+	var lum := func(estado: int, nivel: int) -> float:
+		var tot := 0.0
+		var n := 0
+		for semilla in 12:
+			for c in Art.piedra(estado, nivel, semilla).values():
+				tot += (c as Color).get_luminance()
+				n += 1
+		return tot / float(n)
+	check(lum.call(Art.Estado.PURIFICADO, 0) < lum.call(Art.Estado.PURIFICADO, 1) and lum.call(Art.Estado.PURIFICADO, 1) < lum.call(Art.Estado.PURIFICADO, 4), "el purificado de cada etapa es más claro que el de la anterior")
+	check(lum.call(Art.Estado.CORRUPTO, 0) < lum.call(Art.Estado.CORRUPTO, 2) and lum.call(Art.Estado.CORRUPTO, 2) < lum.call(Art.Estado.CORRUPTO, 4), "y el corrupto también se aclara con las etapas")
+	check(Art.corrupcion(Art.Estado.PURIFICADO, 4) == 0.0 and Art.corrupcion(Art.Estado.CORRUPTO, 0) == 1.0, "los extremos de la escala")
 	check(Art.nivel_de_etapa(1) == 0 and Art.nivel_de_etapa(3) == 0 and Art.nivel_de_etapa(4) == 1 and Art.nivel_de_etapa(15) == 4, "un nivel cada tres etapas")
 	check(Art.malla_piedra(Art.Estado.CORRUPTO, 0, 1).get_surface_count() == 1, "la malla se arma")
 	print("tests del arte de bloques terminados, fallos: ", fallos)
