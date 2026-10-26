@@ -18,7 +18,8 @@ func _init() -> void:
 			var arriba_ok := true
 			for x in range(1, Art.N - 1):
 				for z in range(1, Art.N - 1):
-					arriba_ok = arriba_ok and v.has(Vector3i(x, Art.N - 1, z))
+					var sup := Vector3i(x, Art.N - 1, z)
+					arriba_ok = arriba_ok and (v.has(sup) or (v.has(sup + Vector3i(0, -1, 0)) and (v[sup + Vector3i(0, -1, 0)] as Color).a < 1.0))   # (o una ranura de magma de un minibloque)
 			check(arriba_ok, "estado %d semilla %d: el centro de la cara de arriba está completo" % [estado, semilla])
 			check(v.size() > 600, "estado %d semilla %d: el bloque no queda hueco (%d minibloques)" % [estado, semilla, v.size()])
 	check(Art.piedra(Art.Estado.CORRUPTO, 0, 3) == Art.piedra(Art.Estado.CORRUPTO, 0, 3), "el diseño es determinista")
