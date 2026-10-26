@@ -328,9 +328,7 @@ static func malla_bloque(tipo: String, estado: int, nivel := 0, semilla := 0) ->
 	var key := "%s|%d|%d|%d" % [tipo, estado, nivel, semilla]
 	if not _cache.has(key):
 		if tipo == "hielo":
-			var mallas := _mallas_hielo(bloque(tipo, estado, nivel, semilla), corrupcion(estado, nivel), semilla * 31 + 7)
-			_cache[key] = mallas[0]
-			_cache["nucleo|%d|%d|%d" % [estado, nivel, semilla]] = mallas[1]
+			_cache[key] = _malla_hielo(bloque(tipo, estado, nivel, semilla), corrupcion(estado, nivel), semilla * 31 + 7)
 		else:
 			_cache[key] = malla(bloque(tipo, estado, nivel, semilla))
 	return _cache[key]
@@ -353,7 +351,7 @@ static func _ruido3(p: Vector3i, sd: int) -> float:
 
 ## ¿Este minibloque de hielo es escarchado (opaco, blanquecino y con grano) o claro (translúcido)? Se alternan en manchas: el hielo es una fusión de las dos cosas.
 static func _escarchado(p: Vector3i, sd: int) -> bool:
-	return _ruido3(p, sd) > 0.56
+	return _ruido3(p, sd) > 0.42
 
 
 ## La opacidad de un minibloque de la cáscara de hielo: el magma y lo muy oscuro (corrupción) son casi opacos; el hielo escarchado es opaco y el claro es translúcido (se ve el
@@ -363,10 +361,10 @@ static func _opacidad_hielo(p: Vector3i, color: Color, sd: int) -> float:
 		return 1.0   # (el magma)
 	var lum := color.get_luminance()
 	if lum < 0.35:
-		return 0.80   # (la corrupción oscura deja ver apenas el resplandor violeta del núcleo)
+		return 0.92
 	if _escarchado(p, sd):
 		return 0.95
-	return 0.90 if lum >= 0.8 else 0.30
+	return 0.90 if lum >= 0.8 else 0.40
 
 
 ## Cuánto se está de la superficie: 0 en la cáscara de afuera, 4 en el centro.
@@ -380,47 +378,36 @@ static func _color_nucleo(p: Vector3i, c: float, d: int, sd: int) -> Color:
 	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
 	var blanco := Color(0.90, 0.96, 1.0)
 	var celeste := Color(0.62, 0.80, 0.92)
-	var base := celeste.lerp(blanco, clampf(float(d - 2) / 1.5, 0.0, 1.0)).darkened(_h(p.x, p.y, p.z, sd + 17) * 0.06)
+	var base := celeste.lerp(blanco, clampf(float(d - 2) / 2.0, 0.0, 1.0)).darkened(_h(p.x, p.y, p.z, sd + 17) * 0.06)
 	var corrupto := Color(0.06, 0.13, 0.22).lerp(Color(0.62, 0.16, 0.95), clampf(float(d - 1) / 3.0, 0.0, 1.0) * 0.6)
 	var col := base.lerp(corrupto, oscuro)
-	col.a = lerpf(0.45, 0.50, oscuro * clampf(float(d - 1) / 3.0, 0.0, 1.0))   # (el núcleo brilla un poco, blanco; corrupto, violeta)
+	col.a = lerpf(0.80, 0.50, oscuro * clampf(float(d - 1) / 3.0, 0.0, 1.0))   # (el núcleo brilla un poco, blanco; corrupto, violeta)
 	return col
 
 
-## Las mallas de un bloque de hielo: [cáscara, núcleo]. La cáscara tiene dos minibloques de espesor, translúcida en manchas y opaca (escarchada) en otras; el núcleo es un cubo
-## sólido de 6 x 6 x 6 minibloques (blanco en el centro y celeste hacia afuera). Van en mallas separadas porque la cáscara se dibuja translúcida y el núcleo opaco (si fueran una sola,
-## el orden de dibujo mezclaría la cáscara de atrás con el núcleo y éste parecería estar fuera del cubo).
-static func _mallas_hielo(vox: Dictionary, c: float, sd: int) -> Array:
+## La malla de un bloque de hielo: una cáscara de dos minibloques, translúcida en manchas y opaca en otras (escarchada), con un núcleo blanco irregular adentro. Se ven las
+## caras de afuera de la cáscara, las de adentro y las del núcleo, así el cristal tiene profundidad.
+static func _malla_hielo(vox: Dictionary, c: float, sd: int) -> ArrayMesh:
 	var cascara := {}
 	var nucleo := {}
 	for p in vox:
 		var d := _profundidad(p)
 		if d <= 1:
 			cascara[p] = vox[p]
-		else:
+		elif _ruido3(p, sd + 99) + 0.12 > (Vector3(p) - Vector3(4.5, 4.5, 4.5)).length() / 3.6 - 0.15:   # (una nube irregular: densa en el centro y deshilachada hacia afuera)
 			nucleo[p] = _color_nucleo(p, c, d, sd)
-	var dirs: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var dirs: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 	for p in cascara:
 		for d in dirs:
 			if not cascara.has(p + d):
 				BlockModels._add_face(st, p, d, cascara[p], N, _opacidad_hielo(p, cascara[p], sd))
-	var st2 := SurfaceTool.new()
-	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for p in nucleo:
 		for d in dirs:
 			if not nucleo.has(p + d):
-				BlockModels._add_face(st2, p, d, nucleo[p], N, 1.0)
-	return [st.commit(), st2.commit()]
-
-
-## El núcleo opaco de un bloque de hielo (null en los demás tipos).
-static func malla_nucleo(tipo: String, estado: int, nivel := 0, semilla := 0) -> ArrayMesh:
-	if tipo != "hielo":
-		return null
-	malla_bloque(tipo, estado, nivel, semilla)
-	return _cache["nucleo|%d|%d|%d" % [estado, nivel, semilla]]
+				BlockModels._add_face(st, p, d, nucleo[p], N, 1.0)
+	return st.commit()
 
 
 ## La malla de un bloque de piedra.

@@ -51,13 +51,6 @@ func _ready() -> void:
 				m.material_override = Escena.material_hielo() if tipo == "hielo" else Escena.material(Color.WHITE, false)
 				m.position = _celda(nivel, fila)
 				add_child(m)
-				var nucleo := Art.malla_nucleo(tipo, estado, nivel, 1 + nivel)
-				if nucleo != null:   # (el núcleo opaco del hielo es otra malla)
-					var mn := MeshInstance3D.new()
-					mn.mesh = nucleo
-					mn.material_override = Escena.material(Color.WHITE, false)
-					mn.position = m.position
-					add_child(mn)
 			_rotulo("%s · %s" % [TIPOS[tipo], "corrupto" if estado == Art.Estado.CORRUPTO else "purificado"], _celda(-0.55, fila) + Vector3(-0.6, 0.0, 0.6))
 			fila += 1
 	for nivel in Art.NIVELES:
