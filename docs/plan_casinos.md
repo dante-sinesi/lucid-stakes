@@ -115,10 +115,13 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 ### Límite
 - **2 contratos activos** a la vez. El boost **"Caza recompensas"** da **+1** a la cantidad de contratos que se pueden aceptar.
 
-### Cobro y animación
-- Se cobra **en cuanto se cumple**, dentro de la torre. Aviso corto sin texto de depuración en el HUD.
-- **Animación del cobro:** un sello baja sobre el papel y deja un "COBRADO" en el centro.
-- Los contratos activos se ven **solo como íconos, en columna, a la derecha del menú de pausa** (cada uno en una chapa de pergamino con un sello chico del color de su rareza). No se muestran en el HUD de la torre.
+### Cobro y animación (pantalla del contrato resuelto)
+- Cuando un contrato se resuelve (cumplido o fallido) aparece una **pantalla completa** (`scripts/ui/contrato_resuelto.gd`, con la torre en pausa): el **papel del contrato en el medio** (el mismo arte de la cartelera: ícono del objetivo, renglones de "texto escrito" que no dicen nada y el sello de rareza), con a su izquierda el **título** del contrato en grande y debajo las **condiciones** que había que cumplir (un guion por renglón; la lista de `{titulo, condiciones}` la arma cada contrato); por la **derecha entra un sello de mano hecho de minibloques**, se deja caer sobre el papel y deja **"CUMPLIDO"** (verde) o **"FALLIDO"** (rojo), con un temblor de pantalla y una salpicadura de tinta; el sello se levanta y se va por la derecha, y **en ese mismo lado sale un contador grande** que sube hasta el valor total cobrado, con un rótulo ("Cobrado"). Cuando todo está a la vista pide **"Presiona Espacio para continuar la torre"**.
+- Una primera pulsación durante la animación la salta; la siguiente continúa. Los tiempos son constantes (`T_*`).
+- Si se falló: con fianza el contador muestra en rojo la fianza perdida ("Fianza perdida", `-N`); sin fianza, "Sin recompensa" y un 0.
+- Se cobra **en cuanto se cumple**, dentro de la torre; la pantalla aparece al terminar la sala o la torre (por decidir en la integración, para no interrumpir un puzzle en marcha).
+- `monto` es lo cobrado: positivo al cumplir, negativo (fianza perdida) o 0 al fallar.
+- Arte: el sello de texto (`dibujar_sello_texto`) y el sello de mano (`dibujar_sello_mano`) están en `contract_art.gd`; el papel grande es `dibujar_papel` con `PAPEL_ROWS_GRANDE`.
 
 ### Recompensa y dificultad de la tarea
 - Cada objetivo del catálogo trae su propia **`recompensa`**: un porcentaje de lo que rinde una torre en esa etapa (tabla de la sección 1; **no** del peaje, para no romper la pared). Es el dato que expresa **cuánto cuesta cumplirlo**: "sobrar movimientos" puede valer 10 %, "no empujar en ninguna sala" 20 %, y algo muy duro como "terminar la torre sin movimientos de escalada" 60 % o más, bastante por encima de cualquier otro.
@@ -148,7 +151,7 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar a una racha, desarmar una bomba, purificar N bloques especiales, no empujar ni tirar en una sala, no perder vidas, usar una catapulta.
 
 ### Arte (hecho, rama `arte/casinos`)
-- `scripts/ui/contract_art.gd`: el papel de la cartelera (con chinche si está colgado, sin ella si está activo), el sello de cera de las cuatro rarezas (gris, azul, violeta, negro con marca dorada), el sello "COBRADO" (tinta roja, marco doble, inclinado; `fuerza` sirve para animar el apoyo) y diez íconos de objetivo de 9 x 9 (movimientos, deshacer, racha, bomba, especiales, sin empujar, vidas, catapulta, escalada, claridad). La lista de objetivos se puede ampliar.
+- `scripts/ui/contract_art.gd`: el papel de la cartelera (con chinche si está colgado, sin ella si está activo), el sello de cera de las cuatro rarezas (gris, azul, violeta, negro con marca dorada), el sello de texto "CUMPLIDO"/"FALLIDO" y el sello de mano de minibloques y diez íconos de objetivo de 9 x 9 (movimientos, deshacer, racha, bomba, especiales, sin empujar, vidas, catapulta, escalada, claridad). La lista de objetivos se puede ampliar.
 - `scripts/ui/item_icons.gd`: íconos de los ítems nuevos (nombres de id provisorios): `racha_de_la_casa`, `racha_de_visita`, `pozo_del_jackpot`, `caja_fuerte`, `alcancia`, `caza_recompensas`, `contratista`, `sello_de_oro`.
 - `scripts/casino/casino_room.gd`: la estación `tablon` (`_tablon`), de **dos celdas de ancho** (10 minibloques) y 14 de alto, con un diseño distinto para cada casino: en la **taberna** tablas con postes toscos, juntas y una vela en cada punta; en el **salón** madera pulida con tachas doradas y una repisa con libro, tintero y pluma; en el **casino** paño verde con marco dorado y dos lámparas; en el **gran casino** marco de mármol con pilastras, paño violeta, base y un frontón dorado. Los papeles cuelgan (hasta seis: tres por fila, los de abajo corridos y los del medio un poco adelante) y están hechos con **minibloques de un tercio de tamaño** (`_papel_fino`, un segundo diccionario `fino` que devuelve `build_voxels` y que la escena dibuja con `VOXEL / 3`): chinche, renglón de texto, **el ícono entero del objetivo (9 x 9)** y el sello de su rareza al pie. Al sumar la estación al diseño de cada casino hay que reservar las dos celdas de ancho.
 - `scripts/ui/contratos_columna.gd`: la columna de contratos activos del menú de pausa (`PauseMenu.set_contratos(lista)`); sin contratos no se ve.
@@ -179,7 +182,7 @@ Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino,
 1. **Taberna y ficha chica:** sacar la tragamonedas de la taberna y poner el multiplicador de ficha de las etapas 1 a 3 (sin limitar los premios).
 2. **Reglas y Caja fuerte → boosts y consumibles:** quitar `casino_rules`, la regla aceptada con el tabernero, la apuesta de varias fichas y la Caja; agregar los ítems nuevos (Racha, Jackpot, Caja fuerte, Alcancía, Caza recompensas).
 3. **Contratos, versión mínima:** modelo de datos, sorteo por casino, estación del tablón con su pantalla, 2 activos, cobro al cumplirse.
-4. **Presentación:** sello de rareza, animación del sello "COBRADO", pausa con los contratos activos.
+4. **Presentación:** sello de rareza, pantalla del contrato resuelto (sello CUMPLIDO o FALLIDO y contador), pausa con los contratos activos.
 5. **Fianza** en los dos últimos casinos.
 6. **Diferenciar los casinos** (premios y estaciones por casino).
 7. **Balance:** recalibrar la curva del peaje con el ingreso medido (`income_base` / `income_slope`) y repetir el bot de runs completos (`bot.md`).
