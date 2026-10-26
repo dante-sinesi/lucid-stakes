@@ -154,6 +154,11 @@ Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar
 - `scripts/ui/contratos_columna.gd`: la columna de contratos activos del menú de pausa (`PauseMenu.set_contratos(lista)`); sin contratos no se ve.
 - Capturas: `tests/capturas/shot_arte_contratos.gd` (papeles, sellos, íconos) y `shot_tablon.gd` (el tablón de cada casino).
 
+### Casinos con más detalle (propuesta, por decidir)
+- Al ver el tablón ancho con las hojas en detalle dentro de la sala, queda grande: la sala está hecha con minibloques de 0,2 (una celda = 5 minibloques = 1 unidad) y la mesa de la ruleta mide 3 x 2 celdas, mientras que el tablón ancho mide 2 unidades y sus hojas están hechas con minibloques de un tercio. Los personajes y los bloques ya tienen mucho más detalle; los casinos se quedaron atrás.
+- Propuesta: **duplicar la resolución de los casinos** (`VOXEL` 0,1 y `CELL_VOX` 10, una celda sigue midiendo 1 unidad). El tablón de 10 minibloques mediría 1 unidad, que es la proporción buena, y las hojas con su ícono entero se mantienen. Se hace en pasos: (1) infraestructura: un factor `ESCALA` en `_box` y en las constantes para que todo siga viéndose igual con el doble de minibloques; (2) el tablón nuevo a su tamaño; (3) refinar pieza por pieza con la nueva resolución (mesa y crupier, tragamonedas, mesas de cartas, paredes, puertas y piso, lámparas y obstáculos, Taller), con capturas de antes y después de cada una.
+- Lo que tocaría: `casino_room.gd` (733 líneas, 109 llamadas a `_box`, 49 usos de las constantes), `casino_scene.gd` (6) y las pruebas `test_casino_room`/`test_casino_scene`. Las unidades del mundo (celdas, Farolín, personaje, cámara) no cambian.
+
 ## 5. Cómo queda cada casino
 
 | | Taberna | Salón | Casino | Gran casino |
