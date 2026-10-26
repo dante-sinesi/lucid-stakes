@@ -233,6 +233,10 @@ static func _color_hielo(p: Vector3i, c: float, sd: int) -> Color:
 		col = col.lerp(PALETA_HIELO.veta, 0.55 - 0.30 * oscuro)   # (la franja de reflejo en diagonal)
 	if u >= 2 and u <= 3 and v >= 6 and v <= 7 and (u + v) % 2 == 0:
 		col = PALETA_HIELO.destello   # (el destello en una esquina de cada cara)
+	if _escarchado(p, sd) and oscuro < 0.6:   # (el hielo escarchado: más blanquecino y con grano, como el cristal con aire adentro)
+		col = col.lerp(Color(0.86, 0.94, 0.99), 0.42 * (1.0 - oscuro)).darkened(_h(p.x, p.y, p.z, sd + 9) * 0.10)
+	elif oscuro < 0.6:
+		col = col.darkened(0.10)   # (el hielo claro, un poco más hondo: se nota la diferencia con el escarchado)
 	return col
 
 
@@ -323,23 +327,41 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 static func malla_bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> ArrayMesh:
 	var key := "%s|%d|%d|%d" % [tipo, estado, nivel, semilla]
 	if not _cache.has(key):
-		_cache[key] = malla(bloque(tipo, estado, nivel, semilla), _opacidad_hielo if tipo == "hielo" else Callable())
+		_cache[key] = malla(bloque(tipo, estado, nivel, semilla), _opacidad_hielo.bind(semilla * 31 + 7) if tipo == "hielo" else Callable())
 	return _cache[key]
 
 
-## La opacidad de un minibloque de hielo (el hielo es translúcido: se ve lo de atrás a través del cristal): el magma y lo muy oscuro (corrupción) son casi opacos, el cuerpo
-## del cristal es el más transparente y el canto, la franja de reflejo y los destellos (claros) se ven más.
-static func _opacidad_hielo(color: Color) -> float:
+## Ruido de valor en 3D (suave), de 0 a 1: manchas del tamaño de unos 3 minibloques.
+static func _ruido3(p: Vector3i, sd: int) -> float:
+	var q := Vector3(p) / 3.0
+	var i := Vector3i(floori(q.x), floori(q.y), floori(q.z))
+	var f := q - Vector3(i)
+	f = f * f * (Vector3(3, 3, 3) - 2.0 * f)
+	var v := 0.0
+	for dx in 2:
+		for dy in 2:
+			for dz in 2:
+				var w := (f.x if dx == 1 else 1.0 - f.x) * (f.y if dy == 1 else 1.0 - f.y) * (f.z if dz == 1 else 1.0 - f.z)
+				v += w * _h(i.x + dx, i.y + dy, i.z + dz, sd + 55)
+	return v
+
+
+## ¿Este minibloque de hielo es escarchado (opaco, blanquecino y con grano) o claro (translúcido)? Se alternan en manchas: el hielo es una fusión de las dos cosas.
+static func _escarchado(p: Vector3i, sd: int) -> bool:
+	return _ruido3(p, sd) > 0.42
+
+
+## La opacidad de un minibloque de hielo: el magma y lo muy oscuro (corrupción) son casi opacos; el hielo escarchado es opaco y el claro es translúcido (se ve lo de atrás),
+## en manchas; el canto y los reflejos se ven más.
+static func _opacidad_hielo(p: Vector3i, color: Color, sd: int) -> float:
 	if color.a < 1.0:
 		return 1.0   # (el magma)
 	var lum := color.get_luminance()
 	if lum < 0.35:
 		return 0.92
-	if lum < 0.65:
-		return lerpf(0.92, 0.68, (lum - 0.35) / 0.30)
-	if lum < 0.80:
-		return 0.68
-	return 0.86
+	if _escarchado(p, sd):
+		return 1.0
+	return 0.90 if lum >= 0.8 else 0.52
 
 
 ## La malla de un bloque de piedra.
@@ -355,5 +377,5 @@ static func malla(vox: Dictionary, opacidad := Callable()) -> ArrayMesh:
 	for p in vox:
 		for d in dirs:
 			if not vox.has(p + d):
-				BlockModels._add_face(st, p, d, vox[p], N, float(opacidad.call(vox[p])) if opacidad.is_valid() else 1.0)
+				BlockModels._add_face(st, p, d, vox[p], N, float(opacidad.call(p, vox[p])) if opacidad.is_valid() else 1.0)
 	return st.commit()
