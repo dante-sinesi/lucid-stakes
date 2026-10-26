@@ -147,7 +147,7 @@ func _glow_material() -> StandardMaterial3D:
 	return m
 
 
-func _mesh_node(vox: Dictionary, material: Material, size := Room.VOXEL) -> MeshInstance3D:
+func _mesh_node(vox: Dictionary, material: Material, size := Room.VOXEL_FINO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = VoxelMesh.build(vox, size)
 	mi.material_override = material
@@ -156,7 +156,7 @@ func _mesh_node(vox: Dictionary, material: Material, size := Room.VOXEL) -> Mesh
 
 
 func _build_room() -> void:
-	var data := Room.build_voxels(run.stage, int(run.scenario().get("casino_tier", -1)))
+	var data := Room.build_detalle(run.stage, int(run.scenario().get("casino_tier", -1)))
 	var base_solid: Dictionary = data.solid.duplicate()
 	var base_glow: Dictionary = data.glow.duplicate()
 	for side in ["west", "north"]:
@@ -167,7 +167,7 @@ func _build_room() -> void:
 	_mesh_node(base_solid, _solid_material())
 	_mesh_node(base_glow, _glow_material())
 	if not data.fino.is_empty():   # (los papeles del tablón: minibloques de un tercio de tamaño)
-		_mesh_node(data.fino, _solid_material(), Room.VOXEL / 3.0)
+		_mesh_node(data.fino, _solid_material(), Room.VOXEL_FINO / 3.0)
 	for side in ["west", "north"]:
 		walls[side] = [_mesh_node(data[side].solid, _solid_material()), _mesh_node(data[side].glow, _glow_material())]
 

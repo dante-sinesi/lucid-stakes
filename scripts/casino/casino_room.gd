@@ -362,7 +362,6 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 	var cells: Vector2i = lay.cells
 	var solid := {}
 	var glow := {}
-	var fino := {}   # el detalle de un tercio de tamaño (los papeles del tablón)
 	# Las paredes del fondo van aparte (oeste y norte) para poder ocultar la que queda entre la cámara y la sala.
 	var ww := {}   # pared oeste: sólido
 	var gw := {}   # pared oeste: luces
@@ -560,7 +559,7 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 
 	# Estación de servicio del nivel (Taller o Caja fuerte): un mueble con su forma propia.
 	if lay.has("station"):
-		_station(solid, glow, fino, lay.station, L)
+		_station(solid, glow, lay.station, L)
 
 	# Obstáculos decorativos: barriles (taberna), plantas (salón) y columnas de mármol (gran casino).
 	for o in lay.obstacles:
@@ -629,12 +628,12 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 	all_solid.merge(wn)
 	all_glow.merge(gw)
 	all_glow.merge(gn)
-	return {"solid": all_solid, "glow": all_glow, "fino": fino,
+	return {"solid": all_solid, "glow": all_glow,
 			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
 
 
-## El mueble de una estación de servicio, en su celda: yunque del taller o tablón de contratos.
-static func _station(solid: Dictionary, glow: Dictionary, fino: Dictionary, st: Dictionary, L: Dictionary) -> void:
+## El mueble de una estación de servicio, en su celda: yunque del taller o caja fuerte.
+static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dictionary) -> void:
 	var ox: int = st.cell.x * CELL_VOX
 	var oz: int = st.cell.y * CELL_VOX
 	var wood: Color = L.wood
@@ -646,14 +645,80 @@ static func _station(solid: Dictionary, glow: Dictionary, fino: Dictionary, st: 
 			_box(solid, ox - 1, 7, oz + 2, ox, 8, oz + 3, Color(0.4, 0.4, 0.45))   # la punta
 			glow[Vector3i(ox + 3, 8, oz + 2)] = Color(1.0, 0.5, 0.15)
 			glow[Vector3i(ox + 2, 8, oz + 3)] = Color(1.0, 0.7, 0.25)
-		"tablon":   # tablón de corcho sobre dos postes con los papeles de los contratos (`st.papeles`: la rareza de cada uno, o -1 si el lugar está vacío y queda solo el corcho)
-			_tablon(solid, glow, fino, ox, oz, L, int(st.get("tier", 0)), st.get("papeles", []))
 		"caja":   # caja fuerte de acero con la puerta al frente y un dial dorado
 			_box(solid, ox, 2, oz, ox + 5, 10, oz + 5, Color(0.36, 0.38, 0.42))
 			_box(solid, ox + 1, 3, oz + 5, ox + 4, 9, oz + 6, Color(0.28, 0.3, 0.34))
 			_box(solid, ox + 4, 5, oz + 5, ox + 5, 7, oz + 6, L.gold)   # manija
 			glow[Vector3i(ox + 2, 6, oz + 6)] = L.gold
 			glow[Vector3i(ox + 2, 7, oz + 6)] = L.gold
+
+
+## --- el modelo con más detalle -----------------------------------------------------------------------------------
+## La sala con el doble de resolución (docs/plan_casinos.md): cada minibloque del modelo base pasa a ser `ESCALA`³ minibloques (la sala sigue midiendo lo mismo en el mundo), con una
+## textura de tonos, las esquinas salientes biseladas y las juntas del piso marcadas; los muebles nuevos se arman ya en esta resolución. `tablon`: {cell, papeles} para poner el tablón
+## de contratos contra la pared del norte (`papeles`: lista de {rareza, objetivo}). Devuelve lo mismo que `build_voxels` pero en minibloques de `VOXEL_FINO`, y `fino`: lo más
+## chico (los papeles), en minibloques de un tercio de `VOXEL_FINO`.
+const ESCALA := 2
+const VOXEL_FINO := VOXEL / ESCALA
+const CELL_FINO := CELL_VOX * ESCALA
+
+
+static func build_detalle(stage := 8, tier_override := -1, tablon := {}) -> Dictionary:
+	var base := build_voxels(stage, tier_override)
+	var lay := layout(stage, tier_override)
+	var L := look(stage, int(lay.tier))
+	var out := {
+		"solid": _ampliar(base.solid), "glow": _ampliar(base.glow), "fino": {},
+		"west": {"solid": _ampliar(base.west.solid), "glow": _ampliar(base.west.glow)},
+		"north": {"solid": _ampliar(base.north.solid), "glow": _ampliar(base.north.glow)},
+	}
+	_marcar_juntas(out.solid, lay)
+	if not tablon.is_empty():
+		var t_solid := {}
+		var t_glow := {}
+		var t_fino := {}
+		_tablon(t_solid, t_glow, t_fino, 0, 0, L, int(lay.tier), tablon.get("papeles", []))
+		var cell: Vector2i = tablon.cell
+		var desde := Vector3i(cell.x * CELL_FINO, 2, 2)   # (el piso fino es dos minibloques más alto que el viejo, y la pared del norte mide 4 de grosor)
+		for q in t_solid:
+			out.solid[q + desde] = t_solid[q]
+		for q in t_glow:
+			out.glow[q + desde] = t_glow[q]
+		for q in t_fino:
+			out.fino[q + desde * 3] = t_fino[q]
+	return out
+
+
+## Cada minibloque se parte en ESCALA³: con un tono apenas distinto cada uno (textura) y sin la esquina de los que sobresalen por los tres lados (bisel).
+static func _ampliar(d: Dictionary) -> Dictionary:
+	var k := ESCALA
+	var out := {}
+	for p: Vector3i in d:
+		var c: Color = d[p]
+		for i in k:
+			var dx := -1 if i == 0 else 1
+			for j in k:
+				var dy := -1 if j == 0 else 1
+				for l in k:
+					var dz := -1 if l == 0 else 1
+					if not d.has(p + Vector3i(dx, 0, 0)) and not d.has(p + Vector3i(0, dy, 0)) and not d.has(p + Vector3i(0, 0, dz)):
+						continue   # (esquina saliente: se biselea)
+					var q := Vector3i(p.x * k + i, p.y * k + j, p.z * k + l)
+					out[q] = _shade(c, _noise(q.x, q.y, q.z), 0.07)
+	return out
+
+
+## Las juntas del piso (damero y mármol), de un minibloque fino, entre las celdas.
+static func _marcar_juntas(solid: Dictionary, lay: Dictionary) -> void:
+	if int(lay.tier) < 2:
+		return
+	var W: int = lay.cells.x * CELL_FINO
+	var D: int = lay.cells.y * CELL_FINO
+	var y := 3   # (la cara de arriba del piso fino)
+	for x in W:
+		for z in D:
+			if (x % CELL_FINO == 0 or z % CELL_FINO == 0) and solid.has(Vector3i(x, y, z)):
+				solid[Vector3i(x, y, z)] = (solid[Vector3i(x, y, z)] as Color).darkened(0.14)
 
 
 ## El tablón de contratos, uno por casino y de dos celdas de ancho (10 minibloques; `ox` es su borde izquierdo): en la taberna tablas con postes toscos y dos velas; en el salón
