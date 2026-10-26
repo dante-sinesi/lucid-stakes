@@ -96,11 +96,11 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		if aspecto_juego and (letra == "n" or letra == "h" or letra == "i" or letra == "c" or letra == "t"):   # la piedra común, el pesado, el hielo, la arenisca agrietada y la trampa: el arte de 10 x 10 x 10 (corrupto hasta que se pisa, después purificado)
 			var pura_n: bool = t.purificados.has(t.ids.get(c, -1))
 			m.mesh = BlockArt.malla_bloque("hierro" if letra == "h" else ("hielo" if letra == "i" else ("arenisca" if letra == "c" else ("trampa" if letra == "t" else "piedra"))), BlockArt.Estado.PURIFICADO if pura_n else BlockArt.Estado.CORRUPTO, BlockArt.nivel_de_etapa(maxi(etapa_arte, 1)), absi(c.x * 31 + c.y * 17 + c.z * 7) % VARIANTES_ARTE)
-			m.material_override = Escena.material_hielo() if letra == "i" else Escena.material(Color.WHITE, false)   # (el hielo es translúcido y brillante)
-			if letra == "i":   # (las caras de atrás del hielo, en otra malla igual que se dibuja antes)
+			m.material_override = Escena.material_translucido("hielo" if letra == "i" else "trampa") if (letra == "i" or letra == "t") else Escena.material(Color.WHITE, false)   # (el hielo y la trampa son translúcidos)
+			if letra == "i" or letra == "t":   # (las caras de atrás, en otra malla igual que se dibuja antes)
 				var atras := MeshInstance3D.new()
 				atras.mesh = m.mesh
-				atras.material_override = Escena.material_hielo(true)
+				atras.material_override = Escena.material_translucido("hielo" if letra == "i" else "trampa", true)
 				atras.position = world_pos(c)
 				parent.add_child(atras)
 		else:

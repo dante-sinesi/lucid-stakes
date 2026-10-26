@@ -35,16 +35,16 @@ static func material(tint: Color, ice: bool) -> ShaderMaterial:
 	return _mats[key]
 
 
-## El material del hielo con el arte nuevo: translúcido y con brillo en el canto. `atras`: el de las caras de atrás (se dibuja antes que el de adelante: el hielo va en dos
-## mallas iguales, una con cada material, porque dentro de una misma malla Godot no ordena las caras translúcidas y al girar la cámara el cristal parpadeaba).
-static func material_hielo(atras := false) -> ShaderMaterial:
-	var clave := "hielo_arte_atras" if atras else "hielo_arte"
+## El material de un bloque translúcido con el arte nuevo (el hielo, con brillo en el canto, o la trampa, que se desvanece hacia abajo). `atras`: el de las caras de atrás (se dibuja antes que
+## el de adelante: estos bloques van en dos mallas iguales, una con cada material, porque dentro de una misma malla Godot no ordena las caras translúcidas y al girar la cámara parpadeaban).
+static func material_translucido(tipo: String, atras := false) -> ShaderMaterial:
+	var clave := "%s_arte%s" % [tipo, "_atras" if atras else ""]
 	if not _mats.has(clave):
 		var mat := ShaderMaterial.new()
 		mat.shader = HIELO_ATRAS_SHADER if atras else HIELO_SHADER
 		mat.render_priority = 0 if atras else 1
-		mat.set_shader_parameter("roughness_value", 0.12)
-		mat.set_shader_parameter("rim", 0.45)
+		mat.set_shader_parameter("roughness_value", 0.12 if tipo == "hielo" else 0.8)
+		mat.set_shader_parameter("rim", 0.45 if tipo == "hielo" else 0.0)
 		mat.set_shader_parameter("tint", Color.WHITE)
 		mat.set_shader_parameter("glow_color", Color.BLACK)
 		mat.set_shader_parameter("glow_energy", 0.0)

@@ -12,7 +12,7 @@ const Main := preload("res://scripts/main.gd")
 const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
 
 ## Los tipos que ya tienen arte nuevo (se suman acá a medida que se hacen).
-const TIPOS := {"piedra": "Piedra común", "hierro": "Pesado", "hielo": "Hielo", "arenisca": "Agrietado", "trampa": "Trampa A (placa)", "trampa2": "Trampa B (compuerta)"}
+const TIPOS := {"piedra": "Piedra común", "hierro": "Pesado", "hielo": "Hielo", "arenisca": "Agrietado", "trampa": "Trampa"}
 const ETAPAS := [1, 4, 7, 10, 13]   # (la primera etapa de cada nivel)
 
 var env: Environment
@@ -50,13 +50,13 @@ func _ready() -> void:
 			for nivel in Art.NIVELES:
 				var m := MeshInstance3D.new()
 				m.mesh = Art.malla_bloque(tipo, estado, nivel, 1 + nivel)
-				m.material_override = Escena.material_hielo() if tipo == "hielo" else Escena.material(Color.WHITE, false)
+				m.material_override = Escena.material_translucido(tipo) if Art.es_translucido(tipo) else Escena.material(Color.WHITE, false)
 				m.position = _celda(nivel, fila)
 				add_child(m)
-				if tipo == "hielo":   # (las caras de atrás del hielo, en otra malla que se dibuja antes)
+				if Art.es_translucido(tipo):   # (las caras de atrás, en otra malla que se dibuja antes)
 					var atras := MeshInstance3D.new()
 					atras.mesh = m.mesh
-					atras.material_override = Escena.material_hielo(true)
+					atras.material_override = Escena.material_translucido(tipo, true)
 					atras.position = m.position
 					add_child(atras)
 			_rotulo("%s · %s" % [TIPOS[tipo], "corrupto" if estado == Art.Estado.CORRUPTO else "purificado"], _celda(-0.55, fila) + Vector3(-0.6, 0.0, 0.6))

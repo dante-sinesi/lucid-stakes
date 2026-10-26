@@ -87,20 +87,23 @@ func _init() -> void:
 					arriba_ar = arriba_ar and (ar.has(sup_ar) or (ar.has(sup_ar + Vector3i(0, -1, 0)) and (ar[sup_ar + Vector3i(0, -1, 0)] as Color).a < 1.0))
 			check(arriba_ar and ar.size() > 500, "arenisca estado %d semilla %d: arriba completo y sin huecos (%d)" % [estado, semilla, ar.size()])
 	check(Art.bloque("arenisca", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("arenisca", Art.Estado.PURIFICADO, 0, 2), "en la arenisca también el corrupto del final es el purificado del principio")
-	for tipo_t in ["trampa", "trampa2"]:
-		for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
-			for semilla in 8:
-				var tr: Dictionary = Art.bloque(tipo_t, estado, 0, semilla)
-				var marcas := 0
-				var esperadas := 0
-				for x in range(1, Art.N - 1):
-					for z in range(1, Art.N - 1):
-						var q := Vector3i(x, Art.N - 1, z)
-						if Art._es_marca(q, tipo_t == "trampa2"):
-							esperadas += 1
-							if tr.has(q) and tr[q] == Art._color_marca(q, Art.corrupcion(estado, 0)):
-								marcas += 1
-				check(marcas == esperadas and esperadas >= 8 and tr.size() > 700, "%s estado %d semilla %d: las marcas de arriba se ven enteras (%d de %d) y no hay huecos (%d)" % [tipo_t, estado, semilla, marcas, esperadas, tr.size()])
+	for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+		for semilla in 8:
+			var tr: Dictionary = Art.bloque("trampa", estado, 0, semilla)
+			var arriba_t := true
+			for x in range(1, Art.N - 1):
+				for z in range(1, Art.N - 1):
+					var sup_t := Vector3i(x, Art.N - 1, z)
+					arriba_t = arriba_t and (tr.has(sup_t) or (tr.has(sup_t + Vector3i(0, -1, 0)) and (tr[sup_t + Vector3i(0, -1, 0)] as Color).a < 1.0))
+			var abajo := 0
+			var arriba_n := 0
+			for q in tr:
+				if q.y <= 1:
+					abajo += 1
+				elif q.y >= 8:
+					arriba_n += 1
+			check(arriba_t and tr.size() > 600 and abajo < arriba_n, "trampa estado %d semilla %d: arriba entera y desvanecida hacia abajo (%d abajo, %d arriba)" % [estado, semilla, abajo, arriba_n])
+	check(Art._opacidad_trampa(Vector3i(3, 9, 3), Color.WHITE) == 1.0 and Art._opacidad_trampa(Vector3i(0, 0, 0), Color.WHITE) < 0.2 and Art._opacidad_trampa(Vector3i(0, 5, 0), Color.WHITE) < Art._opacidad_trampa(Vector3i(0, 8, 0), Color.WHITE), "la trampa es opaca arriba y casi transparente en la base")
 	check(Art.bloque("trampa", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("trampa", Art.Estado.PURIFICADO, 0, 2), "en la trampa también el corrupto del final es el purificado del principio")
 	check(Art.bloque("hierro", Art.Estado.PURIFICADO, 2, 1) != Art.bloque("piedra", Art.Estado.PURIFICADO, 2, 1), "el hierro no es la piedra")
 	check(Art.bloque("hierro", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hierro", Art.Estado.PURIFICADO, 0, 2), "en el hierro también el corrupto del final es el purificado del principio")
