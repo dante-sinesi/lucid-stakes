@@ -122,7 +122,8 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 - La fianza queda apartada mientras el contrato esté activo (no se puede gastar) y se resuelve al cumplir o al terminar la torre.
 - **La explosividad no la pone la fianza**: la ponen la dificultad de la tarea (los objetivos muy duros pagan mucho de por sí) y los ítems:
   - **Boost "Contratista"** (nombre provisorio, épico): cada contrato paga el doble, también el premio de la fianza.
-  - Con los tres factores juntos (tarea dura × fianza × Contratista) un contrato puede pagar varias veces lo que rinde una torre. Es lo que se busca en las etapas altas (el "se rompe" de Balatro), contenido por el límite de contratos activos (2, o 3 con Caza recompensas).
+  - **Consumible "Sello de oro"** (nombre provisorio): el **próximo contrato que se cobre después de usarlo paga ×5**. Se puede usar en la torre o en el casino; queda preparado hasta que se cobre un contrato (si el contrato falla, sigue esperando al siguiente). Multiplica la recompensa; la fianza devuelta no se multiplica. Solo uno a la vez.
+  - Con todos los factores juntos (tarea dura × fianza × Contratista × Sello de oro) un contrato puede pagar varias veces lo que rinde una torre. Es lo que se busca en las etapas altas (el "se rompe" de Balatro), contenido por el límite de contratos activos (2, o 3 con Caza recompensas).
 
 ### Objetivos posibles (a pulir)
 Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar a una racha, desarmar una bomba, purificar N bloques especiales, no empujar ni tirar en una sala, no perder vidas, usar una catapulta.
@@ -161,6 +162,7 @@ Ideas para diferenciar más, **sin decidir**: premios por rareza según el casin
 
 - Los porcentajes de cada objetivo (la recompensa), y qué objetivos cuentan como "muy duros".
 - `FIANZA_MULT` (×1,5 de partida) y si `FIANZA_FRACCION` (50 %) se queda fijo o pasa a depender de algo.
+- Rareza y nombre del consumible "Sello de oro" (×5), y si se puede acumular más de uno.
 - Que el boost "Contratista" (cada contrato paga el doble) exista, su nombre y su rareza.
 - Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
 - Premios por rareza según el casino.
