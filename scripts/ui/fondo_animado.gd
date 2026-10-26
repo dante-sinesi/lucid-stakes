@@ -4,6 +4,7 @@ extends CanvasLayer
 ## Se dibuja detrás de todo como fondo del entorno (`BG_CANVAS`), así que el 3D, la interfaz y los menús quedan encima.
 
 const SHADER := preload("res://shaders/fondo.gdshader")
+const Settings := preload("res://scripts/datos/settings.gd")
 
 var rect: ColorRect
 var mat: ShaderMaterial
@@ -33,4 +34,5 @@ func _process(delta: float) -> void:
 		destino = camara_fn.call()
 	_camara = _camara.lerp(destino, 1.0 - exp(-4.0 * delta))   # (suave: la cámara de la torre salta de sala en sala)
 	mat.set_shader_parameter("camara", _camara)
+	mat.set_shader_parameter("animado", bool(Settings.get_value("fondo_animado")))   # (Opciones > General: apagado queda el color liso)
 	mat.set_shader_parameter("base", env.background_color)   # (el color de la etapa; cambia cuando main.gd aplica el aspecto de la etapa)

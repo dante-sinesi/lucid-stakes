@@ -28,6 +28,7 @@ var mode_buttons := {}      # "window" / "fullscreen"
 var contrast_buttons := {}  # "on" / "off"
 var reading_buttons := {}   # "on" / "off"
 var compass_buttons := {}   # "on" / "off"
+var fondo_buttons := {}   # "on" / "off"
 var vsync_buttons := {}     # "on" / "off"
 var res_prev: Button
 var ui_prev: Button
@@ -154,6 +155,11 @@ func _build_general(page: Control) -> void:
 	compass_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "rosa_si", _on_compass.bind(true))
 	compass_buttons["off"] = _toggle(row, Loc.t("No"), group, "rosa_no", _on_compass.bind(false))
 	UI.label(_page, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	row = _row(Loc.t("Fondo animado"))
+	group = ButtonGroup.new()
+	fondo_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "fondo_si", _on_fondo.bind(true))
+	fondo_buttons["off"] = _toggle(row, Loc.t("No"), group, "fondo_no", _on_fondo.bind(false))
+	UI.label(_page, Loc.t("El remolino que se mueve despacio detrás de la torre. Apagado, el fondo es un color liso."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Marco del foco"))
 	group = ButtonGroup.new()
 	focus_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "marco_si", _on_focus_frame.bind(true))
@@ -387,6 +393,7 @@ func reset_tab() -> void:
 			Settings.set_value("reading_mode", false)
 			Settings.set_value("high_contrast", false)
 			Settings.set_value("compass", true)
+			Settings.set_value("fondo_animado", true)
 			Settings.set_value("focus_frame", false)
 		"graficos":
 			Settings.set_value("fullscreen", false)
@@ -433,6 +440,9 @@ func refresh() -> void:
 	var cp: bool = Settings.get_value("compass")
 	compass_buttons.on.selected = cp
 	compass_buttons.off.selected = not cp
+	var fa: bool = Settings.get_value("fondo_animado")
+	fondo_buttons.on.selected = fa
+	fondo_buttons.off.selected = not fa
 	var hc: bool = Settings.get_value("high_contrast")
 	contrast_buttons.on.selected = hc
 	contrast_buttons.off.selected = not hc
@@ -573,6 +583,11 @@ func _on_contrast(on: bool) -> void:
 
 func _on_compass(on: bool) -> void:
 	Settings.set_value("compass", on)
+	refresh()
+
+
+func _on_fondo(on: bool) -> void:
+	Settings.set_value("fondo_animado", on)
 	refresh()
 
 

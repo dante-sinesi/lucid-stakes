@@ -13,6 +13,8 @@ const TABLE := {
 	"Modo de lectura": "Reading mode",
 	"Letras más claras y con contorno.": "Brighter, outlined letters.",
 	"Rosa de los vientos": "Compass rose",
+	"Fondo animado": "Animated background",
+	"El remolino que se mueve despacio detrás de la torre. Apagado, el fondo es un color liso.": "The slowly moving swirl behind the tower. When off, the background is a plain color.",
 	"Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha.": "Shows which axis each W, A, S and D key moves along, at the top right.",
 	"Alto contraste": "High contrast",
 	"Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color.": "Dark cards with light borders, no noise, and the scene with more contrast and color.",

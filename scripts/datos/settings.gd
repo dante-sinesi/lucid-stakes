@@ -38,6 +38,7 @@ static func defaults() -> Dictionary:
 		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
 		"focus_frame": false,     # marco blanco que titila alrededor del botón apuntado (ayuda con el mando; por defecto sólo las flechitas doradas)
 		"compass": true,          # rosa de los vientos (la que indica a qué eje va cada tecla)
+		"fondo_animado": true,    # el remolino del fondo del juego (apagado: el color liso de la etapa)
 		"volume": VOLUME_STEPS,   # en pasos de 0 a VOLUME_STEPS
 		"music": MUSIC_DEFAULT,   # música (se multiplica por el volumen general); por defecto al 80 %
 		"sfx": VOLUME_STEPS,      # efectos de sonido
@@ -71,6 +72,7 @@ static func _sanitize() -> void:
 	data.reading_mode = data.reading_mode is bool and data.reading_mode
 	data.high_contrast = data.high_contrast is bool and data.high_contrast
 	data.compass = not (data.compass is bool) or data.compass
+	data.fondo_animado = not (data.fondo_animado is bool) or data.fondo_animado
 	data.focus_frame = data.focus_frame is bool and data.focus_frame
 	var us := int(data.ui_scale)
 	data.ui_scale = us if UI_SCALES.has(us) else 100
@@ -118,8 +120,8 @@ static func set_value(key: String, value) -> void:
 			apply("audio")
 		"vsync":
 			apply("vsync")
-		"compass":
-			pass   # (la rosa de los vientos lee el ajuste cada cuadro)
+		"compass", "fondo_animado":
+			pass   # (la rosa de los vientos y el fondo leen el ajuste cada cuadro)
 		"ui_scale", "reading_mode", "high_contrast":
 			apply("ui")
 		_:

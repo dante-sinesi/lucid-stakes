@@ -61,8 +61,8 @@ const DEPTH_STRENGTH := 0.11
 const XRAY_RADIUS := 1.3
 const FINAL_STAGE := Stages.FINAL   # etapas del juego: al pasar la última se termina
 ## Fondo y bloques se aclaran de una etapa a la siguiente (no dentro de una misma etapa).
-const BG_DARK := Color(0.25, 0.22, 0.40)   # (las primeras etapas: un violeta medio, para que los bloques oscuros se recorten contra el fondo)
-const BG_LIGHT := Color(0.40, 0.37, 0.60)   # (las etapas finales: un poco más claro, pero siempre tono medio: los bloques oscuros y los claros tienen que recortarse)
+const BG_DARK := Color(0.25, 0.22, 0.40)   # (la etapa 1: un violeta medio, para que la obsidiana oscura de los bloques corruptos se recorte contra el fondo)
+const BG_LIGHT := Color(0.09, 0.07, 0.17)   # (de la etapa 4 en adelante: oscuro, porque los bloques se van aclarando (la piedra pasa a lavanda) y tienen que seguir recortándose; el nombre es histórico)
 const AMBIENT_TOWER := 0.7        # luz ambiente de las torres
 const AMBIENT_CASINO_EARLY := 1.0  # luz ambiente del casino en la primera etapa (una taberna en penumbra, pero que se lee)
 const AMBIENT_CASINO_LATE := 1.5   # luz ambiente del casino en la última etapa (el salón; el casino y el gran casino usan la luz cálida de abajo)
@@ -725,8 +725,13 @@ func stage_tone() -> float:
 	return clampf(float(stage_number - 1) / float(FINAL_STAGE - 1), 0.0, 1.0)
 
 
+## El color del fondo de la etapa: de un violeta medio (etapa 1) a uno oscuro (a partir de la 7), en sentido contrario a los bloques, que se aclaran.
+func _fondo_de_etapa() -> Color:
+	return BG_DARK.lerp(BG_LIGHT, smoothstep(0.0, 0.43, stage_tone()))
+
+
 func _apply_stage_look() -> void:
-	env.background_color = BG_DARK.lerp(BG_LIGHT, stage_tone())
+	env.background_color = _fondo_de_etapa()
 	env.ambient_light_energy = AMBIENT_TOWER
 	env.ambient_light_color = AMBIENT_COLOR_TOWER   # (el casino de nivel alto usa una luz más cálida: se restablece al volver a la torre)
 	if _sun != null:
@@ -743,7 +748,7 @@ func _apply_casino_light() -> void:
 		if _sun != null:
 			_sun.light_energy = CASINO_SUN_WARM
 		return
-	env.background_color = BG_DARK.lerp(BG_LIGHT, stage_tone())
+	env.background_color = _fondo_de_etapa()
 	env.ambient_light_energy = lerpf(AMBIENT_CASINO_EARLY, AMBIENT_CASINO_LATE, stage_tone())
 	env.ambient_light_color = AMBIENT_COLOR_TOWER
 	if _sun != null:

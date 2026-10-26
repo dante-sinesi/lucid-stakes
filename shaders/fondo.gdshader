@@ -6,6 +6,7 @@ shader_type canvas_item;
 uniform vec4 base : source_color = vec4(0.25, 0.22, 0.40, 1.0);
 uniform vec2 camara = vec2(0.0);   // dónde está la cámara de la torre (en unidades del mundo, según su derecha y su arriba): mueve las capas con paralaje
 uniform float fuerza = 1.0;
+uniform bool animado = true;   // apagado (Opciones > General): sólo el color liso de la etapa
 
 float hash(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -54,11 +55,11 @@ void fragment() {
 		chispa = step(max(dd.x, dd.y), 2.4 + 2.0 * rc) * (0.4 + 0.6 * (0.5 + 0.5 * sin(TIME * (0.35 + rc * 0.5) + rc * 50.0)));
 	}
 	float nivel = nl * 0.27 + nm * 0.15;   // (cuánto se aclara u oscurece el color: siempre poco)
-	vec3 col = tono * (1.0 + nivel * fuerza);
+	vec3 col = tono * (1.0 + nivel * fuerza) + vec3(0.30, 0.18, 0.60) * nivel * 0.10;   // (el aditivo mantiene visible el remolino cuando el fondo es oscuro)
 	col = mix(col, tono * 1.9 + vec3(0.05), chispa * 0.40);
 	// resplandor en el centro y viñeta en los bordes: la luz viene del fondo del pozo
 	vec2 q = (SCREEN_UV - 0.5) * vec2(res.x / res.y, 1.0);
 	float d = length(q);
 	col *= mix(1.16, 0.62, smoothstep(0.05, 0.95, d));
-	COLOR = vec4(col, 1.0);
+	COLOR = vec4(animado ? col : base.rgb, 1.0);   // (apagado: sólo el color liso de la etapa)
 }

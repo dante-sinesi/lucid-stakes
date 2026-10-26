@@ -126,15 +126,15 @@ func test_stage_look() -> void:
 	main.stage_number = 15
 	check(is_equal_approx(main.stage_tone(), 1.0), "etapa 15: tono 1")
 	var lum := func(c: Color) -> float: return c.get_luminance()
-	var prev := -1.0
+	var prev := 2.0
 	var bgs_ok := true
 	for st in range(1, 16):
 		main.stage_number = st
 		main._apply_stage_look()
 		var l: float = lum.call(main.env.background_color)
-		bgs_ok = bgs_ok and l > prev
+		bgs_ok = bgs_ok and l <= prev
 		prev = l
-	check(bgs_ok, "el fondo es mas claro en cada etapa que en la anterior")
+	check(bgs_ok, "el fondo es más oscuro (o igual) en cada etapa que en la anterior: los bloques se aclaran y tienen que recortarse")
 	# Dentro de una misma etapa el fondo no cambia aunque se suba.
 	main.stage_number = 8
 	main._apply_stage_look()
