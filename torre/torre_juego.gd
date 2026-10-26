@@ -622,9 +622,12 @@ func _procesar(r: Dictionary) -> void:
 			_aviso("Segundo aliento: la sala vuelve a empezar y no pierdes la vida.", 3.0)
 		"fin":
 			_aviso("%s. Te quedaste sin vidas. Pulsa R para otra torre." % str(r.msg), 0.0)
+	var punto_checkpoint := farolin.global_position if farolin != null else Vector3.ZERO   # (el bloque que se acaba de encender: donde saltan las chispas)
 	if str(r.evento) == "checkpoint":
 		_rastro_pendiente = []   # (el camino es de la sala de abajo: el último paso hasta el checkpoint se anima en línea recta, y la cámara lo acompaña)
 	_refrescar(str(r.evento) == "" or str(r.evento) == "checkpoint")   # (tras una muerte el personaje aparece de golpe en su sitio)
+	if str(r.evento) == "checkpoint" and en_juego and farolin != null and farolin.visible:
+		faro_modelo.celebrar(punto_checkpoint)   # (Farolín salta de alegría en el próximo checkpoint y las chispas encienden el farolito del que se pisó)
 	if muerte_pendiente != "":
 		murio.emit(muerte_pendiente)
 	accion_hecha.emit()
