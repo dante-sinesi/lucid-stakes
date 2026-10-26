@@ -153,7 +153,7 @@ static func pinchos(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 ## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo", "arenisca", "trampa" o "pinchos") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	if tipo == "portal":
-		return portal(nivel)
+		return portal(nivel, semilla)
 	if tipo == "catapulta":
 		return catapulta(corrupcion(estado, nivel), semilla)
 	if tipo == "bomba":
@@ -568,8 +568,10 @@ static func colores_portal(nivel: int) -> Dictionary:
 
 
 ## El cubo-portal del final de la torre: un marco en las doce aristas y caras de luz que brillan; la de arriba queda abierta (ahí van las ondas del portal, ver `Escena.cubo_portal`).
-static func portal(nivel := 0) -> Dictionary:
+static func portal(nivel := 0, semilla := 0) -> Dictionary:
 	var col := colores_portal(nivel)
+	var sd := semilla * 31 + 7
+	var c := lerpf(0.85, 0.05, clampf(float(nivel) / float(NIVELES - 1), 0.0, 1.0))   # (el portal no tiene dos estados: la corrupción baja sola con las etapas)
 	var vox := {}
 	for x in N:
 		for y in N:
@@ -578,13 +580,25 @@ static func portal(nivel := 0) -> Dictionary:
 				var b := _bordes(p)
 				if b == 0:
 					continue
-				var h := _h(x, y, z, 5)
+				var h := _h(x, y, z, sd + 5)
+				var g := _h(x, y, z, sd + 17)
 				if b >= 2:
-					vox[p] = (col.marco as Color).lightened(h * 0.1).darkened(0.1 if b == 3 else 0.0)
+					if b == 2 and h < c * 0.14:
+						continue   # (el marco se desgasta, menos las esquinas)
+					var marco: Color = (col.marco as Color).lightened(h * 0.1).darkened(0.1 if b == 3 else 0.0)
+					marco = marco.lerp(Color(0.12, 0.09, 0.14), clampf(g * c * 1.3, 0.0, 0.8))   # (manchas de óxido oscuro)
+					if b == 2 and g > 1.0 - c * 0.16:
+						marco = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.5)   # (magma en el marco)
+					vox[p] = marco
 				elif y != N - 1:
+					if h < c * 0.2:
+						continue   # (la luz de las caras se rompe y deja huecos)
 					var luz: Color = col.luz
+					luz = luz.lerp(Color(0.2, 0.1, 0.35), clampf(g * c * 0.9, 0.0, 0.7))
 					luz.a = 0.55 + h * 0.1
-					vox[p] = luz   # (cara de luz)
+					if g > 1.0 - c * 0.12:
+						luz = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.45)   # (una veta de magma en la luz)
+					vox[p] = luz
 	return vox
 
 
