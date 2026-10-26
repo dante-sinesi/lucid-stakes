@@ -732,21 +732,33 @@ static func build_detalle(stage := 8, tier_override := -1, tablon := {}) -> Dict
 		"north": {"solid": _ampliar(base.north.solid), "glow": _ampliar(base.north.glow)},
 	}
 	_marcar_juntas(out.solid, lay)
-	if lay.has("tablon"):
-		var t_solid := {}
-		var t_glow := {}
-		var t_fino := {}
-		_tablon(t_solid, t_glow, t_fino, 0, 0, L, int(lay.tier), tablon.get("papeles", []))
-		var cell: Vector2i = lay.tablon
-		# Se arma mirando al sur contra una pared del norte; contra la pared oeste se gira (x y z cambian de lugar) para que mire al este. El piso fino es dos minibloques más
-		# alto que el viejo y las paredes miden 4 de grosor, así que el respaldo (a 2 del origen) queda a 4, pegado a la pared.
-		var desde := Vector3i(2, 2, cell.y * CELL_FINO)
-		for q in t_solid:
-			out.solid[Vector3i(q.z + desde.x, q.y + desde.y, q.x + desde.z)] = t_solid[q]
-		for q in t_glow:
-			out.glow[Vector3i(q.z + desde.x, q.y + desde.y, q.x + desde.z)] = t_glow[q]
-		for q in t_fino:
-			out.fino[Vector3i(q.z + desde.x * 3, q.y + desde.y * 3, q.x + desde.z * 3)] = t_fino[q]
+	if tablon.has("papeles") and lay.has("tablon"):   # (la escena del casino lo arma aparte con `build_tablon`, que cambia durante la visita)
+		var tab := build_tablon(stage, tier_override, tablon.papeles)
+		out.solid.merge(tab.solid)
+		out.glow.merge(tab.glow)
+		out.fino.merge(tab.fino)
+	return out
+
+
+## El tablón de contratos ya armado y en su lugar, en minibloques de `VOXEL_FINO` ({solid, glow}) y `fino` en tercios de `VOXEL_FINO`. `papeles`: una lista de {rareza, objetivo} (o null) por lugar de la
+## cartelera. Se arma mirando al sur contra una pared del norte y contra la pared oeste se gira (x y z cambian de lugar) para que mire al este; el piso fino es dos minibloques más alto
+## que el viejo y las paredes miden 4 de grosor, así que el respaldo (a 2 del origen) queda a 4, pegado a la pared.
+static func build_tablon(stage: int, tier_override: int, papeles: Array) -> Dictionary:
+	var lay := layout(stage, tier_override)
+	var L := look(stage, int(lay.tier))
+	var t_solid := {}
+	var t_glow := {}
+	var t_fino := {}
+	_tablon(t_solid, t_glow, t_fino, 0, 0, L, int(lay.tier), papeles)
+	var cell: Vector2i = lay.tablon
+	var desde := Vector3i(2, 2, cell.y * CELL_FINO)
+	var out := {"solid": {}, "glow": {}, "fino": {}}
+	for q in t_solid:
+		out.solid[Vector3i(q.z + desde.x, q.y + desde.y, q.x + desde.z)] = t_solid[q]
+	for q in t_glow:
+		out.glow[Vector3i(q.z + desde.x, q.y + desde.y, q.x + desde.z)] = t_glow[q]
+	for q in t_fino:
+		out.fino[Vector3i(q.z + desde.x * 3, q.y + desde.y * 3, q.x + desde.z * 3)] = t_fino[q]
 	return out
 
 

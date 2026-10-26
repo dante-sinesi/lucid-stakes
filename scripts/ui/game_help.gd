@@ -13,6 +13,7 @@ const PadGlyph := preload("res://scripts/ui/pad_glyph.gd")
 const Controls := preload("res://scripts/entrada/controls.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
+const Arte := preload("res://scripts/ui/contract_art.gd")
 const Dice3D := preload("res://scripts/casino/dice_3d.gd")
 const Slots := preload("res://scripts/casino/slots.gd")
 const MenuAnim := preload("res://scripts/ui/menu_anim.gd")
@@ -47,6 +48,10 @@ const PAGES := {
 	],
 	"taller": [
 		{"title": "El taller", "art": "taller_yunque", "text": "Aquí vendes un boost o un consumible por el 40 % de su valor. También puedes cambiarlo por otro del mismo nivel pagando el 30 % de la ficha. Sirve para liberar lugar en tus barras."},
+	],
+	"tablon": [
+		{"title": "El tablón de contratos", "art": "tablon_papeles", "text": "Cada papel pide algo para la próxima torre (llegar a una racha, no deshacer, purificar especiales...). Acéptalo gratis y se cobra en cuanto lo cumples. El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los que no aceptes siguen colgados en el próximo casino."},
+		{"title": "Aceptar, descolgar y rotar", "art": "tablon_acciones", "text": "Puedes tener pocos contratos activos a la vez. Descolgar un papel deja su lugar libre: solo aparecen dos papeles nuevos por torre. Rotar cambia todos los papeles colgados por otros y cada vez cuesta más. En el casino y el gran casino se puede aceptar con fianza: pagas ahora y, si cumples, cobras más y recuperas la fianza."},
 	],
 	"tienda": [
 		{"title": "La tienda", "art": "tienda_vitrina", "text": "Tres premios de esta visita (uno épico, uno raro y uno común) a precio fijo. Es caro, pero seguro: no hay que tirar la ruleta. Los premios cambian en cada visita."},
@@ -639,6 +644,15 @@ class _Art extends Control:
 				_arrow(c + Vector2(130, 24), c + Vector2(30, 24), Color(0.7, 0.65, 0.85), 5.0)
 				_chip(c + Vector2(190, -16))
 				_cube(c + Vector2(190, 36), 34.0, RARE)
+			"tablon_papeles":
+				for i in 3:
+					Arte.dibujar_papel(self, c + Vector2(-230.0 + i * 160.0, -110.0), 4.0, i, ["racha", "especiales", "claridad"][i], i * 7 + 3, true)
+			"tablon_acciones":
+				Arte.dibujar_papel(self, c + Vector2(-210.0, -110.0), 4.0, 1, "movimientos", 5, true)
+				_arrow(c + Vector2(-110.0, 0.0), c + Vector2(-10.0, 0.0), Color(0.7, 0.65, 0.85), 5.0)
+				Arte.dibujar_papel(self, c + Vector2(0.0, -110.0), 4.0, 2, "bomba", 9, false)
+				_chip(c + Vector2(130.0, -20.0))
+				_chip(c + Vector2(160.0, 10.0))
 			"tienda_vitrina":
 				var cols3 := [EPIC, RARE, COMMON]
 				var prices := ["300", "180", "90"]

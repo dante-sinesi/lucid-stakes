@@ -21,6 +21,8 @@ const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino/casino_visit.gd")
 const BalanceScreen := preload("res://scripts/casino/casino_balance_screen.gd")
+const Contratos := preload("res://scripts/datos/contratos.gd")
+const ContratoResuelto := preload("res://scripts/ui/contrato_resuelto.gd")
 const PadBridge := preload("res://scripts/entrada/pad_bridge.gd")
 const CasinoScene := preload("res://scripts/casino/casino_scene.gd")
 const MainMenu := preload("res://scripts/ui/main_menu.gd")
@@ -112,6 +114,8 @@ var run_new_abilities: Array[String] = []   # habilidades persistentes ganadas e
 var trial_banner: Control   # el cartel de la prueba (abajo, letras grandes sin fondo): ver trial_banner.gd
 var _trial_msg := ""         # resultado de la prueba superada (se muestra al llegar al portal)
 var lost_screen              # pantalla de derrota: Reintentar o Salir al menú
+var contrato_pantalla         # la pantalla de un contrato resuelto (contrato_resuelto.gd)
+var _contratos_cola: Array = []   # contratos resueltos que esperan su pantalla
 var dice_always := true      # los dados del tabernero se ven en toda pantalla de carga, aunque la torre ya esté lista (las pruebas lo apagan)
 var lives_hud                # las tres vidas (corazones 3D que giran, abajo a la derecha)
 var casino_balance := true   # al salir del casino se ve el balance (las pruebas lo apagan: salir pasa directo a la torre)
@@ -281,6 +285,9 @@ func _build_hud() -> void:
 	lost_screen.retry.connect(request_restart)
 	lost_screen.menu.connect(open_main_menu)
 	lost_layer.add_child(lost_screen)
+	contrato_pantalla = ContratoResuelto.new()
+	contrato_pantalla.terminado.connect(_contrato_siguiente)
+	lost_layer.add_child(contrato_pantalla)
 	juice = Juice.new(self)
 	juice.attach_flash(layer)
 	# La ventana de la partida (arriba a la izquierda): corazones, etapa y claridad (y la racha cuando hay). Lo demás lo cuenta el tabernero.
@@ -448,8 +455,9 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 			torre.salas_fijas = [Tutorial.sala(tutorial_index)]   # (las demás son una sala armada a mano)
 		torre.zoom = float(leccion.zoom)
 	torre.vidas_fn = func(): return run.lives
-	torre.puede_jugar = func(): return not in_menu and not generating and casino == null and not console_open and not get_tree().paused and (dialogue == null or not dialogue.is_active()) and (lost_screen == null or not lost_screen.visible)
+	torre.puede_jugar = func(): return not in_menu and not generating and casino == null and not console_open and not get_tree().paused and (dialogue == null or not dialogue.is_active()) and (lost_screen == null or not lost_screen.visible) and (contrato_pantalla == null or not contrato_pantalla.visible)
 	torre.position = Vector3(-1000, 0, 0)   # lejos de todo lo demás (el casino y el menú no ven la torre)
+	torre.contrato_evento.connect(func(evento: String, datos: Dictionary): _contratos_registrar(evento, datos))
 	torre.checkpoint_alcanzado.connect(_torre_checkpoint)
 	torre.torre_completa.connect(_torre_ganada)
 	torre.murio.connect(_torre_murio)
@@ -464,6 +472,9 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.camara_usada.connect(_tutorial_camara)
 	torre.reintentar_pedido.connect(request_restart)
 	add_child(torre)
+	if not training and tutorial_index < 0:   # los contratos activos empiezan su seguimiento en esta torre (los que no se pueden cumplir en ella se anulan)
+		for p in Contratos.empezar_torre(run, Contratos.capacidad_de(torre.t)):
+			_flash(Loc.f("Contrato anulado: esta torre no tiene lo necesario (%s)", [Contratos.titulo(p)]))
 	hud_layer.visible = true
 	banner.text = ""
 	if permitidos == 0:
@@ -504,6 +515,7 @@ func _torre_pista(texto: String) -> void:
 
 
 func _torre_accion() -> void:
+	_contratos_mostrar()   # (los contratos que se cumplieron con esta acción)
 	if torre == null:   # (la última acción ganó la torre y la escena ya se sacó)
 		return
 	if not attempt_dirty:   # el primer movimiento del intento: el guardado ya lo marca como empezado
@@ -573,10 +585,52 @@ func _descubrir_bloques() -> void:
 	dialogue.show_lines(lines, Story.SPEAKER, true, true)   # (el cuadro es bloqueante: el jugador no se mueve hasta que termina)
 
 
+## Un contrato resuelto (cumplido o fallido): se cobra en el acto y se pone en la cola de pantallas, que aparecen cuando termina la acción en curso.
+func _contratos_registrar(evento: String, datos: Dictionary) -> void:
+	if run == null or training or tutorial_index >= 0:
+		return
+	for res in Contratos.registrar(run, evento, datos):
+		_contratos_cola.append(res)
+
+
+## Muestra la pantalla de los contratos que esperan (de a uno). En las pruebas no se muestra nada.
+func _contratos_mostrar() -> void:
+	if _contratos_cola.is_empty() or contrato_pantalla == null or contrato_pantalla.visible:
+		return
+	if test_mode:
+		_contratos_cola.clear()
+		return
+	var res: Dictionary = _contratos_cola.pop_front()
+	var p: Dictionary = res.papel
+	var condiciones: Array = [Contratos.condicion(p)]
+	if int(p.fianza) > 0:
+		condiciones.append(Loc.f("Con fianza de %d", [int(p.fianza)]))
+	contrato_pantalla.mostrar({"objetivo": str(Contratos.OBJETIVOS[p.obj].icono), "rareza": int(p.r), "titulo": Contratos.titulo(p), "condiciones": condiciones}, bool(res.cumplido), int(res.monto))
+	_refresh()
+	save_game()
+
+
+func _contrato_siguiente() -> void:
+	_contratos_mostrar()
+
+
+## Espera a que se vean todos los contratos resueltos (antes de seguir con lo que sigue en la torre).
+func _contratos_esperar() -> void:
+	_contratos_mostrar()
+	while not test_mode and contrato_pantalla != null and (contrato_pantalla.visible or not _contratos_cola.is_empty()):
+		await get_tree().process_frame
+		_contratos_mostrar()
+
+
 ## Llegó al portal de la torre: la claridad pasa al run y sigue el casino (o el final).
 func _torre_ganada() -> void:
 	_log_sala()
 	_log_torre("ganada", "")
+	if not training and tutorial_index < 0:   # los contratos de "al terminar la torre" se resuelven ahora
+		_contratos_registrar("torre", {})
+		await _contratos_esperar()
+		if torre == null or in_menu:
+			return
 	if training:   # (el tutorial: se festeja y pasa solo a la siguiente lección)
 		if tutorial_index >= 0:
 			if tutorial_locked():   # llegaste, pero te faltan las teclas de la lección: no se pasa
@@ -613,6 +667,7 @@ func _torre_ganada() -> void:
 
 ## Se perdió una vida en la torre (la sala ya volvió a empezar): se descuenta la del run, o se termina si no quedaba ninguna.
 func _torre_murio(motivo: String) -> void:
+	_contratos_registrar("vida", {})
 	_log_sala()
 	_log_torre("muerta", motivo)
 	if training:   # (tutorial: no hay vidas; la sala vuelve a empezar sola después de la caída)
@@ -1357,6 +1412,7 @@ func pause_game() -> void:
 	pause_menu.set_restart(run.lives, training, casino != null)
 	pause_menu.set_title(_titulo_pausa())
 	pause_menu.set_info(_info_pausa if torre != null and casino == null else [], _info_pausa_rojo)
+	pause_menu.set_contratos(Contratos.para_pausa(run))   # (los contratos activos, sólo como íconos, a la derecha)
 	pause_menu.open()
 	if trial.get("no_retry", false):
 		pause_menu.buttons["reiniciar"].disabled = true   # (la prueba "Todo o nada" no tiene reintentos)
@@ -1389,6 +1445,8 @@ func undo_move() -> void:
 		return
 	if torre.deshacer():
 		_flash(Loc.t("Movimiento deshecho"))
+		_contratos_registrar("deshacer", {})
+		_contratos_mostrar()
 
 
 ## Reintentar: tras perder una sala se reintenta ESA sala (cuesta una vida, o el Tótem); por voluntad (desde la pausa o con R) se vuelve a empezar la torre y cuesta una vida.

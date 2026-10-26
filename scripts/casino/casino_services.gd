@@ -13,6 +13,7 @@ const Loc := preload("res://scripts/idioma/loc.gd")
 const BY_TIER: Array[String] = ["", "taller", "", ""]
 const INFO := {
 	"taller": {"name": "Taller", "desc": "Vende un boost o un consumible por claridad, o cámbialo por otro del mismo nivel."},
+	"tablon": {"name": "Tablón de contratos", "desc": "Papeles con tareas para la próxima torre. Acéptalos gratis: se cobran en cuanto los cumples. Puedes tener pocos a la vez."},
 	"tienda": {"name": "Tienda", "desc": "Tres premios de esta visita, a la venta: caro, pero seguro (sin tirar la ruleta)."},
 }
 const SELL_FRACTION := 0.4      # el taller paga esta fracción del valor del ítem

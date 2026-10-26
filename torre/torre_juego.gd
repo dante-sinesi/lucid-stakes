@@ -43,6 +43,7 @@ signal murio(motivo: String)         ## se perdió una vida (el juego descuenta 
 signal movimiento_hecho(accion: String, modo: int, agarre: String)   ## el jugador movió con una tecla de movimiento y salió bien (modo: 0 caminar, 1 empujar o tirar, 2 colgarse; agarre: "push", "pull" o "")
 signal camara_usada(accion: String)   ## se movió la cámara con una de las teclas de cámara (el tutorial las dora)
 signal accion_hecha                  ## después de cada acción que salió bien (el juego actualiza su HUD)
+signal contrato_evento(evento: String, datos: Dictionary)   ## para los contratos: "accion" (lo de la acción y de la sala), "sala" (se superó una) o "sala_perdida"; ver contratos.gd
 signal ganancia(texto: String, cantidad: int)   ## la claridad que dio la última acción (el juego muestra el cartel "+N claridad")
 signal profundidad_pedida            ## se apretó la tecla de la ayuda de profundidad
 signal falsos_cambiaron(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool)   ## Sin piedad: lo que quedan de movimientos en falso en la sala
@@ -667,6 +668,26 @@ func _input(ev: InputEvent) -> void:
 		movimiento_hecho.emit(accion_id, modo, ultimo_agarre)
 
 
+## Lo que los contratos necesitan saber de una acción: la racha, la claridad, si saltó o movió un bloque y cuántos bloques especiales hay purificados y bombas desactivadas en la sala. `m` es el
+## motor que hizo la acción (si la acción superó la sala, todavía guarda su estado final).
+func _avisar_contratos(m, evento: String) -> void:
+	if not en_juego:
+		return
+	var esp := 0
+	var bom := 0
+	for c in m.bloques:
+		var l := str(m.bloques[c])
+		if l.begins_with("d"):
+			bom += 1
+		elif l != "n" and l != "p" and l != "f" and not l.begins_with("b") and m.purificados.has(m.ids.get(c, -1)):
+			esp += 1
+	contrato_evento.emit("accion", {"racha": t.cosecha.streak, "claridad": t.cosecha.claridad(), "salto": m.salto, "agarro": m.agarro, "especiales": esp, "bombas": bom})
+	if evento == "checkpoint" or evento == "torre":
+		contrato_evento.emit("sala", {"movs": int(t.ultima_sala.get("movs", 0)), "max_mov": int(t.ultima_sala.get("max_mov", 0)), "especiales": esp, "bombas": bom})
+	elif evento == "muerte":
+		contrato_evento.emit("sala_perdida", {})
+
+
 ## Una acción del jugador (también la usan las pruebas).
 func accion(dir: Vector3i, modo: int) -> Dictionary:
 	var motor_antes = t.motor
@@ -680,6 +701,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 		_aviso(str(r.msg), 1.4)
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
+	_avisar_contratos(motor_antes, str(r.evento))
 	_tipo_anim = _tipo_animacion(motor_antes, modo, antes_y, colgado_antes)
 	var explica := str(r.evento) == "muerte" and (_tipo_anim == "empujar" or _tipo_anim == "tirar")
 	_lento = CAMARA_LENTA if explica else 1.0

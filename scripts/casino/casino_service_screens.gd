@@ -1,5 +1,5 @@
 extends RefCounted
-## Pantallas de las estaciones de servicio del casino (las reglas están en casino_services.gd): Taller y Caja fuerte (y la Tienda).
+## Pantallas de las estaciones de servicio del casino (las reglas están en casino_services.gd): el Taller, la Tienda y el Tablón de contratos (scripts/datos/contratos.gd).
 ## Todas se abren como los juegos (casino_scene._open_screen): `setup(run, rng, quick)`, señal `closed` al salir y `resolved` cuando algo cambió
 ## en el run (hay que guardar).
 
@@ -15,16 +15,19 @@ const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const Sfx := preload("res://scripts/sonido/sfx.gd")
+const Contratos := preload("res://scripts/datos/contratos.gd")
+const Arte := preload("res://scripts/ui/contract_art.gd")
 
 const GOOD := Color(0.8, 1.0, 0.7)
 const BAD := Color(1.0, 0.65, 0.55)
 
 
-## La pantalla de una estación según su id ("taller" o "tienda").
+## La pantalla de una estación según su id ("taller", "tienda" o "tablon").
 static func make(id: String) -> Control:
 	match id:
 		"taller": return TallerScreen.new()
 		"tienda": return TiendaScreen.new()
+		"tablon": return TablonScreen.new()
 	return TiendaScreen.new()
 
 
@@ -360,4 +363,170 @@ class TiendaScreen extends Base:
 				{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": buy_button.text, "dim": buy_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not buy_button.disabled: buy()}])
 
 
-## Casino: guardar claridad con interés para el casino siguiente.
+## El tablón de contratos: los papeles colgados (3 a 6, según el casino), con lo que pide cada uno. Se aceptan gratis (o con fianza, en el casino y el gran casino), se descuelgan o se rotan
+## por un precio que sube con cada rotación de la visita. Los contratos activos (hasta el límite) se ven en el menú de pausa.
+class TablonScreen extends Base:
+	var tier := 0              # el nivel del casino (lo pone quien la abre): decide si se acepta con fianza
+	var grid: Control
+	var info: Control
+	var activos_label: Control
+	var accept_button: Button
+	var fianza_button: Button
+	var reject_button: Button
+	var rotate_button: Button
+	var sel := 0
+	var con_fianza := false
+
+	func _init() -> void:
+		service_id = "tablon"
+
+	func _build_body() -> void:
+		activos_label = UI.label(col, "", 2.5, Color(0.8, 0.76, 0.92), true, 900)
+		activos_label.name = "activos"
+		grid = Cartelera.new()
+		grid.name = "cartelera"
+		grid.pressed.connect(select)
+		col.add_child(grid)
+		info = UI.label(col, "", 2.5, Draw.MARBLE, true, 900)
+		info.custom_minimum_size = Vector2(900, 90)
+		info.vcenter = true
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 14)
+		col.add_child(row)
+		accept_button = button(row, Loc.t("Aceptar"), "aceptar", func(): accept(), true, 22)
+		if Contratos.permite_fianza(tier):
+			fianza_button = button(row, Loc.t("Con fianza: no"), "fianza", func(): toggle_fianza(), false, 26)
+		reject_button = button(row, Loc.t("Descolgar"), "descolgar", func(): reject(), false, 22)
+		rotate_button = button(row, Loc.t("Rotar"), "rotar", func(): rotate_papers(), false, 26)
+		var ocultos: Array = [accept_button, reject_button, rotate_button]
+		if fianza_button != null:
+			ocultos.append(fianza_button)
+		hints.replaced.append_array(PadHints.hide_buttons(ocultos))   # (la botonera de abajo los reemplaza)
+		message = UI.label(col, "", 2.5, Color(0.9, 0.86, 1.0), true, 900)
+		message.custom_minimum_size = Vector2(900, 40)
+		message.vcenter = true
+
+	func select(i: int) -> void:
+		sel = i
+		_refresh()
+
+	func step_selection(dir: int) -> void:
+		var n := Contratos.cartelera(run).size()
+		if n > 0:
+			select(posmod(sel + dir, n))
+
+	func toggle_fianza() -> void:
+		con_fianza = not con_fianza
+		_refresh()
+
+	func _papel():
+		var cart := Contratos.cartelera(run)
+		return cart[sel] if sel >= 0 and sel < cart.size() else null
+
+	func accept() -> void:
+		var res: Dictionary = Contratos.aceptar(run, sel, con_fianza, tier)
+		if res.ok:
+			Sfx.play("item")
+			say(Loc.t("Aceptaste el contrato: se cobra en cuanto lo cumplas, en la torre que viene."), GOOD)
+			resolved.emit()
+		else:
+			say(str(res.error), BAD)
+		_refresh()
+
+	func reject() -> void:
+		var res: Dictionary = Contratos.rechazar(run, sel)
+		if res.ok:
+			Sfx.play("chip")
+			say(Loc.t("Descolgaste el papel: en la próxima torre puede aparecer otro."), Color(0.9, 0.86, 1.0))
+			resolved.emit()
+		else:
+			say(str(res.error), BAD)
+		_refresh()
+
+	func rotate_papers() -> void:
+		var res: Dictionary = Contratos.rotar(run, rng, tier)
+		if res.ok:
+			Sfx.play("dice")
+			say(Loc.t("Los papeles son otros."), GOOD)
+			resolved.emit()
+		else:
+			say(str(res.error), BAD)
+		_refresh()
+
+	func _refresh() -> void:
+		super._refresh()
+		var cart := Contratos.cartelera(run)
+		sel = clampi(sel, 0, maxi(cart.size() - 1, 0))
+		grid.set_data(cart, sel, run.stage)
+		activos_label.text = Loc.f("Contratos activos: %d de %d", [Contratos.activos(run).size(), Contratos.limite(run)])
+		var papel = _papel()
+		var cost := Contratos.costo_rotar(run)
+		rotate_button.set_label(Loc.t("Rotar (gratis)") if cost == 0 else Loc.f("Rotar (−%d)", [cost]))
+		rotate_button.disabled = not run.can_afford(cost)
+		if fianza_button != null:
+			fianza_button.set_label(Loc.t("Con fianza: sí") if con_fianza else Loc.t("Con fianza: no"))
+		if papel == null:
+			info.text = Loc.t("Aquí no hay ningún papel. En la próxima torre pueden aparecer nuevos.") if cart.is_empty() or cart.count(null) == cart.size() else Loc.t("Este lugar está vacío.")
+			accept_button.disabled = true
+			reject_button.disabled = true
+		else:
+			var reward := Contratos.recompensa(papel, run.stage)
+			var texto := "%s\n%s\n%s" % [Contratos.titulo(papel), Contratos.condicion(papel), Loc.f("Recompensa: %d de claridad", [reward])]
+			if con_fianza and Contratos.permite_fianza(tier):
+				texto += "\n" + Loc.f("Con fianza de %d: paga más (×1,5) y la recuperas si lo cumples; si no, la pierdes.", [Contratos.fianza(papel, run.stage)])
+			info.text = texto
+			accept_button.disabled = false
+			reject_button.disabled = false
+		_update_tablon_hints()
+
+	func _update_tablon_hints() -> void:
+		var items: Array = [{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir")},
+				{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": accept_button.text, "dim": accept_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not accept_button.disabled: accept()},
+				{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": reject_button.text, "dim": reject_button.disabled, "keycode": KEY_SHIFT, "call": func(): if not reject_button.disabled: reject()},
+				{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": rotate_button.text, "dim": rotate_button.disabled, "keycode": KEY_C, "call": func(): if not rotate_button.disabled: rotate_papers()}]
+		if fianza_button != null:
+			items.append({"name": "RB", "key": "F", "text": fianza_button.text, "keycode": KEY_F, "call": func(): toggle_fianza()})
+		_set_hints(items)
+
+
+## Los papeles colgados, dibujados con el arte de los contratos (contract_art.gd); un clic elige uno.
+class Cartelera extends Control:
+	signal pressed(index: int)
+	const CUBO := 5.0
+	const SEPARACION := 24.0
+	var papeles: Array = []
+	var sel := 0
+	var stage := 1
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_PASS
+
+	func set_data(lista: Array, elegido: int, etapa: int) -> void:
+		papeles = lista
+		sel = elegido
+		stage = etapa
+		custom_minimum_size = Vector2(maxf(papeles.size(), 1) * (Arte.PAPEL_COLS * CUBO + SEPARACION), Arte.PAPEL_ROWS * CUBO + 24.0)
+		queue_redraw()
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			var paso := Arte.PAPEL_COLS * CUBO + SEPARACION
+			var i := int((event.position.x - 12.0) / paso)
+			if i >= 0 and i < papeles.size():
+				pressed.emit(i)
+
+	func _draw() -> void:
+		var ancho := Arte.PAPEL_COLS * CUBO
+		var alto := Arte.PAPEL_ROWS * CUBO
+		for i in papeles.size():
+			var pos := Vector2(12.0 + i * (ancho + SEPARACION), 12.0)
+			var p = papeles[i]
+			if i == sel:
+				draw_rect(Rect2(pos - Vector2(8, 8), Vector2(ancho + 16, alto + 16)), Color(1.0, 0.85, 0.40, 0.35))
+				draw_rect(Rect2(pos - Vector2(8, 8), Vector2(ancho + 16, alto + 16)), Color(1.0, 0.85, 0.40), false, 3.0)
+			if p == null:
+				draw_rect(Rect2(pos, Vector2(ancho, alto)), Color(0.45, 0.32, 0.20, 0.55))
+				draw_rect(Rect2(pos, Vector2(ancho, alto)), Color(0.30, 0.20, 0.12), false, 2.0)
+				continue
+			Arte.dibujar_papel(self, pos, CUBO, int(p.r), str(Contratos.OBJETIVOS[p.obj].icono), int(p.id), true)

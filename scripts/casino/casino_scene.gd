@@ -22,6 +22,7 @@ const ItemBar := preload("res://scripts/ui/item_bar.gd")
 const ConsumablePick := preload("res://scripts/entrada/consumable_pick.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 const Rules := preload("res://scripts/casino/casino_visit.gd")
+const Contratos := preload("res://scripts/datos/contratos.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
 const LivesHud := preload("res://scripts/ui/lives_hud.gd")
@@ -96,6 +97,7 @@ var _t := 0.0
 var quick := false            # pruebas: sin animaciones
 var _ahorro_cobrado := 0      # lo que cobraron la Caja fuerte y la Alcancía al entrar (lo comenta el tabernero)
 var _greeting := -1           # qué saludo toca ahora (el tabernero va variando)
+var _tablon_nodos: Array = []   # las mallas del tablón de contratos (se rehacen cuando cambian sus papeles)
 
 
 func setup(run_state, random: RandomNumberGenerator) -> void:
@@ -110,8 +112,10 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	if not story:
 		ahorro = Services.enter(run)   # se cobran la Caja fuerte y la Alcancía
 		Rules.enter(run, int(lay.tier))   # la visita a esta sala (casino_visit.gd)
+		Contratos.entrar(run, rng, int(lay.tier))   # los papeles de la cartelera (los nuevos aparecen en los huecos)
 		Showcase.enter(run, rng)   # la vitrina de premios de esta visita (showcase.gd)
 	_build_room()
+	_build_tablon()
 	_build_portals()
 	_build_player()
 	_build_camera()
@@ -169,6 +173,27 @@ func _build_room() -> void:
 		_mesh_node(data.fino, _solid_material(), Room.VOXEL_FINO / 3.0)
 	for side in ["west", "north"]:
 		walls[side] = [_mesh_node(data[side].solid, _solid_material()), _mesh_node(data[side].glow, _glow_material())]
+
+
+## Lo que cuelga del tablón: un {rareza, objetivo} por lugar (null: vacío).
+func _papeles_del_tablon() -> Array:
+	var out: Array = []
+	for p in Contratos.cartelera(run):
+		out.append(null if p == null else {"rareza": int(p.r), "objetivo": str(Contratos.OBJETIVOS[p.obj].icono)})
+	return out
+
+
+## Arma (o vuelve a armar) las mallas del tablón de contratos con los papeles de ahora.
+func _build_tablon() -> void:
+	for n in _tablon_nodos:
+		n.queue_free()
+	_tablon_nodos.clear()
+	if not lay.has("tablon") or story:
+		return
+	var data := Room.build_tablon(run.stage, int(run.scenario().get("casino_tier", -1)), _papeles_del_tablon())
+	_tablon_nodos.append(_mesh_node(data.solid, _solid_material()))
+	_tablon_nodos.append(_mesh_node(data.glow, _glow_material()))
+	_tablon_nodos.append(_mesh_node(data.fino, _solid_material(), Room.VOXEL_FINO / 3.0))
 
 
 ## Los portales de las paredes (el de llegada, sólo estético, y el de salida): ondas que se mueven, como los de Minecraft. Se ocultan con su pared.
@@ -543,6 +568,12 @@ func _bump(n: Vector2i) -> String:
 			return "blocked"
 		open_service()
 		return "service"
+	if lay.has("tablon") and n == lay.tablon:
+		if story:
+			story_message.emit(preload("res://scripts/datos/story.gd").BLOCKED_TABLE)
+			return "blocked"
+		open_tablon()
+		return "service"
 	for ct in lay.card_tables:
 		if ct.has_point(n):
 			if story:
@@ -590,9 +621,16 @@ func open_slots() -> void:
 	_open_screen(SlotsScreen.new())
 
 
-## Abre la estación de servicio de la sala (Taller o Caja fuerte).
+## Abre la estación de servicio de la sala (el Taller del salón).
 func open_service() -> void:
 	_open_screen(ServiceScreens.make(str(lay.station.id)))
+
+
+## Abre el tablón de contratos.
+func open_tablon() -> void:
+	var s: Control = ServiceScreens.make("tablon")
+	s.tier = int(lay.tier)
+	_open_screen(s)
 
 
 func open_blackjack() -> void:
@@ -616,7 +654,9 @@ func _open_screen(new_screen: Control) -> void:
 	screen.setup(run, rng, quick)
 	GameHelp.attach(screen, GameHelp.id_for(screen))   # la ayuda del juego: se abre sola la primera vez y con H o Select
 	screen.closed.connect(close_roulette)
-	screen.resolved.connect(func(): changed.emit())
+	screen.resolved.connect(func():
+		changed.emit()
+		_build_tablon())   # (aceptar, rechazar o rotar cambia lo que cuelga del tablón)
 	if screen.has_signal("open_shop"):   # las estaciones de servicio tienen un botón para pasar a la tienda
 		screen.open_shop.connect(func():
 			close_roulette()

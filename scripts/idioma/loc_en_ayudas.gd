@@ -2,6 +2,10 @@ extends RefCounted
 ## Traducciones al inglés de las ayudas de los juegos del casino (game_help.gd).
 
 const TABLE := {
+	"El tablón de contratos": "The contract board",
+	"Cada papel pide algo para la próxima torre (llegar a una racha, no deshacer, purificar especiales...). Acéptalo gratis y se cobra en cuanto lo cumples. El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los que no aceptes siguen colgados en el próximo casino.": "Each paper asks for something in the next tower (reach a streak, don't undo, purify special blocks...). Accept it for free and you get paid as soon as you complete it. The seal tells how hard it is: gray, blue, purple, and black for the nearly impossible. The ones you don't accept stay hanging at the next casino.",
+	"Aceptar, descolgar y rotar": "Accept, take down and rotate",
+	"Puedes tener pocos contratos activos a la vez. Descolgar un papel deja su lugar libre: solo aparecen dos papeles nuevos por torre. Rotar cambia todos los papeles colgados por otros y cada vez cuesta más. En el casino y el gran casino se puede aceptar con fianza: pagas ahora y, si cumples, cobras más y recuperas la fianza.": "You can only have a few active contracts at a time. Taking a paper down frees its spot: only two new papers show up per tower. Rotating swaps every hanging paper for others and costs more each time. At the casino and the grand casino you can accept with a deposit: you pay now and, if you complete it, you earn more and get the deposit back.",
 	"Ayuda": "Help",
 	"Página": "Page",
 	"Siguiente": "Next",
