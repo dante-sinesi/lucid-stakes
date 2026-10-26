@@ -40,7 +40,6 @@ func make_main() -> Node:
 	var main = load("res://scenes/main.tscn").instantiate()
 	main.test_mode = true
 	main.quick_portal = true
-	main.tower_rows = 3
 	root.add_child(main)
 	return main
 

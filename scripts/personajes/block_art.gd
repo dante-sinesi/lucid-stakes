@@ -15,7 +15,7 @@ enum Estado { CORRUPTO, PURIFICADO }
 
 ## Los colores (los mismos en todas las etapas).
 const PALETA := {
-	"corrupta": [Color(0.075, 0.055, 0.105), Color(0.105, 0.075, 0.145), Color(0.14, 0.10, 0.19)],
+	"corrupta": [Color(0.10, 0.075, 0.14), Color(0.14, 0.105, 0.19), Color(0.19, 0.14, 0.25)],
 	"roca_vena": Color(0.17, 0.06, 0.24),
 	"vena": Color(0.78, 0.13, 0.95),
 	"nucleo": Color(1.0, 0.5, 1.0),

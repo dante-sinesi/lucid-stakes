@@ -59,7 +59,6 @@ func test_start() -> void:
 	main.main_menu.credits.find_child("volver_creditos", true, false).pressed.emit()
 	check(not main.main_menu.credits.visible and main.main_menu.main_hints.visible and main.main_menu.column.get_parent().visible, "Volver cierra los creditos")
 	# Entrar al juego: etapa 1 con torre de 25 pisos
-	main.tower_rows = 4  # torre chica para que el test sea rapido
 	main.main_menu.buttons["nueva"].pressed.emit()   # abre el selector de escenario
 	check(main.main_menu.scenarios.visible and not main.main_menu.main_center.visible and main.in_menu, "Nueva partida abre el selector de escenario")
 	main.main_menu.scenarios.play_buttons["pesadilla"].pressed.emit()   # el gratuito
