@@ -29,7 +29,8 @@ static var _blocks := {}   # "bloque|variante|estado" -> {Vector3i: Color}
 static var _block_max := {}   # nombre del bloque -> cantidad de variantes
 
 
-static func reload() -> void:
+## Vuelve a leer los modelos de la carpeta (no se llama `reload` porque así se llama un método de los scripts de Godot, que reinicia las variables estáticas).
+static func recargar() -> void:
 	_loaded_from = dir
 	_records = []
 	_blocks = {}
@@ -51,7 +52,7 @@ static func reload() -> void:
 
 static func _ensure() -> void:
 	if _loaded_from != dir:
-		reload()
+		recargar()
 
 
 static func records(kind := "") -> Array:

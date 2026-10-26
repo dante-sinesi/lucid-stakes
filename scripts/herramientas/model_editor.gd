@@ -65,7 +65,7 @@ func _ready() -> void:
 	if DisplayServer.get_name() != "headless" and get_window() == get_tree().root and not Engine.is_embedded_in_editor():   # (la ventana de las herramientas es más grande que la del juego)
 		get_window().size = Vector2i(1750, 950)
 		get_window().move_to_center()
-	ModelLib.reload()
+	ModelLib.recargar()
 	_build_ui()
 	_load_all()
 	_rebuild_list()

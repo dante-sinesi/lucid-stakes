@@ -4,7 +4,7 @@ const ModelLib := preload("res://scripts/personajes/model_lib.gd")
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	ModelLib.dir = "user://shot_modelos"
-	ModelLib.reload()
+	ModelLib.recargar()
 	var ed: Control = load("res://scenes/model_editor.tscn").instantiate()
 	root.add_child(ed)
 	await process_frame

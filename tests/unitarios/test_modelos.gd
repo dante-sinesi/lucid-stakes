@@ -28,7 +28,7 @@ func _init() -> void:
 	test_override()
 	_clean()
 	ModelLib.dir = ModelLib.DIR
-	ModelLib.reload()
+	ModelLib.recargar()
 	BM.clear_cache()
 	print("tests de modelos terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
@@ -39,7 +39,7 @@ func _clean() -> void:
 	if d != null:
 		for f in d.get_files():
 			DirAccess.remove_absolute(ModelLib.dir + "/" + f)
-	ModelLib.reload()
+	ModelLib.recargar()
 	BM.clear_cache()
 
 
@@ -156,7 +156,7 @@ func test_roundtrip() -> void:
 	m.paint(Vector3i(2, 2, 2))
 	var rec: Dictionary = m.to_record()
 	check(ModelLib.save_record(rec, "t.jsonl"), "se guarda en un archivo")
-	ModelLib.reload()
+	ModelLib.recargar()
 	check(ModelLib.block_variant_count(0) == 6, "con la variante 5 guardada el tipo normal tiene 6 variantes (%d)" % ModelLib.block_variant_count(0))
 	var back = EditorModel.from_record(ModelLib.read_file(ModelLib.dir + "/t.jsonl")[0])
 	check(back.voxel_total() == m.voxel_total() and back.variant == 5 and back.block == "normal" and back.palette.size() == m.palette.size(), "se lee igual que se guardó")
@@ -168,7 +168,7 @@ func test_roundtrip() -> void:
 	ModelLib.save_record(m.to_record(), "t.jsonl")
 	check(ModelLib.read_file(ModelLib.dir + "/t.jsonl").size() == 1, "guardar de nuevo reemplaza el mismo modelo")
 	ModelLib.delete_record(m.to_record())
-	ModelLib.reload()
+	ModelLib.recargar()
 	check(ModelLib.block_variant_count(0) == 0, "borrar saca el modelo")
 	BM.clear_cache()
 
@@ -201,7 +201,7 @@ func test_override() -> void:
 	for r in ModelImport.cosmetics():
 		if r.id == "corona":
 			ModelLib.save_record(r, "c.jsonl")
-	ModelLib.reload()
+	ModelLib.recargar()
 	var after := Characters.build("gato", "corona", "capa")
 	var names: Array = after.get_children().map(func(c): return str(c.name))
 	check(names.has("pata_i") and names.has("pata_d") and names.has("brazo_i") and names.has("brazo_d") and names.has("cola") and names.has("gorro") and names.has("prenda"), "el personaje del editor conserva los nombres de las partes que giran (%s)" % str(names))

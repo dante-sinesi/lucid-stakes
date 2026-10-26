@@ -20,7 +20,7 @@ func _init() -> void:
 	if d != null:
 		for f in d.get_files():
 			DirAccess.remove_absolute(ModelLib.dir + "/" + f)
-	ModelLib.reload()
+	ModelLib.recargar()
 	var ed: Control = load("res://scenes/model_editor.tscn").instantiate()
 	root.add_child(ed)
 	await process_frame
@@ -87,7 +87,7 @@ func _init() -> void:
 		for f in d.get_files():
 			DirAccess.remove_absolute(ModelLib.dir + "/" + f)
 	ModelLib.dir = ModelLib.DIR
-	ModelLib.reload()
+	ModelLib.recargar()
 	BM.clear_cache()
 	print("tests del editor de modelos terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
