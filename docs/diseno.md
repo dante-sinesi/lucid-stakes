@@ -41,6 +41,7 @@ Resumen (detalle en `reglas_torre.md`): un anillo de 11x11 alrededor de un vací
 - **HUD** (`hud_panel.gd`): marco de cubitos con vidas, etapa, claridad y movimientos; **cartel de la prueba** (`trial_banner.gd`) grande abajo, sin fondo, que se desvanece y se muestra entero al pausar. Números grandes con `NumberFormat` (mil, M, B…).
 - **Idiomas** (`scripts/idioma/loc.gd`): español neutro (tuteo, sin voseo; lo vigila `test_neutro.gd`) e inglés. La clave es la frase en español: `Loc.t("Nueva partida")`; patrones con datos con `Loc.f`. `test_loc.gd` recorre las pantallas en inglés y falla si queda algo sin traducir.
 - **Opciones:** idioma, ventana o pantalla completa, resolución, sincronía vertical, volúmenes (general, música y efectos), controles y estilo de botones, modo de lectura y alto contraste.
+- **Fondo** (`scripts/ui/fondo_animado.gd`, `shaders/fondo.gdshader`): el color de la etapa (violeta medio al principio, cada vez más claro) con estrellitas que titilan y bajan muy despacio; va detrás de todo como fondo del entorno.
 - **Música** (`musica.md`): Las Cuatro Estaciones de Vivaldi en chiptune (menú, torre, casino, pruebas); los efectos están sintetizados por código (`synth.gd`, `sfx.gd`).
 
 ## Tutorial

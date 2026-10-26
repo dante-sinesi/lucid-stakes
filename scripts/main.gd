@@ -218,7 +218,7 @@ func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
-	fondo = FondoAnimado.new(env, int(OS.get_environment("GAME_FONDO")) if OS.get_environment("GAME_FONDO") != "" else 0)
+	fondo = FondoAnimado.new(env)
 	add_child(fondo)
 
 	var sun := DirectionalLight3D.new()

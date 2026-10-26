@@ -83,6 +83,7 @@ func test_start() -> void:
 	while main.generating or main.torre == null:
 		await process_frame
 	check(main.torre.t.salas.size() >= 5 and main.run.stage == 1, "se armó la torre de la etapa 1")
+	check(main.fondo != null and main.env.background_mode == Environment.BG_CANVAS and main.fondo.layer < 0, "el fondo animado va detrás de todo (BG_CANVAS)")
 	main.queue_free()
 	await process_frame
 

@@ -14,7 +14,7 @@ tests/_*.jsonl
 build/
 
 # Salas generadas (las fuentes del paquete de salas y lo que sale de los generadores no se versionan: viaja data/salas_torre.jsonl)
-bibliotecas/
-capturas/
+/bibliotecas/
+/capturas/
 
 tests/resultados.txt
