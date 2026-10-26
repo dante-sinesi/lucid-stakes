@@ -48,9 +48,6 @@ const PAGES := {
 	"taller": [
 		{"title": "El taller", "art": "taller_yunque", "text": "Aquí vendes un boost o un consumible por el 40 % de su valor. También puedes cambiarlo por otro del mismo nivel pagando el 30 % de la ficha. Sirve para liberar lugar en tus barras."},
 	],
-	"caja": [
-		{"title": "La caja fuerte", "art": "caja_fuerte", "text": "Guardas claridad aquí y la cobras en el próximo casino con un 15 % de interés. Mientras esté guardada no puedes usarla, ni para pagarle a Farolín ni para reintentar. También puedes retirarla antes, sin interés."},
-	],
 	"tienda": [
 		{"title": "La tienda", "art": "tienda_vitrina", "text": "Tres premios de esta visita (uno épico, uno raro y uno común) a precio fijo. Es caro, pero seguro: no hay que tirar la ruleta. Los premios cambian en cada visita."},
 	],
@@ -642,15 +639,6 @@ class _Art extends Control:
 				_arrow(c + Vector2(130, 24), c + Vector2(30, 24), Color(0.7, 0.65, 0.85), 5.0)
 				_chip(c + Vector2(190, -16))
 				_cube(c + Vector2(190, 36), 34.0, RARE)
-			"caja_fuerte":
-				draw_rect(Rect2(c + Vector2(-220, -70), Vector2(140, 140)), Color(0.30, 0.32, 0.38))
-				draw_rect(Rect2(c + Vector2(-200, -50), Vector2(100, 100)), Color(0.22, 0.24, 0.30))
-				_cube(c + Vector2(-150, 0), 34.0, GOLDC)
-				_arrow(c + Vector2(-60, 0), c + Vector2(40, 0), Color(0.7, 0.65, 0.85))
-				for i in 3:
-					_chip(c + Vector2(110.0, 30.0 - i * 18.0))
-				_txt("+15 %", c + Vector2(190.0, -30.0), 4.0, GOLDC)
-				_chip(c + Vector2(190.0, 20.0 + bob * 0.4))
 			"tienda_vitrina":
 				var cols3 := [EPIC, RARE, COMMON]
 				var prices := ["300", "180", "90"]

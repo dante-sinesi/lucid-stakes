@@ -28,6 +28,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Midas | Purificar un bloque da +3 de claridad. | Épico |
 | Mano de 23 | En el blackjack el tope es 23 en vez de 21: te plantas o te pasas recién después. | Épico |
 | Mesa caliente | Todo lo que ganas en el casino paga un 25 % más. | Épico |
+| Pozo del jackpot | Lo que pierdes en el casino va en parte a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva. | Épico |
 | Pies de luz | Purificar un bloque da +1 de claridad. | Raro |
 | Paso firme | Trepar y bajar un piso no cuenta como movimiento de la sala. | Raro |
 | Reflejos | Las cuentas de las bombas empiezan 3 movimientos más altas. | Raro |
@@ -44,6 +45,8 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Blackjack de oro | El blackjack natural paga 3 a 1 en vez de 3 a 2. | Raro |
 | Ficha barata | La ficha de todas las mesas cuesta un 20 % menos. Se acumula (hasta 2). | Raro (se acumula) |
 | Casilla de regalo | En la ruleta, cada apuesta cubre una casilla más sin costo. | Raro |
+| Racha de la casa | En el casino, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta. | Raro |
+| Caja fuerte | Al entrar al casino cobras un 15 % de la claridad con la que empezaste la torre. | Raro |
 | Aire extra | Cada sala tiene 4 movimientos más. | Común |
 | Ahorro | Cada etapa arrancas con 20 de claridad. | Común |
 | Bolsillo de luz | Empiezas cada torre con claridad de regalo. | Común |
@@ -71,6 +74,8 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Reloj de arena | Suma 10 movimientos a la sala en la que estás. | Común |
 | Ficha gratis | Se usa en el casino: tu próxima apuesta no te cuesta la ficha. | Común |
 | Rayos X | Se usa en el casino: en tu próxima mano de blackjack ves la carta tapada del crupier. | Común |
+| Racha de visita | Se usa en el casino: esta visita, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). | Común |
+| Alcancía | Se usa en el casino: en el próximo casino cobras un 30 % de la claridad con la que empieces la torre. | Común |
 | Bolsa pesada | Devuelve 3 veces lo que pagaste por la ficha, en claridad. | Común |
 | Bolsa de luz | Devuelve 1,4 veces lo que pagaste por la ficha, en claridad. | Barato |
 
@@ -100,7 +105,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Sin piedad | Cada sala sólo permite 2 movimientos en falso: uno que te deja más lejos de la salida de la sala. Al tercero pierdes una vida. No se puede deshacer. | Se puede jugar. Habilidades: Margen de error |
 | Ruinas | Dominan los bloques agrietados y los pesados: casi nada se puede pisar dos veces. | Próximamente. Habilidades: ninguna todavía |
 | Polvorín | Bombas por todos lados. La presión no para. | Próximamente. Habilidades: Mecha larga (pendiente) |
-| Relojería | La fila de abajo siempre cae rápido, pero la ficha de la ruleta es más barata. | Próximamente. Habilidades: Pies ligeros (pendiente) |
+| Relojería | Cada sala da menos movimientos, pero la ficha de la ruleta es más barata. | Próximamente. Habilidades: Pies ligeros (pendiente) |
 | Compromiso | Una sola vida, sin segundas oportunidades: morir es el final. Los Tótems y las Vidas extra no funcionan. Hay que pasarlo sin caer ni una vez. | Próximamente. Habilidades: Corazón extra (pendiente) |
 | Gran Casino | El casino es de lujo desde el principio y la ficha es más barata, pero las torres son más difíciles. | Próximamente. Habilidades: Bolsillo de soñador (pendiente), Segunda oportunidad (pendiente) |
 
@@ -131,18 +136,8 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Todo o nada | No hay reintentos: si caes, se termina el run. |
 | Sin racha | La racha no sube el multiplicador de claridad. |
 
-## Reglas de la casa
-
-| Nombre | Descripción | Más datos |
-|---|---|---|
-|  |  | Taberna |
-| Racha | Cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta. | Salón |
-| Apuesta libre | En las tragamonedas y el blackjack puedes apostar 1, 2, 3 o 5 fichas juntas. | Casino |
-| Jackpot | Lo que pierdes en la sala va a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva. | Gran casino |
-
 ## Servicios del casino
 
 | Nombre | Descripción | Más datos |
 |---|---|---|
 | Taller | Vende un boost o un consumible por claridad, o cámbialo por otro del mismo nivel. | Salón |
-| Caja fuerte | Guarda claridad y cobrala con interés en el próximo casino. Mientras tanto no puedes usarla. | Casino |

@@ -20,11 +20,10 @@ const GOOD := Color(0.8, 1.0, 0.7)
 const BAD := Color(1.0, 0.65, 0.55)
 
 
-## La pantalla de una estación según su id ("taller", "caja" o "tienda").
+## La pantalla de una estación según su id ("taller" o "tienda").
 static func make(id: String) -> Control:
 	match id:
 		"taller": return TallerScreen.new()
-		"caja": return CajaScreen.new()
 		"tienda": return TiendaScreen.new()
 	return TiendaScreen.new()
 
@@ -362,61 +361,3 @@ class TiendaScreen extends Base:
 
 
 ## Casino: guardar claridad con interés para el casino siguiente.
-class CajaScreen extends Base:
-	var vault_label: Control
-	var deposit_buttons := {}
-	var withdraw_button: Button
-
-	func _init() -> void:
-		service_id = "caja"
-
-	func _build_body() -> void:
-		vault_label = UI.label(col, "", 3, Draw.MARBLE, true, 900)
-		vault_label.custom_minimum_size = Vector2(900, 70)
-		vault_label.vcenter = true
-		var row := HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 16)
-		col.add_child(row)
-		deposit_buttons["cuarto"] = button(row, Loc.t("Guardar 1/4"), "guardar_cuarto", func(): deposit(int(run.claridad / 4)), false, 34)
-		deposit_buttons["mitad"] = button(row, Loc.t("Guardar 1/2"), "guardar_mitad", func(): deposit(int(run.claridad / 2)), false, 34)
-		deposit_buttons["todo"] = button(row, Loc.t("Guardar todo"), "guardar_todo", func(): deposit(run.claridad), false, 40)
-		withdraw_button = button(col, Loc.t("Retirar (sin interés)"), "retirar", func(): withdraw(), false, 60)
-		withdraw_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		hints.replaced.append_array(PadHints.hide_buttons([deposit_buttons.cuarto, deposit_buttons.mitad, deposit_buttons.todo, withdraw_button]))
-		message = UI.label(col, "", 2.5, Color(0.9, 0.86, 1.0), true, 900)
-		message.custom_minimum_size = Vector2(900, 40)
-		message.vcenter = true
-
-	func deposit(amount: int) -> void:
-		var res: Dictionary = Services.deposit(run, amount)
-		if res.ok:
-			Sfx.play("coin")
-			say(Loc.f("Guardaste %d de claridad.", [amount]), GOOD)
-			resolved.emit()
-		else:
-			say(str(res.error), BAD)
-		_refresh()
-
-	func withdraw() -> void:
-		var n: int = Services.withdraw(run)
-		if n > 0:
-			Sfx.play("coin")
-			say(Loc.f("Retiraste %d de claridad.", [n]), GOOD)
-			resolved.emit()
-		_refresh()
-
-	func _refresh() -> void:
-		super._refresh()
-		if run.vault > 0:
-			vault_label.text = Loc.f("Guardado: %d. En el próximo casino cobras %d (+%d %%).", [run.vault, Services.vault_payout(run), int(round(Services.VAULT_INTEREST * 100.0))])
-		else:
-			vault_label.text = Loc.f("No hay nada guardado. Cada casino que pasa rinde un %d %% de interés.", [int(round(Services.VAULT_INTEREST * 100.0))])
-		deposit_buttons.cuarto.disabled = run.claridad < 4
-		deposit_buttons.mitad.disabled = run.claridad < 2
-		deposit_buttons.todo.disabled = run.claridad < 1
-		withdraw_button.disabled = run.vault <= 0
-		_set_hints([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": deposit_buttons.cuarto.text, "dim": deposit_buttons.cuarto.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): deposit(int(run.claridad / 4))},
-				{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": deposit_buttons.mitad.text, "dim": deposit_buttons.mitad.disabled, "keycode": KEY_SHIFT, "call": func(): deposit(int(run.claridad / 2))},
-				{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": deposit_buttons.todo.text, "dim": deposit_buttons.todo.disabled, "keycode": KEY_C, "call": func(): deposit(run.claridad)},
-				{"name": "RB", "key": "E", "text": withdraw_button.text, "dim": withdraw_button.disabled, "keycode": KEY_E, "call": func(): withdraw()}])

@@ -41,9 +41,9 @@ var movs_extra := 0               # movimientos de más en cada sala (Pies liger
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
 var bonus_lives := 0       # corazones de más que dan las habilidades persistentes (Corazón extra)
 var lives := MAX_LIVES    # vidas: cuántas veces se puede reintentar después de morir (3 por partida, sin importar la etapa)
-var casino_visit := {}    # estado de la visita al casino actual (casino_rules.gd); no se guarda
-var vault := 0            # claridad guardada en la caja fuerte (casino_services.gd); se cobra con interés en el casino siguiente
-var vault_stage := 0      # etapa del casino en el que se guardó
+var casino_visit := {}    # estado de la visita al casino actual (casino_visit.gd); no se guarda
+var claridad_inicio_torre := 0   # la claridad con la que se empezó la torre actual (la Caja fuerte y la Alcancía cobran un porcentaje de eso al entrar al casino)
+var alcancia := false    # Alcancía usada: al entrar al próximo casino se cobra
 
 ## Reintentar la torre cuesta claridad: la mitad de la ficha de la ruleta de la etapa, y un poco más por cada reintento
 ## que ya hiciste en esta misma torre (el primero cuesta 1 vez, el segundo 2 veces, etc.).
@@ -344,7 +344,7 @@ func to_dict() -> Dictionary:
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "movs_extra": movs_extra,
 			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
-			"vault": vault, "vault_stage": vault_stage, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
+			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
 
 
 func _schedule_out() -> Dictionary:
@@ -387,8 +387,8 @@ static func from_dict(d: Dictionary) -> RefCounted:
 		r.dice_pending = {"luz": int(dp.get("luz", 0)), "cosmetics": []}
 		for id in dp.get("cosmetics", []):
 			r.dice_pending.cosmetics.append(str(id))
-	r.vault = int(d.get("vault", 0))
-	r.vault_stage = int(d.get("vault_stage", 0))
+	r.claridad_inicio_torre = int(d.get("claridad_inicio_torre", 0))
+	r.alcancia = bool(d.get("alcancia", false))
 	r.toll_bribe = bool(d.get("toll_bribe", false))
 	var sc = d.get("showcase", {})
 	r.showcase = sc.duplicate(true) if sc is Dictionary else {}

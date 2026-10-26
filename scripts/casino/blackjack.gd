@@ -8,7 +8,7 @@ extends RefCounted
 
 const Roulette := preload("res://scripts/casino/roulette.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 
 enum Phase { IDLE, PLAYER, DONE }
 enum Outcome { NONE, BLACKJACK, WIN, PUSH, LOSE, BUST }
@@ -22,7 +22,6 @@ var deck: Array[Vector2i] = []        # (rango 1..13, palo 0..3)
 var player: Array[Vector2i] = []
 var dealer: Array[Vector2i] = []
 var bet := 0
-var stake := 1                        # fichas apostadas (sólo más de una con la regla "Apuesta libre")
 var doubled := false
 var hole_hidden := true               # la segunda carta del crupier está boca abajo mientras se juega
 var outcome := Outcome.NONE
@@ -83,8 +82,7 @@ func _shuffle() -> void:
 func deal(forced_deck: Array = []) -> Dictionary:
 	if phase == Phase.PLAYER:
 		return {"ok": false, "error": Loc.t("Ya hay una mano en curso")}
-	stake = Rules.stake(run)
-	bet = Roulette.run_price(run) * stake
+	bet = Roulette.run_price(run)
 	if not run.can_afford(bet):
 		return {"ok": false, "error": Loc.f("No alcanza la claridad (la ficha cuesta %d)", [bet])}
 	var charge := Roulette.chip_charge(run, bet)

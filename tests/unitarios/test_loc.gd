@@ -22,7 +22,7 @@ const Tutorial := preload("res://scripts/datos/tutorial.gd")
 const RouletteScreen := preload("res://scripts/casino/roulette_screen.gd")
 const SlotsScreen := preload("res://scripts/casino/slots_screen.gd")
 const Controls := preload("res://scripts/entrada/controls.gd")
-const CasinoRules := preload("res://scripts/casino/casino_rules.gd")
+const CasinoRules := preload("res://scripts/casino/casino_visit.gd")
 const CasinoServices := preload("res://scripts/casino/casino_services.gd")
 const BlackjackScreen := preload("res://scripts/casino/blackjack_screen.gd")
 
@@ -96,11 +96,6 @@ func test_catalog() -> void:
 		need(CasinoServices.INFO[k].desc, "descripción del servicio " + k)
 	for g in CasinoRules.GAME_NAMES.values() + CasinoRules.ROOM_NAMES:
 		need(g, "balance del casino")
-	for r in CasinoRules.RULES:
-		if str(r.id) == "":   # (la taberna no tiene regla)
-			continue
-		need(r.name, "regla de la casa")
-		need(r.desc, "descripción de la regla " + r.id)
 	for gid in GameHelp.PAGES:
 		for pg in GameHelp.PAGES[gid]:
 			need(pg.title, "título de la ayuda de " + gid)

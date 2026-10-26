@@ -19,7 +19,7 @@ const DemoEndScreen := preload("res://scripts/ui/demo_end_screen.gd")
 const KeyHint := preload("res://scripts/ui/key_hint.gd")
 const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
-const CasinoRules := preload("res://scripts/casino/casino_rules.gd")
+const CasinoRules := preload("res://scripts/casino/casino_visit.gd")
 const BalanceScreen := preload("res://scripts/casino/casino_balance_screen.gd")
 const PadBridge := preload("res://scripts/entrada/pad_bridge.gd")
 const CasinoScene := preload("res://scripts/casino/casino_scene.gd")
@@ -408,6 +408,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 			Sfx.play("item")
 	if con_dados:   # (una torre nueva: los reintentos de la anterior no cuentan; al rehacer la misma torre sí)
 		run.tower_retries = 0
+		run.claridad_inicio_torre = run.claridad   # (con esto cobran la Caja fuerte y la Alcancía al entrar al casino)
 	Music.play(_tower_music(stage_number))
 	_apply_stage_look()   # (el fondo y la luz se aclaran con la etapa)
 	generating = false

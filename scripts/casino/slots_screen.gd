@@ -11,9 +11,8 @@ const UI := preload("res://scripts/ui/menu_ui.gd")
 const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
-const RuleUI := preload("res://scripts/casino/casino_rule_ui.gd")
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Sfx := preload("res://scripts/sonido/sfx.gd")
 const ResultOverlay := preload("res://scripts/ui/result_overlay.gd")
 const PadHints := preload("res://scripts/ui/pad_hints.gd")
@@ -46,10 +45,8 @@ var exit_button
 var prizes_button
 var claridad_counter
 var price_counter
-var rule_label: Control
 var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
 var sparkles: Control
-var stake_ui := {}
 var result_label: Control
 var prizes_panel: Control
 var flash_rect: ColorRect
@@ -110,7 +107,6 @@ func _build() -> void:
 	center.add_child(col)
 	var title := UI.label(col, "Tragamonedas", 5, UI.GOLD)
 	title.dance = true
-	rule_label = RuleUI.make_status(col, 900)
 
 	var reels_row := HBoxContainer.new()
 	reels_row.add_theme_constant_override("separation", 26)
@@ -161,7 +157,6 @@ func _build() -> void:
 	price_counter = ClarityCounter.new(3.0)
 	price_counter.name = "ficha"
 	price_box.add_child(price_counter)
-	stake_ui = RuleUI.make_stake_row(col, run, _refresh)
 
 	_build_prizes_panel()
 	flash_rect = ColorRect.new()
@@ -385,7 +380,7 @@ func _show_overlay(res: Dictionary) -> void:
 		if int(res.symbol) == Slots.CROWN and not bool(res.get("converted", false)) and res.get("item") is Dictionary:
 			item_id = str(res.item.get("id", ""))
 			item_name = Loc.t(str(res.item.get("name", "")))
-	overlay.show_result(won, delta, item_id, item_name, RuleUI.notes(res))
+	overlay.show_result(won, delta, item_id, item_name, Rules.notes(res))
 
 
 func _show_result(res: Dictionary) -> void:
@@ -412,13 +407,13 @@ func _show_result(res: Dictionary) -> void:
 				Sfx.play("win")
 				_flash()
 			color = Color(1.0, 0.9, 0.45)
-	_say(txt + RuleUI.notes(res), color)
+	_say(txt + Rules.notes(res), color)
 
 
 func _describe_now(p: Dictionary) -> String:
 	if p.kind == "none":
 		return Loc.t("Retén los rodillos que quieras y vuelve a girar, o cobra.")
-	return Loc.f("Ahora pagaría %d de claridad. Retén los que quieras y vuelve a girar, o cobra.", [int(round(float(p.mult) * Roulette.run_price(run) * game.stake))])
+	return Loc.f("Ahora pagaría %d de claridad. Retén los que quieras y vuelve a girar, o cobra.", [int(round(float(p.mult) * Roulette.run_price(run)))])
 
 
 func _say(text: String, color: Color) -> void:
@@ -451,8 +446,7 @@ func _flash() -> void:
 ## Pone todos los textos y botones como corresponde al estado.
 func _refresh() -> void:
 	claridad_counter.value = run.claridad
-	price_counter.value = game.price if ui_state == UiState.HOLD or ui_state == UiState.SPINNING else Roulette.run_price(run) * Rules.stake(run)
-	RuleUI.refresh_stake(stake_ui, run, can_spin())
+	price_counter.value = game.price if ui_state == UiState.HOLD or ui_state == UiState.SPINNING else Roulette.run_price(run)
 	var holding := ui_state == UiState.HOLD
 	for i in Slots.REELS:
 		hold_buttons[i].visible = true

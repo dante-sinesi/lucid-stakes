@@ -11,9 +11,8 @@ const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const VFont := preload("res://scripts/ui/voxel_font.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
-const RuleUI := preload("res://scripts/casino/casino_rule_ui.gd")
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Sfx := preload("res://scripts/sonido/sfx.gd")
 const ResultOverlay := preload("res://scripts/ui/result_overlay.gd")
 const PadHints := preload("res://scripts/ui/pad_hints.gd")
@@ -37,10 +36,8 @@ var player_views: Array = []
 var dealer_views: Array = []
 var player_total: Control
 var dealer_total: Control
-var rule_label: Control
 var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
 var sparkles: Control
-var stake_ui := {}
 var message: Control
 var bet_counter
 var claridad_counter
@@ -100,7 +97,6 @@ func _build() -> void:
 	center.add_child(col)
 	var title := UI.label(col, "Blackjack", 4, UI.GOLD)
 	title.dance = true
-	rule_label = RuleUI.make_status(col, 900)
 
 	UI.label(col, "Crupier", 2.5, Color(0.8, 0.76, 0.92))
 	dealer_box = HBoxContainer.new()
@@ -153,7 +149,6 @@ func _build() -> void:
 	bet_counter = ClarityCounter.new(3.0)
 	bet_counter.name = "apuesta"
 	bet_row.add_child(bet_counter)
-	stake_ui = RuleUI.make_stake_row(col, run, _refresh)
 
 	flash_rect = ColorRect.new()
 	flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -336,10 +331,10 @@ func _show_result() -> void:
 			Sfx.play("lose")
 	var net: int = int(r.net)
 	var tail := Loc.f("+%d de claridad.", [net]) if net > 0 else (Loc.f("−%d de claridad.", [-net]) if net < 0 else Loc.t("Sin cambios."))
-	_say(Loc.f("%s  %s", [Loc.t(Blackjack.outcome_text(o)), tail]) + RuleUI.notes(r), color)
+	_say(Loc.f("%s  %s", [Loc.t(Blackjack.outcome_text(o)), tail]) + Rules.notes(r), color)
 	if not fast:   # el cartel de resultado sobre la mesa (se saltea con Espacio)
 		var won: bool = o == Blackjack.Outcome.WIN or o == Blackjack.Outcome.BLACKJACK
-		overlay.show_result(won, net, "", "", RuleUI.notes(r), o == Blackjack.Outcome.PUSH)
+		overlay.show_result(won, net, "", "", Rules.notes(r), o == Blackjack.Outcome.PUSH)
 
 
 func _say(text: String, color: Color) -> void:
@@ -402,8 +397,7 @@ func _refresh_totals() -> void:
 func _refresh() -> void:
 	claridad_counter.value = run.claridad
 	var showing_bet: bool = game.bet > 0 and game.phase != Blackjack.Phase.IDLE
-	bet_counter.value = game.bet if showing_bet else Roulette.run_price(run) * Rules.stake(run)
-	RuleUI.refresh_stake(stake_ui, run, can_deal())
+	bet_counter.value = game.bet if showing_bet else Roulette.run_price(run)
 	deal_button.visible = game.phase != Blackjack.Phase.PLAYER
 	deal_button.disabled = not can_deal()
 	deal_button.set_label(Loc.t("Repartir") if game.phase == Blackjack.Phase.IDLE else Loc.t("Otra mano"))

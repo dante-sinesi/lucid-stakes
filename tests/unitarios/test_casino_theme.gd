@@ -3,7 +3,7 @@ extends SceneTree
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_casino_theme.gd
 
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
 const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const RouletteScreen := preload("res://scripts/casino/roulette_screen.gd")

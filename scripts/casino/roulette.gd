@@ -10,7 +10,7 @@ extends RefCounted
 const Items := preload("res://scripts/datos/items.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Showcase := preload("res://scripts/casino/showcase.gd")
 
 const POCKETS := 13          # casillas 0..12
@@ -123,7 +123,7 @@ static func resolve(run, bet: int, pockets: Array, rng: RandomNumberGenerator, f
 	return _with_rules(run, res, cost, reward, bet)
 
 
-## Aplica la regla de la sala (casino_rules.gd) al resultado: extra de racha o pozo del jackpot.
+## Aplica la regla de la sala (casino_visit.gd) al resultado: extra de racha o pozo del jackpot.
 static func _with_rules(run, res: Dictionary, cost: int, reward: int, bet: int) -> Dictionary:
 	var rules: Dictionary = Rules.settle(run, cost, reward, res.won, res.won and bet == Bet.PLENO, "ruleta")
 	res["rules"] = rules

@@ -38,8 +38,6 @@ const TABLE := {
 	"Con 2 aciertos ganas 8 de claridad, con 3 ganas 25, con 4 ganas 80 y con 5 ganas 150. Con 4 o 5 aciertos también puede salir un cosmético. Los premios son tuyos cuando superes la torre.": "With 2 hits you win 8 clarity, with 3 you win 25, with 4 you win 80 and with 5 you win 150. With 4 or 5 hits a cosmetic may also drop. The prizes are yours once you clear the tower.",
 	"El taller": "The workshop",
 	"Aquí vendes un boost o un consumible por el 40 % de su valor. También puedes cambiarlo por otro del mismo nivel pagando el 30 % de la ficha. Sirve para liberar lugar en tus barras.": "Here you sell a boost or a consumable for 40 % of its value. You can also swap it for another of the same tier by paying 30 % of the chip. It frees up room in your bars.",
-	"La caja fuerte": "The safe",
-	"Guardas claridad aquí y la cobras en el próximo casino con un 15 % de interés. Mientras esté guardada no puedes usarla, ni para pagarle a Farolín ni para reintentar. También puedes retirarla antes, sin interés.": "You store clarity here and collect it at the next casino with 15 % interest. While it is stored you can't use it, neither to pay Farolín nor to retry. You can also withdraw it early, without interest.",
 	"La tienda": "The shop",
 	"Tres premios de esta visita (uno épico, uno raro y uno común) a precio fijo. Es caro, pero seguro: no hay que tirar la ruleta. Los premios cambian en cada visita.": "Three prizes from this visit (one epic, one rare and one common) at a fixed price. It's expensive, but safe: no need to spin the roulette. The prizes change on each visit.",
 }

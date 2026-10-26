@@ -21,12 +21,11 @@ const VoxelLabel := preload("res://scripts/ui/voxel_label.gd")
 const ItemBar := preload("res://scripts/ui/item_bar.gd")
 const ConsumablePick := preload("res://scripts/entrada/consumable_pick.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
 const LivesHud := preload("res://scripts/ui/lives_hud.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
-const RuleUI := preload("res://scripts/casino/casino_rule_ui.gd")
 const Services := preload("res://scripts/casino/casino_services.gd")
 const HudPanel := preload("res://scripts/ui/hud_panel.gd")
 const Story := preload("res://scripts/datos/story.gd")
@@ -95,7 +94,7 @@ var _farolin: Node3D
 var _arrow: Node3D            # flecha que marca la puerta de salida
 var _t := 0.0
 var quick := false            # pruebas: sin animaciones
-var _vault_paid := 0          # lo que cobró la caja fuerte al entrar (lo comenta el tabernero)
+var _ahorro_cobrado := 0      # lo que cobraron la Caja fuerte y la Alcancía al entrar (lo comenta el tabernero)
 var _greeting := -1           # qué saludo toca ahora (el tabernero va variando)
 
 
@@ -107,10 +106,10 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	cell = lay.entry
 	if not story:
 		CasinoTheme.apply_ui(int(lay.tier))   # los botones y textos se limpian según el nivel de la sala (se restablece al salir)
-	var vault_paid := 0
+	var ahorro := 0
 	if not story:
-		vault_paid = Services.enter(run)   # se paga la caja fuerte del casino anterior
-		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
+		ahorro = Services.enter(run)   # se cobran la Caja fuerte y la Alcancía
+		Rules.enter(run, int(lay.tier))   # la visita a esta sala (casino_visit.gd)
 		Showcase.enter(run, rng)   # la vitrina de premios de esta visita (showcase.gd)
 	_build_room()
 	_build_portals()
@@ -121,9 +120,9 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 		hud_layer.visible = false
 	facing = Vector2i(1, 0)   # (al llegar mira hacia adentro de la sala, como si saliera del portal de la pared oeste)
 	_place_player()
-	_vault_paid = vault_paid
-	if vault_paid > 0:
-		_flash(Loc.f("Caja fuerte: cobras %d de claridad (con interés).", [vault_paid]))
+	_ahorro_cobrado = ahorro
+	if ahorro > 0:
+		_flash(Loc.f("Tus ahorros rinden: cobras %d de claridad.", [ahorro]))
 	_refresh_hud()
 
 
@@ -406,6 +405,19 @@ func use_consumable_slot(slot: int) -> void:
 		run.casino_visit["double"] = true
 		run.use_consumable(id)
 		_flash(Loc.t("Lo que ganes en esta visita vale el doble"))
+	elif id == "racha_de_visita":
+		if run.boosts.has("racha_de_la_casa") or not Rules.encender_racha(run):
+			_flash(Loc.t("La racha ya está encendida"))
+			return
+		run.use_consumable(id)
+		_flash(Loc.t("Esta visita, cada victoria seguida suma al pago de la siguiente"))
+	elif id == "alcancia":
+		if run.alcancia:
+			_flash(Loc.t("Ya tienes una alcancía lista"))
+			return
+		run.alcancia = true
+		run.use_consumable(id)
+		_flash(Loc.t("En el próximo casino cobras parte de lo que ahorraste"))
 	elif id == "soborno":
 		if toll_base <= 0 or run.toll_bribe:
 			_flash(Loc.t("Farolín no cobra, o ya lo sobornaste"))
@@ -547,16 +559,14 @@ func interact() -> String:
 	return "blocked"
 
 
-## Habla con el tabernero (el de detrás de la mesa): saluda, cuenta la regla de la casa de esta sala (que desde ahora rige en toda la visita) y la próxima prueba.
+## Habla con el tabernero (el de detrás de la mesa): saluda, comenta lo que rindieron tus ahorros y cuenta la próxima prueba.
 ## Emite `keeper_talk` con lo que dice (el juego lo muestra en el cuadro de diálogo) y lo devuelve.
 func talk_to_keeper() -> Array:
 	if _greeting < 0:
 		_greeting = rng.randi() % Story.GREETINGS.size()
 	else:
 		_greeting = (_greeting + 1) % Story.GREETINGS.size()
-	var rule := Rules.rule_of(int(lay.tier))
-	var lines := Story.keeper(rule, Rules.accepted(run), run.next_trial_info(run.stage + 1), _greeting, _vault_paid)
-	Rules.accept(run)
+	var lines := Story.keeper(run.next_trial_info(run.stage + 1), _greeting, _ahorro_cobrado)
 	keeper_talk.emit(lines)
 	return lines
 

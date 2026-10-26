@@ -41,7 +41,7 @@ func _init() -> void:
 
 
 func test_content() -> void:
-	for id in ["ruleta", "tragamonedas", "blackjack", "dados", "taller", "caja", "tienda"]:
+	for id in ["ruleta", "tragamonedas", "blackjack", "dados", "taller", "tienda"]:
 		check(GameHelp.PAGES.has(id) and GameHelp.PAGES[id].size() >= 1, "hay ayuda de " + id)
 		for p in GameHelp.PAGES[id]:
 			check(str(p.title) != "" and str(p.text) != "" and str(p.art) != "", "cada página de %s tiene título, dibujo y texto" % id)
@@ -143,6 +143,7 @@ func test_screens() -> void:
 			check(not h.visible and c.screen != null, "Esc cierra la ayuda y no el juego (%s)" % entry[0])
 		c.queue_free()
 		await process_frame
+	run.stage = 5   # (el Taller está en el salón)
 	var c2 := CasinoScene.new()
 	root.add_child(c2)
 	c2.quick = true

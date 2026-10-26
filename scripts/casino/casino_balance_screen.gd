@@ -4,7 +4,7 @@ extends Control
 ## lo que hay en la caja fuerte). Los datos salen de `CasinoRules.balance(run)`.
 ## Uso: crear, add_child, setup(run); emite `done` al apretar Continuar.
 
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const UI := preload("res://scripts/ui/menu_ui.gd")
 const PadHints := preload("res://scripts/ui/pad_hints.gd")
 const PadGlyph := preload("res://scripts/ui/pad_glyph.gd")
@@ -95,7 +95,7 @@ static func _signed(n: int) -> String:
 	return "+%d" % n if n > 0 else str(n)
 
 
-## Los renglones de abajo de la tabla: entrada y salida, mejor jugada, regla de la casa y caja fuerte.
+## Los renglones de abajo de la tabla: entrada y salida, mejor jugada, racha y pozo.
 func _summary_lines() -> Array[String]:
 	var out: Array[String] = []
 	if int(data.total.plays) == 0:
@@ -106,15 +106,10 @@ func _summary_lines() -> Array[String]:
 			out.append(Loc.f("Mejor jugada: +%d en %s.", [data.best, Loc.t(str(Rules.GAME_NAMES.get(data.best_game, "")))]))
 		else:
 			out.append(Loc.t("Ninguna apuesta te dejó ganancia esta vez."))
-	match str(data.rule):
-		"racha":
-			if int(data.max_streak) >= 2:
-				out.append(Loc.f("Tu mejor racha fue de %d victorias seguidas.", [data.max_streak]))
-		"jackpot":
-			if int(data.pool) > 0:
-				out.append(Loc.f("El pozo del jackpot quedó con %d de claridad sin cobrar.", [data.pool]))
-	if run.vault > 0:
-		out.append(Loc.f("Caja fuerte: %d guardados (cobras %d en el próximo casino).", [run.vault, Services.vault_payout(run)]))
+	if bool(data.racha) and int(data.max_streak) >= 2:
+		out.append(Loc.f("Tu mejor racha fue de %d victorias seguidas.", [data.max_streak]))
+	if bool(data.pozo) and int(data.pool) > 0:
+		out.append(Loc.f("El pozo del jackpot quedó con %d de claridad sin cobrar.", [data.pool]))
 	return out
 
 

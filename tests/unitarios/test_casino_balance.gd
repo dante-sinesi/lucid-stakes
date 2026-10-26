@@ -2,7 +2,7 @@ extends SceneTree
 ## Pruebas del balance del casino: las estadísticas de cada visita y la pantalla que se ve al salir, antes de la torre siguiente (headless).
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_casino_balance.gd
 
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Roulette := preload("res://scripts/casino/roulette.gd")
 const Slots := preload("res://scripts/casino/slots.gd")
 const Blackjack := preload("res://scripts/casino/blackjack.gd")
@@ -31,7 +31,6 @@ func make_run(tier: int, claridad := 5000) -> RunState:
 	run.stage = 3
 	run.claridad = claridad
 	Rules.enter(run, tier)
-	Rules.accept(run)   # (la regla rige sólo si se habló con el tabernero)
 	return run
 
 
@@ -41,9 +40,11 @@ func test_stats() -> void:
 	rng.seed = 5
 	var price := Roulette.run_price(run)
 	var b := Rules.balance(run)
-	check(b.rows.size() == 3 and b.total.plays == 0 and b.claridad_in == 5000 and b.room == "Salón" and b.rule == "racha", "al entrar el balance está en cero y sabe la sala y la regla")
+	check(b.rows.size() == 3 and b.total.plays == 0 and b.claridad_in == 5000 and b.room == "Salón" and not b.racha and not b.pozo, "al entrar el balance está en cero y sabe la sala")
 	Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)   # pierde
 	Roulette.resolve(run, Roulette.Bet.MITAD, [1, 2, 3, 4, 5, 6], rng, 2)   # gana un premio
+	run.boosts.clear()   # (el premio es al azar: que no cambie lo que sigue)
+	run.consumables.clear()
 	var s := Slots.new(run, rng)
 	s.start()
 	s.reels = [0, 1, 2]
@@ -60,17 +61,9 @@ func test_stats() -> void:
 	check(bjr.game == "blackjack" and bjr.plays == 1 and bjr.wins + bjr.losses + bjr.pushes == 1 and bjr.spent >= price, "el blackjack cuenta su mano")
 	check(b.total.plays == 4 and b.total.spent == roul.spent + slot.spent + bjr.spent and b.total.net == b.total.won - b.total.spent, "los totales suman las tres mesas")
 	check(b.claridad_in == 5000 and b.claridad_out == run.claridad and b.claridad_out - b.claridad_in == b.total.net + _non_claridad_value(run), "entró con 5000 y salió con lo que tiene ahora")
-	# apuesta libre y doble
-	var big := make_run(2)
-	Rules.set_stake(big, 5)
-	var s2 := Slots.new(big, rng)
-	s2.start()
-	s2.reels = [0, 1, 2]
-	s2.collect()
-	var bb := Rules.balance(big)
-	check(bb.rows[1].spent == Roulette.run_price(big) * 5, "las fichas apostadas juntas cuentan como gastado")
-	# la mejor jugada y la racha
+	# la mejor jugada y la racha (con el boost Racha de la casa)
 	var win := make_run(1)
+	win.boosts.append("racha_de_la_casa")
 	Rules.settle(win, 50, 120, true, false, "ruleta")
 	Rules.settle(win, 50, 200, true, false, "blackjack")
 	var wb := Rules.balance(win)
@@ -92,14 +85,12 @@ func test_screen() -> void:
 	rng.seed = 6
 	Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)
 	Rules.settle(run, 100, 0, false, false, "tragamonedas")
-	run.vault = 80
-	run.vault_stage = 3
 	var sc := BalanceScreen.new()
 	root.add_child(sc)
 	sc.setup(run)
 	await process_frame
 	check(sc.table.get_child_count() == 7 * 5, "la tabla tiene el encabezado, las tres mesas y el total (%d celdas)" % sc.table.get_child_count())
-	check(sc.lines.size() >= 4 and sc.lines[0].contains("Entraste con") and sc.lines.any(func(t): return t.contains("Caja fuerte") and t.contains("92")), "los renglones cuentan la entrada y la salida y la caja fuerte")
+	check(sc.lines.size() >= 2 and sc.lines[0].contains("Entraste con"), "los renglones cuentan la entrada y la salida")
 	var finished := [0]
 	sc.done.connect(func(): finished[0] += 1)
 	sc.continue_button.pressed.emit()

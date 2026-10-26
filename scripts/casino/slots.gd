@@ -9,7 +9,7 @@ extends RefCounted
 const Items := preload("res://scripts/datos/items.gd")
 const Roulette := preload("res://scripts/casino/roulette.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Showcase := preload("res://scripts/casino/showcase.gd")
 
 const SYMBOLS: Array[String] = ["cubo", "hielo", "bomba", "sol", "corona"]
@@ -29,7 +29,6 @@ var rng: RandomNumberGenerator
 var phase := Phase.IDLE
 var reels: Array[int] = [0, 0, 0]
 var price := 0
-var stake := 1                  # fichas apostadas (sólo más de una con la regla "Apuesta libre")
 var respins_left := 1
 var result := {}
 
@@ -70,8 +69,7 @@ func _init(run_state = null, random: RandomNumberGenerator = null) -> void:
 func start() -> Dictionary:
 	if phase == Phase.HOLD:
 		return {"ok": false, "error": Loc.t("Ya hay una tirada en curso")}
-	stake = Rules.stake(run)
-	price = Roulette.run_price(run) * stake
+	price = Roulette.run_price(run)
 	if not run.can_afford(price):
 		return {"ok": false, "error": Loc.f("No alcanza la claridad (la ficha cuesta %d)", [price])}
 	var charge := Roulette.chip_charge(run, price)
@@ -115,7 +113,7 @@ func collect() -> Dictionary:
 		return result
 	phase = Phase.DONE
 	var p := payout(reels)
-	var ficha := Roulette.run_price(run) * stake
+	var ficha := Roulette.run_price(run)
 	var reward := int(round(float(p.mult) * ficha))
 	var item := {}
 	var converted := false

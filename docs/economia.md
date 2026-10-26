@@ -5,7 +5,7 @@ Todo el balance vive en variables (`static var`) para poder probarlo con el bot 
 ## El ciclo
 
 1. **Torre** (puzzle): da *claridad* por purificar bloques (valor por bloque, racha y cosecha: `torre/cosecha.gd`, con `Cosecha.mult_global` = 2,25 por calibración). Morir en la torre no cuesta claridad del run, cuesta una vida.
-2. **Casino**: se gasta claridad en las mesas (ruleta, tragamonedas, blackjack), en la vitrina y en la tienda. Cada casino tiene su regla de la casa y su servicio (ver `diseno.md`).
+2. **Casino**: se gasta claridad en las mesas (ruleta, tragamonedas, blackjack), en la vitrina y en la tienda. Los ahorros (Caja fuerte, Alcancía) se cobran al entrar al casino y el Taller del salón vende o cambia ítems (ver `diseno.md`).
 3. **Farolín**, en la puerta de salida del casino, cobra el peaje de la etapa (`RunState.toll_for`). Opciones: pagar, rehacer la torre (−1 vida) o, sin vidas, abandonar el run.
 4. **Torre siguiente.** Si no se llega a pagar se pierde una vida y se vuelve a subir la misma torre.
 
@@ -18,7 +18,7 @@ Todo el balance vive en variables (`static var`) para poder probarlo con el bot 
 
 ## La ficha de la ruleta
 
-75 en la etapa 1 y +6 por etapa (`Roulette.base_price`, `price_step`). Subirla retrasa la bola de nieve del principio: con ficha 50 el ingreso con build ya era ×3 en la etapa 5; con ficha 100 + 8 el bot casi no gana (el casino se come las builds).
+75 en la etapa 1 y +6 por etapa (`Roulette.base_price`, `price_step`), **menos en las tres primeras etapas** (la taberna): `Roulette.chica_mult` = ×0,45, ×0,70 y ×0,72 (34, 57 y 63), para que después del peaje alcance para jugar. Una torre rinde, por la ruta mínima y sin boosts (medido con el bot): 167, 283, 315, 439 y 463 en las etapas 1 a 5 y 927 en la 15; la ficha ronda un 20 % de eso. (La curva del peaje, `RunState.income_fit`, se ajustó con la torre vieja y está por recalibrarse: ver `plan_casinos.md`.) Subirla retrasa la bola de nieve del principio: con ficha 50 el ingreso con build ya era ×3 en la etapa 5; con ficha 100 + 8 el bot casi no gana (el casino se come las builds).
 
 ## Boosts y consumibles
 
