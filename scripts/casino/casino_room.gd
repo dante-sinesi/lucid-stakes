@@ -10,6 +10,7 @@ extends RefCounted
 ## (la "mugre" violeta es sólo decorado y baja a nada a medida que el run avanza).
 
 const Stages := preload("res://scripts/datos/stages.gd")
+const Arte := preload("res://scripts/ui/contract_art.gd")
 const CELL_VOX := 5            # minibloques por celda
 const VOXEL := 0.2
 
@@ -631,7 +632,7 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
 
 
-## El mueble de una estación de servicio, en su celda: yunque del taller o caja fuerte.
+## El mueble de una estación de servicio, en su celda: yunque del taller o tablón de contratos.
 static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dictionary) -> void:
 	var ox: int = st.cell.x * CELL_VOX
 	var oz: int = st.cell.y * CELL_VOX
@@ -644,12 +645,35 @@ static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dic
 			_box(solid, ox - 1, 7, oz + 2, ox, 8, oz + 3, Color(0.4, 0.4, 0.45))   # la punta
 			glow[Vector3i(ox + 3, 8, oz + 2)] = Color(1.0, 0.5, 0.15)
 			glow[Vector3i(ox + 2, 8, oz + 3)] = Color(1.0, 0.7, 0.25)
+		"tablon":   # tablón de corcho sobre dos postes con los papeles de los contratos (`st.papeles`: la rareza de cada uno, o -1 si el lugar está vacío y queda solo el corcho)
+			_tablon(solid, glow, ox, oz, wood, st.get("papeles", []))
 		"caja":   # caja fuerte de acero con la puerta al frente y un dial dorado
 			_box(solid, ox, 2, oz, ox + 5, 10, oz + 5, Color(0.36, 0.38, 0.42))
 			_box(solid, ox + 1, 3, oz + 5, ox + 4, 9, oz + 6, Color(0.28, 0.3, 0.34))
 			_box(solid, ox + 4, 5, oz + 5, ox + 5, 7, oz + 6, L.gold)   # manija
 			glow[Vector3i(ox + 2, 6, oz + 6)] = L.gold
 			glow[Vector3i(ox + 2, 7, oz + 6)] = L.gold
+
+
+## El tablón de contratos: marco de madera con corcho y hasta seis papeles (tres por fila) cuyo sello tiene el color de su rareza.
+static func _tablon(solid: Dictionary, glow: Dictionary, ox: int, oz: int, wood: Color, papeles: Array) -> void:
+	var cork := Color(0.66, 0.47, 0.28)
+	var papel := Color(0.94, 0.88, 0.72)
+	_box(solid, ox, 2, oz + 2, ox + 1, 6, oz + 4, wood.darkened(0.25))   # los postes
+	_box(solid, ox + 4, 2, oz + 2, ox + 5, 6, oz + 4, wood.darkened(0.25))
+	_box(solid, ox, 5, oz + 2, ox + 5, 12, oz + 3, wood)   # el respaldo
+	_box(solid, ox, 5, oz + 3, ox + 5, 6, oz + 4, wood.lightened(0.12))   # el marco: abajo y arriba
+	_box(solid, ox, 11, oz + 3, ox + 5, 12, oz + 4, wood.lightened(0.12))
+	_box(solid, ox, 6, oz + 3, ox + 5, 11, oz + 4, cork)   # el corcho, de lado a lado
+	for i in 6:
+		var x := ox + (i % 3) * 2   # tres por fila, con un hueco de corcho entre uno y otro
+		var y0 := 9 - (i / 3) * 3   # alto de abajo del papel (cada papel mide dos de alto; la fila 0 es la de arriba)
+		if i < papeles.size() and int(papeles[i]) >= 0:
+			var sello: Color = Arte.SELLO_COLORES[int(papeles[i])].a
+			_box(solid, x, y0, oz + 4, x + 1, y0 + 1, oz + 5, papel)
+			_box(solid, x, y0 + 1, oz + 4, x + 1, y0 + 2, oz + 5, sello)
+			if int(papeles[i]) == Arte.Rareza.IMPOSIBLE:   # el negro lleva un puntito dorado para que se lea sobre el corcho
+				glow[Vector3i(x, y0 + 1, oz + 5)] = Arte.SELLO_COLORES[Arte.Rareza.IMPOSIBLE].m
 
 
 ## Posición en el mundo del centro de una celda (a la altura del piso de esa celda).

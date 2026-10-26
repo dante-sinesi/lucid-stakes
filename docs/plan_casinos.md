@@ -147,6 +147,12 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 ### Objetivos posibles (a pulir)
 Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar a una racha, desarmar una bomba, purificar N bloques especiales, no empujar ni tirar en una sala, no perder vidas, usar una catapulta.
 
+### Arte (hecho, rama `arte/casinos`)
+- `scripts/ui/contract_art.gd`: el papel de la cartelera (con chinche si está colgado, sin ella si está activo), el sello de cera de las cuatro rarezas (gris, azul, violeta, negro con marca dorada), el sello "COBRADO" (tinta roja, marco doble, inclinado; `fuerza` sirve para animar el apoyo) y diez íconos de objetivo de 9 x 9 (movimientos, deshacer, racha, bomba, especiales, sin empujar, vidas, catapulta, escalada, claridad). La lista de objetivos se puede ampliar.
+- `scripts/ui/item_icons.gd`: íconos de los ítems nuevos (nombres de id provisorios): `racha_de_la_casa`, `racha_de_visita`, `pozo_del_jackpot`, `caja_fuerte`, `alcancia`, `caza_recompensas`, `contratista`, `sello_de_oro`.
+- `scripts/casino/casino_room.gd`: la estación `tablon` (`_tablon`): corcho sobre dos postes con hasta seis papeles cuyo sello lleva el color de su rareza; los lugares vacíos quedan de corcho.
+- Capturas: `tests/capturas/shot_arte_contratos.gd` (papeles, sellos, íconos) y `shot_tablon.gd` (el tablón de cada casino).
+
 ## 5. Cómo queda cada casino
 
 | | Taberna | Salón | Casino | Gran casino |
