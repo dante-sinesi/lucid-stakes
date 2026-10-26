@@ -40,6 +40,17 @@ const PALETA_HIERRO := {
 	"cicatriz": Color(0.38, 0.41, 0.55),
 }
 
+## El hielo: cristal celeste con vetas blancas cuando está limpio; azul verdoso oscuro con destellos fríos cuando está corrupto (no se confunde con la obsidiana violeta ni con el
+## metal azul del pesado). Lleva el material brillante (poco rugoso) de los bloques de hielo.
+const PALETA_HIELO := {
+	"cristal": [Color(0.52, 0.70, 0.82), Color(0.57, 0.75, 0.86), Color(0.62, 0.80, 0.90)],
+	"cristal_limpio": [Color(0.57, 0.75, 0.87), Color(0.62, 0.80, 0.91), Color(0.67, 0.85, 0.95)],
+	"corrupto": [Color(0.05, 0.14, 0.21), Color(0.07, 0.18, 0.27), Color(0.10, 0.23, 0.33)],
+	"veta": Color(0.76, 0.89, 0.98),
+	"destello": Color(0.60, 0.95, 1.0),
+	"cicatriz": Color(0.50, 0.68, 0.80),
+}
+
 const CORRUPCION_CORRUPTO := [1.0, 0.83, 0.70, 0.60, 0.50]
 const CORRUPCION_PURIFICADO := [0.50, 0.33, 0.20, 0.10, 0.0]
 
@@ -87,7 +98,12 @@ static func hierro(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla, "hierro")
 
 
-## Los minibloques de un tipo de bloque ("piedra" o "hierro") en un estado y nivel.
+## Los minibloques de un bloque de hielo: {Vector3i: Color}.
+static func hielo(estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	return piedra_con(corrupcion(estado, nivel), semilla, "hielo")
+
+
+## Los minibloques de un tipo de bloque ("piedra", "hierro" o "hielo") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla, tipo)
 
@@ -97,8 +113,9 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 	var sd := semilla * 31 + 7
 	var vox := {}
 	var hierro := tipo == "hierro"   # (el hierro se desgasta mucho menos: es un cubo de placas)
+	var es_hielo := tipo == "hielo"   # (el hielo se astilla en las aristas)
 	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
-	var p_arista := 0.0 if hierro else lerpf(0.03, 0.38, c)   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
+	var p_arista := 0.0 if hierro else (lerpf(0.12, 0.42, c) if es_hielo else lerpf(0.03, 0.38, c))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
 	var p_cara := lerpf(0.0, 0.04, c) if hierro else lerpf(0.01, 0.06, c)
 	var p_esquina := 0.0 if hierro else lerpf(0.15, 1.0, c)
 	var n_mordiscos := 0 if hierro else roundi(lerpf(0.0, 3.0, c))
@@ -127,7 +144,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 							mordido = true
 					if mordido and p.y < N - 1:
 						continue
-				vox[p] = _color_hierro(p, c, sd) if hierro else _color_base(p, c, sd)
+				vox[p] = _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else _color_base(p, c, sd))
 	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), siempre los mismos para una semilla (un bloque que se limpia
 	# conserva sus grietas, cada vez más cortadas y apagadas); con mucha corrupción son vetas hundidas con magma que brilla, y con poca, cicatrices con algún resto de vena
 	var rng_g := RandomNumberGenerator.new()
@@ -184,6 +201,23 @@ static func _color_hierro(p: Vector3i, c: float, sd: int) -> Color:
 		return remache.darkened(0.15)   # (los tornillos de arriba)
 	if _centro_arriba(p) and oscuro < 0.5:
 		return col.lightened(0.05)
+	return col
+
+
+## El color del hielo en un minibloque: cristal celeste (más claro y limpio cuanto menos corrupto) o azul verdoso oscuro (rampa entre 0,5 y 1), con vetas blancas en diagonal que se
+## ven más cuanto más limpio, y destellos fríos sueltos que quedan aun con la corrupción (son lo que lo distingue de la piedra y del hierro).
+static func _color_hielo(p: Vector3i, c: float, sd: int) -> Color:
+	var r := _h(p.x, p.y, p.z, sd + 3)
+	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
+	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
+	var cristal: Color = (PALETA_HIELO.cristal[i] as Color).lerp(PALETA_HIELO.cristal_limpio[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
+	var col := cristal.lerp(PALETA_HIELO.corrupto[i], oscuro)
+	if (p.x + p.z + 2 * p.y) % 9 == 0:   # (vetas en diagonal)
+		col = col.lerp(PALETA_HIELO.veta, 0.65 * (1.0 - oscuro) + 0.12)
+	if _h(p.x, p.y, p.z, sd + 21) > 0.955:   # (destellos)
+		col = (PALETA_HIELO.destello as Color).lerp(col, oscuro * 0.35)
+	if _centro_arriba(p):
+		col = col.lightened(0.05) if oscuro < 0.5 else col.lightened(0.08)
 	return col
 
 
@@ -259,7 +293,7 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 					vox[q] = PALETA.halo if _h(q.x, q.y, q.z, 77) < 0.16 else (vox[q] as Color).lerp(PALETA.roca_vena, 0.5)
 		return
 	var resto := _h(p.x, p.y, p.z, sd + 5) < lerpf(0.0, 0.5, c / 0.45)
-	var cicatriz: Color = ((PALETA_HIERRO.cicatriz if tipo == "hierro" else PALETA.cicatriz) as Color).lerp(Color(0.74, 0.70, 0.86), clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.6)
+	var cicatriz: Color = (((PALETA_HIERRO.cicatriz if tipo == "hierro" else (PALETA_HIELO.cicatriz if tipo == "hielo" else PALETA.cicatriz))) as Color).lerp(Color(0.74, 0.70, 0.86), clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.6)
 	var color_resto: Color = (PALETA.resto_vena as Color).lerp(cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.5)
 	if cara != 0 and _h(p.x, p.y, p.z, 41) < 0.22:   # (algunas muescas: la grieta se hundió un minibloque)
 		var dentro := p + _hacia_adentro(cara)
