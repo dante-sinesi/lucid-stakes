@@ -4,6 +4,11 @@ extends RefCounted
 
 const BlockModels := preload("res://scripts/personajes/block_models.gd")
 const Escena := preload("res://torre/escena.gd")
+const BlockArt := preload("res://scripts/personajes/block_art.gd")
+
+## La etapa del run (0 = ninguna): decide cuánta corrupción tiene el arte de los bloques (block_art.gd). Lo pone torre_juego.gd antes de dibujar.
+static var etapa_arte := 0
+const VARIANTES_ARTE := 8   # diseños distintos del bloque de piedra (cada bloque toma uno según su celda)
 const Reglas := preload("res://torre/reglas.gd")
 
 const KIND_DE_LETRA := {"n": 0, "i": 1, "c": 4, "h": 5, "t": 6, "s": 7, "k": 3, "p": 0, "f": 0}
@@ -88,8 +93,13 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 					else:
 						glow = Color(1.0, 0.95, 0.7)
 						energia = 0.12
-		m.mesh = BlockModels.mesh_for(model, estado_modelo, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
-		m.material_override = _material_brillo(tint, kind == 1, glow, energia) if energia > 0.0 else Escena.material(tint, kind == 1)
+		if aspecto_juego and letra == "n":   # la piedra común: el arte de 10 x 10 x 10 (corrupta hasta que se pisa, después purificada)
+			var pura_n: bool = t.purificados.has(t.ids.get(c, -1))
+			m.mesh = BlockArt.malla_piedra(BlockArt.Estado.PURIFICADO if pura_n else BlockArt.Estado.CORRUPTO, BlockArt.nivel_de_etapa(maxi(etapa_arte, 1)), absi(c.x * 31 + c.y * 17 + c.z * 7) % VARIANTES_ARTE)
+			m.material_override = Escena.material(Color.WHITE, false)
+		else:
+			m.mesh = BlockModels.mesh_for(model, estado_modelo, BlockModels.variant_for(c.x * 31 + c.y * 17 + c.z * 7, 0, model))
+			m.material_override = _material_brillo(tint, kind == 1, glow, energia) if energia > 0.0 else Escena.material(tint, kind == 1)
 		m.position = world_pos(c)
 		parent.add_child(m)
 		if letra.length() >= 2 and letra[0] == "b":

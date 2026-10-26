@@ -1,0 +1,14 @@
+# Arte de los bloques (10 x 10 x 10 minibloques)
+
+Código: `scripts/personajes/block_art.gd`. Los bloques de siempre (`block_models.gd`) son de 5 x 5 x 5; el arte nuevo se va haciendo tipo por tipo. Hoy sólo está la **piedra común** (`n`), que se dibuja con el arte nuevo en la torre del juego (`Vista.poblar` con `aspecto_juego`); el resto de los tipos y el Estudio de salas siguen con el arte viejo.
+
+## Diseño
+- La **corrupción son las grietas con magma violeta** y la piedra oscura y desgastada. Hay una sola escala de corrupción (`BlockArt.corrupcion`, de 0 limpio a 1 muy corrupto) para los dos estados: el corrupto de la última etapa parece el purificado de la primera.
+- Cinco niveles, **uno cada tres etapas** (como las pruebas; `BlockArt.nivel_de_etapa`). Constantes `CORRUPCION_CORRUPTO` = 1,0 / 0,83 / 0,70 / 0,60 / 0,50 y `CORRUPCION_PURIFICADO` = 0,50 / 0,33 / 0,20 / 0,10 / 0,0 (pasos parejos; el purificado baja más rápido al principio).
+- A más corrupción: la piedra pasa de lavanda a obsidiana (rampa lineal entre 0,5 y 1), la forma se desgasta (esquinas, aristas y mordiscos), y las grietas se hunden y se llenan de magma que brilla. A menos: las grietas se cortan en tramos, se apagan y se cicatrizan, y la piedra se aclara y alisa.
+- Las grietas son las mismas para una semilla en cualquier nivel (un bloque que se limpia conserva sus grietas). Cada bloque de la torre usa una de 8 semillas según su celda (`Vista.VARIANTES_ARTE`).
+- El centro de la cara de arriba (8 x 8) queda siempre completo y plano: es lo que se pisa.
+- Los minibloques que brillan llevan el alfa menor que 1 en el color del vértice; `voxel_block.gdshader` lo usa como emisión (`COLOR.rgb * (1 - COLOR.a)`).
+
+## Cómo seguir con otros bloques
+Cada tipo necesita su versión corrupta y su versión purificada sobre la misma escala. Se agregan a `block_art.gd` (o a un módulo hermano) y se enganchan en `Vista.poblar`. Capturas de revisión: `tests/capturas/shot_bloque_piedra.gd` (`niveles` muestra las cinco etapas lado a lado). Pruebas: `tests/unitarios/test_block_art.gd`.

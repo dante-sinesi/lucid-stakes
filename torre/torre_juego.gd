@@ -222,6 +222,7 @@ func _nueva_torre() -> void:
 	if t.salas.is_empty():
 		_aviso("No se pudo armar la torre", 0.0)
 		return
+	Vista.etapa_arte = etapa if en_juego else 0   # (el arte de los bloques depende de la etapa)
 	for i in t.salas.size():
 		var nodo := Node3D.new()
 		add_child(nodo)
