@@ -35,7 +35,7 @@ const TABLE := {
 	"Todas": "All",
 	"Escala de render": "Render scale",
 	"Suavizado de bordes": "Antialiasing",
-	"Silueta tras las paredes": "Silhouette through walls",
+	"Transparencia del personaje": "Character see-through",
 	"Destellos y temblores": "Flashes and shakes",
 	"Límite de FPS": "FPS limit",
 	"Sin límite": "Unlimited",

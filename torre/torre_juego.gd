@@ -62,6 +62,7 @@ var cam_pitch := PITCH
 var zoom := 9.0
 var gato: Node3D             # el personaje
 var gato_nodo: Node3D        # su posición y orientación
+var silueta: Node3D          # su silueta (se ve a través de los bloques que lo tapan)
 var animador: Node           # sus animaciones (animacion.gd)
 var _tipo_anim := "caminar"   # la animación de la última acción
 var mira := Vector3i(0, 0, 1)
@@ -134,8 +135,9 @@ func _ready() -> void:
 	gato = Characters.build(id_personaje, gorro, prenda)
 	gato_nodo.add_child(gato)
 	animador = Animacion.new(gato)
+	animador.sombra = silueta
 	gato_nodo.add_child(animador)
-	var silueta := Characters.build(id_personaje, gorro, prenda, true)   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego)
+	silueta = Characters.build(id_personaje, gorro, prenda, true)   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego; Opciones > Gráficos > Transparencia del personaje)
 	silueta.visible = bool(Graphics.value("silhouette")) if en_juego else true
 	gato_nodo.add_child(silueta)
 	# Farolín espera sentado, apoyado en un tronquito, en una esquina del bloque de salida y mirando hacia el centro del cubo
@@ -312,6 +314,8 @@ func _pos_gato() -> Vector3:
 
 
 func _poner_gato(animar: bool) -> void:
+	if silueta != null and en_juego:
+		silueta.visible = bool(Graphics.value("silhouette"))   # (si se cambió en las opciones, vale desde la próxima acción)
 	if en_juego and t.muerta:   # (perdió la sala: la animación de la derrota lleva al personaje; no se lo acomoda en su sitio)
 		return
 	var destino := _pos_gato()

@@ -12,6 +12,7 @@ const PASATIEMPOS := ["mirar", "estirar", "rascar", "saludar"]
 const ESPERA_PASATIEMPO := 3.0   # segundos quieto antes del primer pasatiempo
 
 var modelo: Node3D
+var sombra: Node3D             # la silueta del personaje (se ve a través de los bloques): repite las poses del modelo
 var _tw: Tween
 var _ocupado := false          # una acción está en marcha: nada de respirar ni pasatiempos
 var _colgado := false
@@ -42,7 +43,9 @@ func reproducir(tipo: String, dur: float) -> void:
 	var amp := 1.0 if exageradas() else 0.45
 	var deforma := exageradas()
 	_tw = create_tween()
-	_tw.tween_method(func(k: float) -> void: pose(modelo, tipo, k, amp, deforma), 0.0, 1.0, dur)
+	_tw.tween_method(func(k: float) -> void:
+		pose(modelo, tipo, k, amp, deforma)
+		_copiar(), 0.0, 1.0, dur)
 	_tw.tween_callback(_terminar)
 
 
@@ -75,9 +78,15 @@ func _reposo() -> void:
 	if modelo == null or not is_instance_valid(modelo):
 		return
 	pose(modelo, "colgado" if _colgado else "reposo", 1.0, 1.0, false)
+	_copiar()
 
 
 func _process(delta: float) -> void:
+	_vivir(delta)
+	_copiar()
+
+
+func _vivir(delta: float) -> void:
 	if modelo == null or not is_instance_valid(modelo) or _ocupado:
 		return
 	_t += delta
@@ -109,6 +118,20 @@ func _process(delta: float) -> void:
 	modelo.position.y = 0.006 * sin(_t * 2.0)   # respira
 	_pata(modelo, "brazo_i").rotation.z = -0.03 * sin(_t * 2.0)
 	_pata(modelo, "brazo_d").rotation.z = 0.03 * sin(_t * 2.0)
+
+
+## La silueta repite lo que hace el modelo (las partes que se mueven y el modelo mismo).
+func _copiar() -> void:
+	if sombra == null or not is_instance_valid(sombra) or modelo == null or not is_instance_valid(modelo):
+		return
+	for n in ["brazo_i", "brazo_d", "pata_i", "pata_d", "cola"]:
+		var a := modelo.get_node_or_null(n) as Node3D
+		var b := sombra.get_node_or_null(n) as Node3D
+		if a != null and b != null:
+			b.rotation = a.rotation
+	sombra.rotation = modelo.rotation
+	sombra.position = modelo.position
+	sombra.scale = modelo.scale
 
 
 static func _pata(m: Node3D, nombre: String) -> Node3D:
