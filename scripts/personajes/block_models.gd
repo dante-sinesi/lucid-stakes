@@ -247,7 +247,8 @@ static func _build(kind: int, state: int, variant := 0) -> ArrayMesh:
 
 
 ## `n`: minibloques por lado del modelo (los de siempre son de 5; el arte nuevo de los bloques, `block_art.gd`, es de 10).
-static func _add_face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color, n_lado := N) -> void:
+## `opac`: la opacidad del minibloque (1 = opaco); viaja en UV.x y sólo la usa el shader del hielo (voxel_hielo.gdshader).
+static func _add_face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color, n_lado := N, opac := 1.0) -> void:
 	var n := Vector3(d)
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO
@@ -275,5 +276,6 @@ static func _add_face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color, n_lad
 		v3 = t
 	for v in [v0, v1, v2, v0, v2, v3]:
 		st.set_color(c)
+		st.set_uv(Vector2(opac, 0.0))
 		st.set_normal(n)
 		st.add_vertex(v)

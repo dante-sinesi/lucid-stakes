@@ -17,6 +17,7 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform vec4 glow_color : source_color = vec4(0.0);
 uniform float glow_energy = 0.0;
 uniform float roughness_value = 0.8;
+uniform float rim = 0.0;   // brillo del canto (el hielo): se suma una luz fría donde la cara se ve de costado
 uniform float shake = 0.0;   // temblor (la fila de abajo está por caer): cuánto se sacude cada bloque, en unidades
 
 void vertex() {
@@ -40,5 +41,5 @@ void fragment() {
 	ALBEDO = COLOR.rgb * tint.rgb * (1.0 - f);
 	ROUGHNESS = roughness_value;
 	// El alfa del color del vértice marca los minibloques que brillan (las vetas del arte de 10x10x10): cuanto menor, más emiten su propio color.
-	EMISSION = glow_color.rgb * glow_energy + COLOR.rgb * (1.0 - COLOR.a) * 1.6;
+	EMISSION = glow_color.rgb * glow_energy + vec3(0.45, 0.75, 1.0) * pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5) * rim + COLOR.rgb * (1.0 - COLOR.a) * 1.6;
 }

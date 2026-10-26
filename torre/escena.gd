@@ -2,6 +2,7 @@ extends RefCounted
 ## Lo común de la vista 3D de las salas (la torre dentro del juego y el Estudio): el shader y los materiales de los bloques, la luz, la cámara de una vista y el rayo para elegir una cara.
 
 const BLOCK_SHADER := preload("res://shaders/voxel_block.gdshader")
+const HIELO_SHADER := preload("res://shaders/voxel_hielo.gdshader")
 
 static var _globals_done := false
 static var _mats := {}
@@ -24,12 +25,28 @@ static func material(tint: Color, ice: bool) -> ShaderMaterial:
 		var mat := ShaderMaterial.new()
 		mat.shader = BLOCK_SHADER
 		mat.set_shader_parameter("roughness_value", 0.15 if ice else 0.8)
+		mat.set_shader_parameter("rim", 0.35 if ice else 0.0)
 		mat.set_shader_parameter("tint", tint)
 		mat.set_shader_parameter("glow_color", Color.BLACK)
 		mat.set_shader_parameter("glow_energy", 0.0)
 		mat.set_shader_parameter("shake", 0.0)
 		_mats[key] = mat
 	return _mats[key]
+
+
+## El material del hielo con el arte nuevo: translúcido y con brillo en el canto.
+static func material_hielo() -> ShaderMaterial:
+	if not _mats.has("hielo_arte"):
+		var mat := ShaderMaterial.new()
+		mat.shader = HIELO_SHADER
+		mat.set_shader_parameter("roughness_value", 0.12)
+		mat.set_shader_parameter("rim", 0.45)
+		mat.set_shader_parameter("tint", Color.WHITE)
+		mat.set_shader_parameter("glow_color", Color.BLACK)
+		mat.set_shader_parameter("glow_energy", 0.0)
+		mat.set_shader_parameter("shake", 0.0)
+		_mats["hielo_arte"] = mat
+	return _mats["hielo_arte"]
 
 
 static func world_pos(c: Vector3i) -> Vector3:

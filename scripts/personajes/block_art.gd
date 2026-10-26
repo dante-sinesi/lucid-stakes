@@ -115,10 +115,10 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 	var hierro := tipo == "hierro"   # (el hierro se desgasta mucho menos: es un cubo de placas)
 	var es_hielo := tipo == "hielo"   # (el hielo se astilla en las aristas)
 	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
-	var p_arista := 0.0 if hierro else (lerpf(0.12, 0.42, c) if es_hielo else lerpf(0.03, 0.38, c))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
-	var p_cara := lerpf(0.0, 0.04, c) if hierro else lerpf(0.01, 0.06, c)
-	var p_esquina := 0.0 if hierro else lerpf(0.15, 1.0, c)
-	var n_mordiscos := 0 if hierro else roundi(lerpf(0.0, 3.0, c))
+	var p_arista := 0.0 if hierro else (lerpf(0.0, 0.30, c) if es_hielo else lerpf(0.03, 0.38, c))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
+	var p_cara := lerpf(0.0, 0.04, c) if hierro else (lerpf(0.0, 0.03, c) if es_hielo else lerpf(0.01, 0.06, c))
+	var p_esquina := 0.0 if hierro else (1.0 if es_hielo else lerpf(0.15, 1.0, c))
+	var n_mordiscos := 0 if (hierro or es_hielo) else roundi(lerpf(0.0, 3.0, c))
 	var radio_mordisco := lerpf(1.4, 2.0, c)
 	var mordiscos: Array[Vector3] = []
 	var rng := RandomNumberGenerator.new()
@@ -204,20 +204,35 @@ static func _color_hierro(p: Vector3i, c: float, sd: int) -> Color:
 	return col
 
 
-## El color del hielo en un minibloque: cristal celeste (más claro y limpio cuanto menos corrupto) o azul verdoso oscuro (rampa entre 0,5 y 1), con vetas blancas en diagonal que se
-## ven más cuanto más limpio, y destellos fríos sueltos que quedan aun con la corrupción (son lo que lo distingue de la piedra y del hierro).
+## El color del hielo en un minibloque. A diferencia de la piedra (ruidosa, minibloque a minibloque) el hielo es liso y brillante: un degradado suave de arriba hacia abajo, un borde más
+## claro (el canto del cristal), una franja blanca en diagonal en cada cara (el reflejo) y un destello en una esquina de cada cara. Corrupto es azul verdoso oscuro y conserva
+## el reflejo, el canto frío y los destellos, que son lo que lo distingue de la piedra y del hierro.
 static func _color_hielo(p: Vector3i, c: float, sd: int) -> Color:
-	var r := _h(p.x, p.y, p.z, sd + 3)
-	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
 	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
-	var cristal: Color = (PALETA_HIELO.cristal[i] as Color).lerp(PALETA_HIELO.cristal_limpio[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
-	var col := cristal.lerp(PALETA_HIELO.corrupto[i], oscuro)
-	if (p.x + p.z + 2 * p.y) % 9 == 0:   # (vetas en diagonal)
-		col = col.lerp(PALETA_HIELO.veta, 0.65 * (1.0 - oscuro) + 0.12)
-	if _h(p.x, p.y, p.z, sd + 21) > 0.955:   # (destellos)
-		col = (PALETA_HIELO.destello as Color).lerp(col, oscuro * 0.35)
-	if _centro_arriba(p):
-		col = col.lightened(0.05) if oscuro < 0.5 else col.lightened(0.08)
+	var t := float(p.y) / float(N - 1)   # (0 abajo, 1 arriba)
+	var limpieza_c := clampf(1.0 - c * 2.0, 0.0, 1.0)
+	var claro: Color = (PALETA_HIELO.cristal[2] as Color).lerp(PALETA_HIELO.cristal_limpio[2], limpieza_c)
+	var hondo: Color = (PALETA_HIELO.cristal[0] as Color).lerp(PALETA_HIELO.cristal_limpio[0], limpieza_c)
+	var col: Color = hondo.lerp(claro, t).lerp((PALETA_HIELO.corrupto[0] as Color).lerp(PALETA_HIELO.corrupto[2], t), oscuro)
+	col = col.darkened(_h(p.x, p.y, p.z, sd + 3) * 0.03)   # (casi sin ruido)
+	# las coordenadas sobre la cara que se ve
+	var u := p.x
+	var v := p.z
+	if p.y != N - 1:
+		if p.x == 0 or p.x == N - 1:
+			u = p.z
+			v = p.y
+		else:
+			u = p.x
+			v = p.y
+	var b := _bordes(p)
+	if b >= 2:
+		return col.lerp(PALETA_HIELO.veta, 0.55 - 0.25 * oscuro)   # (el canto del cristal, más claro)
+	var reflejo := (u - v + N * 2) % N
+	if reflejo == 2 or reflejo == 3:
+		col = col.lerp(PALETA_HIELO.veta, 0.55 - 0.30 * oscuro)   # (la franja de reflejo en diagonal)
+	if u >= 2 and u <= 3 and v >= 6 and v <= 7 and (u + v) % 2 == 0:
+		col = PALETA_HIELO.destello   # (el destello en una esquina de cada cara)
 	return col
 
 
@@ -308,8 +323,23 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 static func malla_bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> ArrayMesh:
 	var key := "%s|%d|%d|%d" % [tipo, estado, nivel, semilla]
 	if not _cache.has(key):
-		_cache[key] = malla(bloque(tipo, estado, nivel, semilla))
+		_cache[key] = malla(bloque(tipo, estado, nivel, semilla), _opacidad_hielo if tipo == "hielo" else Callable())
 	return _cache[key]
+
+
+## La opacidad de un minibloque de hielo (el hielo es translúcido: se ve lo de atrás a través del cristal): el magma y lo muy oscuro (corrupción) son casi opacos, el cuerpo
+## del cristal es el más transparente y el canto, la franja de reflejo y los destellos (claros) se ven más.
+static func _opacidad_hielo(color: Color) -> float:
+	if color.a < 1.0:
+		return 1.0   # (el magma)
+	var lum := color.get_luminance()
+	if lum < 0.35:
+		return 0.92
+	if lum < 0.65:
+		return lerpf(0.92, 0.68, (lum - 0.35) / 0.30)
+	if lum < 0.80:
+		return 0.68
+	return 0.86
 
 
 ## La malla de un bloque de piedra.
@@ -318,12 +348,12 @@ static func malla_piedra(estado: int, nivel := 0, semilla := 0) -> ArrayMesh:
 
 
 ## La malla de un modelo de 10 x 10 x 10 minibloques: sólo se dibujan las caras que se ven.
-static func malla(vox: Dictionary) -> ArrayMesh:
+static func malla(vox: Dictionary, opacidad := Callable()) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var dirs: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 	for p in vox:
 		for d in dirs:
 			if not vox.has(p + d):
-				BlockModels._add_face(st, p, d, vox[p], N)
+				BlockModels._add_face(st, p, d, vox[p], N, float(opacidad.call(vox[p])) if opacidad.is_valid() else 1.0)
 	return st.commit()

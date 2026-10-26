@@ -46,7 +46,7 @@ func _ready() -> void:
 			for nivel in Art.NIVELES:
 				var m := MeshInstance3D.new()
 				m.mesh = Art.malla_bloque(tipo, estado, nivel, 1 + nivel)
-				m.material_override = Escena.material(Color.WHITE, tipo == "hielo")
+				m.material_override = Escena.material_hielo() if tipo == "hielo" else Escena.material(Color.WHITE, false)
 				m.position = _celda(nivel, fila)
 				add_child(m)
 			_rotulo("%s · %s" % [TIPOS[tipo], "corrupto" if estado == Art.Estado.CORRUPTO else "purificado"], _celda(-0.55, fila) + Vector3(-0.6, 0.0, 0.6))
