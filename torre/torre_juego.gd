@@ -11,6 +11,7 @@ extends Node3D
 const Torre := preload("res://torre/torre.gd")
 const Vista := preload("res://torre/vista.gd")
 const Motor := preload("res://torre/motor.gd")
+const Tipos := preload("res://torre/tipos.gd")
 const Escena := preload("res://torre/escena.gd")
 const Characters := preload("res://scripts/personajes/characters.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
@@ -19,6 +20,7 @@ const Falsos := preload("res://torre/falsos.gd")
 const Solucionador := preload("res://torre/solucionador.gd")
 const Nat := preload("res://torre/nativo.gd")
 const Farolin := preload("res://scripts/personajes/farolin.gd")
+const Animacion := preload("res://scripts/personajes/animacion.gd")
 const Efectos := preload("res://torre/efectos.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const Profile := preload("res://scripts/datos/profile.gd")     # (el personaje y los cosméticos que eligió el jugador)
@@ -32,6 +34,7 @@ const ARROW_SPEED := 110.0    # grados por segundo con las flechas
 const ZOOM_FACTOR := 1.1
 const TOP_VIEW_PITCH := -52.0 # desde este ángulo (mirando desde arriba) se ocultan las salas de arriba, que taparían al personaje
 const STEP_TIME := 0.14
+const DURACION_ANIM := {"empujar": 0.3, "tirar": 0.4, "trepar": 0.38, "bajar": 0.26, "colgarse": 0.3, "desplazar": 0.3, "desactivar": 0.8}   # lo que duran las animaciones del personaje (las demás duran lo que el movimiento)
 
 ## Cuando la torre se juega dentro del juego (scripts/main.gd): el juego pasa el paquete, la semilla, la etapa y los boosts antes de agregarla, y escucha estas señales.
 signal checkpoint_alcanzado(faltan: int, total: int)   ## se llegó a la salida de una sala (la anterior cae): cuántos checkpoints faltan (contando el portal) de cuántas salas
@@ -59,6 +62,11 @@ var cam_pitch := PITCH
 var zoom := 9.0
 var gato: Node3D             # el personaje
 var gato_nodo: Node3D        # su posición y orientación
+var silueta: Node3D          # su silueta (se ve a través de los bloques que lo tapan)
+var animador: Node           # sus animaciones (animacion.gd)
+var _tipo_anim := "caminar"   # la animación de la última acción
+var _lento := 1.0            # cuánto se alarga lo que pasa en la última acción (cámara lenta cuando empujar o tirar un bloque hace perder la sala, para que se entienda por qué)
+const CAMARA_LENTA := 3.0
 var mira := Vector3i(0, 0, 1)
 var _camara_tween: Tween
 var _paso_tween: Tween
@@ -128,9 +136,12 @@ func _ready() -> void:
 	var prenda: String = Profile.equipped_outfit() if en_juego else ""
 	gato = Characters.build(id_personaje, gorro, prenda)
 	gato_nodo.add_child(gato)
-	var silueta := Characters.build(id_personaje, gorro, prenda, true)   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego)
+	animador = Animacion.new(gato)
+	gato_nodo.add_child(animador)
+	silueta = Characters.build(id_personaje, gorro, prenda, true)   # la silueta: sólo se dibuja donde algo lo tapa (como en el juego; Opciones > Gráficos > Transparencia del personaje)
 	silueta.visible = bool(Graphics.value("silhouette")) if en_juego else true
 	gato_nodo.add_child(silueta)
+	animador.sombra = silueta   # (la silueta repite las animaciones)
 	# Farolín espera sentado, apoyado en un tronquito, en una esquina del bloque de salida y mirando hacia el centro del cubo
 	farolin = Node3D.new()
 	farolin.visible = false
@@ -274,14 +285,14 @@ func _animar_bloques(animar: bool) -> void:
 			if absf(desde.x - hasta.x) < 0.01 and absf(desde.z - hasta.z) < 0.01 and hasta.y < desde.y:
 				cayendo.append([mi, desde, hasta])
 				continue
-			var dur := maxf(STEP_TIME, 0.07 * desde.distance_to(hasta))
+			var dur := maxf(STEP_TIME, 0.07 * desde.distance_to(hasta)) * _lento
 			mi.create_tween().tween_property(mi, "position", hasta, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			_dur_empuje = maxf(_dur_empuje, dur)
 		for c in cayendo:   # ...y recién cuando termina empiezan a caer los que perdieron el apoyo
 			var mi: Node3D = c[0]
 			var tw := mi.create_tween()
 			tw.tween_interval(_dur_empuje)
-			tw.tween_property(mi, "position", c[2], 0.12 + 0.07 * c[1].distance_to(c[2])).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			tw.tween_property(mi, "position", c[2], (0.12 + 0.07 * c[1].distance_to(c[2])) * _lento).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_bloques_antes = ahora
 	_sala_dibujada = t.indice
 
@@ -322,15 +333,52 @@ func _poner_gato(animar: bool) -> void:
 		var seg := minf(0.07, 0.6 / float(pts.size() - 1))
 		_paso_tween = create_tween()
 		_paso_tween.tween_method(func(k: float) -> void: gato_nodo.position = _punto_en(pts, k), 0.0, 1.0, seg * float(pts.size() - 1))
-		Characters.step_anim(gato, STEP_TIME)
+		animador.colgado(t.motor.colgado != Vector3i.ZERO)
+		animador.reproducir(_tipo_anim, maxf(STEP_TIME, seg * float(pts.size() - 1)))
 	elif animar:
 		_paso_tween = create_tween()
 		_paso_tween.tween_property(gato_nodo, "position", destino, STEP_TIME)
-		Characters.step_anim(gato, STEP_TIME)
+		animador.colgado(t.motor.colgado != Vector3i.ZERO)
+		animador.reproducir(_tipo_anim, float(DURACION_ANIM.get(_tipo_anim, STEP_TIME)) * _lento)
 	else:
 		gato_nodo.position = destino
+		animador.colgado(t.motor.colgado != Vector3i.ZERO)
+	animador.asustado(_cerca_de_bomba())
 	var cara: Vector3i = t.motor.colgado if t.motor.colgado != Vector3i.ZERO else mira
 	gato_nodo.rotation.y = atan2(cara.x, cara.z)
+
+
+## ¿El personaje está dentro de la zona de una bomba con la mecha en marcha?
+func _cerca_de_bomba() -> bool:
+	var j: Vector3i = t.motor.jugador
+	for c in t.motor.bloques:
+		if str(t.motor.bloques[c]).begins_with("b"):
+			var d: Vector3i = c - j
+			if d.x * d.x + d.y * d.y + d.z * d.z <= Tipos.BOMBA_R2:
+				return true
+	return false
+
+
+## La animación que corresponde a lo que pasó en la última acción (`m`: el motor de antes, que guarda lo que pasó; `colgado_antes`: de dónde colgaba antes).
+func _tipo_animacion(m, modo: int, antes_y: int, colgado_antes: Vector3i) -> String:
+	var colgado_ahora: Vector3i = t.motor.colgado
+	if m.desarmo:
+		return "desactivar"
+	if m.salto:
+		return "catapulta"
+	if m.resbalo:
+		return "resbalar"
+	if modo == Motor.Modo.AGARRAR and m.agarro:
+		return "tirar" if m.tipo_agarre == "pull" else "empujar"
+	if colgado_ahora != Vector3i.ZERO and colgado_antes == Vector3i.ZERO:
+		return "colgarse"
+	if colgado_ahora != Vector3i.ZERO:
+		return "desplazar"
+	if m.jugador.y > antes_y:
+		return "trepar"
+	if m.jugador.y < antes_y:
+		return "bajar"
+	return "caminar"
 
 
 ## El punto de la poligonal a lo largo de k (0 = el primero, 1 = el último).
@@ -436,6 +484,8 @@ func _ocultar_arriba() -> void:
 func _process(delta: float) -> void:
 	if t == null or pivot == null:
 		return
+	if silueta != null and en_juego:   # (Opciones > Gráficos > Transparencia del personaje: vale en cuanto se cambia)
+		silueta.visible = bool(Graphics.value("silhouette"))
 	var activa: bool = not (en_juego and puede_jugar.is_valid() and not puede_jugar.call())
 	efectos.proceso(delta, activa)
 	if not panorama and not _cayendo:   # la cámara sigue siempre al personaje (también mientras camina o se desliza), aunque algo la haya movido
@@ -568,6 +618,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 	var motor_antes = t.motor
 	var antes_y: int = motor_antes.jugador.y
 	var off_antes := float(int(t.sala_actual().off))
+	var colgado_antes: Vector3i = motor_antes.colgado
 	_pos_previa = gato_nodo.position
 	var r: Dictionary = t.actuar(dir, modo)
 	mira = dir
@@ -575,12 +626,16 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 		_aviso(str(r.msg), 1.4)
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
+	_tipo_anim = _tipo_animacion(motor_antes, modo, antes_y, colgado_antes)
+	_lento = CAMARA_LENTA if (str(r.evento) == "muerte" and (_tipo_anim == "empujar" or _tipo_anim == "tirar")) else 1.0   # (si el bloque que movió te hace perder, se ve despacio)
+	if _tipo_anim == "tirar":
+		mira = -dir   # (al tirar camina hacia atrás: sigue de frente al bloque que trae)
 	_rastro_pendiente = motor_antes.rastro
 	ultimo_agarre = motor_antes.tipo_agarre
 	_rastro_muerte = motor_antes.rastro.duplicate()
 	_procesar(r)
 	efectos.sonido(motor_antes, modo, antes_y)   # (el motor de antes guarda lo que pasó en la acción, aunque la sala haya cambiado)
-	efectos.visuales(motor_antes, antes_y, off_antes, _dur_empuje)
+	efectos.visuales(motor_antes, antes_y, off_antes, _dur_empuje, _lento)
 	if str(r.evento) == "torre":
 		efectos.juice.gold_burst(portal.position if portal != null else gato_nodo.position)
 		efectos.juice.zoom_punch(0.05)
@@ -675,12 +730,12 @@ func animar_derrota(motivo: String) -> float:
 	_tweens_derrota = []
 	if pts.size() > 1:
 		gato_nodo.position = pts[0]
-		var seg := 0.14
+		var seg := 0.14 * _lento
 		previo = espera + seg * float(pts.size() - 1) + 0.35   # (y una pausa para ver dónde quedó)
 		var mov := create_tween()
 		mov.tween_interval(espera)
 		mov.tween_method(func(k: float) -> void: gato_nodo.position = _punto_en(pts, k), 0.0, 1.0, seg * float(pts.size() - 1))
-		mov.parallel().tween_callback(Characters.step_anim.bind(gato, seg)).set_delay(0.0)
+		mov.parallel().tween_callback(animador.reproducir.bind(_tipo_anim, float(DURACION_ANIM.get(_tipo_anim, 0.14)) * _lento)).set_delay(0.0)
 		_tweens_derrota.append(mov)
 	get_tree().create_timer(previo).timeout.connect(_caer_derrota.bind(motivo, LENTO))
 	return previo

@@ -243,7 +243,7 @@ func _build_graphics(page: Control) -> void:
 	row.add_child(scale_label)
 	scale_next = _small(row, ">", "escala_mas", func(): Graphics.cycle("scale", 1); refresh())
 	_choice("aa", Loc.t("Suavizado de bordes"), [[0, Loc.t("No")], [2, "2x"], [4, "4x"]])
-	_choice("silhouette", Loc.t("Silueta tras las paredes"), [[true, Loc.t("Sí")], [false, Loc.t("No")]])
+	_choice("silhouette", Loc.t("Transparencia del personaje"), [[true, Loc.t("Sí")], [false, Loc.t("No")]])
 	_choice("effects", Loc.t("Destellos y temblores"), [[true, Loc.t("Sí")], [false, Loc.t("No")]])
 	_choice("fps_cap", Loc.t("Límite de FPS"), [[30, "30"], [60, "60"], [144, "144"], [0, Loc.t("Sin límite")]])
 
