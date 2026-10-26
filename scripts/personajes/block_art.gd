@@ -20,9 +20,9 @@ const PALETA := {
 	"vena": Color(0.78, 0.13, 0.95),
 	"nucleo": Color(1.0, 0.5, 1.0),
 	"halo": Color(0.45, 0.08, 0.60, 0.88),
-	"pura": [Color(0.70, 0.66, 0.84), Color(0.75, 0.71, 0.88), Color(0.80, 0.77, 0.92)],
-	"pura_limpia": [Color(0.84, 0.81, 0.94), Color(0.88, 0.85, 0.97), Color(0.92, 0.90, 0.99)],   # (la piedra ya casi sin corrupción)
-	"pura_arriba": Color(0.88, 0.85, 0.97),
+	"pura": [Color(0.62, 0.58, 0.77), Color(0.66, 0.62, 0.81), Color(0.70, 0.66, 0.85)],
+	"pura_limpia": [Color(0.68, 0.64, 0.82), Color(0.72, 0.68, 0.86), Color(0.77, 0.73, 0.90)],   # (la piedra ya casi sin corrupción: un poco más clara que la de la etapa 1, pero sin pasarse: con la luz del juego lo claro se quema a blanco)
+	"pura_arriba": Color(0.74, 0.71, 0.88),
 	"cicatriz": Color(0.50, 0.44, 0.67),
 	"resto_vena": Color(0.62, 0.18, 0.72),
 }
