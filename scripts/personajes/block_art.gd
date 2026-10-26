@@ -81,7 +81,7 @@ const PALETA_PINCHOS := {
 	"pua_corrupta": Color(0.15, 0.12, 0.20),
 	"cicatriz": Color(0.28, 0.30, 0.40),
 }
-const TOPE_PINCHOS := 6   # el último piso de la base (los pisos 7 a 9 son las púas)
+const TOPE_PINCHOS := 5   # el último piso de la base (los pisos 6 a 8 son las púas)
 
 const CORRUPCION_CORRUPTO := [1.0, 0.83, 0.70, 0.60, 0.50]
 const CORRUPCION_PURIFICADO := [0.50, 0.33, 0.20, 0.10, 0.0]
@@ -421,7 +421,7 @@ static func _color_pinchos(p: Vector3i, c: float, sd: int) -> Color:
 	return col
 
 
-## Las cinco púas: cada una de 2 x 2 minibloques de base, que se afinan hasta una punta de uno (pisos 7 a 9). Plateadas con la punta casi blanca; con corrupción, negras con la punta de magma
+## Las cinco púas: cada una de 2 x 2 minibloques de base, que se afinan hasta una punta de uno (pisos 6 a 8). Plateadas con la punta casi blanca; con corrupción, negras con la punta de magma
 ## (que brilla); en los niveles intermedios, un poco de cada.
 static func _puas(vox: Dictionary, c: float) -> void:
 	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)

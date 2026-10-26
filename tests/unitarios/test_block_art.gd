@@ -117,7 +117,7 @@ func _init() -> void:
 			for q in pi:
 				if q.y > Art.TOPE_PINCHOS:
 					puas += 1
-				if q.y == Art.N - 1:
+				if q.y == Art.TOPE_PINCHOS + 3:
 					arriba_p += 1
 			check(base_ok and puas == 5 * 9 and arriba_p == 5, "pinchos estado %d semilla %d: la base entera hasta el piso %d y cinco púas (%d minibloques, %d puntas)" % [estado, semilla, Art.TOPE_PINCHOS, puas, arriba_p])
 	check(Art.bloque("pinchos", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("pinchos", Art.Estado.PURIFICADO, 0, 2), "en los pinchos también el corrupto del final es el purificado del principio")
