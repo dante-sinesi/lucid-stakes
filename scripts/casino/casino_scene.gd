@@ -147,9 +147,9 @@ func _glow_material() -> StandardMaterial3D:
 	return m
 
 
-func _mesh_node(vox: Dictionary, material: Material) -> MeshInstance3D:
+func _mesh_node(vox: Dictionary, material: Material, size := Room.VOXEL) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	mi.mesh = VoxelMesh.build(vox, Room.VOXEL)
+	mi.mesh = VoxelMesh.build(vox, size)
 	mi.material_override = material
 	add_child(mi)
 	return mi
@@ -166,6 +166,8 @@ func _build_room() -> void:
 			base_glow.erase(p)
 	_mesh_node(base_solid, _solid_material())
 	_mesh_node(base_glow, _glow_material())
+	if not data.fino.is_empty():   # (los papeles del tablón: minibloques de un tercio de tamaño)
+		_mesh_node(data.fino, _solid_material(), Room.VOXEL / 3.0)
 	for side in ["west", "north"]:
 		walls[side] = [_mesh_node(data[side].solid, _solid_material()), _mesh_node(data[side].glow, _glow_material())]
 

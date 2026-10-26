@@ -22,24 +22,37 @@ func _init() -> void:
 	sol.rotation_degrees = Vector3(-50, -30, 0)
 	mundo.add_child(sol)
 	var R := Arte.Rareza
-	var tandas := [[R.COMUN, R.COMUN, R.RARA], [R.COMUN, R.RARA, R.COMUN, R.EPICA], [R.COMUN, R.RARA, R.EPICA, R.COMUN, R.RARA], [R.COMUN, R.RARA, R.EPICA, R.IMPOSIBLE, R.COMUN, -1]]
+	var objs := ["movimientos", "racha", "especiales", "claridad", "bomba", "escalada"]
+	var rarezas := [[R.COMUN, R.COMUN, R.RARA], [R.COMUN, R.RARA, R.COMUN, R.EPICA], [R.COMUN, R.RARA, R.EPICA, R.COMUN, R.RARA], [R.COMUN, R.RARA, R.EPICA, R.IMPOSIBLE, R.COMUN, R.EPICA]]
+	var tandas := []
+	for t in 4:
+		var l := []
+		for i in rarezas[t].size():
+			l.append({"rareza": rarezas[t][i], "objetivo": objs[i]})
+		tandas.append(l)
 	for tier in 4:
 		var L: Dictionary = Room.look([1, 5, 9, 13][tier], tier)
 		var solid := {}
 		var glow := {}
-		for x in range(-2, 8):
+		var fino := {}
+		for x in range(-1, 12):
 			for z in range(-2, 8):
 				solid[Vector3i(x, 1, z)] = (L.stone as Color) if (x + z) % 2 == 0 else (L.stone as Color).darkened(0.08)
-		Room._station(solid, glow, {"id": "tablon", "cell": Vector2i(0, 0), "tier": tier, "papeles": tandas[tier]}, L)
+		Room._station(solid, glow, fino, {"id": "tablon", "cell": Vector2i(0, 0), "tier": tier, "papeles": tandas[tier]}, L)
 		var m := MeshInstance3D.new()
 		m.mesh = VoxelMesh.build(solid, Room.VOXEL)
 		var mat := StandardMaterial3D.new()
 		mat.vertex_color_use_as_albedo = true
 		m.material_override = mat
-		m.position = Vector3(tier * 2.2 - 3.5, 0, 0)
+		m.position = Vector3(tier * 3.0 - 4.5, 0, 0)
 		mundo.add_child(m)
 		var g := MeshInstance3D.new()
 		g.mesh = VoxelMesh.build(glow, Room.VOXEL)
+		var f := MeshInstance3D.new()
+		f.mesh = VoxelMesh.build(fino, Room.VOXEL / 3.0)
+		f.material_override = mat
+		f.position = m.position
+		mundo.add_child(f)
 		var gm := StandardMaterial3D.new()
 		gm.vertex_color_use_as_albedo = true
 		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -48,8 +61,8 @@ func _init() -> void:
 		mundo.add_child(g)
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	cam.size = 5.6
-	cam.look_at_from_position(Vector3(0.4, 1.7, 0.5) + Vector3(-3.0, 4.2, 6.0) * 1.5, Vector3(0.4, 1.7, 0.5), Vector3.UP)
+	cam.size = 8.2
+	cam.look_at_from_position(Vector3(0.0, 1.9, 0.5) + Vector3(-3.0, 4.2, 6.0) * 1.5, Vector3(0.0, 1.9, 0.5), Vector3.UP)
 	mundo.add_child(cam)
 	cam.make_current()
 	await create_timer(0.6).timeout

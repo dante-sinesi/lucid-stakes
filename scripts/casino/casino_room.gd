@@ -362,6 +362,7 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 	var cells: Vector2i = lay.cells
 	var solid := {}
 	var glow := {}
+	var fino := {}   # el detalle de un tercio de tamaño (los papeles del tablón)
 	# Las paredes del fondo van aparte (oeste y norte) para poder ocultar la que queda entre la cámara y la sala.
 	var ww := {}   # pared oeste: sólido
 	var gw := {}   # pared oeste: luces
@@ -559,7 +560,7 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 
 	# Estación de servicio del nivel (Taller o Caja fuerte): un mueble con su forma propia.
 	if lay.has("station"):
-		_station(solid, glow, lay.station, L)
+		_station(solid, glow, fino, lay.station, L)
 
 	# Obstáculos decorativos: barriles (taberna), plantas (salón) y columnas de mármol (gran casino).
 	for o in lay.obstacles:
@@ -628,12 +629,12 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 	all_solid.merge(wn)
 	all_glow.merge(gw)
 	all_glow.merge(gn)
-	return {"solid": all_solid, "glow": all_glow,
+	return {"solid": all_solid, "glow": all_glow, "fino": fino,
 			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
 
 
 ## El mueble de una estación de servicio, en su celda: yunque del taller o tablón de contratos.
-static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dictionary) -> void:
+static func _station(solid: Dictionary, glow: Dictionary, fino: Dictionary, st: Dictionary, L: Dictionary) -> void:
 	var ox: int = st.cell.x * CELL_VOX
 	var oz: int = st.cell.y * CELL_VOX
 	var wood: Color = L.wood
@@ -646,7 +647,7 @@ static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dic
 			glow[Vector3i(ox + 3, 8, oz + 2)] = Color(1.0, 0.5, 0.15)
 			glow[Vector3i(ox + 2, 8, oz + 3)] = Color(1.0, 0.7, 0.25)
 		"tablon":   # tablón de corcho sobre dos postes con los papeles de los contratos (`st.papeles`: la rareza de cada uno, o -1 si el lugar está vacío y queda solo el corcho)
-			_tablon(solid, glow, ox, oz, L, int(st.get("tier", 0)), st.get("papeles", []))
+			_tablon(solid, glow, fino, ox, oz, L, int(st.get("tier", 0)), st.get("papeles", []))
 		"caja":   # caja fuerte de acero con la puerta al frente y un dial dorado
 			_box(solid, ox, 2, oz, ox + 5, 10, oz + 5, Color(0.36, 0.38, 0.42))
 			_box(solid, ox + 1, 3, oz + 5, ox + 4, 9, oz + 6, Color(0.28, 0.3, 0.34))
@@ -655,13 +656,16 @@ static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dic
 			glow[Vector3i(ox + 2, 7, oz + 6)] = L.gold
 
 
-## El tablón de contratos, uno por casino: en la taberna tablas clavadas con una vela encima; en el salón un marco pulido con tachas doradas y una repisa con tintero; en el
-## casino paño verde con marco dorado y una lámpara; en el gran casino un marco de mármol con columnas, paño violeta, remate dorado y base. Cuelgan hasta seis papeles
-## (tres por fila): cada uno con su chinche arriba, el pergamino y, abajo, un minibloque del color del sello de su rareza (`papeles`: la rareza de cada uno, o -1 si el lugar está vacío).
-static func _tablon(solid: Dictionary, glow: Dictionary, ox: int, oz: int, L: Dictionary, tier: int, papeles: Array) -> void:
+## El tablón de contratos, uno por casino y de dos celdas de ancho (10 minibloques; `ox` es su borde izquierdo): en la taberna tablas con postes toscos y dos velas; en el salón
+## un marco pulido con tachas doradas y una repisa con tintero, pluma y un libro; en el casino paño verde con marco dorado y dos lámparas; en el gran casino un marco de mármol
+## con columnas, paño violeta, base y un frontón dorado. Cuelgan hasta seis papeles (tres por fila, la de abajo corrida un minibloque, y los del medio un poco adelante):
+## cada uno en detalle (`_papel_fino`): con su chinche, un renglón de texto, el ícono del objetivo entero y, al pie, el sello del color de su rareza.
+## `papeles`: una lista de {rareza, objetivo}; un lugar vacío (o que falta) queda sin papel.
+const TABLON_ANCHO := 10
+static func _tablon(solid: Dictionary, glow: Dictionary, fino: Dictionary, ox: int, oz: int, L: Dictionary, tier: int, papeles: Array) -> void:
 	var wood: Color = L.wood
 	var gold: Color = L.gold
-	var papel := Color(0.94, 0.88, 0.72)
+	var W := TABLON_ANCHO
 	var fondo: Color
 	var marco: Color
 	var chinche: Color
@@ -670,62 +674,109 @@ static func _tablon(solid: Dictionary, glow: Dictionary, ox: int, oz: int, L: Di
 			fondo = (L.plank as Color).darkened(0.05)
 			marco = wood
 			chinche = Color(0.20, 0.20, 0.24)
-			_box(solid, ox, 2, oz + 2, ox + 1, 6, oz + 4, wood.darkened(0.25))   # postes toscos
-			_box(solid, ox + 4, 2, oz + 2, ox + 5, 6, oz + 4, wood.darkened(0.25))
 		1:   # salón: madera pulida
 			fondo = Color(0.62, 0.45, 0.27)
 			marco = wood.lightened(0.12)
 			chinche = Color(0.85, 0.20, 0.20)
-			_box(solid, ox, 2, oz + 2, ox + 1, 6, oz + 4, wood.darkened(0.15))
-			_box(solid, ox + 4, 2, oz + 2, ox + 5, 6, oz + 4, wood.darkened(0.15))
 		2:   # casino: paño verde, marco dorado
 			fondo = (L.felt as Color).lightened(0.05)
 			marco = gold
 			chinche = Color(1.0, 0.88, 0.45)
-			_box(solid, ox, 2, oz + 2, ox + 1, 6, oz + 4, wood)
-			_box(solid, ox + 4, 2, oz + 2, ox + 5, 6, oz + 4, wood)
 		_:   # gran casino: mármol, paño violeta
 			fondo = Color(0.22, 0.15, 0.40)
 			marco = L.pillar
 			chinche = Color(1.0, 0.88, 0.45)
-			_box(solid, ox, 2, oz + 1, ox + 5, 5, oz + 4, (L.pillar as Color).darkened(0.08))   # la base de mármol
-			_box(solid, ox, 4, oz + 1, ox + 5, 5, oz + 2, gold)
-	_box(solid, ox, 5, oz + 2, ox + 5, 14, oz + 3, marco.darkened(0.1))   # el respaldo
-	_box(solid, ox, 5, oz + 3, ox + 5, 6, oz + 4, marco)   # el marco: abajo y arriba
-	_box(solid, ox, 13, oz + 3, ox + 5, 14, oz + 4, marco)
-	_box(solid, ox, 6, oz + 3, ox + 5, 13, oz + 4, fondo)   # el fondo donde cuelgan los papeles
+	# patas / base
 	match tier:
-		0:   # tablas: una junta horizontal entre las dos filas y una vela con su llama
-			_box(solid, ox, 9, oz + 3, ox + 5, 10, oz + 4, (fondo as Color).darkened(0.25))
-			_box(solid, ox + 4, 14, oz + 2, ox + 5, 15, oz + 3, Color(0.93, 0.90, 0.80))
-			glow[Vector3i(ox + 4, 15, oz + 2)] = Color(1.0, 0.65, 0.20)
-		1:   # tachas doradas en las esquinas y una repisa con tintero y pluma
-			for c in [Vector2i(0, 5), Vector2i(4, 5), Vector2i(0, 13), Vector2i(4, 13)]:
+		0:
+			for x in [0, W - 2]:
+				_box(solid, ox + x, 2, oz + 2, ox + x + 2, 6, oz + 4, wood.darkened(0.25))
+		1:
+			for x in [0, W - 2]:
+				_box(solid, ox + x, 2, oz + 2, ox + x + 2, 6, oz + 4, wood.darkened(0.15))
+		2:
+			for x in [0, W - 2]:
+				_box(solid, ox + x, 2, oz + 2, ox + x + 2, 6, oz + 4, wood)
+				_box(solid, ox + x, 5, oz + 2, ox + x + 2, 6, oz + 4, gold)
+		_:
+			_box(solid, ox, 2, oz + 1, ox + W, 5, oz + 4, (L.pillar as Color).darkened(0.08))   # la base de mármol
+			_box(solid, ox, 4, oz + 1, ox + W, 5, oz + 2, gold)
+	_box(solid, ox, 5, oz + 2, ox + W, 19, oz + 3, marco.darkened(0.1))   # el respaldo
+	_box(solid, ox, 5, oz + 3, ox + W, 6, oz + 4, marco)   # el marco: abajo y arriba
+	_box(solid, ox, 18, oz + 3, ox + W, 19, oz + 4, marco)
+	_box(solid, ox, 6, oz + 3, ox + W, 18, oz + 4, fondo)   # el fondo donde cuelgan los papeles
+	match tier:
+		0:   # tablas: juntas entre las filas, clavos en las esquinas y una vela con su llama en cada punta
+			_box(solid, ox, 11, oz + 3, ox + W, 12, oz + 4, (fondo as Color).darkened(0.25))
+			_box(solid, ox, 15, oz + 3, ox + W, 16, oz + 4, (fondo as Color).darkened(0.12))
+			for x in [0, W - 1]:
+				_box(solid, ox + x, 19, oz + 2, ox + x + 1, 20, oz + 3, Color(0.93, 0.90, 0.80))
+				glow[Vector3i(ox + x, 20, oz + 2)] = Color(1.0, 0.65, 0.20)
+		1:   # tachas doradas en las esquinas y una repisa con tintero, pluma y un libro
+			for c in [Vector2i(0, 5), Vector2i(W - 1, 5), Vector2i(0, 18), Vector2i(W - 1, 18)]:
 				_box(solid, ox + c.x, c.y, oz + 4, ox + c.x + 1, c.y + 1, oz + 5, gold)
-			_box(solid, ox, 4, oz + 3, ox + 5, 5, oz + 5, wood.lightened(0.1))
-			_box(solid, ox + 4, 5, oz + 4, ox + 5, 6, oz + 5, Color(0.10, 0.08, 0.20))
-			_box(solid, ox + 4, 6, oz + 4, ox + 5, 8, oz + 5, Color(0.95, 0.95, 0.92))
-		2:   # lámpara de bronce arriba, en el medio
-			_box(solid, ox + 1, 14, oz + 3, ox + 4, 15, oz + 4, gold)
-			glow[Vector3i(ox + 2, 15, oz + 3)] = L.lamp
+			_box(solid, ox, 4, oz + 3, ox + W, 5, oz + 6, wood.lightened(0.1))
+			_box(solid, ox + W - 3, 5, oz + 4, ox + W - 2, 6, oz + 5, Color(0.10, 0.08, 0.20))   # el tintero (debajo de los papeles de abajo)
+			_box(solid, ox + W - 1, 5, oz + 4, ox + W, 8, oz + 5, Color(0.95, 0.95, 0.92))   # la pluma, en la punta donde no hay papel
+			_box(solid, ox + 1, 5, oz + 4, ox + 4, 6, oz + 6, Color(0.55, 0.15, 0.18))   # el libro
+			_box(solid, ox + 1, 5, oz + 5, ox + 4, 6, oz + 6, Color(0.92, 0.88, 0.75))
+		2:   # dos lámparas de bronce arriba
+			_box(solid, ox, 19, oz + 3, ox + W, 20, oz + 4, gold)
+			for x in [2, W - 3]:
+				_box(solid, ox + x, 20, oz + 3, ox + x + 1, 21, oz + 4, gold)
+				glow[Vector3i(ox + x, 21, oz + 3)] = L.lamp
 		_:   # columnas con capitel dorado a los lados y un frontón de oro arriba
-			_box(solid, ox, 5, oz + 3, ox + 1, 14, oz + 4, L.pillar)
-			_box(solid, ox + 4, 5, oz + 3, ox + 5, 14, oz + 4, L.pillar)
-			_box(solid, ox, 13, oz + 3, ox + 1, 14, oz + 4, gold)
-			_box(solid, ox + 4, 13, oz + 3, ox + 5, 14, oz + 4, gold)
-			_box(solid, ox, 14, oz + 2, ox + 5, 15, oz + 4, gold)
-			_box(solid, ox + 1, 15, oz + 2, ox + 4, 16, oz + 4, gold)
-			glow[Vector3i(ox + 2, 16, oz + 3)] = L.lamp
+			for x in [0, W - 2]:   # (pilastras: al ras del fondo, para que los papeles queden delante)
+				_box(solid, ox + x, 5, oz + 3, ox + x + 2, 19, oz + 4, L.pillar)
+				_box(solid, ox + x, 17, oz + 3, ox + x + 2, 19, oz + 4, gold)
+			_box(solid, ox, 19, oz + 2, ox + W, 20, oz + 5, gold)
+			_box(solid, ox + 2, 20, oz + 2, ox + W - 2, 21, oz + 5, gold)
+			_box(solid, ox + 4, 21, oz + 2, ox + W - 4, 22, oz + 5, gold)
+			glow[Vector3i(ox + 4, 22, oz + 3)] = L.lamp
+			glow[Vector3i(ox + 5, 22, oz + 3)] = L.lamp
 	for i in 6:
-		var x := ox + (i % 3) * 2   # tres por fila, con un hueco entre uno y otro
-		var y_top := 12 - (i / 3) * 4   # la chinche; el pergamino va debajo (dos de alto) y el sello al pie
-		if i < papeles.size() and int(papeles[i]) >= 0:
-			var sello: Color = Arte.SELLO_COLORES[int(papeles[i])].a
-			_box(solid, x, y_top, oz + 4, x + 1, y_top + 1, oz + 5, chinche)
-			_box(solid, x, y_top - 2, oz + 4, x + 1, y_top, oz + 5, papel)
-			_box(solid, x, y_top - 3, oz + 4, x + 1, y_top - 2, oz + 5, sello)
-			if int(papeles[i]) == Arte.Rareza.IMPOSIBLE:   # el sello negro lleva un puntito dorado para que se lea sobre el fondo
-				glow[Vector3i(x, y_top - 3, oz + 5)] = Arte.SELLO_COLORES[Arte.Rareza.IMPOSIBLE].m
+		var fila := i / 3   # 0 = la de arriba
+		var col := i % 3
+		var x := ox + 1 + col * 3 - fila   # la fila de abajo, corrida un minibloque
+		var z := oz + 4
+		var p: Variant = papeles[i] if i < papeles.size() else null
+		if not (p is Dictionary):
+			continue
+		_papel_fino(fino, Vector3i(x, 6 + (1 - fila) * 6, z), (col + fila) % 2 == 1, chinche, int(p.get("rareza", 0)), str(p.get("objetivo", "")))
+
+
+## Un papel del tablón en detalle: minibloques de un tercio de lado (`fino`, ver `build_voxels`), de 9 de ancho (tres minibloques de la sala) por 17 de alto: la chinche, un renglón de
+## texto, el ícono del objetivo entero (9 x 9) y el sello de su rareza al pie. `celda` es la esquina de abajo a la izquierda en minibloques de la sala; `adelante`: un poco más cerca.
+static func _papel_fino(fino: Dictionary, celda: Vector3i, adelante: bool, chinche: Color, rareza: int, objetivo: String) -> void:
+	var parche := Color(0.94, 0.88, 0.72)
+	var borde := Color(0.80, 0.72, 0.56)
+	var tinta := Color(0.34, 0.25, 0.18)
+	var x0 := celda.x * 3
+	var y0 := celda.y * 3 + 1
+	var z0 := celda.z * 3 + (2 if adelante else 0)
+	for v in 17:
+		for u in 9:
+			var col := parche
+			if u == 0 or u == 8 or v == 0:
+				col = borde
+			fino[Vector3i(x0 + u, y0 + v, z0)] = col
+	for u in range(3, 6):   # la chinche: una cabeza de tres de ancho y dos de alto, con su brillo
+		for v in [15, 16]:
+			fino[Vector3i(x0 + u, y0 + v, z0 + 1)] = chinche.lightened(0.25) if (u == 3 and v == 16) else chinche
+	for u in range(1, 8):   # el renglón de texto
+		fino[Vector3i(x0 + u, y0 + 14, z0 + 1)] = tinta
+	var ic: Dictionary = Arte.OBJETIVOS.get(objetivo, {})
+	if not ic.is_empty():   # el ícono entero, de 9 x 9
+		var pal := {"o": Arte.OUTLINE, "a": ic.get("a", Color.WHITE), "b": ic.get("b", ic.get("a", Color.WHITE)), "w": ic.get("w", Color(1.0, 1.0, 0.95))}
+		for r in 9:
+			var line: String = ic.rows[r]
+			for u in 9:
+				if line[u] != ".":
+					fino[Vector3i(x0 + u, y0 + 12 - r, z0 + 1)] = pal[line[u]]
+	var c: Dictionary = Arte.SELLO_COLORES[rareza]   # el sello, de 3 x 3 con la marca en el medio
+	for u in 3:
+		for v in 3:
+			fino[Vector3i(x0 + 3 + u, y0 + 1 + v, z0 + 1)] = c.m if (u == 1 and v == 1) else (c.b if (u == 0 and v == 2) else c.a)
 
 
 ## Posición en el mundo del centro de una celda (a la altura del piso de esa celda).
