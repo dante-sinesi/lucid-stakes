@@ -27,6 +27,11 @@ const PALETA := {
 	"resto_vena": Color(0.62, 0.18, 0.72),
 }
 
+## La corrupción de cada nivel. Los pasos son parejos para que se note el cambio de una etapa a la siguiente; el purificado baja más rápido al principio (el de la primera etapa
+## todavía conserva bastante: se ve más corrupto que el de la segunda).
+const CORRUPCION_CORRUPTO := [1.0, 0.83, 0.70, 0.60, 0.50]
+const CORRUPCION_PURIFICADO := [0.50, 0.33, 0.20, 0.10, 0.0]
+
 static var _cache := {}
 
 
@@ -57,8 +62,8 @@ static func _centro_arriba(p: Vector3i) -> bool:
 ## Cuánta corrupción tiene un bloque, de 0 (limpio) a 1 (muy corrupto). Es una sola escala para los dos estados: el corrupto de la etapa 1 es el más corrupto (1) y el de
 ## la última etapa ya parece el purificado de la primera (0,5); el purificado de la etapa 1 está "ligeramente purificado" (0,5) y el de la última, muy purificado (0).
 static func corrupcion(estado: int, nivel: int) -> float:
-	var t := limpieza(nivel)
-	return lerpf(1.0, 0.5, t) if estado == Estado.CORRUPTO else lerpf(0.5, 0.0, t)
+	var tabla: Array = CORRUPCION_CORRUPTO if estado == Estado.CORRUPTO else CORRUPCION_PURIFICADO
+	return float(tabla[clampi(nivel, 0, NIVELES - 1)])
 
 
 ## Los minibloques de un bloque de piedra: {Vector3i: Color}.
@@ -123,13 +128,13 @@ static func piedra_con(c: float, semilla := 0) -> Dictionary:
 	return vox
 
 
-## El color de la piedra: lavanda cuando está poco corrupta (más clara cuanto más limpia) y obsidiana oscura cuando lo está mucho; el paso se da entre 0,6 y 0,9.
+## El color de la piedra: lavanda cuando está poco corrupta (más clara cuanto más limpia) y obsidiana oscura cuando lo está mucho; el paso es parejo entre 0,5 y 1.
 static func _color_base(p: Vector3i, c: float, sd: int) -> Color:
 	var r := _h(p.x, p.y, p.z, sd + 3)
 	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
 	var lavanda: Color = (PALETA.pura[i] as Color).lerp(PALETA.pura_limpia[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
 	var oscura: Color = PALETA.corrupta[i]
-	var col := lavanda.lerp(oscura, smoothstep(0.6, 0.9, c))
+	var col := lavanda.lerp(oscura, clampf((c - 0.5) / 0.5, 0.0, 1.0))   # (parejo: cada paso de corrupción se nota igual)
 	if _centro_arriba(p):   # (la cara de arriba, un poco más clara: se lee dónde se pisa)
 		col = col.lightened(0.08) if c > 0.75 else col.lerp(PALETA.pura_arriba, 0.5).darkened(_h(p.x, p.y, p.z, sd + 8) * 0.05)
 	return col
