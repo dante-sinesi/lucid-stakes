@@ -14,7 +14,7 @@ func _init() -> void:
 	root.add_child(p)
 	var cumplido := (args[1] != "0") if args.size() > 1 else true
 	var monto := int(args[2]) if args.size() > 2 else (340 if cumplido else -145)
-	p.mostrar({"objetivo": "especiales", "rareza": Arte.Rareza.EPICA, "texto": "Purifica 6 bloques especiales en la próxima torre"}, cumplido, monto)
+	p.mostrar({"objetivo": "especiales", "rareza": Arte.Rareza.EPICA, "titulo": "Cazador de especiales", "condiciones": ["Purifica 6 bloques especiales", "Sin perder ninguna vida", "En la próxima torre"]}, cumplido, monto)
 	p.set_process(false)
 	var tiempos := [0.5, 1.2, 1.62, 1.75, 2.2, 3.0, 4.5]
 	for i in tiempos.size():

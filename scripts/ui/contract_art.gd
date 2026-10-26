@@ -12,7 +12,6 @@ const OUTLINE := Color(0.09, 0.04, 0.15)
 # ---- el papel -------------------------------------------------------------------------------------------------------------------------
 const PAPEL_COLS := 17
 const PAPEL_ROWS := 22
-const PAPEL_ROWS_GRANDE := 32   # el papel de la pantalla del contrato resuelto: más alto, con lugar para el texto entero
 const PAPEL := Color(0.93, 0.87, 0.72)
 const PAPEL_SOMBRA := Color(0.78, 0.70, 0.54)
 const TINTA := Color(0.30, 0.22, 0.16)
@@ -105,9 +104,9 @@ static func dibujar_sello(ci: CanvasItem, rareza: int, pos: Vector2, s: float) -
 
 ## El papel de la cartelera con su ícono de objetivo y su sello. `colgado`: con la chinche arriba; si no (activo), sin ella. `ancho`/`alto` en cubitos.
 ## Los textos los dibuja quien lo usa (`texto_cells`).
-static func dibujar_papel(ci: CanvasItem, pos: Vector2, s: float, rareza: int, objetivo: String, semilla := 0, colgado := true, renglones := true, filas := PAPEL_ROWS) -> void:
+static func dibujar_papel(ci: CanvasItem, pos: Vector2, s: float, rareza: int, objetivo: String, semilla := 0, colgado := true) -> void:
 	var cols := PAPEL_COLS
-	var rows := filas
+	var rows := PAPEL_ROWS
 	ci.draw_rect(Rect2(pos + Vector2(s * 0.8, s * 1.2), Vector2(cols, rows) * s), Color(0, 0, 0, 0.55))   # sombra dura
 	for y in rows:
 		for x in cols:
@@ -139,7 +138,7 @@ static func dibujar_papel(ci: CanvasItem, pos: Vector2, s: float, rareza: int, o
 		Draw.cube(ci, pos + Vector2(3, y) * s, s, TINTA.lightened(0.25), true)
 		Draw.cube(ci, pos + Vector2(13, y) * s, s, TINTA.lightened(0.25), true)
 	dibujar_objetivo(ci, objetivo, pos + Vector2(4, 5) * s, s)
-	for i in (3 if renglones else 0):   # renglones de texto de relleno
+	for i in 3:   # renglones de texto de relleno (escrito a mano: no dicen nada)
 		var largo := 5 + int(Draw.noise(i, 7, semilla) * 5.0)
 		for x in largo:
 			ci.draw_rect(Rect2(pos + Vector2(3 + x, 16 + i * 2) * s + Vector2(0, s * 0.25), Vector2(s, s * 0.5)), TINTA.lightened(0.15))

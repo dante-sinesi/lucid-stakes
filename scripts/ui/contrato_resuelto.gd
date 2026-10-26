@@ -1,7 +1,7 @@
 extends Control
-## La pantalla de un contrato resuelto (docs/plan_casinos.md): ocupa toda la pantalla; el papel del contrato queda en el medio con su texto y su sello de rareza, por la derecha entra un
+## La pantalla de un contrato resuelto (docs/plan_casinos.md): ocupa toda la pantalla; el papel del contrato queda en el medio con su ícono y su sello de rareza, a su izquierda el título y debajo las condiciones, por la derecha entra un
 ## sello de mano hecho de minibloques que se apoya sobre el papel y deja "CUMPLIDO" o "FALLIDO", y en ese mismo lado sale un contador grande con lo cobrado y se pide Espacio para seguir con la torre.
-## `mostrar` recibe el contrato ({objetivo, rareza, texto}), si se cumplió y el monto (lo cobrado; negativo: la fianza que se perdió; 0: nada).
+## `mostrar` recibe el contrato ({objetivo, rareza, titulo, condiciones: Array[String]}), si se cumplió y el monto (lo cobrado; negativo: la fianza que se perdió; 0: nada).
 ## Una primera pulsación durante la animación la salta; cuando ya está todo a la vista, la siguiente emite `terminado`.
 
 const Arte := preload("res://scripts/ui/contract_art.gd")
@@ -132,17 +132,17 @@ func _draw() -> void:
 		temblor = Vector2(sin(desde * 90.0), cos(desde * 77.0)) * a
 	draw_set_transform(temblor, 0.0, Vector2.ONE)
 	# el papel
-	var s := floorf(minf(h * 0.70 / Arte.PAPEL_ROWS_GRANDE, w * 0.30 / Arte.PAPEL_COLS))
+	var s := floorf(minf(h * 0.70 / Arte.PAPEL_ROWS, w * 0.27 / Arte.PAPEL_COLS))
 	var pw := Arte.PAPEL_COLS * s
-	var ph := Arte.PAPEL_ROWS_GRANDE * s
+	var ph := Arte.PAPEL_ROWS * s
 	var centro := Vector2(w * 0.5, h * 0.47)
 	var sube := _rebote((t - T_PAPEL) / (T_PAPEL_FIN - T_PAPEL))
 	var pos := Vector2(centro.x - pw * 0.5, centro.y - ph * 0.5 + (1.0 - sube) * h * 0.7)
 	if t >= T_PAPEL:
-		Arte.dibujar_papel(self, pos, s, int(contrato.get("rareza", 0)), str(contrato.get("objetivo", "")), 11, false, false, Arte.PAPEL_ROWS_GRANDE)
-		_texto_del_papel(pos, s)
+		Arte.dibujar_papel(self, pos, s, int(contrato.get("rareza", 0)), str(contrato.get("objetivo", "")), 11, false)
+		_texto_lateral(pos, w, h)
 	# la palabra del sello, ya apoyada
-	var punto := pos + Vector2(pw * 0.5, ph * 0.84)   # (el sello cae abajo, sobre el sello de cera: el texto del contrato queda a la vista)
+	var punto := pos + Vector2(pw * 0.5, ph * 0.74)   # (el sello cae en la parte de abajo del papel)
 	if desde >= 0.0:
 		var s_palabra := pw * 1.02 / 54.0
 		var fuerza := minf(0.55 + desde * 4.0, 1.0)
@@ -181,15 +181,28 @@ func _draw() -> void:
 		_texto(Loc.t("Presiona Espacio para continuar la torre"), Vector2(w * 0.5, h * 0.92), maxf(3.0, floorf(h / 190.0)), Color(1.0, 0.97, 0.88, parpadeo), true)
 
 
-## El texto del contrato sobre el papel, debajo del ícono, de renglones de unos 15 caracteres.
-func _texto_del_papel(pos: Vector2, s: float) -> void:
-	var cubito := maxf(2.0, s * 0.15)
-	var ancho_celdas := int(floorf(12.0 * s / cubito))
-	var lineas: Array[String] = VFont.wrap(str(contrato.get("texto", "")), ancho_celdas)
-	var lay: Dictionary = VFont.layout(lineas.slice(0, 4), 1)
-	var tam: Vector2i = lay.size
-	var origen := pos + Vector2(8.5 * s - tam.x * cubito * 0.5, 15.8 * s)
-	Draw.text_cells(self, origen, lay.cells, tam.y, cubito, Arte.TINTA.darkened(0.35), 0.0, 5, false)
+## A la izquierda del papel: el título del contrato (grande, en dorado) y debajo las condiciones que había que cumplir, una por renglón con su guion.
+func _texto_lateral(pos: Vector2, w: float, h: float) -> void:
+	var alfa := _suave((t - T_PAPEL - 0.2) / 0.4)
+	if alfa <= 0.0:
+		return
+	var x0 := w * 0.05
+	var ancho := pos.x - w * 0.03 - x0
+	var cub_t := maxf(3.0, floorf(h / 150.0))
+	var cub_c := maxf(2.0, floorf(cub_t * 0.6))
+	var y := pos.y + 20.0
+	var titulo: Array[String] = VFont.wrap(str(contrato.get("titulo", "")), int((ancho / cub_t + 1.0)))
+	var lay_t: Dictionary = VFont.layout(titulo)
+	Draw.text_cells(self, Vector2(x0, y), lay_t.cells, lay_t.size.y, cub_t, Color(ORO.r, ORO.g, ORO.b, alfa), 0.0, 17, true)
+	y += float(lay_t.size.y) * cub_t + cub_t * 6.0
+	var lineas: Array[String] = []
+	for cond in contrato.get("condiciones", []):
+		var partes: Array[String] = VFont.wrap("- " + str(cond), int((ancho / cub_c + 1.0)))
+		for i in partes.size():
+			lineas.append(partes[i] if i == 0 else "  " + partes[i])
+	if not lineas.is_empty():
+		var lay_c: Dictionary = VFont.layout(lineas)
+		Draw.text_cells(self, Vector2(x0, y), lay_c.cells, lay_c.size.y, cub_c, Color(0.96, 0.92, 0.80, alfa), 0.0, 19, true)
 
 
 ## La salpicadura de tinta al apoyarse el sello: cubitos que salen disparados y caen.

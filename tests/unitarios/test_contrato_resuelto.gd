@@ -19,7 +19,7 @@ func _init() -> void:
 	root.add_child(p)
 	p.terminado.connect(func(): terminados += 1)
 	check(not p.visible, "empieza oculta")
-	var c := {"objetivo": "racha", "rareza": Arte.Rareza.RARA, "texto": "Llega a una racha de 4"}
+	var c := {"objetivo": "racha", "rareza": Arte.Rareza.RARA, "titulo": "Racha larga", "condiciones": ["Llega a una racha de 4"]}
 	p.mostrar(c, true, 120)
 	check(p.visible and not p.listo, "al mostrarla se ve y todavía no está lista")
 	p.ir_a(Pantalla.T_IMPACTO - 0.1)
