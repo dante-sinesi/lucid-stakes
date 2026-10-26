@@ -162,7 +162,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 						continue
 				vox[p] = _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else _color_base(p, c, sd)))
 	if arena:
-		_estratos(vox)
+		_fisuras(vox, sd)
 	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), siempre los mismos para una semilla (un bloque que se limpia
 	# conserva sus grietas, cada vez más cortadas y apagadas); con mucha corrupción son vetas hundidas con magma que brilla, y con poca, cicatrices con algún resto de vena
 	var rng_g := RandomNumberGenerator.new()
@@ -258,29 +258,58 @@ static func _color_hielo(p: Vector3i, c: float, sd: int) -> Color:
 	return col
 
 
-## Los estratos de la arenisca: tres ranuras horizontales (en las alturas 2, 5 y 8) le dan la vuelta al bloque hundiendo un minibloque la superficie de los costados y oscureciendo
-## el fondo, así el bloque se ve hecho de losas apiladas (una silueta propia, no sólo un color). La cara de arriba no se toca.
-static func _estratos(vox: Dictionary) -> void:
-	for y in [2, 5, 8]:
-		for i in N:
-			for borde in [Vector3i(0, y, i), Vector3i(N - 1, y, i), Vector3i(i, y, 0), Vector3i(i, y, N - 1)]:
-				if not vox.has(borde) or _bordes(borde) >= 3:
+## Las fisuras de la arenisca (siempre las mismas para una semilla, en cualquier nivel de corrupción): en cada cara, de cuatro a seis grietas al azar, cortas o largas, casi todas en
+## diagonal, que nacen y mueren en cualquier lado (no cruzan la cara entera); cada una tiene su profundidad (de uno a tres minibloques) y algunas son el doble de anchas.
+## En los costados se hunden de verdad (con el fondo muy oscuro); arriba, que se pisa, queda una línea oscura a ras.
+static func _fisuras(vox: Dictionary, sd: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = sd + 500
+	for cara in 5:
+		for k in 4 + rng.randi() % 3:
+			var camino := _camino_diagonal(rng, 4 + rng.randi() % 11)
+			var prof := 1 + rng.randi() % 3
+			var ancha := rng.randf() < 0.35
+			var celdas: Array[Vector2i] = []
+			for uv in camino:
+				celdas.append(uv)
+				if ancha:
+					celdas.append(uv + Vector2i(1, 0))
+			for uv in celdas:
+				if uv.x < 0 or uv.x > N - 1 or uv.y < 0 or uv.y > N - 1:
 					continue
-				var dentro: Vector3i = borde + _hacia_adentro_de(borde)
-				vox.erase(borde)
-				if vox.has(dentro):
-					vox[dentro] = (vox[dentro] as Color).darkened(0.30)
+				var p := _de_cara(cara, uv)
+				if not vox.has(p):
+					continue
+				if cara == 0:
+					vox[p] = (PALETA_ARENA.grieta as Color).lerp(PALETA_ARENA.cicatriz, 0.15)   # (arriba: una línea a ras)
+					continue
+				var adentro := _hacia_adentro(cara)
+				var fondo := p
+				for d in prof + 1:
+					var q: Vector3i = p + adentro * d
+					if not vox.has(q) or _centro_arriba(q):
+						break
+					fondo = q
+					if d < prof:
+						vox.erase(q)
+				if fondo != p and vox.has(fondo):
+					vox[fondo] = (PALETA_ARENA.grieta as Color).darkened(0.15)
 
 
-## Hacia dónde queda el interior desde un minibloque del borde de un costado.
-static func _hacia_adentro_de(p: Vector3i) -> Vector3i:
-	if p.x == 0:
-		return Vector3i(1, 0, 0)
-	if p.x == N - 1:
-		return Vector3i(-1, 0, 0)
-	if p.z == 0:
-		return Vector3i(0, 0, 1)
-	return Vector3i(0, 0, -1)
+## Un camino de grieta sobre una cara de 10 x 10: empieza en cualquier celda, va casi siempre en diagonal y gira poco.
+static func _camino_diagonal(rng: RandomNumberGenerator, largo: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var pos := Vector2i(rng.randi() % N, rng.randi() % N)
+	var dirs := [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1)]
+	var d := (1 + 2 * (rng.randi() % 4)) if rng.randf() < 0.7 else (2 * (rng.randi() % 4))   # (índices impares: diagonales)
+	for i in largo:
+		out.append(pos)
+		if rng.randf() < 0.12:
+			d = (d + (1 if rng.randf() < 0.5 else 7)) % 8
+		pos += dirs[d]
+		if pos.x < 0 or pos.x > N - 1 or pos.y < 0 or pos.y > N - 1:
+			break
+	return out
 
 
 ## El color de la arenisca en un minibloque: arena cálida (más clara cuanto más limpia) o marrón oscuro con la corrupción (rampa entre 0,5 y 1), en capas horizontales
@@ -371,21 +400,8 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 				if vox.has(q) and (vox[q] as Color).a >= 1.0 and (vox[q] as Color).r < 0.3:
 					vox[q] = PALETA.halo if _h(q.x, q.y, q.z, 77) < 0.16 else (vox[q] as Color).lerp(PALETA.roca_vena, 0.5)
 		return
-	if tipo == "arenisca":   # (la grieta honda de la arenisca sigue ahí aunque se limpie: en los costados se hunde un minibloque y arriba queda una línea oscura a ras)
-		if cara != 0:
-			var dentro_a := p + _hacia_adentro(cara)
-			var dentro_b := dentro_a + _hacia_adentro(cara)
-			if vox.has(dentro_a) and vox.has(dentro_b):   # (la fisura es honda: dos minibloques, con el fondo muy oscuro)
-				vox.erase(p)
-				vox.erase(dentro_a)
-				vox[dentro_b] = (PALETA_ARENA.grieta as Color).darkened(0.2)
-				return
-			if vox.has(dentro_a):
-				vox.erase(p)
-				vox[dentro_a] = (PALETA_ARENA.grieta as Color).lerp(PALETA_ARENA.cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.4)
-				return
-		vox[p] = (PALETA_ARENA.grieta as Color).lerp(PALETA_ARENA.cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.4)
-		return
+	if tipo == "arenisca":
+		return   # (la arenisca ya tiene sus fisuras hondas, en `_fisuras`)
 	var resto := _h(p.x, p.y, p.z, sd + 5) < lerpf(0.0, 0.5, c / 0.45)
 	var cicatriz: Color = (((PALETA_HIERRO.cicatriz if tipo == "hierro" else (PALETA_HIELO.cicatriz if tipo == "hielo" else PALETA.cicatriz))) as Color).lerp(Color(0.74, 0.70, 0.86), clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.6)
 	var color_resto: Color = (PALETA.resto_vena as Color).lerp(cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.5)
