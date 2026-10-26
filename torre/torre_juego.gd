@@ -141,18 +141,8 @@ func _ready() -> void:
 	var pivote := Node3D.new()
 	faro_tronco = pivote
 	farolin.add_child(pivote)
-	var tronco := MeshInstance3D.new()
-	var cil := CylinderMesh.new()
-	cil.top_radius = 0.065
-	cil.bottom_radius = 0.065
-	cil.height = 0.36
-	tronco.mesh = cil
-	var corteza := StandardMaterial3D.new()
-	corteza.albedo_color = Color(0.42, 0.27, 0.13)
-	corteza.roughness = 1.0
-	tronco.material_override = corteza
+	var tronco := Farolin.tronco()
 	tronco.position = Vector3(0.0, 0.065, -0.17)   # (detrás de Farolín, atravesado)
-	tronco.rotation_degrees.z = 90.0
 	pivote.add_child(tronco)
 	player_node = gato_nodo
 	efectos = Efectos.new(self)
@@ -250,6 +240,8 @@ func _refrescar(animar := false) -> void:
 		for i in estaticas.size():
 			if estaticas[i] != null and is_instance_valid(estaticas[i]):
 				estaticas[i].visible = i >= t.indice
+		if portal != null and is_instance_valid(portal):
+			portal.visible = true
 	else:
 		_ocultar_arriba()
 	_poner_farolin()
@@ -437,6 +429,8 @@ func _ocultar_arriba() -> void:
 		var n = estaticas[i]
 		if n != null and is_instance_valid(n):
 			n.visible = i > t.indice and not desde_arriba
+	if portal != null and is_instance_valid(portal):   # (el portal está sobre la última sala: si todavía no se llegó a ella, se oculta con las demás)
+		portal.visible = not (desde_arriba and t.indice < t.salas.size() - 1)
 
 
 func _process(delta: float) -> void:
@@ -632,9 +626,12 @@ func _procesar(r: Dictionary) -> void:
 			_aviso("Segundo aliento: la sala vuelve a empezar y no pierdes la vida.", 3.0)
 		"fin":
 			_aviso("%s. Te quedaste sin vidas. Pulsa R para otra torre." % str(r.msg), 0.0)
+	var punto_checkpoint := farolin.global_position if farolin != null else Vector3.ZERO   # (el bloque que se acaba de encender: donde saltan las chispas)
 	if str(r.evento) == "checkpoint":
 		_rastro_pendiente = []   # (el camino es de la sala de abajo: el último paso hasta el checkpoint se anima en línea recta, y la cámara lo acompaña)
 	_refrescar(str(r.evento) == "" or str(r.evento) == "checkpoint")   # (tras una muerte el personaje aparece de golpe en su sitio)
+	if str(r.evento) == "checkpoint" and en_juego and farolin != null and farolin.visible:
+		faro_modelo.celebrar(punto_checkpoint)   # (Farolín salta de alegría en el próximo checkpoint y las chispas encienden el farolito del que se pisó)
 	if muerte_pendiente != "":
 		murio.emit(muerte_pendiente)
 	accion_hecha.emit()
