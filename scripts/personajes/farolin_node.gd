@@ -19,6 +19,11 @@ var _hop := -1.0       # segundos desde que empezó el salto de celebrar (-1 = n
 var _punto := Vector3.ZERO   # dónde saltan las chispas cuando aterriza
 var _soplar := false
 var _chispeo := false
+var _ya_alto := 0.0    # lo que el salto y los giros ya sumaron a la posición y al giro que le dieron de afuera
+var _ya_gira := 0.0
+var _ya_inclina := 0.0
+var _pos_escrita := Vector3.INF
+var _rot_escrita := Vector3.INF
 const ACCIONES := ["patas", "saludo", "rascar", "mirar", "bostezo"]
 
 
@@ -53,8 +58,8 @@ func celebrar(punto: Vector3, soplar := false) -> void:
 
 ## El pasatiempo de Farolín mientras espera, y el salto de celebrar. Cada pocos segundos hace algo al azar: balancea las patitas, saluda, se rasca la cabeza, mira alrededor o bosteza.
 func _animar(delta: float) -> void:
-	if brazo_i == null:
-		return
+	if brazo_i == null or not sentado:
+		return   # (de pie, en el casino, quien lo coloca manda: no se mueve su posición ni su giro)
 	var bi := 0.0   # rotación z de los hombros (a los lados: el izquierdo en negativo, el derecho en positivo)
 	var bd := 0.0
 	var gira := 0.0
@@ -112,9 +117,21 @@ func _animar(delta: float) -> void:
 	if pata_i != null:
 		pata_i.rotation.x = patas
 		pata_d.rotation.x = -patas
-	rotation.y = lerpf(rotation.y, gira, minf(delta * 8.0, 1.0))
-	rotation.x = lerpf(rotation.x, inclina, minf(delta * 10.0, 1.0))
-	position.y = alto
+	# el salto y los giros se suman a donde lo puso quien lo coloca (la torre lo apoya y lo inclina); si lo movieron de afuera, se empieza de cero
+	if not position.is_equal_approx(_pos_escrita) or not rotation.is_equal_approx(_rot_escrita):
+		_ya_alto = 0.0
+		_ya_gira = 0.0
+		_ya_inclina = 0.0
+	var gira_suave := lerpf(_ya_gira, gira, minf(delta * 8.0, 1.0))
+	var inclina_suave := lerpf(_ya_inclina, inclina, minf(delta * 10.0, 1.0))
+	position.y += alto - _ya_alto
+	rotation.y += gira_suave - _ya_gira
+	rotation.x += inclina_suave - _ya_inclina
+	_ya_alto = alto
+	_ya_gira = gira_suave
+	_ya_inclina = inclina_suave
+	_pos_escrita = position
+	_rot_escrita = rotation
 	if flame != null:
 		flame.scale = Vector3(1.0, llama, 1.0)
 
