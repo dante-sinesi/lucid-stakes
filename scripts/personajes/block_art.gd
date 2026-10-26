@@ -61,8 +61,8 @@ const PALETA_ARENA := {
 	"cicatriz": Color(0.50, 0.38, 0.26),
 }
 
-## La trampa: piedra gris azulada (más neutra que la piedra común) con una X por todos lados: arriba, una cruz en diagonal de lado a lado (el aviso de que se desarma al pisarla), de los mismos
-## colores de la piedra pero más clara que el resto de la cara, y en cada costado una X de juntas oscuras (las tapas de la trampa).
+## La trampa: piedra gris azulada (más neutra que la piedra común) con una X por todos lados: arriba y en cada costado, una X de juntas finas y oscuras de esquina a esquina (las tapas de la trampa, y el aviso de que
+## se desarma al pisarla).
 const PALETA_TRAMPA := {
 	"piedra": [Color(0.56, 0.58, 0.70), Color(0.60, 0.62, 0.74), Color(0.64, 0.66, 0.78)],
 	"piedra_limpia": [Color(0.62, 0.64, 0.76), Color(0.66, 0.68, 0.80), Color(0.70, 0.72, 0.84)],
@@ -349,28 +349,19 @@ static func _color_arena(p: Vector3i, c: float, sd: int) -> Color:
 	return col
 
 
-## El color de la cruz de la trampa: lavanda clara de la piedra con poca corrupción y un violeta grisáceo (más claro que la piedra oscura que la rodea) con mucha.
+## El color de la cruz de la trampa: las mismas juntas oscuras de los costados (la piedra de la trampa, más oscura), finas y discretas, para que arriba no llame la atención.
 static func _color_cruz(c: float) -> Color:
 	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
-	return (PALETA.pura_arriba as Color).lerp(Color(0.33, 0.27, 0.45), oscuro * 0.85)
+	var piedra: Color = (PALETA_TRAMPA.piedra[1] as Color).lerp(PALETA_TRAMPA.piedra_limpia[1], clampf(1.0 - c * 2.0, 0.0, 1.0))
+	return piedra.lerp(PALETA_TRAMPA.corrupto[1], oscuro).darkened(0.34)
 
 
-## ¿Está al lado de la cruz (en la cara de arriba, sin ser parte de ella)?
-static func _junto_a_cruz(p: Vector3i) -> bool:
-	if p.y != N - 1 or _es_cruz(p):
-		return false
-	for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
-		if _es_cruz(p + d):
-			return true
-	return false
-
-
-## ¿Es un minibloque de la cruz de la trampa (las dos diagonales de la cara de arriba, de dos a tres minibloques de ancho)?
+## ¿Es un minibloque de la cruz de la trampa (las dos diagonales de la cara de arriba, de un minibloque de ancho)?
 static func _es_cruz(p: Vector3i) -> bool:
-	return p.y == N - 1 and p.x >= 1 and p.x <= N - 2 and p.z >= 1 and p.z <= N - 2 and (absi(p.x - p.z) <= 1 or absi(p.x + p.z - (N - 1)) <= 1)
+	return p.y == N - 1 and p.x >= 1 and p.x <= N - 2 and p.z >= 1 and p.z <= N - 2 and (p.x == p.z or p.x + p.z == N - 1)
 
 
-## El color de la trampa en un minibloque: gris azulado (o gris muy oscuro con corrupción, rampa entre 0,5 y 1); arriba, una cruz clara en diagonal de lado a lado (siempre visible: es la advertencia);
+## El color de la trampa en un minibloque: gris azulado (o gris muy oscuro con corrupción, rampa entre 0,5 y 1); arriba, una X de juntas finas y oscuras en diagonal de lado a lado (siempre visible, pero discreta: es la advertencia);
 ## en cada costado, una X de juntas oscuras de esquina a esquina.
 static func _color_trampa(p: Vector3i, c: float, sd: int) -> Color:
 	var r := _h(p.x, p.y, p.z, sd + 3)
@@ -380,8 +371,6 @@ static func _color_trampa(p: Vector3i, c: float, sd: int) -> Color:
 	var col := piedra.lerp(PALETA_TRAMPA.corrupto[i], oscuro)
 	if _es_cruz(p):
 		return _color_cruz(c)
-	if _junto_a_cruz(p):
-		return col.darkened(0.16)   # (un borde apenas más oscuro marca la cruz)
 	if _centro_arriba(p):
 		return col.lightened(0.04)
 	if p.y != N - 1:
