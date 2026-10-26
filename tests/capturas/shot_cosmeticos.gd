@@ -1,6 +1,6 @@
 extends SceneTree
 ## Captura todos los cosméticos (gorros y prendas) puestos en un personaje: una fila de gorros y otra de prendas, vistos de frente y de espaldas arriba y abajo.
-## Uso: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1700x900 -s tests/capturas/shot_cosmeticos.gd -- ARCHIVO.png [personaje] [giro]
+## Uso: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1700x900 -s tests/capturas/shot_cosmeticos.gd -- ARCHIVO.png [personaje] [giro] [tamaño de la cámara] [altura de la cámara]
 const Characters := preload("res://scripts/personajes/characters.gd")
 const Cosmetics := preload("res://scripts/personajes/cosmetics.gd")
 
@@ -42,8 +42,8 @@ func _init() -> void:
 			mundo.add_child(l)
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	cam.size = 7.0
-	cam.position = Vector3(0.0, -2.2, 6.0)
+	cam.size = float(args[3]) if args.size() > 3 else 7.0
+	cam.position = Vector3(0.0, float(args[4]) if args.size() > 4 else -2.2, 6.0)
 	mundo.add_child(cam)
 	cam.make_current()
 	await create_timer(0.6).timeout
