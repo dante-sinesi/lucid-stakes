@@ -67,6 +67,8 @@ var animador: Node           # sus animaciones (animacion.gd)
 var _tipo_anim := "caminar"   # la animación de la última acción
 var _lento := 1.0            # cuánto se alarga lo que pasa en la última acción (cámara lenta cuando empujar o tirar un bloque hace perder la sala, para que se entienda por qué)
 const CAMARA_LENTA := 3.0
+const EMPUJE_LENTO := 8.0   # y el movimiento del bloque empujado o tirado (y del personaje que lo mueve) va más lento todavía: es lo que explica la derrota
+var _lento_mov := 1.0
 var mira := Vector3i(0, 0, 1)
 var _camara_tween: Tween
 var _paso_tween: Tween
@@ -285,7 +287,7 @@ func _animar_bloques(animar: bool) -> void:
 			if absf(desde.x - hasta.x) < 0.01 and absf(desde.z - hasta.z) < 0.01 and hasta.y < desde.y:
 				cayendo.append([mi, desde, hasta])
 				continue
-			var dur := maxf(STEP_TIME, 0.07 * desde.distance_to(hasta)) * _lento
+			var dur := maxf(STEP_TIME, 0.07 * desde.distance_to(hasta)) * _lento_mov
 			mi.create_tween().tween_property(mi, "position", hasta, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			_dur_empuje = maxf(_dur_empuje, dur)
 		for c in cayendo:   # ...y recién cuando termina empiezan a caer los que perdieron el apoyo
@@ -627,13 +629,19 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
 	_tipo_anim = _tipo_animacion(motor_antes, modo, antes_y, colgado_antes)
-	_lento = CAMARA_LENTA if (str(r.evento) == "muerte" and (_tipo_anim == "empujar" or _tipo_anim == "tirar")) else 1.0   # (si el bloque que movió te hace perder, se ve despacio)
+	var explica := str(r.evento) == "muerte" and (_tipo_anim == "empujar" or _tipo_anim == "tirar")
+	_lento = CAMARA_LENTA if explica else 1.0
+	_lento_mov = EMPUJE_LENTO if explica else 1.0   # (si el bloque que movió te hace perder, se ve despacio)
 	if _tipo_anim == "tirar":
 		mira = -dir   # (al tirar camina hacia atrás: sigue de frente al bloque que trae)
 	_rastro_pendiente = motor_antes.rastro
 	ultimo_agarre = motor_antes.tipo_agarre
 	_rastro_muerte = motor_antes.rastro.duplicate()
 	_procesar(r)
+	if not motor_antes.ultimos_movidos.is_empty():   # (un bloque que empujaste o tiraste y que se perdió no queda en la sala: se lo anima igual antes de que caiga)
+		for p in motor_antes.caidos_fuera:
+			if motor_antes.ultimos_movidos.has(p[0]):
+				_dur_empuje = maxf(_dur_empuje, maxf(STEP_TIME, 0.07) * _lento_mov)
 	efectos.sonido(motor_antes, modo, antes_y)   # (el motor de antes guarda lo que pasó en la acción, aunque la sala haya cambiado)
 	efectos.visuales(motor_antes, antes_y, off_antes, _dur_empuje, _lento)
 	if str(r.evento) == "torre":
@@ -730,13 +738,19 @@ func animar_derrota(motivo: String) -> float:
 	_tweens_derrota = []
 	if pts.size() > 1:
 		gato_nodo.position = pts[0]
-		var seg := 0.14 * _lento
-		previo = espera + seg * float(pts.size() - 1) + 0.35   # (y una pausa para ver dónde quedó)
+		var seg := 0.14 * _lento_mov
+		var lento_mov := _lento_mov > 1.0   # (en cámara lenta el personaje y el bloque se mueven a la vez: se ve cómo lo empuja o lo trae)
+		var demora := 0.0 if lento_mov else espera
+		previo = maxf(espera, demora + seg * float(pts.size() - 1)) + (0.8 if lento_mov else 0.35)   # (y una pausa para ver dónde quedó)
 		var mov := create_tween()
-		mov.tween_interval(espera)
+		mov.tween_interval(demora)
 		mov.tween_method(func(k: float) -> void: gato_nodo.position = _punto_en(pts, k), 0.0, 1.0, seg * float(pts.size() - 1))
-		mov.parallel().tween_callback(animador.reproducir.bind(_tipo_anim, float(DURACION_ANIM.get(_tipo_anim, 0.14)) * _lento)).set_delay(0.0)
+		mov.parallel().tween_callback(animador.reproducir.bind(_tipo_anim, seg * float(pts.size() - 1) if _lento_mov > 1.0 else float(DURACION_ANIM.get(_tipo_anim, 0.14)))).set_delay(0.0)
 		_tweens_derrota.append(mov)
+	elif espera > 0.0:   # (empujó un bloque sin moverse: el personaje empuja mientras el bloque recorre su camino, y recién después cae)
+		previo = espera + (0.8 if _lento_mov > 1.0 else 0.35)
+		gato_nodo.position = _pos_previa if _pos_previa != Vector3.ZERO else gato_nodo.position
+		animador.reproducir(_tipo_anim, espera)
 	get_tree().create_timer(previo).timeout.connect(_caer_derrota.bind(motivo, LENTO))
 	return previo
 
