@@ -1,5 +1,5 @@
 extends Node3D
-## Galería de bloques (herramienta de desarrollo): el arte de 10 x 10 x 10 de cada tipo de bloque (block_art.gd), corrupto y purificado, en los cinco niveles de corrupción
+## Galería de bloques (herramienta de desarrollo): el arte de 10 x 10 x 10 de cada tipo de bloque (block_art.gd), corrupto y purificado (Farolín espera sentado sobre el checkpoint y el portal corruptos), en los cinco niveles de corrupción
 ## (una columna por cada tres etapas), con la luz del juego. Mouse: arrastrar con el botón izquierdo o derecho gira e inclina; rueda acerca. Teclas: las flechas giran e inclinan
 ## la cámara (izquierda y derecha giran, arriba y abajo inclinan; se mantienen apretadas), WASD mueven la cámara por el espacio (con Shift, más rápido; con Espacio sube y con Ctrl baja),
 ## + y - acercan y alejan, Q y E giran 45°,
@@ -8,6 +8,7 @@ extends Node3D
 
 const Escena := preload("res://torre/escena.gd")
 const Art := preload("res://scripts/personajes/block_art.gd")
+const Farolin := preload("res://scripts/personajes/farolin.gd")
 const Main := preload("res://scripts/main.gd")
 const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
 
@@ -25,6 +26,34 @@ var zoom := 9.0
 var _etapa := 1
 var _centro := Vector3.ZERO   # donde está el pivote al empezar (R vuelve acá)
 const FLECHAS_VEL := 110.0   # grados por segundo con las flechas
+
+
+## Farolín sentado en una esquina de la cara de arriba del bloque (como espera en el checkpoint y en el bloque de salida): sólo con los bloques corruptos, porque al purificarse se va.
+func _poner_farolin(centro: Vector3) -> void:
+	var esq := Vector2(-1.0, -1.0)
+	var ang := atan2(-esq.x, -esq.y)   # (de la esquina hacia el centro del bloque)
+	var pos := centro + Vector3(0.27 * esq.x, 0.5, 0.27 * esq.y)
+	var faro := Farolin.build(-1, true)
+	faro.position = pos
+	faro.rotation = Vector3(deg_to_rad(-10.0), ang, 0.0)   # (apenas echado hacia atrás, contra el tronco)
+	add_child(faro)
+	var tronco := MeshInstance3D.new()
+	var cil := CylinderMesh.new()
+	cil.top_radius = 0.065
+	cil.bottom_radius = 0.065
+	cil.height = 0.36
+	tronco.mesh = cil
+	var corteza := StandardMaterial3D.new()
+	corteza.albedo_color = Color(0.42, 0.27, 0.13)
+	corteza.roughness = 1.0
+	tronco.material_override = corteza
+	tronco.position = Vector3(0.0, 0.065, -0.17)   # (detrás de Farolín, atravesado)
+	tronco.rotation_degrees.z = 90.0
+	var pivote := Node3D.new()
+	pivote.position = pos
+	pivote.rotation.y = ang
+	pivote.add_child(tronco)
+	add_child(pivote)
 
 
 func _ready() -> void:
@@ -52,12 +81,16 @@ func _ready() -> void:
 					var cubo := Escena.cubo_portal(nivel)
 					cubo.position = _celda(nivel, fila)
 					add_child(cubo)
+					if estado == Art.Estado.CORRUPTO:
+						_poner_farolin(_celda(nivel, fila))
 					continue
 				var m := MeshInstance3D.new()
 				m.mesh = Art.malla_bloque(tipo, estado, nivel, 1 + nivel)
 				m.material_override = Escena.material_translucido(tipo) if Art.es_translucido(tipo) else Escena.material(Color.WHITE, false)
 				m.position = _celda(nivel, fila)
 				add_child(m)
+				if tipo == "checkpoint" and estado == Art.Estado.CORRUPTO:
+					_poner_farolin(m.position)
 				if Art.es_translucido(tipo):   # (las caras de atrás, en otra malla que se dibuja antes)
 					var atras := MeshInstance3D.new()
 					atras.mesh = m.mesh
