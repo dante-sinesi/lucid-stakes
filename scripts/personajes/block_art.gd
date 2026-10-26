@@ -152,6 +152,8 @@ static func pinchos(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 
 ## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo", "arenisca", "trampa" o "pinchos") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	if tipo == "portal":
+		return portal()
 	if tipo == "catapulta":
 		return catapulta(corrupcion(estado, nivel), semilla)
 	if tipo == "bomba":
@@ -247,6 +249,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 	var es_hielo := tipo == "hielo"   # (el hielo se astilla en las aristas)
 	var arena := tipo == "arenisca"   # (la arenisca se desmorona: más que la piedra)
 	var pinchos := tipo == "pinchos"   # (una base de siete minibloques de alto con cinco púas encima)
+	var punto := tipo == "checkpoint"   # (el checkpoint: un bloque dorado con su farolito en el medio de la cara de arriba)
 	var trampa := tipo == "trampa"   # (la trampa se desvanece hacia abajo: translúcida y con huecos; la cara de arriba, que se pisa, queda entera)
 	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
 	var p_arista := 0.0 if hierro else (lerpf(0.0, 0.30, c) if es_hielo else (lerpf(0.18, 0.45, c) if arena else (lerpf(0.0, 0.2, c) if trampa else lerpf(0.03, 0.38, c))))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
@@ -281,7 +284,7 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 							mordido = true
 					if mordido and p.y < N - 1:
 						continue
-				vox[p] = _color_pinchos(p, c, sd) if pinchos else _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else (_color_trampa(p, c, sd) if trampa else _color_base(p, c, sd))))
+				vox[p] = _color_checkpoint(p, c, sd) if punto else _color_pinchos(p, c, sd) if pinchos else _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else (_color_trampa(p, c, sd) if trampa else _color_base(p, c, sd))))
 	if arena:
 		_fisuras(vox, sd)
 	if pinchos:
@@ -305,6 +308,8 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 				if not vox.has(p) or _h(p.x, p.y, p.z, sd + 13) > visibles or (hierro and _bordes(p) >= 2) or (pinchos and p.y > TOPE_PINCHOS):   # (las púas no se agrietan; las grietas del hierro no tocan el marco ni los remaches)
 					continue
 				_grieta(vox, p, cara, nucleo, c, sd, tipo)
+	if punto:
+		_farolito(vox, c)
 	if trampa:   # (la trampa se deshace de abajo hacia arriba: cuanto más abajo, más minibloques faltan, y los que quedan se ven cada vez más transparentes (ver `_opacidad_trampa`))
 		for q in vox.keys():
 			if q.y <= 6 and _h(q.x, q.y, q.z, sd + 61) < float(6 - q.y) * 0.085:
@@ -503,6 +508,53 @@ static func _color_pinchos(p: Vector3i, c: float, sd: int) -> Color:
 	if p.y == TOPE_PINCHOS and _bordes(p) >= 1 and (p.x == 0 or p.x == N - 1 or p.z == 0 or p.z == N - 1):
 		col = col.darkened(0.25)   # (el borde de la base)
 	return col
+
+
+## El color del checkpoint: oro cuando está encendido (poco corrupto) y bronce oscuro, casi apagado, cuando está corrupto; el marco (aristas) un poco más oscuro.
+static func _color_checkpoint(p: Vector3i, c: float, sd: int) -> Color:
+	var r := _h(p.x, p.y, p.z, sd + 3)
+	var oro := Color(0.93, 0.74, 0.28).lightened(r * 0.08).lerp(Color(1.0, 0.86, 0.45), clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.6)
+	var apagado := Color(0.30, 0.22, 0.12).lightened(r * 0.1)
+	var col := oro.lerp(apagado, clampf(c * 1.6, 0.0, 1.0) * (0.55 + 0.45 * clampf((c - 0.5) / 0.5, 0.0, 1.0)))
+	if _bordes(p) >= 2:
+		col = col.darkened(0.2)
+	return col
+
+
+## El farolito: un marco más oscuro de 6x6 en la cara de arriba y, en el medio, 2x2 de luz. Encendido (limpio): la luz brilla; apagado (corrupto): un vidrio oscuro con un punto de magma.
+static func _farolito(vox: Dictionary, c: float) -> void:
+	var encendido := 1.0 - clampf(c * 2.0, 0.0, 1.0)
+	for x in range(2, 8):
+		for z in range(2, 8):
+			var p := Vector3i(x, N - 1, z)
+			if not vox.has(p):
+				continue
+			var centro := x >= 4 and x <= 5 and z >= 4 and z <= 5
+			if centro:
+				var luz := Color(1.0, 0.95, 0.6, lerpf(1.0, 0.3, encendido))
+				vox[p] = Color(0.22, 0.12, 0.25).lerp(luz, encendido) if encendido > 0.0 else Color(0.22, 0.12, 0.25)
+				if encendido <= 0.0 and x == 4 and z == 4:
+					vox[p] = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.5)
+			elif x == 2 or x == 7 or z == 2 or z == 7:
+				vox[p] = (vox[p] as Color).darkened(0.3)
+
+
+## El cubo-portal del final de la torre: un marco dorado en las doce aristas, las caras de luz crema (que brillan) y la de arriba abierta (ahí van las ondas del portal).
+static func portal() -> Dictionary:
+	var vox := {}
+	for x in N:
+		for y in N:
+			for z in N:
+				var p := Vector3i(x, y, z)
+				var b := _bordes(p)
+				if b == 0:
+					continue
+				var h := _h(x, y, z, 5)
+				if b >= 2:
+					vox[p] = Color(0.95, 0.78, 0.3).lightened(h * 0.1).darkened(0.1 if b == 3 else 0.0)
+				elif y != N - 1:
+					vox[p] = Color(1.0, 0.95, 0.78, 0.55 + h * 0.1)   # (cara de luz)
+	return vox
 
 
 ## Las cinco púas: cada una de 2 x 2 minibloques de base y uno más de alto, que se afinan hasta una punta de uno (pisos 7 y 8). Plateadas con la punta casi blanca; con corrupción, negras con la punta de magma

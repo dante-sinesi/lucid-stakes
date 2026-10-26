@@ -27,3 +27,7 @@ Una bola de hierro de 10x10x10 con la tapa (y el piso) aplanados, un aro en el m
 ## Catapulta (`catapulta`)
 
 Una placa de abajo, un plato de arriba (la cara que se pisa queda entera) y cuatro resortes en las esquinas con uno más fino en el medio. Limpia: placas naranjas y resortes plateados. Corrupta: placas casi negras con grietas de magma, resortes de hierro oscuro con tramos rotos y alguna grieta de magma. Se usa en la torre con la letra `k`.
+
+## Checkpoint (`checkpoint`) y portal (`portal`)
+
+El checkpoint (letras `p` y `f` de las salas) es un bloque dorado con el farolito en el medio de la cara de arriba: un marco más oscuro de 6x6 y 2x2 de luz. Apagado es la versión corrupta (bronce oscuro con grietas de magma y la luz como un vidrio oscuro); al pisarlo se enciende (`encendidos` de la torre) y pasa a la versión purificada (oro limpio y la luz brillando). El portal es el cubo del final de la torre: marco dorado en las doce aristas y caras de luz crema que brillan; la cara de arriba queda abierta porque ahí van las ondas del portal. No tiene versión corrupta ni etapas.
