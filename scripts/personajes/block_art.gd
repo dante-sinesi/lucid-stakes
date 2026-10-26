@@ -56,8 +56,8 @@ const PALETA_HIELO := {
 const PALETA_ARENA := {
 	"arena": [Color(0.66, 0.54, 0.39), Color(0.70, 0.58, 0.43), Color(0.74, 0.62, 0.47)],
 	"arena_limpia": [Color(0.72, 0.60, 0.44), Color(0.76, 0.64, 0.48), Color(0.80, 0.68, 0.52)],
-	"corrupto": [Color(0.17, 0.11, 0.08), Color(0.21, 0.14, 0.10), Color(0.26, 0.18, 0.12)],
-	"grieta": Color(0.27, 0.18, 0.11),
+	"corrupto": [Color(0.34, 0.17, 0.08), Color(0.40, 0.21, 0.10), Color(0.47, 0.26, 0.12)],   # (marrón rojizo de óxido: no se confunde con la obsidiana violeta)
+	"grieta": Color(0.20, 0.10, 0.05),
 	"cicatriz": Color(0.50, 0.38, 0.26),
 }
 
@@ -265,7 +265,9 @@ static func _color_arena(p: Vector3i, c: float, sd: int) -> Color:
 	var arena: Color = (PALETA_ARENA.arena[i] as Color).lerp(PALETA_ARENA.arena_limpia[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
 	var col := arena.lerp(PALETA_ARENA.corrupto[i], oscuro)
 	if p.y % 3 == 0:
-		col = col.darkened(0.10)   # (la capa)
+		col = col.darkened(0.14)   # (la capa)
+	elif p.y % 3 == 1:
+		col = col.lightened(0.05)
 	if _centro_arriba(p):
 		col = col.lightened(0.05)
 	return col
