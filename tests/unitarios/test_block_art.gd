@@ -64,7 +64,8 @@ func _init() -> void:
 			var arriba_h := true
 			for x in range(1, Art.N - 1):
 				for z in range(1, Art.N - 1):
-					arriba_h = arriba_h and h.has(Vector3i(x, Art.N - 1, z))
+					var sup_h := Vector3i(x, Art.N - 1, z)
+					arriba_h = arriba_h and (h.has(sup_h) or (h.has(sup_h + Vector3i(0, -1, 0)) and (h[sup_h + Vector3i(0, -1, 0)] as Color).a < 1.0))
 			check(arriba_h and h.size() > 700, "hierro estado %d semilla %d: arriba completo y sin huecos (%d)" % [estado, semilla, h.size()])
 	check(Art.bloque("hierro", Art.Estado.PURIFICADO, 2, 1) != Art.bloque("piedra", Art.Estado.PURIFICADO, 2, 1), "el hierro no es la piedra")
 	check(Art.bloque("hierro", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hierro", Art.Estado.PURIFICADO, 0, 2), "en el hierro también el corrupto del final es el purificado del principio")

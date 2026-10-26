@@ -5,7 +5,7 @@ extends RefCounted
 ## (como las pruebas), y bajan toda la escala: el corrupto de la última etapa parece el purificado de la primera, y el purificado de la última ya casi no tiene huellas.
 ## Los dos estados salen de la misma semilla: el bloque purificado es el corrupto ya curado (las mismas grietas, apagadas y cicatrizadas).
 ## El alfa del color de un minibloque marca que brilla (ver voxel_block.gdshader): las vetas corruptas emiten su propio color.
-## La cara de arriba se pisa: su centro (8 x 8) queda completo y a la misma altura; la única excepción son las ranuras finas de magma de la piedra con mucha corrupción (un minibloque de profundidad,
+## La cara de arriba se pisa: su centro (8 x 8) queda completo y a la misma altura; la única excepción son las ranuras finas de magma con mucha corrupción (un minibloque de profundidad,
 ## con el magma de abajo a la vista).
 
 const BlockModels := preload("res://scripts/personajes/block_models.gd")
@@ -246,7 +246,7 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 		var apagado := clampf((1.0 - c) / 0.55, 0.0, 1.0)   # (0 con la corrupción al máximo, 1 con 0,45)
 		color.a = lerpf(0.22 if nucleo else 0.40, 1.0, apagado)
 		var objetivo := p
-		if cara != 0 or (tipo == "piedra" and c > 0.7):   # (arriba también se hunde un minibloque, pero sólo con mucha corrupción y sólo en la piedra: una ranura fina de magma; el plano que se pisa sigue siendo el de siempre)
+		if cara != 0 or c > 0.7:   # (arriba también se hunde un minibloque, pero sólo con mucha corrupción: una ranura fina de magma; el plano que se pisa sigue siendo el de siempre)
 			var dentro := p + _hacia_adentro(cara)
 			if vox.has(dentro):
 				vox.erase(p)
