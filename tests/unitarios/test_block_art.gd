@@ -77,6 +77,16 @@ func _init() -> void:
 					arriba_hi = arriba_hi and (hi.has(sup_hi) or (hi.has(sup_hi + Vector3i(0, -1, 0)) and (hi[sup_hi + Vector3i(0, -1, 0)] as Color).a < 1.0))
 			check(arriba_hi and hi.size() > 600, "hielo estado %d semilla %d: arriba completo y sin huecos (%d)" % [estado, semilla, hi.size()])
 	check(Art.bloque("hielo", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hielo", Art.Estado.PURIFICADO, 0, 2), "en el hielo también el corrupto del final es el purificado del principio")
+	for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+		for semilla in 8:
+			var ar: Dictionary = Art.bloque("arenisca", estado, 0, semilla)
+			var arriba_ar := true
+			for x in range(1, Art.N - 1):
+				for z in range(1, Art.N - 1):
+					var sup_ar := Vector3i(x, Art.N - 1, z)
+					arriba_ar = arriba_ar and (ar.has(sup_ar) or (ar.has(sup_ar + Vector3i(0, -1, 0)) and (ar[sup_ar + Vector3i(0, -1, 0)] as Color).a < 1.0))
+			check(arriba_ar and ar.size() > 500, "arenisca estado %d semilla %d: arriba completo y sin huecos (%d)" % [estado, semilla, ar.size()])
+	check(Art.bloque("arenisca", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("arenisca", Art.Estado.PURIFICADO, 0, 2), "en la arenisca también el corrupto del final es el purificado del principio")
 	check(Art.bloque("hierro", Art.Estado.PURIFICADO, 2, 1) != Art.bloque("piedra", Art.Estado.PURIFICADO, 2, 1), "el hierro no es la piedra")
 	check(Art.bloque("hierro", Art.Estado.CORRUPTO, 4, 2) == Art.bloque("hierro", Art.Estado.PURIFICADO, 0, 2), "en el hierro también el corrupto del final es el purificado del principio")
 	check(Art.malla_bloque("hierro", Art.Estado.CORRUPTO, 0, 1).get_surface_count() == 1, "la malla del hierro se arma")

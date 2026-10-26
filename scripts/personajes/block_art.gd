@@ -51,6 +51,16 @@ const PALETA_HIELO := {
 	"cicatriz": Color(0.50, 0.68, 0.80),
 }
 
+## El bloque agrietado (arenisca): arena cálida en capas (sedimentos), con grietas hondas que se ven siempre (es lo que lo hace frágil: se rompe al bajarse de él); corrupto es
+## marrón oscuro con magma en las grietas. Se desmorona más que la piedra en esquinas y aristas.
+const PALETA_ARENA := {
+	"arena": [Color(0.66, 0.54, 0.39), Color(0.70, 0.58, 0.43), Color(0.74, 0.62, 0.47)],
+	"arena_limpia": [Color(0.72, 0.60, 0.44), Color(0.76, 0.64, 0.48), Color(0.80, 0.68, 0.52)],
+	"corrupto": [Color(0.17, 0.11, 0.08), Color(0.21, 0.14, 0.10), Color(0.26, 0.18, 0.12)],
+	"grieta": Color(0.27, 0.18, 0.11),
+	"cicatriz": Color(0.50, 0.38, 0.26),
+}
+
 const CORRUPCION_CORRUPTO := [1.0, 0.83, 0.70, 0.60, 0.50]
 const CORRUPCION_PURIFICADO := [0.50, 0.33, 0.20, 0.10, 0.0]
 
@@ -103,7 +113,12 @@ static func hielo(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla, "hielo")
 
 
-## Los minibloques de un tipo de bloque ("piedra", "hierro" o "hielo") en un estado y nivel.
+## Los minibloques de un bloque agrietado (arenisca): {Vector3i: Color}.
+static func arenisca(estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	return piedra_con(corrupcion(estado, nivel), semilla, "arenisca")
+
+
+## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo" o "arenisca") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
 	return piedra_con(corrupcion(estado, nivel), semilla, tipo)
 
@@ -114,11 +129,12 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 	var vox := {}
 	var hierro := tipo == "hierro"   # (el hierro se desgasta mucho menos: es un cubo de placas)
 	var es_hielo := tipo == "hielo"   # (el hielo se astilla en las aristas)
+	var arena := tipo == "arenisca"   # (la arenisca se desmorona: más que la piedra)
 	# 1) la forma: las esquinas y aristas se desgastan y hay mordiscos en las esquinas (más cuanto más corrupto)
-	var p_arista := 0.0 if hierro else (lerpf(0.0, 0.30, c) if es_hielo else lerpf(0.03, 0.38, c))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
+	var p_arista := 0.0 if hierro else (lerpf(0.0, 0.30, c) if es_hielo else (lerpf(0.18, 0.45, c) if arena else lerpf(0.03, 0.38, c)))   # (el hierro conserva su marco, sus esquinas y sus remaches enteros)
 	var p_cara := lerpf(0.0, 0.04, c) if hierro else (lerpf(0.0, 0.03, c) if es_hielo else lerpf(0.01, 0.06, c))
-	var p_esquina := 0.0 if hierro else (1.0 if es_hielo else lerpf(0.15, 1.0, c))
-	var n_mordiscos := 0 if (hierro or es_hielo) else roundi(lerpf(0.0, 3.0, c))
+	var p_esquina := 0.0 if hierro else (1.0 if es_hielo else (lerpf(0.55, 1.0, c) if arena else lerpf(0.15, 1.0, c)))
+	var n_mordiscos := 0 if (hierro or es_hielo) else (roundi(lerpf(1.0, 3.0, c)) if arena else roundi(lerpf(0.0, 3.0, c)))
 	var radio_mordisco := lerpf(1.4, 2.0, c)
 	var mordiscos: Array[Vector3] = []
 	var rng := RandomNumberGenerator.new()
@@ -144,17 +160,17 @@ static func piedra_con(c: float, semilla := 0, tipo := "piedra") -> Dictionary:
 							mordido = true
 					if mordido and p.y < N - 1:
 						continue
-				vox[p] = _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else _color_base(p, c, sd))
+				vox[p] = _color_hierro(p, c, sd) if hierro else (_color_hielo(p, c, sd) if es_hielo else (_color_arena(p, c, sd) if arena else _color_base(p, c, sd)))
 	# 2) las grietas, que son la corrupción: caminos de un minibloque en cada cara (menos la de abajo), siempre los mismos para una semilla (un bloque que se limpia
 	# conserva sus grietas, cada vez más cortadas y apagadas); con mucha corrupción son vetas hundidas con magma que brilla, y con poca, cicatrices con algún resto de vena
 	var rng_g := RandomNumberGenerator.new()
 	rng_g.seed = sd + 100
-	var visibles := clampf(c * 1.5, 0.0, 1.0)   # (qué parte de cada grieta se ve)
+	var visibles := maxf(clampf(c * 1.5, 0.0, 1.0), 0.8) if arena else clampf(c * 1.5, 0.0, 1.0)   # (qué parte de cada grieta se ve; en la arenisca las grietas hondas se ven siempre)
 	for cara in 5:
 		var caminos: Array = [_camino(rng_g, 13 + rng_g.randi() % 8), _camino(rng_g, 12 + rng_g.randi() % 8)]
 		var con_segundo := rng_g.randf() < 0.45
 		for k in caminos.size():
-			if k == 1 and not con_segundo and c > 0.7:
+			if k == 1 and not con_segundo and c > 0.7 and not arena:
 				continue
 			var i := 0
 			for uv in caminos[k]:
@@ -240,6 +256,21 @@ static func _color_hielo(p: Vector3i, c: float, sd: int) -> Color:
 	return col
 
 
+## El color de la arenisca en un minibloque: arena cálida (más clara cuanto más limpia) o marrón oscuro con la corrupción (rampa entre 0,5 y 1), en capas horizontales
+## (cada tres minibloques una franja un poco más oscura, como los sedimentos).
+static func _color_arena(p: Vector3i, c: float, sd: int) -> Color:
+	var r := _h(p.x, p.y, p.z, sd + 3)
+	var i := 0 if r < 0.4 else (1 if r < 0.8 else 2)
+	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
+	var arena: Color = (PALETA_ARENA.arena[i] as Color).lerp(PALETA_ARENA.arena_limpia[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
+	var col := arena.lerp(PALETA_ARENA.corrupto[i], oscuro)
+	if p.y % 3 == 0:
+		col = col.darkened(0.10)   # (la capa)
+	if _centro_arriba(p):
+		col = col.lightened(0.05)
+	return col
+
+
 ## Un camino al azar sobre una cara de 10 x 10, en ocho direcciones: sigue derecho casi siempre y gira de a 45 grados, así las grietas hacen curvas.
 static func _camino(rng: RandomNumberGenerator, largo: int) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
@@ -310,6 +341,15 @@ static func _grieta(vox: Dictionary, p: Vector3i, cara: int, nucleo: bool, c: fl
 				var q: Vector3i = objetivo + d
 				if vox.has(q) and (vox[q] as Color).a >= 1.0 and (vox[q] as Color).r < 0.3:
 					vox[q] = PALETA.halo if _h(q.x, q.y, q.z, 77) < 0.16 else (vox[q] as Color).lerp(PALETA.roca_vena, 0.5)
+		return
+	if tipo == "arenisca":   # (la grieta honda de la arenisca sigue ahí aunque se limpie: en los costados se hunde un minibloque y arriba queda una línea oscura a ras)
+		if cara != 0:
+			var dentro_a := p + _hacia_adentro(cara)
+			if vox.has(dentro_a):
+				vox.erase(p)
+				vox[dentro_a] = (PALETA_ARENA.grieta as Color).lerp(PALETA_ARENA.cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.4)
+				return
+		vox[p] = (PALETA_ARENA.grieta as Color).lerp(PALETA_ARENA.cicatriz, clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.4)
 		return
 	var resto := _h(p.x, p.y, p.z, sd + 5) < lerpf(0.0, 0.5, c / 0.45)
 	var cicatriz: Color = (((PALETA_HIERRO.cicatriz if tipo == "hierro" else (PALETA_HIELO.cicatriz if tipo == "hielo" else PALETA.cicatriz))) as Color).lerp(Color(0.74, 0.70, 0.86), clampf(1.0 - c * 2.0, 0.0, 1.0) * 0.6)
