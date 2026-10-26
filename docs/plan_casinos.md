@@ -90,6 +90,12 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 
 - Cada visita sortea sus papeles; los aceptados quedan marcados.
 
+### Rotar los papeles
+- La pantalla del tablón tiene un botón **"Rotar"**, como la vitrina de la ruleta (`showcase.gd`: `rotate_cost` = ficha × (1 + rotaciones de la visita)): vuelve a sortear los papeles **que no se aceptaron** (los aceptados se quedan) y cada rotación de la visita cuesta más que la anterior. El contador se reinicia al entrar a cada casino.
+- Costo de partida: **la mitad de la ficha × (1 + rotaciones)** (`ROTAR_CONTRATOS`), o sea, con la ficha de la etapa 1 (33): 16, 33, 49… Se cobra en claridad. Es una constante: la mitad porque un contrato común de la etapa 1 paga unos 17 y rotar al precio de la ficha entera nunca valdría la pena.
+- Mientras se rota, la cantidad de papeles del casino no cambia (3, 4, 5 o 6) y la rareza de los nuevos se sortea de nuevo.
+- Con *Llave de la vitrina* ("la primera rotación de la vitrina de cada visita es gratis") queda por decidir si también hace gratis la primera rotación del tablón.
+
 ### Rareza: el sello del papel
 - La rareza se ve en un **sello** sobre la hoja que cambia de color: **gris** (común), **azul** (raro), **violeta** (épico).
 - La rareza no se elige: sale de lo que paga el objetivo (ver "Recompensa y dificultad de la tarea"). Cuanto más difícil la tarea, más paga y más raro el sello; y todo escala con la etapa.
@@ -164,6 +170,7 @@ Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino,
 - Los porcentajes de cada objetivo (la recompensa), y qué objetivos cuentan como "muy duros".
 - `FIANZA_MULT` (×1,5 de partida) y si `FIANZA_FRACCION` (50 %) se queda fijo o pasa a depender de algo.
 - Rareza y nombre del consumible "Sello de oro" (×5), y si se puede acumular más de uno.
+- Si *Llave de la vitrina* abarca también la primera rotación de contratos, y la base del costo de rotar (la mitad de la ficha de partida).
 - Que el boost "Contratista" (cada contrato paga el doble) exista, su nombre y su rareza.
 - Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
 - Si algún boost debería ser exclusivo de un casino (sin limitar lo que sale en los demás).
