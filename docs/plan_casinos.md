@@ -91,7 +91,7 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 
 ### Rareza: el sello del papel
 - La rareza se ve en un **sello** sobre la hoja que cambia de color: **gris** (común), **azul** (raro), **violeta** (épico).
-- La dificultad de la tarea y la recompensa suben con la rareza y con la etapa.
+- La rareza no se elige: sale de lo que paga el objetivo (ver "Recompensa y dificultad de la tarea"). Cuanto más difícil la tarea, más paga y más raro el sello; y todo escala con la etapa.
 
 ### Límite
 - **2 contratos activos** a la vez. El boost **"Caza recompensas"** da **+1** a la cantidad de contratos que se pueden aceptar.
@@ -101,13 +101,28 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 - **Animación del cobro:** un sello baja sobre el papel y deja un "COBRADO" en el centro.
 - Los contratos activos se ven en el **menú de pausa**; en el HUD solo una marquita al cumplirse.
 
-### Fianza (solo en los dos últimos casinos)
-- En el **casino** y el **gran casino** se puede aceptar un contrato **con fianza**: pagas claridad al aceptar y, si cumples, recibes la fianza de vuelta más una recompensa mayor; si no cumples, la pierdes.
-- La fianza queda apartada mientras el contrato esté activo (no se puede gastar).
-- *Falta definir:* tamaño de la fianza respecto a la recompensa y cuánto multiplica el premio (son constantes de balance).
+### Recompensa y dificultad de la tarea
+- Cada objetivo del catálogo trae su propia **`recompensa`**: un porcentaje de lo que rinde una torre en esa etapa (tabla de la sección 1; **no** del peaje, para no romper la pared). Es el dato que expresa **cuánto cuesta cumplirlo**: "sobrar movimientos" puede valer 10 %, "no empujar en ninguna sala" 20 %, y algo muy duro como "terminar la torre sin movimientos de escalada" 60 % o más, bastante por encima de cualquier otro.
+- La **rareza del sello** sale de ese valor: gris por debajo de ~15 %, azul hasta ~30 %, violeta desde ahí (los muy altos son violetas y listo; no hace falta un cuarto color).
+- Los números concretos son constantes de balance y se mueven al final. Lo que sí queda fijo en el diseño: la recompensa es un campo de cada objetivo, nunca una función de la rareza.
+- Ejemplo (etapa 12, la torre rinde ~727): común 10 % = 73, raro 20 % = 145, épico 35 % = 254, "sin escalar" 60 % = 436.
 
-### Recompensa (balance, para más adelante)
-Porcentaje de lo que rinde una torre en esa etapa (tabla de la sección 1): común ~10 %, raro ~20 %, épico ~35 %. A modo de ejemplo, en la etapa 1: 17 / 33 / 58. Que sea un porcentaje del ingreso medido (y **no** del peaje) evita que los contratos rompan la pared. Los de rareza alta pueden pagar también un consumible o un boost. Todo esto son constantes.
+### Fianza (solo en los dos últimos casinos)
+- Se puede aceptar un contrato **con fianza** en el **casino** y el **gran casino**. Pagas claridad al aceptar; si cumples, recibes la fianza de vuelta y la recompensa multiplicada; si no cumples, pierdes la fianza.
+- **Tamaño:** por ahora una constante: `FIANZA_FRACCION` = **50 % de la recompensa del contrato**. Como la recompensa ya depende de la dificultad de la tarea, **la fianza sube sola con ella** (la de "sin escalar" es mucho más cara que la de "sobrar movimientos") sin tocar nada más. Si más adelante se quiere otra relación, se cambia la función `fianza(contrato)` y listo.
+- **Premio:** constante `FIANZA_MULT` (empieza en **×1,5**: se recibe una vez y media la recompensa más la fianza de vuelta). Con fianza f (como fracción de la recompensa) y multiplicador m, conviene aceptarla si la probabilidad de cumplir supera f / (m − 1 + f):
+
+| Fianza | Multiplicador | Conviene si cumples más del |
+|---|---|---|
+| 50 % | ×1,5 | 50 % |
+| 50 % | ×2 | 33 % |
+| 50 % | ×2,5 | 25 % |
+
+  El ajuste fino es la constante, no el código.
+- La fianza queda apartada mientras el contrato esté activo (no se puede gastar) y se resuelve al cumplir o al terminar la torre.
+- **La explosividad no la pone la fianza**: la ponen la dificultad de la tarea (los objetivos muy duros pagan mucho de por sí) y los ítems:
+  - **Boost "Contratista"** (nombre provisorio, épico): cada contrato paga el doble, también el premio de la fianza.
+  - Con los tres factores juntos (tarea dura × fianza × Contratista) un contrato puede pagar varias veces lo que rinde una torre. Es lo que se busca en las etapas altas (el "se rompe" de Balatro), contenido por el límite de contratos activos (2, o 3 con Caza recompensas).
 
 ### Objetivos posibles (a pulir)
 Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar a una racha, desarmar una bomba, purificar N bloques especiales, no empujar ni tirar en una sala, no perder vidas, usar una catapulta.
@@ -144,7 +159,9 @@ Ideas para diferenciar más, **sin decidir**: premios por rareza según el casin
 
 ## 8. Pendientes de decisión
 
-- Fianza: cuánto cuesta (el "tamaño") y cuánto más paga (el "premio"). Ejemplo para discutirlo: contrato raro de la etapa 12, recompensa base 145. Con fianza de 145, si se cumple se recibe la fianza de vuelta más el doble de la recompensa (290), neto +290 en vez de +145; si no se cumple se pierden los 145. Con esos números conviene tomarla si la probabilidad de cumplir supera el 50 %.
+- Los porcentajes de cada objetivo (la recompensa), y qué objetivos cuentan como "muy duros".
+- `FIANZA_MULT` (×1,5 de partida) y si `FIANZA_FRACCION` (50 %) se queda fijo o pasa a depender de algo.
+- Que el boost "Contratista" (cada contrato paga el doble) exista, su nombre y su rareza.
 - Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
 - Premios por rareza según el casino.
 - Si el casino y el gran casino llevan alguna estación (hoy, sin la Caja fuerte, no tienen ninguna).
