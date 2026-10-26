@@ -25,6 +25,8 @@ func rich_run(stage := 1, claridad := 1000) -> RefCounted:
 func _init() -> void:
 	var old_base: int = Roulette.base_price   # (estas pruebas razonan con la ficha de los primeros balances: 50 y +4 por etapa; el balance actual se elige aparte)
 	var old_step: int = Roulette.price_step
+	var old_chica: Array = Roulette.chica_mult
+	Roulette.chica_mult = []   # (sin la ficha chica de la taberna)
 	Roulette.base_price = 50
 	Roulette.price_step = 4
 	test_items()
@@ -32,8 +34,11 @@ func _init() -> void:
 	test_roulette_rules()
 	test_roulette_resolve()
 	test_roulette_statistics()
+	Roulette.chica_mult = old_chica
+	test_ficha_chica()
 	Roulette.base_price = old_base
 	Roulette.price_step = old_step
+	Roulette.chica_mult = old_chica
 	print("tests del casino terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -244,3 +249,16 @@ func test_roulette_statistics() -> void:
 		var real := got / spent
 		var expected := Roulette.expected_ratio(b, 1)
 		check(absf(real - expected) < 0.12, "%s: rendimiento medido %.2f cerca del esperado %.2f" % [Roulette.BETS[b].name, real, expected])
+
+
+## La ficha de la taberna (etapas 1 a 3) es una fracción de la de la fórmula y desde la etapa 4 es la de siempre: sin saltos grandes.
+func test_ficha_chica() -> void:
+	var viejo_base: int = Roulette.base_price
+	var viejo_paso: int = Roulette.price_step
+	Roulette.base_price = 75
+	Roulette.price_step = 6
+	check(Roulette.price(1) == 34 and Roulette.price(2) == 57 and Roulette.price(3) == 63, "la ficha de la taberna: 34, 57 y 63 (%d, %d, %d)" % [Roulette.price(1), Roulette.price(2), Roulette.price(3)])
+	check(Roulette.price(4) == 93 and Roulette.price(5) == 99, "desde la etapa 4 la ficha es la de la fórmula")
+	check(Roulette.price(3) < Roulette.price(4) and Roulette.price(4) - Roulette.price(3) < 40, "no hay un salto grande al pasar al salón")
+	Roulette.base_price = viejo_base
+	Roulette.price_step = viejo_paso

@@ -24,14 +24,18 @@ const BETS := {
 	Bet.RANGO: {"name": "Rango", "count": 9, "tier": Items.Tier.CONSUMIBLE},
 }
 static var base_price := 75   # (variables: el bot las cambia por variable de entorno)
-## La ficha sube PRICE_STEP por etapa: 50 en la etapa 1 y 106 en la 15. Una torre da, siguiendo el camino mínimo, entre ~190 de
-## claridad (etapa 1) y ~390 (etapas altas), así que cada tirada cuesta alrededor de un cuarto de lo que se junta en la etapa.
+## La ficha sube PRICE_STEP por etapa. Una torre rinde, siguiendo el camino mínimo (medido con el bot, docs/plan_casinos.md), unos 170 de claridad en la etapa 1, 280 en la 2, 320 en
+## la 3, 440 en la 4 y 930 en la 15: la ficha ronda un 20 % de eso desde la etapa 4.
 static var price_step := 6
+## Las tres primeras etapas (la taberna) tienen la ficha más chica, para que después del peaje alcance para jugar: es esta fracción de la que daría la fórmula.
+static var chica_mult: Array = [0.45, 0.70, 0.72]
 
 
 ## Precio de la ficha en una etapa (igual para las cuatro apuestas).
 static func price(stage: int, mult := 1.0) -> int:
-	return maxi(int(round((base_price + price_step * (maxi(stage, 1) - 1)) * mult)), 1)
+	var s := maxi(stage, 1)
+	var chica := float(chica_mult[s - 1]) if s <= chica_mult.size() else 1.0
+	return maxi(int(round((base_price + price_step * (s - 1)) * chica * mult)), 1)
 
 
 ## Lo que cuesta la ficha en un run (los escenarios pueden abaratarla).
