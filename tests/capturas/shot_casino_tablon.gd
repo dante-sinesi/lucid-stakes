@@ -1,5 +1,5 @@
 extends SceneTree
-## Captura la sala de un casino con más detalle (`build_detalle`) y su tablón de contratos contra la pared del norte; con "base" dibuja la sala de siempre para comparar.
+## Captura la sala de un casino con más detalle (`build_detalle`) y su tablón de contratos en la pared oeste; con "base" dibuja la sala de siempre para comparar.
 ## Uso: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1300x800 -s tests/capturas/shot_casino_tablon.gd -- ARCHIVO.png NIVEL(0..3) [cerca] [base]
 const Room := preload("res://scripts/casino/casino_room.gd")
 const VoxelMesh := preload("res://scripts/ui/voxel_mesh.gd")

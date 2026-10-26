@@ -225,7 +225,7 @@ func farolin_cell_free() -> bool:
 	if not lay.has("farolin") or not Room.in_room(lay.farolin, lay):
 		return false
 	var f: Vector2i = lay.farolin
-	if f == lay.exit or f == lay.entry or f == lay.dealer or lay.table.has_point(f) or lay.machines.has(f) or lay.obstacles.has(f) or (lay.has("station") and f == lay.station.cell):
+	if f == lay.exit or f == lay.entry or f == lay.dealer or lay.table.has_point(f) or lay.machines.has(f) or lay.obstacles.has(f) or (lay.has("station") and f == lay.station.cell) or (lay.has("tablon") and f == lay.tablon):
 		return false
 	for ct in lay.card_tables:
 		if ct.has_point(f):

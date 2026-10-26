@@ -42,7 +42,8 @@ func test_layout() -> void:
 	var ids := []
 	check(not Room.layout(1).has("station") and Services.service_for_tier(0) == "", "la taberna no tiene estación de servicio")
 	check(not Room.layout(13).has("station") and Services.service_for_tier(3) == "", "el gran casino no tiene estación de servicio (ya no hay seguro)")
-	for st in [5, 9]:
+	check(not Room.layout(9).has("station"), "el casino ya no tiene la Caja fuerte en su sala")
+	for st in [5]:
 		var lay := Room.layout(st)
 		ids.append(lay.station.id)
 		check(Services.service_for_tier(lay.tier) == lay.station.id, "la estación de la etapa %d es la de su nivel" % st)
@@ -53,7 +54,7 @@ func test_layout() -> void:
 			near = near or reach.has(lay.station.cell + d)
 		check(near, "se llega caminando hasta la estación de la etapa %d" % st)
 		check(not Room.build_voxels(st).solid.is_empty(), "la sala de la etapa %d se arma con su estación" % st)
-	check(ids == ["taller", "caja"], "una estación distinta por nivel (sólo salón y casino): %s" % str(ids))
+	check(ids == ["taller"], "la única estación de las salas es el Taller del salón: %s" % str(ids))
 
 
 func test_taller() -> void:
@@ -196,9 +197,9 @@ func test_screens() -> void:
 
 
 func test_scene() -> void:
-	var run := make_run(10, 500)
+	var run := make_run(5, 500)
 	run.vault = 100
-	run.vault_stage = 9
+	run.vault_stage = 4
 	var c := CasinoScene.new()
 	root.add_child(c)
 	c.quick = true
@@ -218,7 +219,7 @@ func test_scene() -> void:
 	story_c.story = true
 	root.add_child(story_c)
 	story_c.quick = true
-	story_c.setup(make_run(8, 0), RandomNumberGenerator.new())
+	story_c.setup(make_run(5, 0), RandomNumberGenerator.new())
 	await process_frame
 	check(story_c._bump(story_c.lay.station.cell) == "blocked" and story_c.screen == null, "en el tutorial la estación está cerrada")
 	story_c.queue_free()
