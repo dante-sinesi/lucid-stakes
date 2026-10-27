@@ -56,11 +56,11 @@ Criterios para elegir entre las ideas de abajo:
 | Mareo | sí, en cualquier etapa | la cámara gira cada cinco movimientos |
 | Terremoto | sí | cada ocho movimientos un bloque suelto se corre una celda |
 | **Ventisca** (nueva) | sí | el viento mueve al jugador una celda cada tanto (ficha abajo) |
-| Plomo | sí, pero sin resolver | falta decidir cómo darle dificultad, y no hay salas de ese tipo |
+| Plomo | para más adelante | falta decidir cómo darle dificultad, y no hay salas de ese tipo |
 | Corrupción que vuelve | sí | los bloques purificados se corrompen de nuevo cada diez movimientos |
-| Casino torcido | sí, en el casino y el gran casino | falta decidir cómo se entiende que sea una prueba que no está en la torre |
-| Peaje por adelantado | sí, con la misma duda | igual que el casino torcido |
-| **El gatito travieso** | sí, **cuanto antes** | ficha abajo |
+| Casino torcido | sí, como evento aleatorio del casino | no es una prueba: es un evento (ver más abajo) |
+| Peaje por adelantado | sí, como evento aleatorio del casino | igual |
+| **El gatito travieso** | sí, **cuanto antes** | mueve de dos a tres bloques; ficha abajo |
 | Sombra | pendiente | no se entendió la prueba: reexplicada abajo |
 | La Pesadilla despierta | sí, sin duda | el jefe final (etapa 15) |
 
@@ -87,10 +87,10 @@ Cada cierto número de movimientos sopla una **ventisca** que **empuja al jugado
 *Cuidado:* el colgarse es justamente la salida cuando el viento te tira al vacío.
 
 ### El gatito travieso
-Al entrar a cada sala, un **gatito** aparece, corre y **mueve de lugar un bloque común** (una celda). Cada sala se parece a la de siempre, pero no es igual.
+Al entrar a cada sala, un **gatito** aparece, corre y **mueve de lugar de dos a tres bloques comunes** (una celda cada uno): más cuanto más alta es la sala. Cada sala se parece a la de siempre, pero no es igual.
 *Cómo se juega:* hay que mirar la sala antes de moverte porque ya no es como la viste en la ayuda o en la partida anterior.
-*Que siga siendo resoluble:* el cambio tiene que dejar la sala con solución. Hay dos caminos: (a) el juego **comprueba con el solucionador** que la sala sigue resolviéndose y, si no, el gatito elige otro bloque u otra celda; o (b) cada sala trae **ya calculados** los cambios seguros. En los dos casos se **recalcula el mínimo** y con él el límite de movimientos de la sala.
-*A decidir:* si el gatito mueve uno o dos bloques, y si es el gato del personaje o uno propio de la prueba.
+*Que siga siendo resoluble:* el cambio tiene que dejar la sala con solución. Hay dos caminos: (a) el juego **comprueba con el solucionador** que la sala sigue resolviéndose y, si no, el gatito elige otros bloques u otras celdas; o (b) cada sala trae **ya calculados** los cambios seguros. En los dos casos se **recalcula el mínimo** y con él el límite de movimientos de la sala.
+**El personaje (decidido, para más adelante):** un **gato nuevo**, parecido a los de Minecraft pero no igual, con **más personalidad**, y con **animaciones**: entra corriendo, olfatea, empuja los bloques con la pata y se va satisfecho. Cuando termina de hacer de las suyas, **espera en el checkpoint junto a Farolín**, y los dos tienen **animaciones juntos** (el gato se frota contra Farolín, Farolín lo mira de reojo, el gato juega con la llama...). Esto último es la segunda etapa: primero la mecánica, después el personaje con su arte y sus animaciones.
 
 ### Sombra (reexplicada)
 Una **sombra** sale del checkpoint detrás de ti, siempre **cinco movimientos atrás**, y **repite exactamente tu camino**. Si te alcanza (llega a la celda donde estás), pierdes la sala.
@@ -101,19 +101,19 @@ Una **sombra** sale del checkpoint detrás de ti, siempre **cinco movimientos at
 La última torre **combina dos de las reglas de arriba** y paga el máximo (×2,7 y un boost épico). Combinaciones que se llevan bien: **Mareo + Terremoto** (el mundo entero se mueve), **Memoria de pez + Ventisca** (no ves y te empujan) o **Presupuesto compartido + Mareo** (cada movimiento cuenta y la cámara gira).
 *A decidir:* si es una combinación fija o si se sortea entre unas pocas.
 
-## Plomo (pendiente)
+## Plomo (para más adelante)
 
 Todos los bloques son pesados: se trepan pero no se empujan; solo se mueven unos pocos, marcados. Hay dos problemas: **no hay salas con tantos bloques pesados** (hoy hay 121 salas con algún pesado, no salas hechas de ellos) y, si los bloques movibles están marcados, **es obvio cuáles mover**.
 *Una salida para la dificultad:* mezclarlo con la idea de **A oscuras**: los bloques movibles están entre los oscuros, así que no sabes cuáles se mueven hasta probar. Las salas con muchos pesados se podrían **generar con el generador** pidiendo el rol pesado.
 
-## Casino torcido y Peaje por adelantado (pendiente)
+## Eventos aleatorios del casino (decidido)
 
-Ambos pasan **en el casino**, no en la torre, y entonces **no se entiende por qué se supera una prueba** que no se juega en la torre. Dos formas de resolverlo:
+El **casino torcido** y el **peaje por adelantado** no son pruebas: son **eventos aleatorios del casino**. A veces, al entrar a un casino, pasa algo, lo cuenta un personaje y cambia esa visita. Sale solo en el casino y el gran casino (los que tienen más mesas).
 
-1. **No son pruebas, son "eventos del casino".** Farolín los anuncia al salir de la torre ("hoy el casino está torcido") y tienen su propio premio. Salen solo en el casino y el gran casino, como pediste.
-2. **Pasan a la torre.** El **peaje** se cobra **en la torre, sala por sala** ("Farolín cobra una moneda en cada checkpoint y te la devuelve al terminar"), y el **casino torcido** se convierte en una prueba con **una torre mezclada** (la torre trae una sala de casino a mitad de camino: la mesa que sale es la que se juega).
+- **Casino torcido.** Al entrar, el tabernero dice algo como *"Tuvimos unos desperfectos... esta noche solo podrás jugar a la ruleta"* (o a las tragamonedas, o al blackjack). Las demás mesas quedan cerradas esa visita.
+- **Peaje por adelantado.** Al entrar, Farolín dice algo como *"Tengo unas deudas... voy a necesitar que me des un adelanto"*. Cobra el peaje de esa etapa **antes** de jugar en el casino, y al salir lo descuenta (o te devuelve una parte) cuando vuelve a cobrar.
 
-La 1 es lo más simple y mantiene la idea; la 2 respeta que una prueba se supera en la torre.
+Cada evento aparece de vez en cuando (no en todas las visitas), siempre se anuncia con diálogo, y sirve también para darle más historia a los personajes. Quedan para más adelante otros eventos de este estilo: *"Hoy el Taller está cerrado"*, *"el tablón tiene el doble de papeles"*, *"una mesa paga el doble"*, etc.
 
 ## Cómo asegurar que las salas sigan siendo resolubles
 
@@ -127,7 +127,7 @@ Hay una forma barata para varias de las pruebas con cuidado, y es **usar lo que 
 
 ## Cómo seguir
 
-1. Cerrar las dudas de las fichas (Memoria de pez, A oscuras, Ventisca, gatito y Sombra).
-2. Decidir qué hacemos con Casino torcido y Peaje por adelantado.
-3. Ordenar las pruebas por etapa: cuáles pueden caer en la 3 y en la 6, cuáles solo de la 9 en adelante y cuáles son del final.
-4. Empezar por **El gatito travieso**.
+1. **Empezar por El gatito travieso** (primero la mecánica; el gato con su arte y sus animaciones, después).
+2. Cerrar las dudas de las fichas que quedan: Memoria de pez, A oscuras, Ventisca y Sombra.
+3. Los eventos del casino (casino torcido y peaje por adelantado) se hacen aparte, como parte de los casinos.
+4. Ordenar las pruebas por etapa: cuáles pueden caer en la 3 y en la 6, cuáles solo de la 9 en adelante y cuáles son del final.
