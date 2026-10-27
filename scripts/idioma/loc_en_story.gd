@@ -2,6 +2,7 @@ extends RefCounted
 ## Inglés: la historia del tabernero y el tutorial. Ver loc.gd.
 
 const TABLE := {
+	"Ah, y tus ahorros rindieron: te tocó cobrar %d de claridad.": "Oh, and your savings paid off: you collect %d clarity.",
 	"Bloque corrupto": "Corrupted block",
 	"Se pisa, se empuja y se tira. Al pisarlo se purifica y da claridad; si encadenas pisadas nuevas, la racha la multiplica.": "It can be stepped on, pushed and pulled. Stepping on it purifies it and gives clarity; if you chain new steps, the streak multiplies it.",
 	"Te hace resbalar hasta que algo te frene, y si no hay nada, hasta el vacío. No se puede agarrar de él para colgarse.": "It makes you slide until something stops you, and if nothing does, into the void. You can't hang from it.",
@@ -63,9 +64,6 @@ It gives you exactly the moves you need: if you lose one or step back, it blows 
 	"Etapa %d/%d%s": "Stage %d/%d%s",
 	"¡Empate!": "Tie!",
 	"¡Perdiste!": "You lost!",
-	"Ah, y tu caja fuerte rindió: te toca cobrar %d de claridad, con interés.": "Oh, and your safe paid off: you collect %d clarity, with interest.",
-	"Te lo repito: en esta sala rige «%s». %s": "Let me repeat: in this room «%s» applies. %s",
-	"En esta sala rige «%s». %s Mientras estés aquí, vale.": "In this room «%s» applies. %s It holds while you're here.",
 	"Ojo con lo que viene: la próxima torre es una prueba, «%s». %s": "Watch out for what's coming: the next tower is a trial, «%s». %s",
 	"Y ojo: dentro de %d torres te espera una prueba, «%s». %s": "And watch out: in %d towers a trial awaits you, «%s». %s",
 	"Cada ficha es un pedazo de despertar. ¿Cuánto vas a arriesgar?": "Every chip is a piece of waking up. How much will you risk?",

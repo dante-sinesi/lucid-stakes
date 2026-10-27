@@ -15,7 +15,7 @@ const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 const PrizesWindow := preload("res://scripts/ui/prizes_window.gd")
 const Juice := preload("res://scripts/ui/juice.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
-const RuleUI := preload("res://scripts/casino/casino_rule_ui.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Sfx := preload("res://scripts/sonido/sfx.gd")
 const ResultOverlay := preload("res://scripts/ui/result_overlay.gd")
 const PadHints := preload("res://scripts/ui/pad_hints.gd")
@@ -40,7 +40,6 @@ var selected: Array = []   # casillas elegidas (en orden de elección)
 
 var wheel
 var claridad_counter       # [ícono] claridad del run
-var rule_label: Control
 var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
 var sparkles: Control
 var price_counter          # [ícono] precio de la ficha
@@ -91,8 +90,6 @@ func _build() -> void:
 	claridad_counter = ClarityCounter.new(4.0)
 	claridad_counter.name = "claridad"
 	top.add_child(claridad_counter)
-	rule_label = RuleUI.make_status(top, 620)   # (el estado de la regla ya no se muestra: lo cuenta el tabernero)
-	rule_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(gap)
@@ -320,7 +317,7 @@ func _show_overlay(res: Dictionary) -> void:
 		delta += extra
 	elif not res.won and extra > 0:
 		delta += extra
-	overlay.show_result(res.won, delta, item_id, item_name, RuleUI.notes(res))
+	overlay.show_result(res.won, delta, item_id, item_name, Rules.notes(res))
 
 
 ## Con el mando: A gira, X pone o saca la ficha de la casilla marcada, la cruceta (o el stick) mueve la marca, LB y RB cambian el tipo de apuesta, Y abre los premios, LT rota la vitrina y B sale.
@@ -442,7 +439,7 @@ func _show_result(res: Dictionary) -> void:
 			txt = Loc.f("¡Cayó el %d! Ganaste %s: %s", [res.pocket, Loc.t(prize.name), Loc.t(prize.desc)])
 		color = Color(1.0, 0.9, 0.45)
 	result_label.cube = 2.0
-	result_label.text = txt + RuleUI.notes(res)
+	result_label.text = txt + Rules.notes(res)
 	result_label.color = color
 	if not fast:
 		Juice.pop(result_label, 1.2)

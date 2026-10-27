@@ -4,7 +4,7 @@ const VFont := preload("res://scripts/ui/voxel_font.gd")
 const Story := preload("res://scripts/datos/story.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const Farolin := preload("res://scripts/personajes/farolin.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Trials := preload("res://scripts/datos/trials.gd")
 const BlockGuide := preload("res://scripts/datos/block_guide.gd")
 const DialogueBox := preload("res://scripts/ui/dialogue_box.gd")
@@ -39,15 +39,14 @@ func _init() -> void:
 		_check("mesa bloqueada", Story.BLOCKED_TABLE)
 		for g in Story.GREETINGS:
 			_check("saludo", g)
-		for r in Rules.RULES:
-			for next in [{}, {"trial": Trials.for_stage({3: "meteoritos"}, 3), "left": 0}, {"trial": Trials.for_stage({6: "todo_o_nada"}, 6), "left": 2}]:
-				for known in [false, true]:
-					for l in Story.keeper(r, known, next, 0, 12345):
-						_check("tabernero casino " + str(r.id), l)
+		for next in [{}, {"trial": Trials.for_stage({3: "meteoritos"}, 3), "left": 0}, {"trial": Trials.for_stage({6: "todo_o_nada"}, 6), "left": 2}]:
+			for ahorro in [0, 12345]:
+				for l in Story.keeper(next, 0, ahorro):
+					_check("tabernero casino", l)
 		for id in Trials.CATALOG:
 			var t: Dictionary = Trials.CATALOG[id].duplicate()
 			t["id"] = id
-			for l in Story.keeper(Rules.RULES[0], false, {"trial": t, "left": 0}, 0, 0):
+			for l in Story.keeper({"trial": t, "left": 0}, 0, 0):
 				_check("prueba " + id, l)
 		for price in [5, 999, 123456789]:
 			for have in [0, price, price * 2]:

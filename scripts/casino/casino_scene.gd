@@ -21,12 +21,12 @@ const VoxelLabel := preload("res://scripts/ui/voxel_label.gd")
 const ItemBar := preload("res://scripts/ui/item_bar.gd")
 const ConsumablePick := preload("res://scripts/entrada/consumable_pick.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
+const Contratos := preload("res://scripts/datos/contratos.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
 const LivesHud := preload("res://scripts/ui/lives_hud.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
-const RuleUI := preload("res://scripts/casino/casino_rule_ui.gd")
 const Services := preload("res://scripts/casino/casino_services.gd")
 const HudPanel := preload("res://scripts/ui/hud_panel.gd")
 const Story := preload("res://scripts/datos/story.gd")
@@ -95,8 +95,9 @@ var _farolin: Node3D
 var _arrow: Node3D            # flecha que marca la puerta de salida
 var _t := 0.0
 var quick := false            # pruebas: sin animaciones
-var _vault_paid := 0          # lo que cobró la caja fuerte al entrar (lo comenta el tabernero)
+var _ahorro_cobrado := 0      # lo que cobraron la Caja fuerte y la Alcancía al entrar (lo comenta el tabernero)
 var _greeting := -1           # qué saludo toca ahora (el tabernero va variando)
+var _tablon_nodos: Array = []   # las mallas del tablón de contratos (se rehacen cuando cambian sus papeles)
 
 
 func setup(run_state, random: RandomNumberGenerator) -> void:
@@ -107,12 +108,14 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	cell = lay.entry
 	if not story:
 		CasinoTheme.apply_ui(int(lay.tier))   # los botones y textos se limpian según el nivel de la sala (se restablece al salir)
-	var vault_paid := 0
+	var ahorro := 0
 	if not story:
-		vault_paid = Services.enter(run)   # se paga la caja fuerte del casino anterior
-		Rules.enter(run, int(lay.tier))   # la regla de la casa de esta sala (casino_rules.gd)
+		ahorro = Services.enter(run)   # se cobran la Caja fuerte y la Alcancía
+		Rules.enter(run, int(lay.tier))   # la visita a esta sala (casino_visit.gd)
+		Contratos.entrar(run, rng, int(lay.tier))   # los papeles de la cartelera (los nuevos aparecen en los huecos)
 		Showcase.enter(run, rng)   # la vitrina de premios de esta visita (showcase.gd)
 	_build_room()
+	_build_tablon()
 	_build_portals()
 	_build_player()
 	_build_camera()
@@ -121,9 +124,9 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 		hud_layer.visible = false
 	facing = Vector2i(1, 0)   # (al llegar mira hacia adentro de la sala, como si saliera del portal de la pared oeste)
 	_place_player()
-	_vault_paid = vault_paid
-	if vault_paid > 0:
-		_flash(Loc.f("Caja fuerte: cobras %d de claridad (con interés).", [vault_paid]))
+	_ahorro_cobrado = ahorro
+	if ahorro > 0:
+		_flash(Loc.f("Tus ahorros rinden: cobras %d de claridad.", [ahorro]))
 	_refresh_hud()
 
 
@@ -147,16 +150,16 @@ func _glow_material() -> StandardMaterial3D:
 	return m
 
 
-func _mesh_node(vox: Dictionary, material: Material) -> MeshInstance3D:
+func _mesh_node(vox: Dictionary, material: Material, size := Room.VOXEL_FINO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	mi.mesh = VoxelMesh.build(vox, Room.VOXEL)
+	mi.mesh = VoxelMesh.build(vox, size)
 	mi.material_override = material
 	add_child(mi)
 	return mi
 
 
 func _build_room() -> void:
-	var data := Room.build_voxels(run.stage, int(run.scenario().get("casino_tier", -1)))
+	var data := Room.build_detalle(run.stage, int(run.scenario().get("casino_tier", -1)))
 	var base_solid: Dictionary = data.solid.duplicate()
 	var base_glow: Dictionary = data.glow.duplicate()
 	for side in ["west", "north"]:
@@ -166,8 +169,31 @@ func _build_room() -> void:
 			base_glow.erase(p)
 	_mesh_node(base_solid, _solid_material())
 	_mesh_node(base_glow, _glow_material())
+	if not data.fino.is_empty():   # (los papeles del tablón: minibloques de un tercio de tamaño)
+		_mesh_node(data.fino, _solid_material(), Room.VOXEL_FINO / 3.0)
 	for side in ["west", "north"]:
 		walls[side] = [_mesh_node(data[side].solid, _solid_material()), _mesh_node(data[side].glow, _glow_material())]
+
+
+## Lo que cuelga del tablón: un {rareza, objetivo} por lugar (null: vacío).
+func _papeles_del_tablon() -> Array:
+	var out: Array = []
+	for p in Contratos.cartelera(run):
+		out.append(null if p == null else {"rareza": int(p.r), "objetivo": str(Contratos.OBJETIVOS[p.obj].icono)})
+	return out
+
+
+## Arma (o vuelve a armar) las mallas del tablón de contratos con los papeles de ahora.
+func _build_tablon() -> void:
+	for n in _tablon_nodos:
+		n.queue_free()
+	_tablon_nodos.clear()
+	if not lay.has("tablon") or story:
+		return
+	var data := Room.build_tablon(run.stage, int(run.scenario().get("casino_tier", -1)), _papeles_del_tablon())
+	_tablon_nodos.append(_mesh_node(data.solid, _solid_material()))
+	_tablon_nodos.append(_mesh_node(data.glow, _glow_material()))
+	_tablon_nodos.append(_mesh_node(data.fino, _solid_material(), Room.VOXEL_FINO / 3.0))
 
 
 ## Los portales de las paredes (el de llegada, sólo estético, y el de salida): ondas que se mueven, como los de Minecraft. Se ocultan con su pared.
@@ -223,7 +249,7 @@ func farolin_cell_free() -> bool:
 	if not lay.has("farolin") or not Room.in_room(lay.farolin, lay):
 		return false
 	var f: Vector2i = lay.farolin
-	if f == lay.exit or f == lay.entry or f == lay.dealer or lay.table.has_point(f) or lay.machines.has(f) or lay.obstacles.has(f) or (lay.has("station") and f == lay.station.cell):
+	if f == lay.exit or f == lay.entry or f == lay.dealer or lay.table.has_point(f) or lay.machines.has(f) or lay.obstacles.has(f) or (lay.has("station") and f == lay.station.cell) or (lay.has("tablon") and f == lay.tablon) or lay.get("lamps", []).has(f):
 		return false
 	for ct in lay.card_tables:
 		if ct.has_point(f):
@@ -404,6 +430,26 @@ func use_consumable_slot(slot: int) -> void:
 		run.casino_visit["double"] = true
 		run.use_consumable(id)
 		_flash(Loc.t("Lo que ganes en esta visita vale el doble"))
+	elif id == "racha_de_visita":
+		if run.boosts.has("racha_de_la_casa") or not Rules.encender_racha(run):
+			_flash(Loc.t("La racha ya está encendida"))
+			return
+		run.use_consumable(id)
+		_flash(Loc.t("Esta visita, cada victoria seguida suma al pago de la siguiente"))
+	elif id == "alcancia":
+		if run.alcancia:
+			_flash(Loc.t("Ya tienes una alcancía lista"))
+			return
+		run.alcancia = true
+		run.use_consumable(id)
+		_flash(Loc.t("En el próximo casino cobras parte de lo que ahorraste"))
+	elif id == "sello_de_oro":
+		if run.sello_oro:
+			_flash(Loc.t("Ya tienes un sello de oro listo"))
+			return
+		run.sello_oro = true
+		run.use_consumable(id)
+		_flash(Loc.t("El próximo contrato que cobres paga cinco veces más"))
 	elif id == "soborno":
 		if toll_base <= 0 or run.toll_bribe:
 			_flash(Loc.t("Farolín no cobra, o ya lo sobornaste"))
@@ -522,6 +568,12 @@ func _bump(n: Vector2i) -> String:
 			return "blocked"
 		open_service()
 		return "service"
+	if lay.has("tablon") and n == lay.tablon:
+		if story:
+			story_message.emit(preload("res://scripts/datos/story.gd").BLOCKED_TABLE)
+			return "blocked"
+		open_tablon()
+		return "service"
 	for ct in lay.card_tables:
 		if ct.has_point(n):
 			if story:
@@ -537,7 +589,7 @@ func interact() -> String:
 	if busy or leaving or input_locked:
 		return "blocked"
 	var n := cell + facing
-	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("station") and n == lay.station.cell) or (toll_base > 0 and n == lay.farolin):
+	if lay.table.has_point(n) or n == lay.dealer or lay.machines.has(n) or (lay.has("tablon") and not story and n == lay.tablon) or (lay.has("station") and n == lay.station.cell) or (toll_base > 0 and n == lay.farolin):
 		return _bump(n)
 	for ct in lay.card_tables:
 		if ct.has_point(n):
@@ -545,16 +597,14 @@ func interact() -> String:
 	return "blocked"
 
 
-## Habla con el tabernero (el de detrás de la mesa): saluda, cuenta la regla de la casa de esta sala (que desde ahora rige en toda la visita) y la próxima prueba.
+## Habla con el tabernero (el de detrás de la mesa): saluda, comenta lo que rindieron tus ahorros y cuenta la próxima prueba.
 ## Emite `keeper_talk` con lo que dice (el juego lo muestra en el cuadro de diálogo) y lo devuelve.
 func talk_to_keeper() -> Array:
 	if _greeting < 0:
 		_greeting = rng.randi() % Story.GREETINGS.size()
 	else:
 		_greeting = (_greeting + 1) % Story.GREETINGS.size()
-	var rule := Rules.rule_of(int(lay.tier))
-	var lines := Story.keeper(rule, Rules.accepted(run), run.next_trial_info(run.stage + 1), _greeting, _vault_paid)
-	Rules.accept(run)
+	var lines := Story.keeper(run.next_trial_info(run.stage + 1), _greeting, _ahorro_cobrado)
 	keeper_talk.emit(lines)
 	return lines
 
@@ -571,9 +621,17 @@ func open_slots() -> void:
 	_open_screen(SlotsScreen.new())
 
 
-## Abre la estación de servicio de la sala (Taller o Caja fuerte).
+## Abre la estación de servicio de la sala (el Taller del salón).
 func open_service() -> void:
 	_open_screen(ServiceScreens.make(str(lay.station.id)))
+
+
+## Abre el tablón de contratos.
+func open_tablon() -> void:
+	var s: Control = ServiceScreens.make("tablon")
+	s.tier = int(lay.tier)
+	s.pestanas = true   # (el tablón y la tienda son dos pestañas de lo mismo)
+	_open_screen(s)
 
 
 func open_blackjack() -> void:
@@ -597,11 +655,19 @@ func _open_screen(new_screen: Control) -> void:
 	screen.setup(run, rng, quick)
 	GameHelp.attach(screen, GameHelp.id_for(screen))   # la ayuda del juego: se abre sola la primera vez y con H o Select
 	screen.closed.connect(close_roulette)
-	screen.resolved.connect(func(): changed.emit())
+	screen.resolved.connect(func():
+		changed.emit()
+		_build_tablon())   # (aceptar, rechazar o rotar cambia lo que cuelga del tablón)
 	if screen.has_signal("open_shop"):   # las estaciones de servicio tienen un botón para pasar a la tienda
+		var desde_tablon: bool = screen.pestanas
 		screen.open_shop.connect(func():
 			close_roulette()
-			_open_screen(ServiceScreens.make("tienda")))
+			var shop: Control = ServiceScreens.make("tienda")
+			shop.pestanas = desde_tablon
+			_open_screen(shop))
+		screen.open_tablon.connect(func():
+			close_roulette()
+			open_tablon())
 	hud_layer.visible = false   # el juego ocupa toda la pantalla: la interfaz del casino no se ve detras
 
 

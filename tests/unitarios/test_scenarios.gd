@@ -140,6 +140,8 @@ func test_abilities_effects() -> void:
 func test_price_and_casino() -> void:
 	var old_base: int = Roulette.base_price   # (se razona con la ficha de los primeros balances: 50 y +4 por etapa)
 	var old_step: int = Roulette.price_step
+	var old_chica: Array = Roulette.chica_mult
+	Roulette.chica_mult = []   # (sin la ficha chica de la taberna)
 	Roulette.base_price = 50
 	Roulette.price_step = 4
 	var run := RunState.new()
@@ -148,6 +150,7 @@ func test_price_and_casino() -> void:
 	check(Roulette.run_price(run) == 38 and Roulette.price(10, 0.5) == 43 and Roulette.price(1) == 50, "el escenario puede abaratar la ficha")
 	Roulette.base_price = old_base
 	Roulette.price_step = old_step
+	Roulette.chica_mult = old_chica
 	var lay := Room.layout(1, 3)
 	check(lay.tier == 3 and Room.layout(1).tier == 0 and Room.layout(15, 0).tier == 0, "el escenario puede fijar el nivel del casino")
 	var v := Room.build_voxels(1, 3)

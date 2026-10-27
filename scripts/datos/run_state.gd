@@ -41,9 +41,11 @@ var movs_extra := 0               # movimientos de más en cada sala (Pies liger
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
 var bonus_lives := 0       # corazones de más que dan las habilidades persistentes (Corazón extra)
 var lives := MAX_LIVES    # vidas: cuántas veces se puede reintentar después de morir (3 por partida, sin importar la etapa)
-var casino_visit := {}    # estado de la visita al casino actual (casino_rules.gd); no se guarda
-var vault := 0            # claridad guardada en la caja fuerte (casino_services.gd); se cobra con interés en el casino siguiente
-var vault_stage := 0      # etapa del casino en el que se guardó
+var casino_visit := {}    # estado de la visita al casino actual (casino_visit.gd); no se guarda
+var claridad_inicio_torre := 0   # la claridad con la que se empezó la torre actual (la Caja fuerte y la Alcancía cobran un porcentaje de eso al entrar al casino)
+var alcancia := false    # Alcancía usada: al entrar al próximo casino se cobra
+var contratos := {}      # el tablón de contratos y los activos (contratos.gd); se guarda
+var sello_oro := false   # Sello de oro usado: el próximo contrato que se cobre paga ×5
 
 ## Reintentar la torre cuesta claridad: la mitad de la ficha de la ruleta de la etapa, y un poco más por cada reintento
 ## que ya hiciste en esta misma torre (el primero cuesta 1 vez, el segundo 2 veces, etc.).
@@ -84,24 +86,25 @@ func apply_interest() -> int:
 	return g
 
 
-## La curva de Farolín (docs/diseno.md §46). Se construye sobre lo que rinde una torre (medido con tests/sim_ingresos.gd: la recta `INCOME_BASE + INCOME_SLOPE × etapa`;
-## lo más que se vio fue 1,5 veces la recta) y tiene una pared: **a partir de la etapa WALL_STAGE no se puede pagar sin boosts ni consumibles que suban la ganancia**,
+## La curva de Farolín (docs/diseno.md §46). Se construye sobre lo que rinde una torre (`INGRESO_MEDIDO`;
+## lo más que se juntó fue 1,5 veces eso) y tiene una pared: **a partir de la etapa WALL_STAGE no se puede pagar sin boosts ni consumibles que suban la ganancia**,
 ## ni siquiera juntando lo máximo en cada torre y sin gastar nada en el casino.
-static var income_base := 340.0     # (variables, no constantes: el bot las cambia por variable de entorno para probar curvas, tests/sondas/bot_runs.gd)
-static var income_slope := 25.0
+## Lo que rinde una torre por etapa siguiendo el camino mínimo de cada sala, sin boosts (medido con el bot de `tests/sondas`, 10 torres por etapa en dificultad media; docs/plan_casinos.md).
+const INGRESO_MEDIDO: Array[int] = [167, 283, 315, 439, 463, 546, 565, 621, 609, 709, 783, 727, 841, 832, 927]
+static var income_scale := 1.0      # (variables, no constantes: el bot las cambia por variable de entorno para probar curvas, tests/sondas/bot_runs.gd)
 static var income_ceil := 1.5       # lo máximo que junta una torre sin boosts, sobre la recta
 const WALL_STAGE := 8          # desde acá hay que tener boosts que disparen la ganancia
 const HILL_START := 3          # hasta esta etapa el precio es el de siempre; de ahí sube de a poco hasta la pared (la colina)
 static var hill_power := 1.25        # 1 = geométrico parejo; más: sube más tarde
-static var wall_growth := 1.20      # lo que crece el precio cada etapa después de la pared
+static var wall_growth := 1.25      # lo que crece el precio cada etapa después de la pared
 static var wall_margin := 50        # lo que se pasa del presupuesto máximo el precio de la pared
 static var pre_wall_from := 0.35    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
 static var pre_wall_to := 1.00      # ...y esta en la etapa anterior a la pared
 
 
-## Lo que rinde una torre de esa etapa en promedio (la recta de las torres medidas).
+## Lo que rinde una torre de esa etapa en promedio.
 static func income_fit(stage: int) -> float:
-	return income_base + income_slope * float(maxi(stage, 1))
+	return float(INGRESO_MEDIDO[clampi(stage, 1, INGRESO_MEDIDO.size()) - 1]) * income_scale
 
 
 ## Lo máximo que puede juntar una torre de esa etapa sin boosts (juego perfecto, con un margen sobre lo medido).
@@ -344,7 +347,7 @@ func to_dict() -> Dictionary:
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "movs_extra": movs_extra,
 			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
-			"vault": vault, "vault_stage": vault_stage, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
+			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
 
 
 func _schedule_out() -> Dictionary:
@@ -387,8 +390,10 @@ static func from_dict(d: Dictionary) -> RefCounted:
 		r.dice_pending = {"luz": int(dp.get("luz", 0)), "cosmetics": []}
 		for id in dp.get("cosmetics", []):
 			r.dice_pending.cosmetics.append(str(id))
-	r.vault = int(d.get("vault", 0))
-	r.vault_stage = int(d.get("vault_stage", 0))
+	r.claridad_inicio_torre = int(d.get("claridad_inicio_torre", 0))
+	r.alcancia = bool(d.get("alcancia", false))
+	r.contratos = d.get("contratos", {}) if d.get("contratos", {}) is Dictionary else {}
+	r.sello_oro = bool(d.get("sello_oro", false))
 	r.toll_bribe = bool(d.get("toll_bribe", false))
 	var sc = d.get("showcase", {})
 	r.showcase = sc.duplicate(true) if sc is Dictionary else {}

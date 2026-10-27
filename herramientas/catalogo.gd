@@ -8,7 +8,7 @@ const Trials := preload("res://scripts/datos/trials.gd")
 const Abilities := preload("res://scripts/datos/abilities.gd")
 const Items := preload("res://scripts/datos/items.gd")
 const BlockGuide := preload("res://scripts/datos/block_guide.gd")
-const CasinoRules := preload("res://scripts/casino/casino_rules.gd")
+const CasinoRules := preload("res://scripts/casino/casino_visit.gd")
 const CasinoServices := preload("res://scripts/casino/casino_services.gd")
 const Characters := preload("res://scripts/personajes/characters.gd")
 const Cosmetics := preload("res://scripts/personajes/cosmetics.gd")
@@ -27,7 +27,6 @@ func _init() -> void:
 	sheets["Consumibles"] = _items(Items.Type.CONSUMABLE, true)
 	sheets["Pruebas"] = _trials()
 	sheets["Escenarios"] = _scenarios()
-	sheets["Reglas de la casa"] = _rules()
 	sheets["Servicios del casino"] = _services()
 	sheets["Personajes"] = _characters()
 	sheets["Cosméticos"] = _cosmetics()
@@ -97,13 +96,6 @@ func _nombre_habilidad(id: String) -> String:
 				return str(p.name) + " (pendiente)"
 		return id
 	return str(a.name)
-
-
-func _rules() -> Array:
-	var out := []
-	for i in CasinoRules.RULES.size():
-		out.append([CasinoRules.RULES[i].name, CasinoRules.RULES[i].desc, CasinoRules.ROOM_NAMES[i]])
-	return out
 
 
 func _services() -> Array:

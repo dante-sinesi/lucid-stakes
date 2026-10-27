@@ -21,6 +21,9 @@ func _init() -> void:
 	test_look()
 	test_tiers()
 	test_mesh()
+	test_rediseno()
+	test_paredes()
+	test_detalle()
 	print("tests de la sala del casino terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
 
@@ -28,7 +31,7 @@ func _init() -> void:
 func test_layout() -> void:
 	check(Room.CELLS == Vector2i(11, 9), "la sala mide 11 x 9 celdas")
 	var blocked := Room.blocked_cells()
-	check(blocked.has(Room.DEALER) and blocked.has(Vector2i(3, 3)) and blocked.has(Vector2i(5, 4)), "la mesa y el crupier ocupan celdas")
+	check(blocked.has(Room.DEALER) and blocked.has(Vector2i(4, 3)) and blocked.has(Vector2i(6, 4)) and blocked.has(Room.TABLON), "la mesa, el crupier y el tablón ocupan celdas")
 	check(not blocked.has(Room.ENTRY) and not blocked.has(Room.EXIT), "la entrada y la salida no estan bloqueadas")
 	check(Room.in_room(Room.ENTRY) and Room.in_room(Room.EXIT) and Room.ENTRY != Room.EXIT, "entrada y salida estan dentro de la sala y son distintas")
 	var all_inside := true
@@ -123,7 +126,8 @@ func test_voxels() -> void:
 	# Las tragamonedas estan tapadas con su cartel "?"
 	var signs := 0
 	for m in Room.MACHINES:
-		if glow.has(Vector3i(m.x * Room.CELL_VOX + 3, 9, m.y * Room.CELL_VOX + 2)):
+		var lampara := Vector3i(m.x * Room.CELL_VOX + 3, 9, m.y * Room.CELL_VOX + 2) if m.x == 0 else Vector3i(m.x * Room.CELL_VOX + 2, 9, m.y * Room.CELL_VOX + 3)   # (las de la pared norte están giradas)
+		if glow.has(lampara):
 			signs += 1
 	check(signs == 3, "las 3 tragamonedas tienen su lampara")
 	# Las dos puertas: portal en espiral dentro de un marco, mas claro a medida que pasan las etapas.
@@ -168,8 +172,8 @@ func test_tiers() -> void:
 		machines.append(lay.machines.size())
 		check(lay.tier == Room.tier_of(st), "el layout de la etapa %d es del nivel %d" % [st, Room.tier_of(st)])
 	check(areas[0] < areas[1] and areas[1] < areas[2] and areas[2] < areas[3], "la sala crece: %s celdas" % str(areas))
-	check(machines[0] >= 1 and machines[0] <= machines[1] and machines[1] <= machines[2], "desde la taberna hay tragamonedas y los niveles altos suman más: %s" % str(machines))
-	check(Room.layout(1).card_tables.is_empty() and Room.layout(1).machines.size() == 1 and Room.layout(4).card_tables.size() == 1 and Room.layout(12).card_tables.size() == 2 and Room.layout(8).card_tables.size() == 1, "la taberna sólo tiene una tragamonedas y ninguna mesa de cartas; el salón suma una mesa y el gran casino tiene dos")
+	check(machines == [0, 2, 3, 3], "la taberna no tiene tragamonedas y el salón, el casino y el gran casino tienen 2, 3 y 3: %s" % str(machines))
+	check(Room.layout(1).card_tables.is_empty() and Room.layout(1).machines.is_empty() and Room.layout(4).card_tables.size() == 1 and Room.layout(12).card_tables.size() == 2 and Room.layout(8).card_tables.size() == 1, "la taberna sólo tiene la ruleta y el tablón; el salón suma una mesa de cartas y el gran casino tiene dos")
 	check(Room.layout(12).heights.size() > 10 and Room.layout(1).heights.is_empty(), "el gran casino tiene tarima con escalones; la taberna no")
 	var lay3 := Room.layout(14)
 	var min_h := 99
@@ -247,3 +251,75 @@ func test_mesh() -> void:
 	# dos juntos: se oculta la cara compartida
 	var two := VoxelMesh.build({Vector3i(0, 0, 0): Color.RED, Vector3i(1, 0, 0): Color.RED}, 1.0)
 	check(two.surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size() == 60, "dos minibloques pegados ocultan la cara compartida (60 vertices)")
+
+
+## Los planos de docs/plan_casinos.md: el tablón siempre en la pared oeste junto a la esquina del norte, las tragamonedas contra las paredes del fondo (oeste o norte), sin Caja
+## fuerte, y todo a la vista: se puede llegar caminando a cada mueble.
+func test_rediseno() -> void:
+	for st in [1, 5, 9, 13]:
+		var lay := Room.layout(st)
+		check(lay.tablon == Vector2i(0, 1), "etapa %d: el tablón está en la pared oeste, a una celda de la esquina del norte" % st)
+		check(not Room.walkable(lay.tablon, lay) and Room.in_room(lay.tablon, lay), "etapa %d: el tablón ocupa su celda" % st)
+		check(not lay.has("station") or lay.station.id == "taller", "etapa %d: no queda ninguna Caja fuerte" % st)
+		var reach := Room.reachable(lay.entry, lay)
+		var muebles: Array = [lay.tablon]
+		muebles.append_array(lay.machines)
+		if lay.has("station"):
+			muebles.append(lay.station.cell)
+		for m in muebles:
+			var cerca := false
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				cerca = cerca or reach.has(m + d)
+			check(cerca, "etapa %d: se llega caminando hasta el mueble de %s" % [st, str(m)])
+		for m in lay.machines:
+			check(m.x == 0 or m.y == 0, "etapa %d: la tragamonedas de %s está contra una pared del fondo" % [st, str(m)])
+			check(Room._frente_de_maquina(m) == ("este" if m.x == 0 else "sur"), "etapa %d: la tragamonedas de %s mira hacia adentro de la sala" % [st, str(m)])
+		check(reach.has(lay.exit) or reach.has(lay.exit + Vector2i(0, 1)), "etapa %d: se llega a la salida" % st)
+	check(Room.layout(9).station.get("id", "") == "" if Room.layout(9).has("station") else true, "el casino no tiene estación")
+
+
+## El modelo con el doble de resolución (`build_detalle`): mismas medidas en el mundo, más minibloques, y el tablón con sus papeles.
+func test_detalle() -> void:
+	for st in [1, 5, 9, 13]:
+		var base := Room.build_voxels(st)
+		var d := Room.build_detalle(st)
+		check(d.solid.size() > base.solid.size() * 4, "etapa %d: el modelo detallado tiene muchos más minibloques" % st)
+		check(d.fino.is_empty(), "etapa %d: el tablón vacío no tiene papeles" % st)
+		var con := Room.build_detalle(st, -1, {"papeles": [{"rareza": 0, "objetivo": "racha"}, {"rareza": 3, "objetivo": "bomba"}]})
+		check(con.fino.size() > 100, "etapa %d: con contratos cuelgan papeles en detalle" % st)
+		var x_max := 0
+		for p in d.solid:
+			x_max = maxi(x_max, p.x)
+		check(x_max < Room.layout(st).cells.x * Room.CELL_FINO + 1, "etapa %d: la sala detallada mide lo mismo" % st)
+		var west_x := 0
+		for p in con.fino:   # (los papeles del tablón están contra la pared oeste)
+			west_x = maxi(west_x, p.x)
+		check(west_x < 12 * 3, "etapa %d: los papeles están pegados a la pared oeste" % st)
+
+
+## Las paredes del fondo: ninguna decoración pisa a otra ni a un mueble, una puerta o un farol, y los faroles de pie y las columnas no cierran el paso.
+func test_paredes() -> void:
+	for st in [1, 5, 9, 13]:
+		var lay := Room.layout(st)
+		for tardio in [false, true]:
+			var deco := Room.paredes(lay, tardio)
+			for pared in ["norte", "oeste"]:
+				var tramos: Array = []
+				for d in deco[pared].decor:
+					check(int(d.desde) < int(d.hasta), "etapa %d %s: el tramo de %s tiene sentido" % [st, pared, d.tipo])
+					tramos.append([int(d.desde), int(d.hasta), str(d.tipo)])
+				for i in tramos.size():
+					for j in range(i + 1, tramos.size()):
+						check(tramos[i][1] <= tramos[j][0] or tramos[j][1] <= tramos[i][0], "etapa %d %s: %s y %s no se pisan" % [st, pared, tramos[i][2], tramos[j][2]])
+					for m in deco[pared].muebles:
+						check(tramos[i][1] <= int(m[0]) or int(m[1]) <= tramos[i][0], "etapa %d %s: %s no pisa un mueble ni una puerta (%s)" % [st, pared, tramos[i][2], str(m)])
+		var libre := Room.reachable(lay.entry, lay)
+		for lamp in lay.get("lamps", []):
+			check(Room.in_room(lamp, lay) and not Room.walkable(lamp, lay), "etapa %d: el farol de %s ocupa su celda" % [st, str(lamp)])
+			var junto := false
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				junto = junto or libre.has(lamp + d)
+			check(junto, "etapa %d: se llega caminando hasta el farol de %s" % [st, str(lamp)])
+		for o in lay.obstacles:
+			if st == 13:
+				check(o.x != 0 and o.y != 0, "el gran casino no tiene columnas contra las paredes del fondo: %s" % str(o))

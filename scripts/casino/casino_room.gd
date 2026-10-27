@@ -10,6 +10,8 @@ extends RefCounted
 ## (la "mugre" violeta es sólo decorado y baja a nada a medida que el run avanza).
 
 const Stages := preload("res://scripts/datos/stages.gd")
+const Arte := preload("res://scripts/ui/contract_art.gd")
+const Muebles := preload("res://scripts/casino/casino_muebles.gd")
 const CELL_VOX := 5            # minibloques por celda
 const VOXEL := 0.2
 
@@ -17,11 +19,12 @@ const VOXEL := 0.2
 # distribución por omisión de las funciones de abajo.
 const CELLS := Vector2i(11, 9)
 const ENTRY := Vector2i(0, 7)                 # donde se aparece al llegar: frente a la puerta de llegada (pared oeste, sólo estética)
-const EXIT := Vector2i(7, 0)                  # frente a la puerta de salida (pared norte): empujarla lleva a la torre siguiente
-const TABLE := Rect2i(3, 3, 3, 2)             # mesa de la ruleta
-const DEALER := Vector2i(4, 2)                # el crupier, detrás de la mesa
-const MACHINES: Array[Vector2i] = [Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 6)]  # tragamonedas (próximamente)
-const CARD_TABLE := Rect2i(8, 2, 2, 2)        # mesa de cartas (próximamente)
+const EXIT := Vector2i(8, 0)                  # frente a la puerta de salida (pared norte): empujarla lleva a la torre siguiente
+const TABLE := Rect2i(4, 3, 3, 2)             # mesa de la ruleta
+const DEALER := Vector2i(5, 2)                # el crupier, detrás de la mesa
+const MACHINES: Array[Vector2i] = [Vector2i(0, 3), Vector2i(0, 5), Vector2i(2, 0)]  # tragamonedas: dos en la pared oeste y una en la norte
+const CARD_TABLE := Rect2i(8, 3, 2, 2)        # mesa de cartas (próximamente)
+const TABLON := Vector2i(0, 1)                # el tablón de contratos: siempre en la pared oeste, junto a la esquina del norte
 
 # Paleta fija (las rueda y las fichas no cambian con la etapa)
 const GOLD := Color(0.88, 0.68, 0.26)
@@ -37,34 +40,36 @@ static func tier_of(stage: int) -> int:
 	return Stages.tier_of(stage)
 
 
-## Distribución de la sala de una etapa: {tier, cells, entry, exit, table, dealer, machines, card_tables, obstacles, farolin,
-## heights, table_h, cam_size}. `farolin` es la celda de Farolín (junto a la puerta de salida, contra su borde izquierdo (x - 1); sólo ocupa lugar si el casino cobra: `farolin_on`). `obstacles` son celdas decorativas que bloquean (barriles, plantas, columnas); `heights` es la
-## altura del piso (en minibloques) de las celdas elevadas; `table_h` es la altura a la que está la mesa de la ruleta.
+## Distribución de la sala de una etapa: {tier, cells, entry, exit, table, dealer, machines, card_tables, obstacles, tablon, lamps, farolin,
+## heights, table_h, cam_size}. `farolin` es la celda de Farolín (junto a la puerta de salida, contra su borde izquierdo (x - 1); sólo ocupa lugar si el casino cobra: `farolin_on`).
+## `obstacles` son celdas decorativas que bloquean (barriles, plantas, columnas); `heights` es la altura del piso (en minibloques) de las celdas elevadas; `table_h` es la altura a la
+## que está la mesa de la ruleta. Los muebles contra las paredes del fondo (las que mira la cámara) son: el tablón de contratos (`tablon`, en la pared oeste, en todos los
+## casinos), las tragamonedas (en la pared oeste o en la norte; `_frente_de_maquina`) y el Taller (`station`, pared oeste, sólo en el salón).
 static func layout(stage: int, tier_override := -1) -> Dictionary:
 	var machines: Array[Vector2i] = []
 	var obstacles: Array[Vector2i] = []
 	var heights := {}
 	var tier := tier_of(stage) if tier_override < 0 else tier_override
 	match tier:
-		0:   # taberna: chica, sólo la ruleta y una tragamonedas (y ninguna estación de servicio)
-			machines.assign([Vector2i(0, 1)])
+		0:   # taberna: chica, sólo la ruleta y el tablón
 			obstacles.assign([Vector2i(0, 0), Vector2i(6, 0), Vector2i(6, 5), Vector2i(0, 2)])
 			return {"tier": 0, "cells": Vector2i(7, 6), "entry": Vector2i(0, 4), "exit": Vector2i(5, 0), "table": Rect2i(2, 2, 3, 2),
-					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [] as Array[Rect2i], "obstacles": obstacles, "farolin": Vector2i(4, 0),
+					"dealer": Vector2i(3, 1), "machines": machines, "card_tables": [] as Array[Rect2i], "obstacles": obstacles, "tablon": TABLON, "lamps": [Vector2i(5, 5)] as Array[Vector2i], "farolin": Vector2i(4, 0),
 					"heights": heights, "table_h": 0, "cam_size": 9.5}
-		1:   # salón: más espacio, dos tragamonedas y una mesa de cartas
-			machines.assign([Vector2i(0, 1), Vector2i(0, 3)])
+		1:   # salón: ruleta, dos tragamonedas contra la pared norte, una mesa de cartas, el Taller y el tablón en la pared oeste
+			machines.assign([Vector2i(2, 0), Vector2i(3, 0)])
 			obstacles.assign([Vector2i(8, 0), Vector2i(8, 6)])
 			return {"tier": 1, "cells": Vector2i(9, 7), "entry": Vector2i(0, 5), "exit": Vector2i(6, 0), "table": Rect2i(3, 3, 3, 2),
-					"dealer": Vector2i(4, 2), "machines": machines, "card_tables": [Rect2i(7, 2, 2, 2)] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "taller", "cell": Vector2i(1, 6)}, "farolin": Vector2i(5, 0),
-					"heights": heights, "table_h": 0, "cam_size": 13.0}
+					"dealer": Vector2i(4, 2), "machines": machines, "card_tables": [Rect2i(7, 3, 2, 2)] as Array[Rect2i], "obstacles": obstacles,
+					"station": {"id": "taller", "cell": Vector2i(0, 3)}, "tablon": TABLON, "lamps": [Vector2i(7, 0), Vector2i(0, 6)] as Array[Vector2i], "farolin": Vector2i(5, 0), "heights": heights, "table_h": 0, "cam_size": 13.0}
 		2:   # casino
 			machines.assign(MACHINES)
+			obstacles.assign([Vector2i(10, 0), Vector2i(10, 8)])
 			return {"tier": 2, "cells": CELLS, "entry": ENTRY, "exit": EXIT, "table": TABLE, "dealer": DEALER, "machines": machines,
-					"card_tables": [CARD_TABLE] as Array[Rect2i], "obstacles": obstacles, "station": {"id": "caja", "cell": Vector2i(9, 7)}, "farolin": Vector2i(6, 0), "heights": heights, "table_h": 0, "cam_size": 15.0}
+					"card_tables": [CARD_TABLE] as Array[Rect2i], "obstacles": obstacles, "tablon": TABLON, "lamps": [Vector2i(9, 0), Vector2i(0, 8)] as Array[Vector2i], "farolin": Vector2i(7, 0), "heights": heights, "table_h": 0, "cam_size": 15.0}
 		_:   # gran casino: la ruleta está sobre una tarima con dos escalones
-			machines.assign([Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 6)])
-			obstacles.assign([Vector2i(2, 2), Vector2i(2, 8), Vector2i(9, 8), Vector2i(11, 1)])   # columnas de mármol
+			machines.assign([Vector2i(0, 3), Vector2i(0, 5), Vector2i(0, 7)])
+			obstacles.assign([Vector2i(11, 1), Vector2i(2, 8), Vector2i(10, 8), Vector2i(12, 8)])   # columnas de mármol (ninguna toca las paredes del fondo: no cierran el paso)
 			var table := Rect2i(5, 4, 3, 2)
 			for x in range(table.position.x - 2, table.end.x + 2):
 				for z in range(table.position.y - 2, table.end.y + 2):
@@ -75,7 +80,12 @@ static func layout(stage: int, tier_override := -1) -> Dictionary:
 					heights[Vector2i(x, z)] = 4 if maxi(dx, dz) <= 1 else 2
 			return {"tier": 3, "cells": Vector2i(13, 11), "entry": Vector2i(0, 9), "exit": Vector2i(9, 0), "table": table,
 					"dealer": Vector2i(6, 3), "machines": machines, "card_tables": [Rect2i(10, 3, 2, 2), Rect2i(10, 6, 2, 2)] as Array[Rect2i],
-					"obstacles": obstacles, "farolin": Vector2i(8, 0), "heights": heights, "table_h": 4, "cam_size": 19.0}
+					"obstacles": obstacles, "tablon": TABLON, "lamps": [Vector2i(0, 10)] as Array[Vector2i], "farolin": Vector2i(8, 0), "heights": heights, "table_h": 4, "cam_size": 19.0}
+
+
+## Hacia dónde mira una tragamonedas: las de la pared oeste miran al este; las de la pared norte, al sur.
+static func _frente_de_maquina(m: Vector2i) -> String:
+	return "este" if m.x == 0 else "sur"
 
 
 ## La distribución por omisión (la del nivel 2) para quien no pasa una.
@@ -105,6 +115,10 @@ static func blocked_cells(lay := {}) -> Dictionary:
 		out[o] = true
 	if l.has("station"):
 		out[l.station.cell] = true
+	if l.has("tablon"):
+		out[l.tablon] = true
+	for lamp in l.get("lamps", []):
+		out[lamp] = true
 	if l.get("farolin_on", false) and l.has("farolin"):   # Farolín (el peaje) ocupa una celda junto a la puerta de salida
 		out[l.farolin] = true
 	return out
@@ -353,7 +367,101 @@ static func _pilaster(wall: Dictionary, u: int, west: bool, H: int, L: Dictionar
 			wall[Vector3i(2, y, u + w) if west else Vector3i(u + w, y, 2)] = L.gold
 
 
-static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
+## Lo que hay contra las paredes del fondo y lo que se les cuelga, en minibloques a lo largo de cada pared (el norte, en x; el oeste, en z; los tramos son [desde, hasta)). `muebles`:
+## lo que ya ocupa la pared (tragamonedas, tablón, Taller, puertas con su marco y lo que está en la fila de la pared); `decor`: lo que se dibuja, de a una cosa: {tipo, desde, hasta}
+## con el tipo "chimenea", "cartel", "estante", "cuadro", "aplique" o "pilastra" (`indice`: cuál cuadro es, para elegir su color). Ninguna decoración pisa a otra ni a los muebles
+## (lo prueba `test_casino_room.gd`). `tardio`: las etapas avanzadas del casino suman otra pilastra.
+static func paredes(lay: Dictionary, tardio := false) -> Dictionary:
+	var norte := []
+	var oeste := []
+	var door_x: int = lay.exit.x * CELL_VOX
+	var door_z: int = lay.entry.y * CELL_VOX
+	norte.append([door_x - 1, door_x + CELL_VOX + 1])
+	oeste.append([door_z - 1, door_z + CELL_VOX + 1])
+	for m in lay.machines:
+		if m.y == 0:
+			norte.append([m.x * CELL_VOX, (m.x + 1) * CELL_VOX])
+		if m.x == 0:
+			oeste.append([m.y * CELL_VOX, (m.y + 1) * CELL_VOX])
+	for o in lay.obstacles:
+		if o.y == 0:
+			norte.append([o.x * CELL_VOX, (o.x + 1) * CELL_VOX])
+		if o.x == 0:
+			oeste.append([o.y * CELL_VOX, (o.y + 1) * CELL_VOX])
+	for lamp in lay.get("lamps", []):
+		if lamp.y == 0:
+			norte.append([lamp.x * CELL_VOX, (lamp.x + 1) * CELL_VOX])
+		if lamp.x == 0:
+			oeste.append([lamp.y * CELL_VOX, (lamp.y + 1) * CELL_VOX])
+	if lay.has("tablon"):
+		oeste.append([lay.tablon.y * CELL_VOX, (lay.tablon.y + 1) * CELL_VOX])
+	if lay.has("station") and lay.station.cell.x == 0:
+		oeste.append([lay.station.cell.y * CELL_VOX, (lay.station.cell.y + 1) * CELL_VOX])
+	var dn := []
+	var dw := []
+	match int(lay.tier):
+		0:   # taberna: una chimenea con brasas en la pared norte y un cartel torcido con su aplique en la oeste
+			dn = [["chimenea", 12, 20]]
+			dw = [["cartel", 15, 19]]
+		1:   # salón: un estante con botellas y apliques
+			dn = [["estante", 21, 29], ["aplique", 6, 7]]
+			dw = [["aplique", 12, 13], ["aplique", 22, 23]]
+		2:   # casino: pilastras de mármol que aparecen de a poco, cuadros y apliques
+			dn = [["pilastra", 16, 20], ["cuadro", 21, 28, 0], ["cuadro", 28, 35, 1], ["aplique", 8, 9]]
+			dw = [["aplique", 12, 13], ["aplique", 32, 33]]
+			if tardio:
+				dn.append(["pilastra", 35, 39])
+				dw.append(["pilastra", 21, 25])
+			else:
+				dw.append(["aplique", 22, 23])
+		_:   # gran casino: pilastras acanaladas con su farol arriba y cuadros grandes
+			dn = [["pilastra", 11, 15], ["cuadro", 15, 29, 0], ["pilastra", 30, 34], ["cuadro", 34, 42, 1], ["pilastra", 52, 56], ["cuadro", 56, 64, 0]]
+			dw = [["pilastra", 11, 15], ["pilastra", 21, 25], ["pilastra", 31, 35], ["pilastra", 40, 44]]
+	var out := {"norte": {"muebles": norte, "decor": []}, "oeste": {"muebles": oeste, "decor": []}}
+	for par in [[dn, "norte"], [dw, "oeste"]]:
+		for d in par[0]:
+			out[par[1]].decor.append({"tipo": d[0], "desde": d[1], "hasta": d[2], "indice": d[3] if d.size() > 3 else 0})
+	return out
+
+
+## Dibuja una decoración de pared (`wall`: el sólido de esa pared; `lit`: sus luces). `west`: la pared oeste (corre por z) o la norte (corre por x).
+static func _decorar(d: Dictionary, wall: Dictionary, lit: Dictionary, west: bool, H: int, L: Dictionary, tier: int) -> void:
+	var a: int = d.desde
+	var b: int = d.hasta
+	match str(d.tipo):
+		"chimenea":
+			_box(wall, a, 2, 2, b, 9, 4, (L.stone as Color).darkened(0.1))
+			_box(wall, a + 2, 2, 2, b - 2, 6, 4, Color(0.05, 0.03, 0.03))
+			_box(lit, a + 2, 2, 3, b - 2, 3, 4, Color(1.0, 0.45, 0.12))
+			_box(lit, a + 3, 3, 3, b - 3, 4, 4, Color(1.0, 0.7, 0.25))
+		"cartel":   # (en la pared oeste: el cartel y un aplique en el medio)
+			_box(wall, 2, 8, a, 3, 11, b, (L.wood as Color).lightened(0.1))
+			_box(lit, 2, 9, a + 1, 3, 10, b - 1, L.lamp)
+		"estante":
+			_box(wall, a, 6, 2, b, 7, 3, (L.wood as Color).lightened(0.05))
+			for k in 4:
+				_box(wall, a + 1 + k * 2, 7, 2, a + 2 + k * 2, 9, 3, Color(0.2, 0.45, 0.3).lerp(Color(0.6, 0.2, 0.25), float(k % 2)))
+		"cuadro":   # el marco dorado y el lienzo; el del gran casino es más alto
+			var y0 := 6 if tier == 2 else 7
+			var y1 := 11 if tier == 2 else 15
+			_box(wall, a, y0, 2, b, y1, 3, L.gold)
+			_box(wall, a + 1, y0 + 1, 2, b - 1, y1 - 1, 3, Color(0.12, 0.10, 0.30) if int(d.indice) % 2 == 0 else Color(0.30, 0.10, 0.34))
+		"aplique":
+			var y0 := 9 if tier < 3 else 12
+			if west:
+				_box(lit, 2, y0, a, 3, y0 + 2, a + 1, L.lamp)
+			else:
+				_box(lit, a, y0, 2, a + 1, y0 + 2, 3, L.lamp)
+		"pilastra":
+			_pilaster(wall, a + 1, west, H, L, true)
+			if tier == 3:   # (el farol va arriba de la pilastra: ya no hay apliques sueltos en el gran casino)
+				if west:
+					_box(lit, 2, H - 3, a + 1, 3, H - 2, a + 3, L.lamp)
+				else:
+					_box(lit, a + 1, H - 3, 2, a + 3, H - 2, 3, L.lamp)
+
+
+static func build_voxels(stage := 8, tier_override := -1, muebles := true) -> Dictionary:   # (`muebles` falso: sólo la sala, para ponerle los muebles finos de `build_detalle`)
 	var lay := layout(stage, tier_override)
 	var L := look(stage, int(lay.tier))
 	var cor: float = L.corruption
@@ -377,60 +485,13 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 	var door_x: int = lay.exit.x * CELL_VOX       # puerta de salida (pared norte)
 	var door_z: int = lay.entry.y * CELL_VOX      # puerta de llegada (pared oeste)
 
-	# Decoración de pared según el nivel.
-	match tier:
-		0:   # taberna: una chimenea con brasas en la pared norte y un cartel torcido
-			_box(wn, 12, 2, 2, 20, 9, 4, (L.stone as Color).darkened(0.1))
-			_box(wn, 14, 2, 2, 18, 6, 4, Color(0.05, 0.03, 0.03))
-			_box(gn, 14, 2, 3, 18, 3, 4, Color(1.0, 0.45, 0.12))
-			_box(gn, 15, 3, 3, 17, 4, 4, Color(1.0, 0.7, 0.25))
-			_box(ww, 2, 8, 12, 3, 11, 20, (L.wood as Color).lightened(0.1))
-			_box(gw, 2, 9, 15, 3, 10, 17, L.lamp)
-		1:   # salón: estantes con botellas y apliques
-			for x in [8, 20]:
-				if x + 6 < door_x - 2 or x > door_x + CELL_VOX + 1:
-					_box(wn, x, 6, 2, x + 8, 7, 3, (L.wood as Color).lightened(0.05))
-					for b in 4:
-						_box(wn, x + 1 + b * 2, 7, 2, x + 2 + b * 2, 9, 3, Color(0.2, 0.45, 0.3).lerp(Color(0.6, 0.2, 0.25), float(b % 2)))
-			for z in [10, 24]:
-				_box(gw, 2, 9, z, 3, 11, z + 1, L.lamp)
-			for x in [6, 34]:
-				if x < door_x - 2 or x > door_x + CELL_VOX + 1:
-					_box(gn, x, 9, 2, x + 1, 11, 3, L.lamp)
-		2:   # casino: cuadros, apliques y pilastras de mármol que aparecen de a poco
-			for r in [[10, 18], [24, 32]]:
-				_box(wn, r[0] - 1, 6, 2, r[1] + 1, 11, 3, L.gold)
-				_box(wn, r[0], 7, 2, r[1], 10, 3, Color(0.12, 0.10, 0.30) if r[0] == 10 else Color(0.30, 0.10, 0.34))
-			_box(ww, 2, 6, 11, 3, 11, 21, L.gold)
-			_box(ww, 2, 7, 12, 3, 10, 20, Color(0.10, 0.28, 0.30))
-			for z in [8, 22, 36]:
-				_box(gw, 2, 9, z, 3, 11, z + 1, L.lamp)
-			for x in [8, 22, 46]:
-				_box(gn, x, 9, 2, x + 1, 11, 3, L.lamp)
-			var late: bool = float(L.t) >= 0.7
-			for x in ([20, 44, 50] if late else [20]):
-				_pilaster(wn, x, false, H, L, true)
-			for z in ([3, 24, 30] if late else [24]):
-				_pilaster(ww, z, true, H, L, true)
-		_:   # gran casino: pilastras acanaladas cada 10, cuadros grandes y apliques de cristal
-			for x in range(14, W - 6, 10):
-				if x + 3 < door_x - 1 or x > door_x + CELL_VOX + 1:
-					_pilaster(wn, x, false, H, L, true)
-			for z in range(8, D - 6, 10):
-				if z + 3 < door_z - 1 or z > door_z + CELL_VOX + 1:
-					_pilaster(ww, z, true, H, L, true)
-			for r in [[24, 36], [52, 62]]:
-				if r[1] + 1 < door_x or r[0] - 1 > door_x + CELL_VOX:
-					_box(wn, r[0] - 1, 7, 2, r[1] + 1, 15, 3, L.gold)
-					_box(wn, r[0], 8, 2, r[1], 14, 3, Color(0.12, 0.10, 0.30) if r[0] == 24 else Color(0.30, 0.10, 0.34))
-			_box(ww, 2, 7, 22, 3, 15, 34, L.gold)
-			_box(ww, 2, 8, 23, 3, 14, 33, Color(0.10, 0.28, 0.30))
-			for x in range(9, W - 6, 10):
-				if x < door_x - 2 or x > door_x + CELL_VOX + 1:
-					_box(gn, x, 12, 2, x + 1, 14, 3, L.lamp)
-			for z in range(3, D - 6, 10):
-				if z < door_z - 2 or z > door_z + CELL_VOX + 1:
-					_box(gw, 2, 12, z, 3, 14, z + 1, L.lamp)
+	# Decoración de las paredes del fondo (ver `paredes`: cada cosa con su tramo, sin pisar los muebles, las puertas ni otras decoraciones).
+	var tardio: bool = float(L.t) >= 0.7
+	var deco := paredes(lay, tardio)
+	for d in deco.norte.decor:
+		_decorar(d, wn, gn, false, H, L, tier)
+	for d in deco.oeste.decor:
+		_decorar(d, ww, gw, true, H, L, tier)
 
 	# Tarima del gran casino: dos escalones alrededor de la mesa de la ruleta.
 	for c in lay.heights:
@@ -457,6 +518,51 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 		for z in range(1 * CELL_VOX, (lay.table.position.y - 2) * CELL_VOX):
 			_box(solid, ex + 1, 2, z, ex + CELL_VOX - 1, 3, z + 1, L.carpet)
 
+	if muebles:
+		_muebles_basicos(solid, glow, lay, L)
+
+	# Portales: el de salida en la pared norte (frente a EXIT) y el de llegada en la pared oeste (frente a ENTRY, sólo estético). Acá van sólo los marcos;
+	# el interior, de ondas que se mueven, lo arma casino_scene.gd (shaders/portal.gdshader). Cuanto más avanzado el run, más claros; el de salida es algo más claro.
+	_box(wn, door_x - 1, 2, 0, door_x, H, 2, L.gold)
+	_box(wn, door_x + CELL_VOX, 2, 0, door_x + CELL_VOX + 1, H, 2, L.gold)
+	_box(wn, door_x, 12, 0, door_x + CELL_VOX, H, 2, L.gold)
+	_box(ww, 0, 2, door_z - 1, 2, H, door_z, L.gold)
+	_box(ww, 0, 2, door_z + CELL_VOX, 2, H, door_z + CELL_VOX + 1, L.gold)
+	_box(ww, 0, 12, door_z, 2, H, door_z + CELL_VOX, L.gold)
+
+	for x in range(door_x, door_x + CELL_VOX):   # los vanos de las puertas quedan abiertos (ahí va el portal de ondas)
+		for y in range(2, 12):
+			for z in 2:
+				wn.erase(Vector3i(x, y, z))
+	for z in range(door_z, door_z + CELL_VOX):
+		for y in range(2, 12):
+			for x in 2:
+				ww.erase(Vector3i(x, y, z))
+	for p in glow:  # lo que brilla prevalece: un minibloque no puede ser a la vez sólido y luminoso
+		solid.erase(p)
+		ww.erase(p)
+		wn.erase(p)
+	for g in [gw, gn]:
+		for p in g:
+			solid.erase(p)
+			ww.erase(p)
+			wn.erase(p)
+	# "solid" y "glow" traen todo junto; "west" y "north" repiten lo que es de cada pared (para ocultarlas).
+	var all_solid := solid.duplicate()
+	var all_glow := glow.duplicate()
+	all_solid.merge(ww)
+	all_solid.merge(wn)
+	all_glow.merge(gw)
+	all_glow.merge(gn)
+	return {"solid": all_solid, "glow": all_glow,
+			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
+
+
+## Los muebles del modelo base (los de `build_detalle` los arma casino_muebles.gd con el doble de resolución): mesa de la ruleta, crupier, tragamonedas, mesas de cartas, estación, obstáculos y faroles.
+static func _muebles_basicos(solid: Dictionary, glow: Dictionary, lay: Dictionary, L: Dictionary) -> void:
+	var tier: int = lay.tier
+	var H: int = WALL_H[tier]
+	var dy: int = lay.table_h
 	# Mesa de la ruleta.
 	var tx0: int = lay.table.position.x * CELL_VOX
 	var tz0: int = lay.table.position.y * CELL_VOX
@@ -523,19 +629,27 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 	solid[Vector3i(dcx - 1, 8 + ddy, dcz + 1)] = Color(0.1, 0.1, 0.1)                       # ojos
 	solid[Vector3i(dcx + 1, 8 + ddy, dcz + 1)] = Color(0.1, 0.1, 0.1)
 
-	# Tragamonedas: cuerpo, tres ventanitas de rodillo que brillan al frente y una lámpara arriba.
+	# Tragamonedas: cuerpo, tres ventanitas de rodillo que brillan al frente y una lámpara arriba. Se arman mirando al este (contra la pared oeste) y las de la pared norte
+	# se giran (se cambian x y z) para mirar al sur.
 	for m in lay.machines:
-		var mx: int = m.x * CELL_VOX + 2
-		var mz: int = m.y * CELL_VOX + 1
+		var mx := 2
+		var mz := 1
 		var body := Color(0.33, 0.28, 0.45)
-		_box(solid, mx, 2, mz, mx + 3, 8, mz + 4, body)
-		_box(solid, mx, 8, mz + 1, mx + 3, 9, mz + 3, body)
-		_box(solid, mx + 2, 4, mz + 1, mx + 3, 6, mz + 3, Color(0.22, 0.18, 0.32))  # pliegue
-		glow[Vector3i(mx + 1, 9, mz + 1)] = L.gold  # lámpara
-		glow[Vector3i(mx + 1, 10, mz + 1)] = L.gold
-		glow[Vector3i(mx + 3, 5, mz + 1)] = Color(1.0, 0.35, 0.3)    # las tres ventanitas de los rodillos
-		glow[Vector3i(mx + 3, 5, mz + 2)] = Color(1.0, 0.85, 0.3)
-		glow[Vector3i(mx + 3, 5, mz + 3)] = Color(0.5, 0.8, 1.0)
+		var m_solid := {}
+		var m_glow := {}
+		_box(m_solid, mx, 2, mz, mx + 3, 8, mz + 4, body)
+		_box(m_solid, mx, 8, mz + 1, mx + 3, 9, mz + 3, body)
+		_box(m_solid, mx + 2, 4, mz + 1, mx + 3, 6, mz + 3, Color(0.22, 0.18, 0.32))  # pliegue
+		m_glow[Vector3i(mx + 1, 9, mz + 1)] = L.gold  # lámpara
+		m_glow[Vector3i(mx + 1, 10, mz + 1)] = L.gold
+		m_glow[Vector3i(mx + 3, 5, mz + 1)] = Color(1.0, 0.35, 0.3)    # las tres ventanitas de los rodillos
+		m_glow[Vector3i(mx + 3, 5, mz + 2)] = Color(1.0, 0.85, 0.3)
+		m_glow[Vector3i(mx + 3, 5, mz + 3)] = Color(0.5, 0.8, 1.0)
+		var norte := _frente_de_maquina(m) == "sur"
+		for src in [[m_solid, solid], [m_glow, glow]]:
+			for q: Vector3i in src[0]:
+				var w := Vector3i(q.z, q.y, q.x) if norte else q
+				src[1][Vector3i(m.x * CELL_VOX + w.x, w.y, m.y * CELL_VOX + w.z)] = src[0][q]
 
 	# Mesas de cartas: fieltro con unas cartas boca arriba y una pila de fichas.
 	for ct in lay.card_tables:
@@ -587,69 +701,232 @@ static func build_voxels(stage := 8, tier_override := -1) -> Dictionary:
 				_box(solid, ox + 1, top - 2, oz + 1, ox + 5, top, oz + 5, L.gold)
 				glow[Vector3i(ox + 2, top, oz + 2)] = L.lamp
 
-	# Portales: el de salida en la pared norte (frente a EXIT) y el de llegada en la pared oeste (frente a ENTRY, sólo estético). Acá van sólo los marcos;
-	# el interior, de ondas que se mueven, lo arma casino_scene.gd (shaders/portal.gdshader). Cuanto más avanzado el run, más claros; el de salida es algo más claro.
-	_box(wn, door_x - 1, 2, 0, door_x, H, 2, L.gold)
-	_box(wn, door_x + CELL_VOX, 2, 0, door_x + CELL_VOX + 1, H, 2, L.gold)
-	_box(wn, door_x, 12, 0, door_x + CELL_VOX, H, 2, L.gold)
-	_box(ww, 0, 2, door_z - 1, 2, H, door_z, L.gold)
-	_box(ww, 0, 2, door_z + CELL_VOX, 2, H, door_z + CELL_VOX + 1, L.gold)
-	_box(ww, 0, 12, door_z, 2, H, door_z + CELL_VOX, L.gold)
-
-	# Faroles de pie.
-	var lamps: Array = [[3, D - 2], [W - 3, 3]]
-	if tier == 0:
-		lamps = [[W - 3, D - 3]]
-	for pos in lamps:
-		_box(solid, pos[0], 2, pos[1], pos[0] + 1, 9, pos[1] + 1, (L.gold as Color).darkened(0.3))
-		_box(glow, pos[0] - 1, 9, pos[1] - 1, pos[0] + 2, 11, pos[1] + 2, L.lamp)
-	for x in range(door_x, door_x + CELL_VOX):   # los vanos de las puertas quedan abiertos (ahí va el portal de ondas)
-		for y in range(2, 12):
-			for z in 2:
-				wn.erase(Vector3i(x, y, z))
-	for z in range(door_z, door_z + CELL_VOX):
-		for y in range(2, 12):
-			for x in 2:
-				ww.erase(Vector3i(x, y, z))
-	for p in glow:  # lo que brilla prevalece: un minibloque no puede ser a la vez sólido y luminoso
-		solid.erase(p)
-		ww.erase(p)
-		wn.erase(p)
-	for g in [gw, gn]:
-		for p in g:
-			solid.erase(p)
-			ww.erase(p)
-			wn.erase(p)
-	# "solid" y "glow" traen todo junto; "west" y "north" repiten lo que es de cada pared (para ocultarlas).
-	var all_solid := solid.duplicate()
-	var all_glow := glow.duplicate()
-	all_solid.merge(ww)
-	all_solid.merge(wn)
-	all_glow.merge(gw)
-	all_glow.merge(gn)
-	return {"solid": all_solid, "glow": all_glow,
-			"west": {"solid": ww, "glow": gw}, "north": {"solid": wn, "glow": gn}}
+	# Faroles de pie: uno en cada celda de `lamps` (junto a las puertas), parados en el medio de la celda.
+	for lamp in lay.get("lamps", []):
+		var lx: int = lamp.x * CELL_VOX + 2
+		var lz: int = lamp.y * CELL_VOX + 2
+		_box(solid, lx, 2, lz, lx + 1, 9, lz + 1, (L.gold as Color).darkened(0.3))
+		_box(glow, lx - 1, 9, lz - 1, lx + 2, 11, lz + 2, L.lamp)
 
 
-## El mueble de una estación de servicio, en su celda: yunque del taller o caja fuerte.
+## El mueble de una estación de servicio, en su celda (contra la pared oeste): el yunque del taller con su brasero.
 static func _station(solid: Dictionary, glow: Dictionary, st: Dictionary, L: Dictionary) -> void:
 	var ox: int = st.cell.x * CELL_VOX
 	var oz: int = st.cell.y * CELL_VOX
-	var wood: Color = L.wood
 	match str(st.id):
 		"taller":   # yunque con un brasero al lado
-			_box(solid, ox + 1, 2, oz + 1, ox + 4, 4, oz + 4, Color(0.22, 0.22, 0.26))
-			_box(solid, ox + 2, 4, oz + 2, ox + 3, 6, oz + 3, Color(0.28, 0.28, 0.32))
-			_box(solid, ox, 6, oz + 1, ox + 5, 8, oz + 4, Color(0.4, 0.4, 0.45))
-			_box(solid, ox - 1, 7, oz + 2, ox, 8, oz + 3, Color(0.4, 0.4, 0.45))   # la punta
-			glow[Vector3i(ox + 3, 8, oz + 2)] = Color(1.0, 0.5, 0.15)
-			glow[Vector3i(ox + 2, 8, oz + 3)] = Color(1.0, 0.7, 0.25)
-		"caja":   # caja fuerte de acero con la puerta al frente y un dial dorado
-			_box(solid, ox, 2, oz, ox + 5, 10, oz + 5, Color(0.36, 0.38, 0.42))
-			_box(solid, ox + 1, 3, oz + 5, ox + 4, 9, oz + 6, Color(0.28, 0.3, 0.34))
-			_box(solid, ox + 4, 5, oz + 5, ox + 5, 7, oz + 6, L.gold)   # manija
-			glow[Vector3i(ox + 2, 6, oz + 6)] = L.gold
-			glow[Vector3i(ox + 2, 7, oz + 6)] = L.gold
+			_box(solid, ox + 2, 2, oz + 1, ox + 5, 4, oz + 4, Color(0.22, 0.22, 0.26))
+			_box(solid, ox + 3, 4, oz + 2, ox + 4, 6, oz + 3, Color(0.28, 0.28, 0.32))
+			_box(solid, ox + 2, 6, oz, ox + 5, 8, oz + 5, Color(0.4, 0.4, 0.45))
+			_box(solid, ox + 3, 7, oz - 1, ox + 4, 8, oz, Color(0.4, 0.4, 0.45))   # la punta
+			glow[Vector3i(ox + 4, 8, oz + 2)] = Color(1.0, 0.5, 0.15)
+			glow[Vector3i(ox + 3, 8, oz + 3)] = Color(1.0, 0.7, 0.25)
+
+
+## --- el modelo con más detalle -----------------------------------------------------------------------------------
+## La sala con el doble de resolución (docs/plan_casinos.md): cada minibloque del modelo base pasa a ser `ESCALA`³ minibloques (la sala sigue midiendo lo mismo en el mundo), con una
+## textura de tonos muy suave, las esquinas salientes biseladas y las juntas del piso marcadas; los muebles nuevos se arman ya en esta resolución (el tablón de contratos, en la pared
+## oeste). `tablon`: {papeles}, la lista de {rareza, objetivo} que cuelga de él. Devuelve lo mismo que `build_voxels` pero en minibloques de `VOXEL_FINO`, y `fino`: lo más
+## chico (los papeles), en minibloques de un tercio de `VOXEL_FINO`.
+const ESCALA := 2
+const VOXEL_FINO := VOXEL / ESCALA
+const CELL_FINO := CELL_VOX * ESCALA
+
+
+static func build_detalle(stage := 8, tier_override := -1, tablon := {}) -> Dictionary:   # (`tablon`: {papeles} con lo que cuelga del tablón; sin eso queda el corcho vacío)
+	var base := build_voxels(stage, tier_override, false)
+	var lay := layout(stage, tier_override)
+	var L := look(stage, int(lay.tier))
+	var out := {
+		"solid": _ampliar(base.solid), "glow": _ampliar(base.glow), "fino": {},
+		"west": {"solid": _ampliar(base.west.solid), "glow": _ampliar(base.west.glow)},
+		"north": {"solid": _ampliar(base.north.solid), "glow": _ampliar(base.north.glow)},
+	}
+	_marcar_juntas(out.solid, lay)
+	Muebles.armar(out.solid, out.glow, lay, L)   # (los muebles ya se arman en la resolución fina: no pasan por `_ampliar`)
+	if tablon.has("papeles") and lay.has("tablon"):   # (la escena del casino lo arma aparte con `build_tablon`, que cambia durante la visita)
+		var tab := build_tablon(stage, tier_override, tablon.papeles)
+		out.solid.merge(tab.solid)
+		out.glow.merge(tab.glow)
+		out.fino.merge(tab.fino)
+	return out
+
+
+## El tablón de contratos ya armado y en su lugar, en minibloques de `VOXEL_FINO` ({solid, glow}) y `fino` en tercios de `VOXEL_FINO`. `papeles`: una lista de {rareza, objetivo} (o null) por lugar de la
+## cartelera. Se arma mirando al sur contra una pared del norte y contra la pared oeste se gira (x y z cambian de lugar) para que mire al este; el piso fino es dos minibloques más alto
+## que el viejo y las paredes miden 4 de grosor, así que el respaldo (a 2 del origen) queda a 4, pegado a la pared.
+static func build_tablon(stage: int, tier_override: int, papeles: Array) -> Dictionary:
+	var lay := layout(stage, tier_override)
+	var L := look(stage, int(lay.tier))
+	var t_solid := {}
+	var t_glow := {}
+	var t_fino := {}
+	_tablon(t_solid, t_glow, t_fino, 0, 0, L, int(lay.tier), papeles)
+	var cell: Vector2i = lay.tablon
+	var desde := Vector3i(2, 2, cell.y * CELL_FINO)
+	var out := {"solid": {}, "glow": {}, "fino": {}}
+	for q in t_solid:
+		out.solid[Vector3i(q.z + desde.x, q.y + desde.y, q.x + desde.z)] = t_solid[q]
+	for q in t_glow:
+		out.glow[Vector3i(q.z + desde.x, q.y + desde.y, q.x + desde.z)] = t_glow[q]
+	for q in t_fino:
+		out.fino[Vector3i(q.z + desde.x * 3, q.y + desde.y * 3, q.x + desde.z * 3)] = t_fino[q]
+	return out
+
+
+## Cada minibloque se parte en ESCALA³: con un tono apenas distinto cada uno (textura) y sin la esquina de los que sobresalen por los tres lados (bisel).
+static func _ampliar(d: Dictionary) -> Dictionary:
+	var k := ESCALA
+	var out := {}
+	for p: Vector3i in d:
+		var c: Color = d[p]
+		for i in k:
+			var dx := -1 if i == 0 else 1
+			for j in k:
+				var dy := -1 if j == 0 else 1
+				for l in k:
+					var dz := -1 if l == 0 else 1
+					if not d.has(p + Vector3i(dx, 0, 0)) and not d.has(p + Vector3i(0, dy, 0)) and not d.has(p + Vector3i(0, 0, dz)):
+						continue   # (esquina saliente: se biselea)
+					var q := Vector3i(p.x * k + i, p.y * k + j, p.z * k + l)
+					out[q] = _shade(c, _noise(q.x, q.y, q.z), 0.02)
+	return out
+
+
+## Las juntas del piso (damero y mármol), de un minibloque fino, entre las celdas.
+static func _marcar_juntas(solid: Dictionary, lay: Dictionary) -> void:
+	if int(lay.tier) < 2:
+		return
+	var W: int = lay.cells.x * CELL_FINO
+	var D: int = lay.cells.y * CELL_FINO
+	var y := 3   # (la cara de arriba del piso fino)
+	for x in W:
+		for z in D:
+			if (x % CELL_FINO == 0 or z % CELL_FINO == 0) and solid.has(Vector3i(x, y, z)):
+				solid[Vector3i(x, y, z)] = (solid[Vector3i(x, y, z)] as Color).darkened(0.14)
+
+
+## El tablón de contratos, uno por casino y de dos celdas de ancho (10 minibloques; `ox` es su borde izquierdo): en la taberna tablas con postes toscos y dos velas; en el salón
+## un marco pulido con tachas doradas y una repisa con tintero, pluma y un libro; en el casino paño verde con marco dorado y dos lámparas; en el gran casino un marco de mármol
+## con columnas, paño violeta, base y un frontón dorado. Cuelgan hasta seis papeles (tres por fila, la de abajo corrida un minibloque, y los del medio un poco adelante):
+## cada uno en detalle (`_papel_fino`): con su chinche, un renglón de texto, el ícono del objetivo entero y, al pie, el sello del color de su rareza.
+## `papeles`: una lista de {rareza, objetivo}; un lugar vacío (o que falta) queda sin papel.
+const TABLON_ANCHO := 10
+static func _tablon(solid: Dictionary, glow: Dictionary, fino: Dictionary, ox: int, oz: int, L: Dictionary, tier: int, papeles: Array) -> void:
+	var wood: Color = L.wood
+	var gold: Color = L.gold
+	var W := TABLON_ANCHO
+	var fondo: Color
+	var marco: Color
+	var chinche: Color
+	match tier:
+		0:   # taberna: tablas
+			fondo = (L.plank as Color).darkened(0.05)
+			marco = wood
+			chinche = Color(0.20, 0.20, 0.24)
+		1:   # salón: madera pulida
+			fondo = Color(0.62, 0.45, 0.27)
+			marco = wood.lightened(0.12)
+			chinche = Color(0.85, 0.20, 0.20)
+		2:   # casino: paño verde, marco dorado
+			fondo = (L.felt as Color).lightened(0.05)
+			marco = gold
+			chinche = Color(1.0, 0.88, 0.45)
+		_:   # gran casino: mármol, paño violeta
+			fondo = Color(0.22, 0.15, 0.40)
+			marco = L.pillar
+			chinche = Color(1.0, 0.88, 0.45)
+	# patas / base
+	match tier:
+		0:
+			for x in [0, W - 2]:
+				_box(solid, ox + x, 2, oz + 2, ox + x + 2, 6, oz + 4, wood.darkened(0.25))
+		1:
+			for x in [0, W - 2]:
+				_box(solid, ox + x, 2, oz + 2, ox + x + 2, 6, oz + 4, wood.darkened(0.15))
+		2:
+			for x in [0, W - 2]:
+				_box(solid, ox + x, 2, oz + 2, ox + x + 2, 6, oz + 4, wood)
+				_box(solid, ox + x, 5, oz + 2, ox + x + 2, 6, oz + 4, gold)
+		_:
+			_box(solid, ox, 2, oz + 1, ox + W, 5, oz + 4, (L.pillar as Color).darkened(0.08))   # la base de mármol
+			_box(solid, ox, 4, oz + 1, ox + W, 5, oz + 2, gold)
+	_box(solid, ox, 5, oz + 2, ox + W, 19, oz + 3, marco.darkened(0.1))   # el respaldo
+	_box(solid, ox, 5, oz + 3, ox + W, 6, oz + 4, marco)   # el marco: abajo y arriba
+	_box(solid, ox, 18, oz + 3, ox + W, 19, oz + 4, marco)
+	_box(solid, ox, 6, oz + 3, ox + W, 18, oz + 4, fondo)   # el fondo donde cuelgan los papeles
+	match tier:
+		0:   # tablas: juntas entre las filas, clavos en las esquinas y una vela con su llama en cada punta
+			_box(solid, ox, 11, oz + 3, ox + W, 12, oz + 4, (fondo as Color).darkened(0.25))
+			_box(solid, ox, 15, oz + 3, ox + W, 16, oz + 4, (fondo as Color).darkened(0.12))
+			for x in [0, W - 1]:
+				_box(solid, ox + x, 19, oz + 2, ox + x + 1, 20, oz + 3, Color(0.93, 0.90, 0.80))
+				glow[Vector3i(ox + x, 20, oz + 2)] = Color(1.0, 0.65, 0.20)
+		1:   # tachas doradas en las esquinas y una repisa con tintero, pluma y un libro
+			for c in [Vector2i(0, 5), Vector2i(W - 1, 5), Vector2i(0, 18), Vector2i(W - 1, 18)]:
+				_box(solid, ox + c.x, c.y, oz + 4, ox + c.x + 1, c.y + 1, oz + 5, gold)
+			_box(solid, ox, 4, oz + 3, ox + W, 5, oz + 6, wood.lightened(0.1))
+			_box(solid, ox + W - 3, 5, oz + 4, ox + W - 2, 6, oz + 5, Color(0.10, 0.08, 0.20))   # el tintero (debajo de los papeles de abajo)
+			_box(solid, ox + W - 1, 5, oz + 4, ox + W, 8, oz + 5, Color(0.95, 0.95, 0.92))   # la pluma, en la punta donde no hay papel
+			_box(solid, ox + 1, 5, oz + 4, ox + 4, 6, oz + 6, Color(0.55, 0.15, 0.18))   # el libro
+			_box(solid, ox + 1, 5, oz + 5, ox + 4, 6, oz + 6, Color(0.92, 0.88, 0.75))
+		2:   # dos lámparas de bronce arriba
+			_box(solid, ox, 19, oz + 3, ox + W, 20, oz + 4, gold)
+			for x in [2, W - 3]:
+				_box(solid, ox + x, 20, oz + 3, ox + x + 1, 21, oz + 4, gold)
+				glow[Vector3i(ox + x, 21, oz + 3)] = L.lamp
+		_:   # columnas con capitel dorado a los lados y un frontón de oro arriba
+			for x in [0, W - 2]:   # (pilastras: al ras del fondo, para que los papeles queden delante)
+				_box(solid, ox + x, 5, oz + 3, ox + x + 2, 19, oz + 4, L.pillar)
+				_box(solid, ox + x, 17, oz + 3, ox + x + 2, 19, oz + 4, gold)
+			_box(solid, ox, 19, oz + 2, ox + W, 20, oz + 5, gold)
+			_box(solid, ox + 2, 20, oz + 2, ox + W - 2, 21, oz + 5, gold)
+			_box(solid, ox + 4, 21, oz + 2, ox + W - 4, 22, oz + 5, gold)
+			glow[Vector3i(ox + 4, 22, oz + 3)] = L.lamp
+			glow[Vector3i(ox + 5, 22, oz + 3)] = L.lamp
+	for i in 6:
+		var fila := i / 3   # 0 = la de arriba
+		var col := i % 3
+		var x := ox + 1 + col * 3 - fila   # la fila de abajo, corrida un minibloque
+		var z := oz + 4
+		var p: Variant = papeles[i] if i < papeles.size() else null
+		if not (p is Dictionary):
+			continue
+		_papel_fino(fino, Vector3i(x, 6 + (1 - fila) * 6, z), (col + fila) % 2 == 1, chinche, int(p.get("rareza", 0)), str(p.get("objetivo", "")))
+
+
+## Un papel del tablón en detalle: minibloques de un tercio de lado (`fino`, ver `build_voxels`), de 9 de ancho (tres minibloques de la sala) por 17 de alto: la chinche, un renglón de
+## texto, el ícono del objetivo entero (9 x 9) y el sello de su rareza al pie. `celda` es la esquina de abajo a la izquierda en minibloques de la sala; `adelante`: un poco más cerca.
+static func _papel_fino(fino: Dictionary, celda: Vector3i, adelante: bool, chinche: Color, rareza: int, objetivo: String) -> void:
+	var parche := Color(0.94, 0.88, 0.72)
+	var borde := Color(0.80, 0.72, 0.56)
+	var tinta := Color(0.34, 0.25, 0.18)
+	var x0 := celda.x * 3
+	var y0 := celda.y * 3 + 1
+	var z0 := celda.z * 3 + (2 if adelante else 0)
+	for v in 17:
+		for u in 9:
+			var col := parche
+			if u == 0 or u == 8 or v == 0:
+				col = borde
+			fino[Vector3i(x0 + u, y0 + v, z0)] = col
+	for u in range(3, 6):   # la chinche: una cabeza de tres de ancho y dos de alto, con su brillo
+		for v in [15, 16]:
+			fino[Vector3i(x0 + u, y0 + v, z0 + 1)] = chinche.lightened(0.25) if (u == 3 and v == 16) else chinche
+	for u in range(1, 8):   # el renglón de texto
+		fino[Vector3i(x0 + u, y0 + 14, z0 + 1)] = tinta
+	var ic: Dictionary = Arte.OBJETIVOS.get(objetivo, {})
+	if not ic.is_empty():   # el ícono entero, de 9 x 9
+		var pal := {"o": Arte.OUTLINE, "a": ic.get("a", Color.WHITE), "b": ic.get("b", ic.get("a", Color.WHITE)), "w": ic.get("w", Color(1.0, 1.0, 0.95))}
+		for r in 9:
+			var line: String = ic.rows[r]
+			for u in 9:
+				if line[u] != ".":
+					fino[Vector3i(x0 + u, y0 + 12 - r, z0 + 1)] = pal[line[u]]
+	var c: Dictionary = Arte.SELLO_COLORES[rareza]   # el sello, de 3 x 3 con la marca en el medio
+	for u in 3:
+		for v in 3:
+			fino[Vector3i(x0 + 3 + u, y0 + 1 + v, z0 + 1)] = c.m if (u == 1 and v == 1) else (c.b if (u == 0 and v == 2) else c.a)
 
 
 ## Posición en el mundo del centro de una celda (a la altura del piso de esa celda).

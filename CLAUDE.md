@@ -31,7 +31,7 @@ Juego de puzzle de torres de cubos (estilo Catherine) con casino y economía de 
 
 ## Documentos (`docs/`)
 
-`animaciones_personaje.md` (las animaciones del personaje), `diseno.md` (el juego hoy), `reglas_torre.md` (reglas exactas de la torre), `economia.md` (peaje, ficha, Luz, calibración), `catalogo.md`/`.xlsx` (todos los premios, bloques, escenarios, pruebas; se regenera con `herramientas\catalogo.bat`, así que no se edita a mano), `generador.md`, `arte_bloques.md` (el arte de 10x10x10 de los bloques, por ahora la piedra común), `bot.md`, `demo.md`, `interfaz_mando.md`, `musica.md`, `editor_modelos.md`, `aprendizajes.md` (lo aprendido en los experimentos retirados), `pendientes.md` (lo quitado, ideas y cosas por revisar).
+`animaciones_personaje.md` (las animaciones del personaje), `diseno.md` (el juego hoy), `reglas_torre.md` (reglas exactas de la torre), `economia.md` (peaje, ficha, Luz, calibración), `catalogo.md`/`.xlsx` (todos los premios, bloques, escenarios, pruebas; se regenera con `herramientas\catalogo.bat`, así que no se edita a mano), `generador.md`, `arte_bloques.md` (el arte de 10x10x10 de los bloques, por ahora la piedra común), `bot.md`, `demo.md`, `interfaz_mando.md`, `musica.md`, `editor_modelos.md`, `aprendizajes.md` (lo aprendido en los experimentos retirados), `pendientes.md` (lo quitado, ideas y cosas por revisar), `plan_casinos.md` (el plan para rehacer los casinos: ficha chica, contratos y las reglas y la Caja fuerte pasadas a ítems; casi todo hecho, ver sus fases).
 
 ## Cosas que conviene recordar
 

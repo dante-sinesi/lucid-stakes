@@ -74,7 +74,7 @@ func test_table() -> void:
 	sc.screen.toggle_pocket(1)
 	check(sc.screen.can_spin(), "con claridad suficiente se puede girar")
 	sc.close_roulette()
-	sc.cell = Vector2i(1, 2)
+	sc.cell = Vector2i(1, 3)
 	check(sc.step(Vector2i(-1, 0)) == "slots" and sc.screen != null and sc.screen.has_method("toggle_hold"), "chocar contra una tragamonedas abre su pantalla")
 	sc.close_roulette()
 	sc.cell = Vector2i(7, 3)

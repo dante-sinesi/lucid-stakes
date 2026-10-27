@@ -1,36 +1,23 @@
 extends RefCounted
-## Reglas de la casa: cada nivel de sala (taberna, salón, casino, gran casino) paga distinto, en las tres mesas (ruleta, tragamonedas, blackjack).
-## - Taberna: sin regla (es el primer casino: lo justo para jugar).
-## - Salón, "Racha": cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %); perder la corta.
-## - Casino, "Apuesta libre": en las tragamonedas y el blackjack se puede apostar 1, 2, 3 o 5 fichas juntas (paga proporcional).
-## - Gran casino, "Jackpot": parte de lo que se pierde en la sala va a un pozo, y el premio mayor (tres coronas, blackjack, pleno) se lo lleva.
-## El estado de la visita vive en `run.casino_visit` (se arma al entrar a la sala, `enter`); si está vacío (pruebas, entrenamiento) no hay reglas.
-## Además lleva las estadísticas de la visita (partidas, ganadas, perdidas, gastado y ganado de cada mesa) para el balance que se ve al salir.
+## La visita a un casino: lo que pasa mientras estás en la sala (la racha, el pozo, "Doble o nada" y las estadísticas de cada mesa para el balance de la salida) y los efectos de los boosts y
+## consumibles del casino sobre cada apuesta (`settle`). Ya no hay reglas de la casa por sala: la racha y el pozo del jackpot son premios (docs/plan_casinos.md).
+## - Racha: cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %); perder la corta. Con el boost "Racha de la casa" o, esta visita, con el consumible "Racha de visita".
+## - Pozo del jackpot (boost): parte de lo que se pierde va a un pozo, y el premio mayor (tres coronas, blackjack, pleno) se lo lleva.
+## El estado de la visita vive en `run.casino_visit` (se arma al entrar a la sala, `enter`); si está vacío (pruebas, entrenamiento) no hay efectos.
 
 const Loc := preload("res://scripts/idioma/loc.gd")
 
-const RULES := [
-	{"id": "", "name": "", "desc": ""},   # la taberna no tiene regla
-	{"id": "racha", "name": "Racha", "desc": "Cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta."},
-	{"id": "libre", "name": "Apuesta libre", "desc": "En las tragamonedas y el blackjack puedes apostar 1, 2, 3 o 5 fichas juntas."},
-	{"id": "jackpot", "name": "Jackpot", "desc": "Lo que pierdes en la sala va a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva."},
-]
 const GAMES: Array[String] = ["ruleta", "tragamonedas", "blackjack"]
 const GAME_NAMES := {"ruleta": "Ruleta", "tragamonedas": "Tragamonedas", "blackjack": "Blackjack"}
 const ROOM_NAMES: Array[String] = ["Taberna", "Salón", "Casino", "Gran casino"]
-const STAKES: Array[int] = [1, 2, 3, 5]
 const STREAK_STEP := 0.1         # lo que suma cada victoria seguida (desde la segunda)
 const STREAK_MAX := 5            # tope del extra: 5 pasos de 10 % (+50 %)
 const POOL_SHARE := 0.5          # fracción de lo perdido que va al pozo del jackpot
 
 
-static func rule_of(tier: int) -> Dictionary:
-	return RULES[clampi(tier, 0, RULES.size() - 1)]
-
-
 ## Estado nuevo de una visita a la sala de ese nivel.
 static func new_visit(tier: int) -> Dictionary:
-	return {"tier": tier, "accepted": false, "streak": 0, "max_streak": 0, "pool": 0, "stake": 1, "stats": {}, "claridad_in": 0, "best": 0, "best_game": ""}
+	return {"tier": tier, "streak": 0, "max_streak": 0, "pool": 0, "racha": false, "stats": {}, "claridad_in": 0, "best": 0, "best_game": ""}
 
 
 ## Se entra a la sala: arma el estado de la visita en el run.
@@ -48,32 +35,17 @@ static func active(run) -> bool:
 	return not _visit(run).is_empty()
 
 
-## La regla rige sólo si se habló con el tabernero en esta visita (él la cuenta); si no, la visita no tiene regla.
-static func accepted(run) -> bool:
-	return bool(_visit(run).get("accepted", false))
+## ¿Rige la racha? Con el boost, siempre; con el consumible, el resto de la visita.
+static func racha_activa(run) -> bool:
+	return not _visit(run).is_empty() and (run.boosts.has("racha_de_la_casa") or bool(_visit(run).get("racha", false)))
 
 
-static func accept(run) -> void:
-	if not _visit(run).is_empty():
-		run.casino_visit["accepted"] = true
-
-
-static func rule_id(run) -> String:
+## Enciende la racha para esta visita (el consumible "Racha de visita"). false si no hay visita o ya estaba encendida.
+static func encender_racha(run) -> bool:
 	var v := _visit(run)
-	return "" if v.is_empty() or not bool(v.get("accepted", false)) else str(rule_of(int(v.tier)).id)
-
-
-## Cuántas fichas se apuestan (sólo cambia con "Apuesta libre").
-static func stake(run) -> int:
-	var v := _visit(run)
-	return int(v.get("stake", 1)) if rule_id(run) == "libre" else 1
-
-
-## Elige cuántas fichas apostar en las tragamonedas y el blackjack. false si la sala no lo permite o el valor no es una opción.
-static func set_stake(run, n: int) -> bool:
-	if rule_id(run) != "libre" or not STAKES.has(n):
+	if v.is_empty() or bool(v.get("racha", false)):
 		return false
-	run.casino_visit["stake"] = n
+	run.casino_visit["racha"] = true
 	return true
 
 
@@ -85,7 +57,14 @@ static func pool(run) -> int:
 	return int(_visit(run).get("pool", 0))
 
 
-## Cierra una apuesta aplicando la regla de la sala. `wager`: lo apostado; `reward`: la claridad que ya se pagó; `win`: se considera una
+## Los avisos de una apuesta ya resuelta (devolución, racha, jackpot), listos para sumar a un texto. "" si no hubo.
+static func notes(res: Dictionary) -> String:
+	var rules: Dictionary = res.get("rules", {})
+	var list: Array = rules.get("notes", [])
+	return "" if list.is_empty() else "  " + "  ".join(list)
+
+
+## Cierra una apuesta aplicando lo que hagan los boosts y consumibles del casino. `wager`: lo apostado; `reward`: la claridad que ya se pagó; `win`: se considera una
 ## victoria (aunque el premio no sea claridad); `top`: salió el premio mayor del juego. Paga lo que corresponda (devolución, extra de racha o pozo)
 ## y devuelve {refund, bonus, jackpot, total, notes}; `notes` son frases ya traducidas para mostrar.
 static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "") -> Dictionary:
@@ -94,25 +73,24 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 	if v.is_empty():
 		return out
 	var lost := (not win) and reward < wager
-	match rule_id(run):
-		"racha":
-			if win:
-				v.streak = int(v.streak) + 1
-				v.max_streak = maxi(int(v.max_streak), int(v.streak))
-				var pct := streak_bonus(int(v.streak))
-				if pct > 0.0 and reward > 0:
-					out.bonus = int(round(float(reward) * pct))
-					out.notes.append(Loc.f("Racha de %d: +%d de claridad.", [v.streak, out.bonus]))
-			elif lost:
-				v.streak = 0
-		"jackpot":
-			if lost:
-				v.pool = int(v.pool) + int(round(float(wager - reward) * POOL_SHARE))
-			if top and int(v.pool) > 0:
-				out.jackpot = int(v.pool)
-				v.pool = 0
-				out.notes.append(Loc.f("¡Jackpot! Te llevas el pozo: +%d de claridad.", [out.jackpot]))
-	# boosts y consumibles del casino (docs/diseno.md §49)
+	if racha_activa(run):
+		if win:
+			v.streak = int(v.streak) + 1
+			v.max_streak = maxi(int(v.max_streak), int(v.streak))
+			var pct := streak_bonus(int(v.streak))
+			if pct > 0.0 and reward > 0:
+				out.bonus = int(round(float(reward) * pct))
+				out.notes.append(Loc.f("Racha de %d: +%d de claridad.", [v.streak, out.bonus]))
+		elif lost:
+			v.streak = 0
+	if run.boosts.has("pozo_del_jackpot"):
+		if lost:
+			v.pool = int(v.pool) + int(round(float(wager - reward) * POOL_SHARE))
+		if top and int(v.pool) > 0:
+			out.jackpot = int(v.pool)
+			v.pool = 0
+			out.notes.append(Loc.f("¡Jackpot! Te llevas el pozo: +%d de claridad.", [out.jackpot]))
+	# más boosts y consumibles del casino (docs/diseno.md §49)
 	if win and reward > 0:
 		var extra := 0
 		if run.boosts.has("mesa_caliente"):
@@ -171,5 +149,5 @@ static func balance(run) -> Dictionary:
 			total[k] += int(row[k])
 	return {"rows": rows, "total": total, "best": int(v.get("best", 0)), "best_game": str(v.get("best_game", "")),
 			"claridad_in": int(v.get("claridad_in", 0)), "claridad_out": run.claridad, "max_streak": int(v.get("max_streak", 0)),
-			"pool": int(v.get("pool", 0)), "rule": rule_id(run),
+			"pool": int(v.get("pool", 0)), "racha": racha_activa(run), "pozo": run.boosts.has("pozo_del_jackpot"),
 			"room": ROOM_NAMES[clampi(int(v.get("tier", 0)), 0, ROOM_NAMES.size() - 1)] if not v.is_empty() else ""}

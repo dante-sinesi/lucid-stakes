@@ -110,6 +110,24 @@ const ALL: Array[Dictionary] = [
 		"desc": "Se usa en el casino: tu próxima apuesta no te cuesta la ficha."},
 	{"id": "rayos_x", "name": "Rayos X", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90, "casino": true,
 		"desc": "Se usa en el casino: en tu próxima mano de blackjack ves la carta tapada del crupier."},
+	# los de la visita al casino que antes eran reglas de la casa, y los ahorros que antes eran la Caja fuerte (docs/plan_casinos.md)
+	{"id": "racha_de_la_casa", "name": "Racha de la casa", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 210,
+		"desc": "En el casino, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta."},
+	{"id": "racha_de_visita", "name": "Racha de visita", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 95, "casino": true,
+		"desc": "Se usa en el casino: esta visita, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %)."},
+	{"id": "pozo_del_jackpot", "name": "Pozo del jackpot", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 600,
+		"desc": "Lo que pierdes en el casino va en parte a un pozo, y el premio mayor (tres coronas, blackjack o pleno) se lo lleva."},
+	{"id": "caja_fuerte", "name": "Caja fuerte", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 210,
+		"desc": "Al entrar al casino cobras un 15 % de la claridad con la que empezaste la torre."},
+	{"id": "alcancia", "name": "Alcancía", "type": Type.CONSUMABLE, "tier": Tier.COMUN, "weight": 1, "value": 90, "casino": true,
+		"desc": "Se usa en el casino: en el próximo casino cobras un 30 % de la claridad con la que empieces la torre."},
+	# los contratos (docs/plan_casinos.md)
+	{"id": "caza_recompensas", "name": "Caza recompensas", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220, "stack": true, "max_stack": 2,
+		"desc": "Puedes tener un contrato activo más. Se acumula (hasta 2)."},
+	{"id": "contratista", "name": "Contratista", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 620,
+		"desc": "Cada contrato paga el doble."},
+	{"id": "sello_de_oro", "name": "Sello de oro", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200, "casino": true,
+		"desc": "Se usa en el casino: el próximo contrato que cobres paga cinco veces más."},
 	# bolsas de claridad grandes (la ficha de la etapa por el multiplicador)
 	{"id": "bolsa_pesada", "name": "Bolsa pesada", "type": Type.CLARITY, "tier": Tier.COMUN, "weight": 1.5, "mult": 3.0,
 		"desc": "Devuelve 3 veces lo que pagaste por la ficha, en claridad."},
@@ -122,7 +140,7 @@ const ALL: Array[Dictionary] = [
 ]
 
 ## Consumibles que se pueden usar dentro del casino (los demás sólo en la torre).
-const CASINO_USABLE: Array[String] = ["vida_extra", "soborno", "doble_o_nada", "ficha_gratis", "rayos_x"]
+const CASINO_USABLE: Array[String] = ["vida_extra", "soborno", "doble_o_nada", "ficha_gratis", "rayos_x", "racha_de_visita", "alcancia", "sello_de_oro"]
 
 
 static func get_item(id: String) -> Dictionary:

@@ -2,6 +2,14 @@ extends RefCounted
 ## Traducciones al inglés de las ayudas de los juegos del casino (game_help.gd).
 
 const TABLE := {
+	"El tablón de contratos": "The contract board",
+	"Cada papel pide algo para la próxima torre: llegar a una racha, no deshacer, purificar especiales... Acéptalo gratis y se cobra en cuanto lo cumples.": "Each paper asks for something in the next tower: reach a streak, don't undo, purify special blocks... Accept it for free and you get paid as soon as you complete it.",
+	"Los sellos": "The seals",
+	"El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los papeles que no aceptes siguen colgados en el próximo casino.": "The seal tells how hard it is: gray, blue, purple, and black for the nearly impossible. The papers you don't accept stay hanging at the next casino.",
+	"Aceptar, descolgar y rotar": "Accept, take down and rotate",
+	"Puedes tener pocos contratos activos a la vez. Descolgar un papel libera su lugar: solo llegan dos papeles nuevos por torre. Rotar cambia todos y cada vez cuesta más.": "You can only have a few active contracts at a time. Taking a paper down frees its spot: only two new papers arrive per tower. Rotating swaps them all and costs more each time.",
+	"Fianza y tienda": "Deposit and shop",
+	"En el casino y el gran casino puedes aceptar con fianza: pagas ahora y, si cumples, cobras más y la recuperas. La pestaña de arriba te lleva a la tienda.": "At the casino and the grand casino you can accept with a deposit: you pay now and, if you complete it, you earn more and get it back. The tab at the top takes you to the shop.",
 	"Ayuda": "Help",
 	"Página": "Page",
 	"Siguiente": "Next",
@@ -38,8 +46,6 @@ const TABLE := {
 	"Con 2 aciertos ganas 8 de claridad, con 3 ganas 25, con 4 ganas 80 y con 5 ganas 150. Con 4 o 5 aciertos también puede salir un cosmético. Los premios son tuyos cuando superes la torre.": "With 2 hits you win 8 clarity, with 3 you win 25, with 4 you win 80 and with 5 you win 150. With 4 or 5 hits a cosmetic may also drop. The prizes are yours once you clear the tower.",
 	"El taller": "The workshop",
 	"Aquí vendes un boost o un consumible por el 40 % de su valor. También puedes cambiarlo por otro del mismo nivel pagando el 30 % de la ficha. Sirve para liberar lugar en tus barras.": "Here you sell a boost or a consumable for 40 % of its value. You can also swap it for another of the same tier by paying 30 % of the chip. It frees up room in your bars.",
-	"La caja fuerte": "The safe",
-	"Guardas claridad aquí y la cobras en el próximo casino con un 15 % de interés. Mientras esté guardada no puedes usarla, ni para pagarle a Farolín ni para reintentar. También puedes retirarla antes, sin interés.": "You store clarity here and collect it at the next casino with 15 % interest. While it is stored you can't use it, neither to pay Farolín nor to retry. You can also withdraw it early, without interest.",
 	"La tienda": "The shop",
 	"Tres premios de esta visita (uno épico, uno raro y uno común) a precio fijo. Es caro, pero seguro: no hay que tirar la ruleta. Los premios cambian en cada visita.": "Three prizes from this visit (one epic, one rare and one common) at a fixed price. It's expensive, but safe: no need to spin the roulette. The prizes change on each visit.",
 }

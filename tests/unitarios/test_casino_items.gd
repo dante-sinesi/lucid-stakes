@@ -8,7 +8,7 @@ const Items := preload("res://scripts/datos/items.gd")
 const Roulette := preload("res://scripts/casino/roulette.gd")
 const Slots := preload("res://scripts/casino/slots.gd")
 const Blackjack := preload("res://scripts/casino/blackjack.gd")
-const Rules := preload("res://scripts/casino/casino_rules.gd")
+const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Showcase := preload("res://scripts/casino/showcase.gd")
 const CasinoScene := preload("res://scripts/casino/casino_scene.gd")
 

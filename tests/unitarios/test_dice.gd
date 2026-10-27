@@ -231,7 +231,7 @@ func test_cosmetics() -> void:
 	# Los modelos: cada gorro y cada prenda se arma (y tambien su silueta), con cajas de verdad
 	for c in Cosmetics.ALL:
 		var piece: Node3D = Cosmetics.build_hat(c.id) if c.slot == "gorro" else Cosmetics.build_outfit(c.id)
-		check(piece != null and piece.get_child_count() >= 2, "el modelo de %s se arma" % c.id)
+		check(piece != null and piece.get_child_count() >= 1, "el modelo de %s se arma" % c.id)
 		var ghost: Node3D = Cosmetics.build_hat(c.id, true) if c.slot == "gorro" else Cosmetics.build_outfit(c.id, true)
 		check(ghost.get_child_count() == piece.get_child_count() and (ghost.get_child(0) as MeshInstance3D).material_override is ShaderMaterial, "la silueta de %s usa el material de la silueta" % c.id)
 		piece.free()

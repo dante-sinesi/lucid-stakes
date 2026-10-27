@@ -78,16 +78,12 @@ const GREETINGS := [
 ]
 
 
-## Lo que dice el tabernero cuando le hablás en un casino: el saludo, lo que rindió la caja fuerte (si hubo), la regla de la casa de esta sala y la próxima prueba.
-## `rule`: {name, desc} de casino_rules.gd; `known`: ya la habías escuchado en esta visita; `next`: {trial, left} de la próxima prueba ({} si no quedan).
-static func keeper(rule: Dictionary, known: bool, next: Dictionary, greeting: int, vault: int) -> Array:
+## Lo que dice el tabernero cuando le hablás en un casino: el saludo, lo que rindieron tus ahorros al entrar (si hubo) y la próxima prueba.
+## `next`: {trial, left} de la próxima prueba ({} si no quedan).
+static func keeper(next: Dictionary, greeting: int, ahorro: int) -> Array:
 	var out: Array = [GREETINGS[greeting % GREETINGS.size()]]
-	if vault > 0:
-		out.append(Loc.f("Ah, y tu caja fuerte rindió: te toca cobrar %d de claridad, con interés.", [vault]))
-	if str(rule.id) != "":   # (la taberna no tiene regla de la casa)
-		var name := Loc.t(str(rule.name))
-		var desc := Loc.t(str(rule.desc))
-		out.append(Loc.f("Te lo repito: en esta sala rige «%s». %s", [name, desc]) if known else Loc.f("En esta sala rige «%s». %s Mientras estés aquí, vale.", [name, desc]))
+	if ahorro > 0:
+		out.append(Loc.f("Ah, y tus ahorros rindieron: te tocó cobrar %d de claridad.", [ahorro]))
 	if not next.is_empty():
 		var t: Dictionary = next.trial
 		if int(next.left) == 0:

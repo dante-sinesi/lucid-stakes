@@ -3,23 +3,23 @@ extends RefCounted
 ## casino_service_screens.gd). Rompen a propósito la regla de que todo es apuesta: son decisiones con precio fijo.
 ## - Taberna: ninguno (es el primer casino: lo justo para jugar).
 ## - Salón, "Taller": se vende un boost o consumible por claridad, o se cambia por otro del mismo nivel (se libera lugar en las barras).
-## - Casino, "Caja fuerte": se guarda claridad y se cobra con interés en el casino siguiente; mientras tanto no sirve para reintentar.
-## - Gran casino: ninguno.
+## - Casino y gran casino: ninguno (el ahorro ahora son un boost y un consumible: Caja fuerte y Alcancía; ver `enter`).
 
 const Items := preload("res://scripts/datos/items.gd")
 const Roulette := preload("res://scripts/casino/roulette.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 
-const BY_TIER: Array[String] = ["", "taller", "caja", ""]
+const BY_TIER: Array[String] = ["", "taller", "", ""]
 const INFO := {
 	"taller": {"name": "Taller", "desc": "Vende un boost o un consumible por claridad, o cámbialo por otro del mismo nivel."},
-	"caja": {"name": "Caja fuerte", "desc": "Guarda claridad y cobrala con interés en el próximo casino. Mientras tanto no puedes usarla."},
+	"tablon": {"name": "Tablón de contratos", "desc": "Papeles con tareas para la próxima torre. Acéptalos gratis: se cobran en cuanto los cumples. Puedes tener pocos a la vez."},
 	"tienda": {"name": "Tienda", "desc": "Tres premios de esta visita, a la venta: caro, pero seguro (sin tirar la ruleta)."},
 }
 const SELL_FRACTION := 0.4      # el taller paga esta fracción del valor del ítem
 const SWAP_FRACTION := 0.3      # cambiar un ítem cuesta esta fracción de la ficha
-const VAULT_INTEREST := 0.15    # interés de la caja fuerte por pasar un casino
+const CAJA_FUERTE := 0.15       # lo que cobra el boost Caja fuerte al entrar al casino: esta parte de la claridad con la que empezaste la torre
+const ALCANCIA := 0.30          # y el consumible Alcancía, una vez
 
 
 
@@ -28,15 +28,19 @@ static func service_for_tier(tier: int) -> String:
 	return BY_TIER[clampi(tier, 0, BY_TIER.size() - 1)]
 
 
-## Se entra al casino: se paga la caja fuerte de un casino anterior (con interés).
-## Devuelve la claridad cobrada de la caja (0 si no había nada que cobrar).
+## Se entra al casino: se cobra la Caja fuerte (boost: un porcentaje de la claridad con la que empezaste la torre que acabas de subir) y la Alcancía (consumible ya usado: otro porcentaje,
+## una sola vez). Devuelve la claridad cobrada (0 si no había nada que cobrar).
 static func enter(run) -> int:
-	if run.vault > 0 and run.stage > run.vault_stage:
-		var paid := int(round(float(run.vault) * (1.0 + VAULT_INTEREST)))
-		run.vault = 0
+	var parte := 0.0
+	if run.boosts.has("caja_fuerte"):
+		parte += CAJA_FUERTE
+	if run.alcancia:
+		parte += ALCANCIA
+		run.alcancia = false
+	var paid := int(round(float(run.claridad_inicio_torre) * parte))
+	if paid > 0:
 		run.gain(paid)
-		return paid
-	return 0
+	return paid
 
 
 # --- Taller ----------------------------------------------------------------------------------------------------------------
@@ -114,31 +118,3 @@ static func swap(run, kind: String, index: int, rng: RandomNumberGenerator) -> D
 	var old := str(list[index])
 	list[index] = pick.id
 	return {"ok": true, "error": "", "old": old, "new": pick.id, "price": price}
-
-
-# --- Caja fuerte -----------------------------------------------------------------------------------------------------------
-
-## Guarda claridad en la caja. {ok, error}. Se cobra, con interés, en el casino siguiente.
-static func deposit(run, amount: int) -> Dictionary:
-	if amount <= 0:
-		return {"ok": false, "error": Loc.t("No hay nada para guardar")}
-	if not run.can_afford(amount):
-		return {"ok": false, "error": Loc.t("No tienes tanta claridad")}
-	run.spend(amount)
-	run.vault += amount
-	run.vault_stage = run.stage
-	return {"ok": true, "error": ""}
-
-
-## Lo que se cobraría al pasar un casino (con el interés).
-static func vault_payout(run) -> int:
-	return int(round(float(run.vault) * (1.0 + VAULT_INTEREST)))
-
-
-## Saca lo guardado ahora mismo, sin interés. Devuelve lo retirado.
-static func withdraw(run) -> int:
-	var n: int = run.vault
-	run.vault = 0
-	run.gain(n)
-	return n
-

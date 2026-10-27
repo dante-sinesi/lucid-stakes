@@ -112,6 +112,23 @@ const ICONS := {
 		"..ooooo..", ".oaaaaao.", "oaabbbaao", "oaabaaaao", "oaabbaaao", "oaaaabaao", "oaabbbaao", ".oaaaaao.", "..ooooo.."]},
 	"rayos_x": {"a": Color(0.40, 0.95, 0.95), "rows": [
 		".........", "..ooooo..", ".owwwwwo.", "owwaaawwo", "owwaoawwo", "owwaaawwo", ".owwwwwo.", "..ooooo..", "........."]},
+	# ---- los de los contratos y la casa (docs/plan_casinos.md); los nombres son provisorios ----
+	"racha_de_la_casa": {"a": Color(1.0, 0.50, 0.15), "b": Color(1.0, 0.88, 0.30), "rows": [
+		".........", "......ooo", "......obo", "......oao", "...ooooao", "...obooao", "ooooaooao", "oaooaooao", "ooooooooo"]},
+	"racha_de_visita": {"a": Color(0.45, 0.75, 1.0), "b": Color(0.80, 0.93, 1.0), "w": Color(1.0, 1.0, 0.85), "rows": [
+		"......w..", ".........", "......ooo", "......obo", "......oao", "...ooooao", "...obooao", "...oaooao", "...oooooo"]},
+	"pozo_del_jackpot": {"a": Color(0.30, 0.28, 0.38), "b": Color(1.0, 0.85, 0.30), "w": Color(0.75, 0.75, 0.9), "rows": [
+		"..ob.bo..", ".obbbbbo.", "ooooooooo", "oaaaaaaao", "owaaaaaao", "oaaaaaaao", ".oaaaaao.", "..ooooo..", "........."]},
+	"caja_fuerte": {"a": Color(0.55, 0.58, 0.66), "b": Color(1.0, 0.85, 0.30), "w": Color(0.90, 0.92, 1.0), "rows": [
+		"ooooooooo", "owaaaaaao", "oaaaaaaao", "oaabbbaao", "oaabwbaao", "oaabbbaao", "oaaaaaaao", "ooooooooo", ".o.....o."]},
+	"alcancia": {"a": Color(1.0, 0.60, 0.70), "b": Color(1.0, 0.85, 0.30), "w": Color(1.0, 0.85, 0.90), "rows": [
+		"....bb...", ".oo...oo.", "oaaoooaao", "oaaaaaaao", "oaoaaaoao", "oawwwwwao", "oawowowao", ".oaaaaao.", "..ooooo.."]},
+	"caza_recompensas": {"a": Color(0.90, 0.20, 0.25), "b": Color(0.96, 0.96, 1.0), "w": Color(1.0, 0.82, 0.25), "rows": [
+		"..ooooo..", ".oaaaaao.", "oaabbbaao", "oabaaabao", "oabawabao", "oabaaabao", "oaabbbaao", ".oaaaaao.", "..ooooo.."]},
+	"contratista": {"a": Color(0.95, 0.90, 0.75), "b": Color(0.35, 0.25, 0.15), "w": Color(1.0, 0.80, 0.25), "rows": [
+		".ooooooo.", ".oaaaaao.", ".oabbbao.", ".oaaaaao.", ".oabbbao.", ".oaaaaao.", ".oabbawwo", ".oaaaawwo", ".ooooooo."]},
+	"sello_de_oro": {"a": Color(1.0, 0.80, 0.25), "b": Color(0.85, 0.15, 0.15), "w": Color(1.0, 0.97, 0.75), "rows": [
+		"...ooo...", "..oaaao..", "..owaao..", "...ooo...", "...oao...", ".oaaaaao.", "ooooooooo", "obbbbbbbo", "ooooooooo"]},
 }
 
 

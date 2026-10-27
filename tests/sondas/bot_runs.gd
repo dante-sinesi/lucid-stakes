@@ -33,7 +33,7 @@ func _init() -> void:
 		cfg.hesitate = float(OS.get_environment("HES"))   # probabilidad de titubear (= movimiento en falso) en cada paso para habilidad 1,0
 	# parámetros de balance que se pueden cambiar por variable de entorno (para probar curvas)
 	var tuned := []
-	for pair in [["WALL_GROWTH", "wall_growth"], ["WALL_MARGIN", "wall_margin"], ["PRE_FROM", "pre_wall_from"], ["PRE_TO", "pre_wall_to"], ["INCOME_BASE", "income_base"], ["INCOME_SLOPE", "income_slope"], ["INCOME_CEIL", "income_ceil"], ["HILL_POWER", "hill_power"]]:
+	for pair in [["WALL_GROWTH", "wall_growth"], ["WALL_MARGIN", "wall_margin"], ["PRE_FROM", "pre_wall_from"], ["PRE_TO", "pre_wall_to"], ["INCOME_SCALE", "income_scale"], ["INCOME_CEIL", "income_ceil"], ["HILL_POWER", "hill_power"]]:
 		if OS.get_environment(pair[0]) != "":
 			var v := float(OS.get_environment(pair[0]))
 			match pair[1]:
@@ -41,8 +41,7 @@ func _init() -> void:
 				"wall_margin": RunState.wall_margin = int(v)
 				"pre_wall_from": RunState.pre_wall_from = v
 				"pre_wall_to": RunState.pre_wall_to = v
-				"income_base": RunState.income_base = v
-				"income_slope": RunState.income_slope = v
+				"income_scale": RunState.income_scale = v
 				"income_ceil": RunState.income_ceil = v
 				"hill_power": RunState.hill_power = v
 			tuned.append("%s=%s" % [pair[0], OS.get_environment(pair[0])])

@@ -1,5 +1,5 @@
 extends SceneTree
-## Pruebas de los servicios del casino (Taller y Caja fuerte), sus pantallas y cómo se enganchan a la sala y al run (headless).
+## Pruebas de los servicios del casino (Taller y ahorros), sus pantallas y cómo se enganchan a la sala y al run (headless).
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_casino_services.gd
 
 const Services := preload("res://scripts/casino/casino_services.gd")
@@ -22,7 +22,7 @@ func check(cond: bool, label: String) -> void:
 func _init() -> void:
 	test_layout()
 	test_taller()
-	test_vault()
+	test_ahorros()
 	test_run_state()
 	await test_screens()
 	await test_pad_screens()
@@ -42,7 +42,8 @@ func test_layout() -> void:
 	var ids := []
 	check(not Room.layout(1).has("station") and Services.service_for_tier(0) == "", "la taberna no tiene estación de servicio")
 	check(not Room.layout(13).has("station") and Services.service_for_tier(3) == "", "el gran casino no tiene estación de servicio (ya no hay seguro)")
-	for st in [5, 9]:
+	check(not Room.layout(9).has("station"), "el casino ya no tiene la Caja fuerte en su sala")
+	for st in [5]:
 		var lay := Room.layout(st)
 		ids.append(lay.station.id)
 		check(Services.service_for_tier(lay.tier) == lay.station.id, "la estación de la etapa %d es la de su nivel" % st)
@@ -53,7 +54,7 @@ func test_layout() -> void:
 			near = near or reach.has(lay.station.cell + d)
 		check(near, "se llega caminando hasta la estación de la etapa %d" % st)
 		check(not Room.build_voxels(st).solid.is_empty(), "la sala de la etapa %d se arma con su estación" % st)
-	check(ids == ["taller", "caja"], "una estación distinta por nivel (sólo salón y casino): %s" % str(ids))
+	check(ids == ["taller"], "la única estación de las salas es el Taller del salón: %s" % str(ids))
 
 
 func test_taller() -> void:
@@ -88,31 +89,29 @@ func test_taller() -> void:
 	check(not Services.sell(full, "boost", 0).ok and full.boosts.size() == 7, "no se vende Mente abierta si los demás dejarían de entrar")
 
 
-func test_vault() -> void:
+func test_ahorros() -> void:
 	var run := make_run(5, 200)
-	check(not Services.deposit(run, 0).ok and not Services.deposit(run, 999).ok, "no se guarda cero ni más de lo que hay")
-	check(Services.deposit(run, 100).ok and run.claridad == 100 and run.vault == 100 and run.vault_stage == 5, "se guarda claridad")
-	check(Services.vault_payout(run) == 115, "con 15 % de interés")
-	check(Services.enter(run) == 0 and run.vault == 100, "en el mismo casino no se cobra")
-	run.stage = 6
-	var paid := Services.enter(run)
-	check(paid == 115 and run.claridad == 215 and run.vault == 0, "en el casino siguiente se cobra con interés")
-	check(Services.enter(run) == 0, "y no se cobra dos veces")
-	Services.deposit(run, 50)
-	check(Services.withdraw(run) == 50 and run.vault == 0 and run.claridad == 215, "retirar devuelve lo guardado sin interés")
-	# la claridad guardada no sirve para reintentar
-	var poor := make_run(5, 30)
-	Services.deposit(poor, 30)
-	check(not poor.can_afford_restart(), "mientras está guardada no alcanza para reintentar")
+	run.claridad_inicio_torre = 200
+	check(Services.enter(run) == 0 and run.claridad == 200, "sin Caja fuerte ni Alcancía no se cobra nada")
+	run.boosts.append("caja_fuerte")
+	check(Services.enter(run) == 30 and run.claridad == 230, "la Caja fuerte cobra un 15 % de la claridad con la que empezaste la torre")
+	run.alcancia = true
+	check(Services.enter(run) == 90 and run.claridad == 320 and not run.alcancia, "con la Alcancía suma un 30 % y se gasta (los dos: 45 %)")
+	check(Services.enter(run) == 30, "la Alcancía se cobra una sola vez")
+	var otra := make_run(5, 200)
+	otra.claridad_inicio_torre = 0
+	otra.alcancia = true
+	check(Services.enter(otra) == 0 and not otra.alcancia, "si se empezó la torre sin claridad no cobra nada (y se gasta igual)")
+	check(Items.get_item("caja_fuerte").type == Items.Type.BOOST and Items.get_item("alcancia").type == Items.Type.CONSUMABLE and Items.CASINO_USABLE.has("alcancia"), "la Caja fuerte es un boost y la Alcancía un consumible del casino")
 
 
 func test_run_state() -> void:
 	var run := make_run(7, 100)
-	run.vault = 40
-	run.vault_stage = 7
+	run.claridad_inicio_torre = 40
+	run.alcancia = true
 	var back := RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict())))
-	check(back.vault == 40 and back.vault_stage == 7, "la caja se guarda con el run")
-	check(RunState.from_dict({}).vault == 0, "un guardado viejo no la trae")
+	check(back.claridad_inicio_torre == 40 and back.alcancia, "los ahorros se guardan con el run")
+	check(RunState.from_dict({}).claridad_inicio_torre == 0 and not RunState.from_dict({}).alcancia, "un guardado viejo no los trae")
 
 
 ## Con el mando (o el teclado) los servicios se manejan con la botonera: flechas para elegir el casillero, Enter, Espacio o C para lo que dice cada ítem.
@@ -179,32 +178,18 @@ func test_screens() -> void:
 	t.find_child("cambiar", true, false).pressed.emit()
 	check(run.consumables.size() == 1 and saved[0] == 2, "cambiar por la pantalla")
 	t.queue_free()
-	# Caja
-	run = make_run(5, 200)
-	var c = ServiceScreens.make("caja")
-	root.add_child(c)
-	c.setup(run, rng, true)
-	await process_frame
-	check(c.find_child("retirar", true, false).disabled, "sin nada guardado no se puede retirar")
-	c.find_child("guardar_mitad", true, false).pressed.emit()
-	check(run.vault == 100 and run.claridad == 100 and not c.find_child("retirar", true, false).disabled, "Guardar 1/2")
-	c.find_child("guardar_todo", true, false).pressed.emit()
-	check(run.vault == 200 and run.claridad == 0 and c.find_child("guardar_todo", true, false).disabled, "Guardar todo")
-	c.find_child("retirar", true, false).pressed.emit()
-	check(run.vault == 0 and run.claridad == 200, "Retirar")
-	c.queue_free()
 
 
 func test_scene() -> void:
-	var run := make_run(10, 500)
-	run.vault = 100
-	run.vault_stage = 9
+	var run := make_run(5, 500)
+	run.boosts.append("caja_fuerte")
+	run.claridad_inicio_torre = 500
 	var c := CasinoScene.new()
 	root.add_child(c)
 	c.quick = true
 	c.setup(run, RandomNumberGenerator.new())
 	await process_frame
-	check(run.vault == 0 and run.claridad == 615, "al entrar al casino se cobra la caja fuerte")
+	check(run.claridad == 575, "al entrar al casino se cobra la Caja fuerte (15 % de 500)")
 	var st: Vector2i = c.lay.station.cell
 	check(c._bump(st) == "service" and c.screen != null, "chocar con la estación abre su pantalla")
 	c.close_roulette()
@@ -218,7 +203,7 @@ func test_scene() -> void:
 	story_c.story = true
 	root.add_child(story_c)
 	story_c.quick = true
-	story_c.setup(make_run(8, 0), RandomNumberGenerator.new())
+	story_c.setup(make_run(5, 0), RandomNumberGenerator.new())
 	await process_frame
 	check(story_c._bump(story_c.lay.station.cell) == "blocked" and story_c.screen == null, "en el tutorial la estación está cerrada")
 	story_c.queue_free()
