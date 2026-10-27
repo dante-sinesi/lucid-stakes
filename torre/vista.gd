@@ -120,7 +120,7 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		m.position = world_pos(c)
 		parent.add_child(m)
 		if letra.length() >= 2 and letra[0] == "b":
-			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador))
+			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador, t.bloques.has(c + Vector3i(0, 1, 0))))
 			parent.add_child(_zona(c, t))
 	if con_jugador:
 		parent.add_child(_figura_jugador(t))
@@ -234,9 +234,10 @@ static func _malla_masa(celdas: Array[Vector3i]) -> ArrayMesh:
 
 
 ## La cuenta de una bomba (ver `cuenta_bomba.gd`): roja si el jugador está dentro de su zona y la mecha corre.
-static func _cuenta(c: Vector3i, mecha: int, jugador: Vector3i) -> Sprite3D:
+## Con un bloque justo arriba de la bomba la cuenta quedaría adentro de él: en ese caso (`tapada`) se dibuja sin respetar la profundidad para que se pueda leer.
+static func _cuenta(c: Vector3i, mecha: int, jugador: Vector3i, tapada := false) -> Sprite3D:
 	var d := jugador - c
-	return CuentaBomba.crear(c, mecha, d.x * d.x + d.y * d.y + d.z * d.z <= 5)
+	return CuentaBomba.crear(c, mecha, d.x * d.x + d.y * d.y + d.z * d.z <= 5, tapada)
 
 
 ## Una referencia tenue del anillo de la torre (11 x 11 con el vacío de 5 x 5): no es suelo, sólo ayuda a ubicarse.

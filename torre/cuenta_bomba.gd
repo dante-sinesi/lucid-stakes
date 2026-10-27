@@ -1,6 +1,6 @@
 extends RefCounted
 ## La cuenta de una bomba: un dibujo de pixeles de una bomba (cuerpo redondo, mecha con chispa) con el número adentro, con la fuente del juego. Gris mientras la mecha está quieta y roja
-## cuando corre (el jugador está dentro de su zona); la mecha es más corta cuanto menos queda. Lo pone `vista.gd` sobre el bloque y lo tapan los bloques de adelante, como a cualquier cosa del mundo.
+## cuando corre (el jugador está dentro de su zona); la mecha es más corta cuanto menos queda. Lo pone `vista.gd` sobre el bloque y lo tapan los bloques de adelante, como a cualquier cosa del mundo (salvo si hay un bloque justo arriba de la bomba: ahí se ve a través, `sin_profundidad`).
 
 const VFont := preload("res://scripts/ui/voxel_font.gd")
 
@@ -12,7 +12,7 @@ static var _cache := {}
 
 
 ## El Sprite3D de la cuenta, de cara a la cámara, sobre la celda `c`.
-static func crear(c: Vector3i, mecha: int, activa: bool) -> Sprite3D:
+static func crear(c: Vector3i, mecha: int, activa: bool, sin_profundidad := false) -> Sprite3D:
 	var s := Sprite3D.new()
 	s.texture = textura(mecha, activa)
 	s.pixel_size = PIXEL
@@ -20,6 +20,7 @@ static func crear(c: Vector3i, mecha: int, activa: bool) -> Sprite3D:
 	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	s.shaded = false
 	s.double_sided = true
+	s.no_depth_test = sin_profundidad
 	s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 	s.position = Vector3(c.x + 0.5, c.y + 1.3, c.z + 0.5)
 	return s

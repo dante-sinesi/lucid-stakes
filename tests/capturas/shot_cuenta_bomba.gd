@@ -40,5 +40,10 @@ func _init() -> void:
 	main.torre._refrescar(false)
 	await create_timer(0.4).timeout
 	root.get_texture().get_image().save_png("%s_b.png" % pref)
+	m.poner(Vector3i(4, 2, 0 + 0), "b12")
+	m.poner(Vector3i(2, 3, 1), "n")   # un bloque justo arriba de la bomba activa
+	main.torre._refrescar(false)
+	await create_timer(0.4).timeout
+	root.get_texture().get_image().save_png("%s_c.png" % pref)
 	print("listo")
 	quit(0)
