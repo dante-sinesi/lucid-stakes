@@ -1744,7 +1744,7 @@ func _on_dev_command(line: String) -> void:
 
 
 ## Comando tower: una partida nueva en la etapa y el escenario que se pida (sin pagar la entrada), con la semilla opcional. Funciona desde el menú principal y desde el juego.
-func dev_tower(stage: int, scenario_id := "", seed := -1) -> String:
+func dev_tower(stage: int, scenario_id := "", seed := -1, prueba := "") -> String:
 	if generating:
 		return "Espera: se está armando la torre"
 	var sc := scenario_id.to_lower() if scenario_id != "" else Scenarios.FREE
@@ -1772,6 +1772,8 @@ func dev_tower(stage: int, scenario_id := "", seed := -1) -> String:
 	var draw_rng := RandomNumberGenerator.new()
 	draw_rng.randomize()
 	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng)
+	if prueba != "":   # (el comando prueba: esa prueba en esa etapa)
+		run.trial_schedule[stage] = prueba
 	run_new_abilities.clear()
 	Profile.apply_to_run(run)
 	_bind_bars()

@@ -7,6 +7,7 @@ const Torre := preload("res://torre/torre.gd")
 const Trials := preload("res://scripts/datos/trials.gd")
 const Scenarios := preload("res://scripts/datos/scenarios.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
+const DevCommands := preload("res://scripts/herramientas/dev_commands.gd")
 
 var fails := 0
 
@@ -151,5 +152,9 @@ func test_juego() -> void:
 		check(torre.gatito_nodo.visible, "el gato se queda esperando en el checkpoint")
 	else:
 		check(true, "(la primera sala de esta torre no tiene variante)")
+	# el comando de desarrollo "prueba": esa prueba en esa etapa
+	check(DevCommands.execute("prueba no_existe 3", main).begins_with("Uso:") and DevCommands.execute("prueba gatito 99", main).begins_with("Uso:"), "el comando prueba pide una prueba y una etapa válidas")
+	var msg := DevCommands.execute("prueba gatito 3 pesadilla 55", main)
+	check(msg.contains("etapa 3") and main.run.trial_at(3).get("gatito", false), "el comando prueba pone el gatito en la etapa 3 (%s)" % msg)
 	main.queue_free()
 	await process_frame
