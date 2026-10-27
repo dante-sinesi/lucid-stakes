@@ -1,6 +1,6 @@
 # Pruebas: las que hay y las que podrían venir
 
-Borrador para conversar. La primera parte describe lo que hay hoy en el juego; la segunda, ideas nuevas **solo conceptuales** (sin pensar en cómo se programan): lo que importa es que sean divertidas.
+Borrador para conversar. La primera parte describe lo que hay hoy en el juego; la segunda, las ideas nuevas con las decisiones que ya tomamos (**solo conceptuales**: lo que importa es que sean divertidas).
 
 ## Cómo funcionan las pruebas hoy
 
@@ -43,117 +43,91 @@ Criterios para elegir entre las ideas de abajo:
 5. **A veces es un trato y no un castigo:** algunas pruebas dan algo a cambio de un riesgo (como los jefes de Balatro que también ofrecen ventajas).
 6. **Entra en distintos momentos del run:** las suaves arriba (etapas 3 y 6), las serias en el medio (9 y 12) y una especial para el final (15).
 
-## Ideas nuevas (conceptuales)
+## Ideas nuevas: lo que ya decidimos
 
-Para cada una: qué cambia, por qué sería divertida y el cuidado que pide.
+| Idea | Veredicto | Nota |
+|---|---|---|
+| Memoria de pez | sí, con cambios | la torre se ve unos segundos solo después de cada movimiento (ficha abajo) |
+| A oscuras | sí, con bloque nuevo | bloques oscuros que esconden qué son (ficha abajo) |
+| Espalda mala | sí, con cuidado | empujar o tirar cuesta doble; hay que cuidar el límite de movimientos |
+| Solo tres bloques | sí, con cuidado | hay que asegurar que la sala siga siendo resoluble |
+| Presupuesto compartido | sí, fantástica | los movimientos de toda la torre son un solo fondo |
+| Quebradizo | sí, con cuidado | cada bloque se pisa una sola vez; cuidar la resolubilidad |
+| Mareo | sí, en cualquier etapa | la cámara gira cada cinco movimientos |
+| Terremoto | sí | cada ocho movimientos un bloque suelto se corre una celda |
+| **Ventisca** (nueva) | sí | el viento mueve al jugador una celda cada tanto (ficha abajo) |
+| Plomo | sí, pero sin resolver | falta decidir cómo darle dificultad, y no hay salas de ese tipo |
+| Corrupción que vuelve | sí | los bloques purificados se corrompen de nuevo cada diez movimientos |
+| Casino torcido | sí, en el casino y el gran casino | falta decidir cómo se entiende que sea una prueba que no está en la torre |
+| Peaje por adelantado | sí, con la misma duda | igual que el casino torcido |
+| **El gatito travieso** | sí, **cuanto antes** | ficha abajo |
+| Sombra | pendiente | no se entendió la prueba: reexplicada abajo |
+| La Pesadilla despierta | sí, sin duda | el jefe final (etapa 15) |
 
-### Ver y recordar
+**Descartadas:** Lluvia de meteoritos (no tiene consecuencias), Polvorín (no tiene sentido con esas reglas y hay pocas salas con bombas), Encargo de Farolín, Apuesta de Farolín y La claridad no se asegura.
+**Para más adelante:** Hielo total (no hay salas con ese formato) y Pegamento (sería difícil asegurar que la torre se pueda resolver).
 
-**Memoria de pez.** Al entrar a una sala la ves entera unos segundos y después los bloques lejanos se ocultan: solo se ven los de alrededor.
-*Divertida porque* te obliga a memorizar y planear de antemano, y sale muy bien si la sala se puede resolver "de memoria".
-*Ojo:* que los segundos de vista alcancen para entender la sala.
+## Las fichas
 
-**A oscuras.** Farolín se apaga y solo se ve en un círculo alrededor del personaje. El resto es negro, salvo los checkpoints dorados.
-*Divertida porque* convierte la torre en exploración, con Farolín como personaje central.
-*Ojo:* que no moleste en las salas altas (se puede ver el nivel de arriba apenas).
+### Memoria de pez
+La torre se ve **entera solo unos pocos segundos cada vez que haces un movimiento**. Pasado ese rato, solo quedan visibles los **bloques adyacentes**: el resto desaparece hasta el próximo movimiento.
+*Cómo se juega:* piensas mirando lo último que viste y cada movimiento te "recarga" la memoria. Quedarse quieto a pensar es perder la vista.
+*A decidir:* cuántos segundos dura (2 o 3), si los bloques lejanos se desvanecen despacio o de golpe, y si los checkpoints se ven siempre.
 
-### Esfuerzo y movimientos
+### A oscuras
+Un **tipo de bloque nuevo**: **bloques oscuros**, negros y lisos, que **esconden qué son**. Un bloque oscuro puede ser un común, un pesado, un agrietado, uno de hielo, etc., y no lo sabes hasta que lo **purificas** (lo pisas): entonces se aclara hasta un gris. Solo **la mitad de los bloques** de la sala son de este tipo, para que no moleste demasiado.
+*Cómo se juega:* nunca sabes del todo si el bloque que vas a mover es especial. Los bloques claros te dan certezas y los oscuros, dudas.
+*A decidir:* si intentar mover un pesado oscuro lo revela (el bloque "se resiste") o no, y qué se ve cuando se purifica (¿gris con el aspecto de lo que era?).
+*Cuidado:* requiere el arte nuevo del bloque oscuro y mantener la regla de que cada especial tiene un propósito en la sala.
 
-**Espalda mala.** Empujar o tirar de un bloque cuesta **dos** movimientos en lugar de uno.
-*Divertida porque* cada empujón se vuelve una decisión cara, y los atajos que ahorran empujar valen oro.
-*Ojo:* que el margen de movimientos acompañe (la sala debe seguir siendo resoluble).
+### Ventisca
+Cada cierto número de movimientos sopla una **ventisca** que **empuja al jugador una celda en una dirección al azar**. Si había un precipicio, el personaje queda **colgado** del borde; si era hielo, **resbala**; y así con cada bloque especial.
+*Cómo se juega:* el plan tiene que dejar margen porque en cualquier momento te corren de lugar.
+*A decidir:* cada cuántos movimientos, y si la dirección se **avisa un movimiento antes** (un silbido y una flecha en la pantalla) para que sea azar justo: el jugador no puede evitarla, pero sí prepararse.
+*Cuidado:* el colgarse es justamente la salida cuando el viento te tira al vacío.
 
-**Solo tres bloques.** En cada sala solo se pueden mover **tres bloques distintos**: el cuarto queda trabado. (Es la métrica de "bloques distintos movidos" que ya mide la dificultad.)
-*Divertida porque* es un puzzle dentro del puzzle: elegir cuáles tres bloques mover.
-*Ojo:* que el jugador sepa cuántos le quedan (un contador).
+### El gatito travieso
+Al entrar a cada sala, un **gatito** aparece, corre y **mueve de lugar un bloque común** (una celda). Cada sala se parece a la de siempre, pero no es igual.
+*Cómo se juega:* hay que mirar la sala antes de moverte porque ya no es como la viste en la ayuda o en la partida anterior.
+*Que siga siendo resoluble:* el cambio tiene que dejar la sala con solución. Hay dos caminos: (a) el juego **comprueba con el solucionador** que la sala sigue resolviéndose y, si no, el gatito elige otro bloque u otra celda; o (b) cada sala trae **ya calculados** los cambios seguros. En los dos casos se **recalcula el mínimo** y con él el límite de movimientos de la sala.
+*A decidir:* si el gatito mueve uno o dos bloques, y si es el gato del personaje o uno propio de la prueba.
 
-**Presupuesto compartido.** Los movimientos de toda la torre son un solo fondo: lo que sobra en una sala pasa a la siguiente, y lo que falta se toma de lo que queda.
-*Divertida porque* permite apostar: gastar de más en una sala difícil y ahorrar en las fáciles.
-*Ojo:* mostrar bien el fondo restante.
+### Sombra (reexplicada)
+Una **sombra** sale del checkpoint detrás de ti, siempre **cinco movimientos atrás**, y **repite exactamente tu camino**. Si te alcanza (llega a la celda donde estás), pierdes la sala.
+*Cómo se juega:* no puedes quedarte dando vueltas ni retroceder sobre tu propio camino: la sombra te pisa los talones. Pero también la puedes usar: si pasa por un bloque agrietado o una bomba detrás de ti, le pasa lo que le pase a quien lo pise.
+*Pendiente:* decidir si vale la pena, porque en las salas donde hay que ir y volver para mover bloques puede ser injusta.
 
-**Quebradizo.** Cada bloque que pisas **se rompe** al bajarte, como un agrietado: una sola pisada por bloque en toda la sala. (Es la vieja "Quebradizo", adaptada.)
-*Divertida porque* convierte la sala en un camino de un solo sentido y obliga a leer la ruta completa.
-*Ojo:* hay que chequear que cada sala siga teniendo solución.
+### La Pesadilla despierta (el jefe final, etapa 15)
+La última torre **combina dos de las reglas de arriba** y paga el máximo (×2,7 y un boost épico). Combinaciones que se llevan bien: **Mareo + Terremoto** (el mundo entero se mueve), **Memoria de pez + Ventisca** (no ves y te empujan) o **Presupuesto compartido + Mareo** (cada movimiento cuenta y la cámara gira).
+*A decidir:* si es una combinación fija o si se sortea entre unas pocas.
 
-### El mundo se mueve
+## Plomo (pendiente)
 
-**Lluvia de meteoritos.** Cada cierta cantidad de movimientos, una **sombra** marca una celda de la sala: un movimiento después cae un meteorito y destruye el bloque que haya ahí.
-*Divertida porque* el peligro es visible y se puede esquivar, y a veces el meteorito abre un camino nuevo.
-*Ojo:* la sombra tiene que verse con tiempo.
+Todos los bloques son pesados: se trepan pero no se empujan; solo se mueven unos pocos, marcados. Hay dos problemas: **no hay salas con tantos bloques pesados** (hoy hay 121 salas con algún pesado, no salas hechas de ellos) y, si los bloques movibles están marcados, **es obvio cuáles mover**.
+*Una salida para la dificultad:* mezclarlo con la idea de **A oscuras**: los bloques movibles están entre los oscuros, así que no sabes cuáles se mueven hasta probar. Las salas con muchos pesados se podrían **generar con el generador** pidiendo el rol pesado.
 
-**Mareo.** La cámara **gira 90 grados** cada cinco movimientos, y los controles siguen siendo relativos a la cámara.
-*Divertida porque* es caos puro y muy gracioso: hay que reorientarse todo el tiempo.
-*Ojo:* mejor para el principio del run, donde molesta menos; el cartel debe avisar cuándo gira.
+## Casino torcido y Peaje por adelantado (pendiente)
 
-**Terremoto.** Cada ocho movimientos tiembla la pantalla y un bloque suelto de la sala se corre una celda (se avisa con el temblor).
-*Divertida porque* la sala "respira" y hay que adaptar el plan.
-*Ojo:* que no cambie el bloque donde estás parado.
+Ambos pasan **en el casino**, no en la torre, y entonces **no se entiende por qué se supera una prueba** que no se juega en la torre. Dos formas de resolverlo:
 
-### Bloques cambiados
+1. **No son pruebas, son "eventos del casino".** Farolín los anuncia al salir de la torre ("hoy el casino está torcido") y tienen su propio premio. Salen solo en el casino y el gran casino, como pediste.
+2. **Pasan a la torre.** El **peaje** se cobra **en la torre, sala por sala** ("Farolín cobra una moneda en cada checkpoint y te la devuelve al terminar"), y el **casino torcido** se convierte en una prueba con **una torre mezclada** (la torre trae una sala de casino a mitad de camino: la mesa que sale es la que se juega).
 
-**Hielo total.** Todos los bloques de la sala son de hielo: cualquier paso resbala. (La vieja "Hielo total".)
-*Divertida porque* es un puzzle de patinaje completamente distinto, y casi un mini-juego.
-*Ojo:* hay que cuidar que no se salga de la huella a cada paso.
+La 1 es lo más simple y mantiene la idea; la 2 respeta que una prueba se supera en la torre.
 
-**Pegamento.** Los bloques que se tocan quedan **unidos**: se empujan y tiran juntos.
-*Divertida porque* cambia la física de toda la torre y los bloques se vuelven piezas grandes.
-*Ojo:* que siga habiendo solución sin frustrar.
+## Cómo asegurar que las salas sigan siendo resolubles
 
-**Polvorín.** Cada sala trae una bomba extra con una cuenta bastante larga. (La vieja "Polvorín".)
-*Divertida porque* mete presión sin cambiar las reglas básicas.
-*Ojo:* que la bomba nunca bloquee la única salida.
+Hay una forma barata para varias de las pruebas con cuidado, y es **usar lo que ya sabemos de cada sala**. Cada sala de la biblioteca guarda su solución conocida (el camino, cuántos bloques distintos mueve, cuántas veces agarra, qué pisa):
 
-**Plomo.** Todos los bloques son pesados: se trepan, pero no se empujan. Solo se mueven unos pocos, marcados con un color.
-*Divertida porque* convierte la sala en un laberinto con muy pocas piezas móviles.
-*Ojo:* hace falta marcar bien cuáles se mueven.
-
-### Riesgo y recompensa (tratos)
-
-**Apuesta de Farolín.** Antes de la torre Farolín te ofrece un multiplicador de claridad (×1,5, ×2 o ×3) a cambio de menos vidas para esa torre (3, 2 o 1).
-*Divertida porque* el jugador decide cuánto arriesga, como en una mano de blackjack.
-*Ojo:* mostrar claro el trato.
-
-**La claridad no se asegura.** En esta torre los checkpoints no guardan la claridad: se cobra toda al final, pero si caes **se pierde toda** la de esa torre.
-*Divertida porque* cada sala es una decisión de seguir o conformarse.
-*Ojo:* se parece a Todo o nada, así que conviene que no salgan seguidas.
-
-**Corrupción que vuelve.** Los bloques ya purificados se **corrompen de nuevo** cada diez movimientos: hay que volver a pisarlos para cobrar su claridad.
-*Divertida porque* toca el corazón del juego (purificar) y premia las rutas que recorren mucho.
-*Ojo:* que el aviso sea claro y no confunda con la racha.
-
-### Casino y contratos
-
-**Casino torcido.** En esta etapa solo está abierta **una mesa**, sorteada: ruleta, tragamonedas o blackjack. Las demás tienen el cartel de cerrado.
-*Divertida porque* obliga a adaptar la estrategia económica y a descubrir juegos que se habían descuidado.
-*Ojo:* en el salón y la taberna casi no hay mesas, así que habría que probarlo con el casino más grande.
-
-**Encargo de Farolín.** Farolín te **obliga** a aceptar un contrato especial, sin fianza y con una recompensa grande. Cumplirlo regala un boost; fallarlo cuesta claridad.
-*Divertida porque* mezcla las pruebas con los contratos y le da personalidad a Farolín.
-*Ojo:* que el encargo sea siempre posible en esa torre.
-
-**Peaje por adelantado.** Farolín cobra el peaje **antes** de la torre (si no puedes pagarlo, no se entra); si superas la torre te devuelve la mitad.
-*Divertida porque* cambia el ritmo: el dinero se piensa antes de jugar, no después.
-*Ojo:* en las etapas con peaje alto puede cortar la partida; hay que ajustar bien los números.
-
-### Con personajes
-
-**El gatito travieso.** Al entrar a cada sala, un gatito mueve **un bloque común** de lugar (una celda, siempre sin romper la solución).
-*Divertida porque* es un toque de humor y cada sala se parece a la anterior pero no igual.
-*Ojo:* hay que verificar que la sala siga siendo resoluble.
-
-**Sombra.** Una **sombra** te sigue una celda atrás y copia tus pasos con retraso: puede pisar bloques antes que tú o trabarte el camino.
-*Divertida porque* es un compañero molesto que hay que usar a favor.
-*Ojo:* necesita reglas claras de qué pasa cuando se cruzan.
-
-### Para el final (etapa 15)
-
-**La Pesadilla despierta.** La última torre combina dos reglas de las de arriba (por ejemplo, Mareo y Lluvia de meteoritos) y paga el máximo (×2,7 más un boost épico).
-*Divertida porque* es el "jefe final" de la partida: un examen de todo lo que se aprendió.
-*Ojo:* que las dos reglas se lleven bien entre sí.
+- **Solo tres bloques:** esa prueba solo usa salas cuya solución conocida mueva tres bloques distintos o menos (hay muchas: las fáciles mueven unos 3,7 de media). Así la sala es resoluble por construcción.
+- **Espalda mala:** el costo de la solución conocida es sus pasos más sus agarres. Si el límite de movimientos de la sala es ese costo con margen, es resoluble.
+- **Quebradizo:** se prueba la solución conocida con la regla (en el simulador del juego): las salas cuya solución nunca pisa dos veces el mismo bloque entran. Las demás se descartan para esta prueba.
+- **Terremoto y gatito:** después del cambio se vuelve a resolver la sala con el solucionador y, si no tiene solución, el cambio se elige de nuevo.
+- **Mareo, Presupuesto compartido, Memoria de pez, A oscuras y Corrupción que vuelve** no cambian el puzzle, solo cómo se juega: son resolubles siempre.
 
 ## Cómo seguir
 
-1. Marcar cuáles te gustan, cuáles cambiar y cuáles descartar.
-2. Decidir cuántas pruebas habría en total y si cada escenario tiene su propio grupo (hoy es un grupo de tres que cada escenario recorta).
-3. Ordenarlas por etapa: cuáles pueden caer en la 3 y en la 6, cuáles solo de la 9 en adelante y cuáles son del final.
-4. Recién después, pensar cómo se construyen.
+1. Cerrar las dudas de las fichas (Memoria de pez, A oscuras, Ventisca, gatito y Sombra).
+2. Decidir qué hacemos con Casino torcido y Peaje por adelantado.
+3. Ordenar las pruebas por etapa: cuáles pueden caer en la 3 y en la 6, cuáles solo de la 9 en adelante y cuáles son del final.
+4. Empezar por **El gatito travieso**.
