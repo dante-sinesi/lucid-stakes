@@ -26,6 +26,8 @@ var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox
 var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
 var contrast_buttons := {}  # "on" / "off"
+var panel_buttons := {}  # "mantener" / "alternar"
+var profundidad_buttons := {}  # 0 / 1 / 2
 var reading_buttons := {}   # "on" / "off"
 var compass_buttons := {}   # "on" / "off"
 var fondo_buttons := {}   # "on" / "off"
@@ -170,6 +172,16 @@ func _build_general(page: Control) -> void:
 	contrast_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "contraste_si", _on_contrast.bind(true))
 	contrast_buttons["off"] = _toggle(row, Loc.t("No"), group, "contraste_no", _on_contrast.bind(false))
 	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	row = _row(Loc.t("Panel de información"))
+	group = ButtonGroup.new()
+	panel_buttons["mantener"] = _toggle(row, Loc.t("Mantener"), group, "panel_mantener", _on_panel_modo.bind("mantener"))
+	panel_buttons["alternar"] = _toggle(row, Loc.t("Alternar"), group, "panel_alternar", _on_panel_modo.bind("alternar"))
+	UI.label(_page, Loc.t("Mantener: se ve mientras sostienes la tecla. Alternar: un toque lo abre y otro lo cierra."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	row = _row(Loc.t("Ayuda de profundidad"))
+	group = ButtonGroup.new()
+	for o in [[0, "Ninguna"], [1, "Atenuar"], [2, "Atenuar y transparentar"]]:
+		profundidad_buttons[o[0]] = _toggle(row, Loc.t(o[1]), group, "profundidad_%d" % o[0], _on_profundidad.bind(o[0]))
+	UI.label(_page, Loc.t("Atenuar: lo cercano se ve más claro. Transparentar: además, lo que tapa al personaje se vuelve transparente."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Datos de juego"))
 	var data_button := UI.button(Loc.t("Abrir la carpeta"), false, 2.4, 0, false)
 	data_button.name = "abrir_carpeta"
@@ -440,6 +452,10 @@ func refresh() -> void:
 	var cp: bool = Settings.get_value("compass")
 	compass_buttons.on.selected = cp
 	compass_buttons.off.selected = not cp
+	for k in panel_buttons:
+		panel_buttons[k].selected = k == str(Settings.get_value("panel_modo"))
+	for k in profundidad_buttons:
+		profundidad_buttons[k].selected = k == int(Settings.get_value("ayuda_profundidad"))
 	var fa: bool = Settings.get_value("fondo_animado")
 	fondo_buttons.on.selected = fa
 	fondo_buttons.off.selected = not fa
@@ -578,6 +594,16 @@ func _on_ui_scale(dir: int) -> void:
 
 func _on_contrast(on: bool) -> void:
 	Settings.set_value("high_contrast", on)
+	refresh()
+
+
+func _on_panel_modo(modo: String) -> void:
+	Settings.set_value("panel_modo", modo)
+	refresh()
+
+
+func _on_profundidad(k: int) -> void:
+	Settings.set_value("ayuda_profundidad", k)
 	refresh()
 
 

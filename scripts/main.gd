@@ -13,6 +13,7 @@ const Stages := preload("res://scripts/datos/stages.gd")
 const BlockGuide := preload("res://scripts/datos/block_guide.gd")
 const Farolin := preload("res://scripts/personajes/farolin.gd")
 const TrialBanner := preload("res://scripts/ui/trial_banner.gd")
+const PanelInfo := preload("res://scripts/ui/panel_info.gd")
 const Telemetry := preload("res://scripts/datos/telemetry.gd")
 const Demo := preload("res://scripts/datos/demo.gd")
 const DemoEndScreen := preload("res://scripts/ui/demo_end_screen.gd")
@@ -60,7 +61,7 @@ const BlockModels := preload("res://scripts/personajes/block_models.gd")
 ## Cámara:
 ## La cámara se mueve con el mouse (arrastrar: girar y inclinar; rueda: zoom). Q y E vuelven al ángulo isométrico (girando 90 grados).
 const PITCH_NORMAL := -35.264   # ángulo isométrico
-## Ayudas de profundidad (tecla V): 0 ninguna, 1 atenuación, 2 atenuación + transparencia cercana.
+## Ayudas de profundidad (Opciones): 0 ninguna, 1 atenuación, 2 atenuación + transparencia cercana.
 const DEPTH_STRENGTH := 0.11
 const XRAY_RADIUS := 1.3
 const FINAL_STAGE := Stages.FINAL   # etapas del juego: al pasar la última se termina
@@ -147,6 +148,7 @@ var compass              # rosa de los vientos (qué eje mueve cada tecla)
 var clarity_counter       # [ícono] claridad (la del run más la juntada en esta torre)
 var dev_console           # consola del modo dev (sólo en compilaciones de desarrollo; null en las release)
 var console_open := false
+var panel_info: Control      # el panel de información (Tab): la partida contada por la izquierda
 var run_end             # pantalla de fin de run
 var demo_end            # pantalla de fin de la demo (demo_end_screen.gd)
 var run_over := false
@@ -193,7 +195,7 @@ func _ready() -> void:
 	pad_bridge.process_mode = Node.PROCESS_MODE_ALWAYS   # (el mando tiene que seguir andando con el juego en pausa: si no, el menú de pausa no responde)
 	add_child(pad_bridge)
 	add_to_group("graphics")
-	_set_depth_mode(depth_mode)
+	_set_depth_mode(int(Settings.get_value("ayuda_profundidad")))
 	_build_environment()
 	_build_hud()
 	_build_menus()
@@ -296,7 +298,12 @@ func _build_hud() -> void:
 	lives_hud = hud_panel.lives
 	stage_label = hud_panel.stage_label
 	clarity_counter = hud_panel.clarity
-	var banner_layer := CanvasLayer.new()   # el cartel de la prueba va por encima de los menús: al pausar se ve entero
+	var panel_layer := CanvasLayer.new()   # el panel de información (Tab) va sobre el HUD y debajo de los menús
+	panel_layer.layer = 20
+	add_child(panel_layer)
+	panel_info = PanelInfo.new()
+	panel_layer.add_child(panel_info)
+	var banner_layer := CanvasLayer.new()   # el cartel de la prueba va por encima de los menús (y se va al pausar)
 	banner_layer.layer = 105
 	add_child(banner_layer)
 	trial_banner = TrialBanner.new()
@@ -469,7 +476,6 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.falsos_cambiaron.connect(_torre_falsos)
 	torre.aviso.connect(func(texto: String): _flash(Loc.t(texto)))
 	torre.ganancia.connect(_flash_gain)
-	torre.profundidad_pedida.connect(func(): _set_depth_mode((depth_mode + 1) % 3))
 	torre.portal = _cubo_portal()
 	torre.deshacer_pedido.connect(undo_move)
 	torre.movimiento_hecho.connect(_tutorial_movimiento)
@@ -850,13 +856,12 @@ func _set_depth_mode(mode: int) -> void:
 	depth_mode = mode
 	RenderingServer.global_shader_parameter_set("depth_strength", 0.0 if mode == 0 else DEPTH_STRENGTH)
 	RenderingServer.global_shader_parameter_set("xray_radius", XRAY_RADIUS if mode == 2 else 0.0)
-	if is_inside_tree() and toast:
-		_flash(["Ayuda de profundidad: ninguna", "Ayuda de profundidad: más claro lo cercano", "Ayuda de profundidad: más claro lo cercano + transparencia cercana"][mode])
 
 
 ## Cada cuadro: dónde está el personaje respecto de la cámara (referencia de las ayudas de profundidad).
 func _process(delta: float) -> void:
 	juice.process(delta)
+	_panel_vigilar()
 	if torre == null or torre.cam == null or torre.gato_nodo == null:
 		return
 	var v: Vector3 = torre.cam.global_transform.affine_inverse() * torre.gato_nodo.global_position
@@ -905,16 +910,12 @@ func _refresh_torre() -> void:
 	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
 	hud_panel.set_toll(0)
 	hud_panel.set_moves(torre.t.movs if torre.t != null else 0)
-	_info_pausa = [stage_label.text] + ([Loc.f("Peaje %d", [next_toll])] if next_toll > 0 else [])
-	_info_pausa_rojo = 1 if next_toll > 0 and total < next_toll else -1
 	if total > clarity_counter.value:
 		juice.pop(clarity_counter, 1.25)
 	clarity_counter.value = total
 	_update_perk_label()
-
-
-var _info_pausa: Array = []   # lo que muestra el menú de pausa a la izquierda: etapa y peaje
-var _info_pausa_rojo := -1
+	if panel_info != null and panel_info.abierto:
+		panel_info.actualizar(_panel_datos())
 
 
 func _refresh() -> void:
@@ -952,6 +953,76 @@ func _bank_claridad() -> void:
 		if not new_chars.is_empty():
 			_trial_msg = Loc.join([_trial_msg, _character_msg(new_chars)])
 			Sfx.play("item")
+
+
+## El panel de información (docs/panel_informacion.md): se abre al apretar su tecla (Tab; Select en el mando) y, según Opciones, se ve mientras se mantiene apretada o hasta un nuevo toque.
+func _input(event: InputEvent) -> void:
+	if panel_info == null or not (event is InputEventKey) or not event.pressed or event.echo or Controls.action_of(event) != "panel_info":
+		return
+	if not _panel_permitido():
+		return
+	get_viewport().set_input_as_handled()   # (Tab no mueve el foco de nadie)
+	if panel_info.abierto and str(Settings.get_value("panel_modo")) == "alternar":
+		panel_info.cerrar()
+	else:
+		panel_info.abrir(_panel_datos())
+
+
+## ¿Se puede ver el panel ahora? En la torre y en el sala del casino, sin menús, pausa, diálogos ni pantallas de juego encima.
+func _panel_permitido() -> bool:
+	if run == null or in_menu or console_open or generating or get_tree().paused:
+		return false
+	if dialogue != null and dialogue.visible:
+		return false
+	if casino != null:
+		return casino.screen == null
+	return torre != null and not run_over
+
+
+## Lo que cuenta el panel de información ahora (ver `PanelInfo`).
+func _panel_datos() -> Dictionary:
+	var d := {}
+	if run == null:
+		return d
+	d["titulo"] = Loc.t("Tutorial") if tutorial_index >= 0 else _titulo_pausa()
+	d["etapa"] = Loc.f("Etapa %d/%d", [stage_number, Demo.shown_final(FINAL_STAGE)])
+	var en_torre: bool = torre != null and casino == null and torre.t != null
+	var de_la_torre := 0
+	if en_torre:
+		d["sala"] = Loc.f("Sala %d/%d", [torre.t.indice + 1, torre.t.salas.size()])
+		de_la_torre = torre.t.cosecha.claridad() if not banked else 0   # (ya sumada al run al llegar al portal: no se cuenta dos veces)
+		d["movs"] = torre.t.movs
+		d["max_movs"] = torre.t.max_mov()
+		d["sin_limite"] = torre.t.max_mov() >= 99999
+		if torre.falsos != null and torre.falsos_permitidos > 0:
+			d["falsos"] = {"quedan": torre.falsos.quedan(), "permitidos": torre.falsos_permitidos}
+	d["claridad"] = run.claridad + de_la_torre
+	d["claridad_torre"] = de_la_torre
+	var cobra: bool = not training and tutorial_index < 0 and not (test_mode and not toll_in_tests)
+	var precio := 0
+	if casino != null:
+		precio = casino.toll_now() if cobra and casino.toll_base > 0 else 0
+	elif cobra:
+		precio = run.toll_after_discounts(RunState.toll_for(stage_number))
+	if precio > 0:
+		d["peaje"] = {"precio": precio, "alcanza": int(d.claridad) >= precio}
+	if en_torre and not trial.is_empty() and not training:
+		d["prueba"] = {"nombre": Loc.t(trial.name), "desc": Loc.t(trial.desc)}
+	elif not training and tutorial_index < 0:
+		d["proxima_prueba"] = run.next_trial_text(stage_number + 1)
+	if not training and tutorial_index < 0:
+		d["contratos"] = Contratos.para_pausa(run)
+	return d
+
+
+## Si el panel está abierto: se cierra cuando ya no se puede ver o, en modo "mantener", cuando se suelta la tecla; y se refresca lo que cuenta.
+func _panel_vigilar() -> void:
+	if panel_info == null or not panel_info.abierto:
+		return
+	if not _panel_permitido():
+		panel_info.cerrar(true)
+	elif str(Settings.get_value("panel_modo")) == "mantener" and not Controls.held("panel_info"):
+		panel_info.cerrar()
 
 
 ## Teclas del juego fuera de la torre (la torre maneja sus movimientos y su cámara): la pausa, la consola de desarrollo y los consumibles con el mando.
@@ -1410,13 +1481,12 @@ func pause_game() -> void:
 		return
 	get_tree().paused = true
 	pause_menu.set_tutorial_lock(tutorial_forced)
-	pause_menu.make_room_for_banner(trial_banner != null and trial_banner.active)   # (al pausar el cartel de la prueba se ve entero: el menú sube para no taparlo)
+	if panel_info != null:
+		panel_info.cerrar(true)
 	if trial_banner != null:
-		trial_banner.pin()
+		trial_banner.hide_for_pause()   # (el cartel grande no se ve en la pausa: la prueba, los contratos y el resto se leen en el panel de información)
 	pause_menu.set_restart(run.lives, training, casino != null)
 	pause_menu.set_title(_titulo_pausa())
-	pause_menu.set_info(_info_pausa if torre != null and casino == null else [], _info_pausa_rojo)
-	pause_menu.set_contratos(Contratos.para_pausa(run))   # (los contratos activos, sólo como íconos, a la derecha)
 	pause_menu.open()
 	if trial.get("no_retry", false):
 		pause_menu.buttons["reiniciar"].disabled = true   # (la prueba "Todo o nada" no tiene reintentos)
@@ -1425,9 +1495,7 @@ func pause_game() -> void:
 
 func resume_game() -> void:
 	pause_menu.close()
-	pause_menu.make_room_for_banner(false)
-	if trial_banner != null:
-		trial_banner.release()
+	_set_depth_mode(int(Settings.get_value("ayuda_profundidad")))   # (por si se cambió en Opciones)
 	get_tree().paused = false
 
 
