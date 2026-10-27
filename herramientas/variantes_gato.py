@@ -30,7 +30,9 @@ def camino_texto(camino):
 
 
 def calcular(args):
-    d, n, intentos, exe = args
+    d, n, intentos, exe, fin_ts = args
+    if fin_ts and time.time() > fin_ts:   # (se acabó la hora: las salas que faltan quedan para la próxima vez)
+        return None
     try:
         r = subprocess.run([exe, '--variantes', 'tipo=' + d['tipo'], 'n=%d' % n, 'intentos=%d' % intentos, 'seed=%d' % (int(d['id']) * 7 + 1), 'conocido=' + camino_texto(d.get('camino', []))],
                            input=a_texto(d), capture_output=True, text=True, timeout=ESPERA, cwd=RAIZ)
@@ -81,11 +83,14 @@ def principal():
         random.Random(1).shuffle(pendientes)
         pendientes = pendientes[:a.muestra]
     print('%d salas en la biblioteca, %d ya calculadas, %d por calcular' % (len(salas), len(hechas), len(pendientes)), flush=True)
-    tareas = [(d, a.n, a.intentos, EXE) for d in pendientes]
+    fin_ts = fin.timestamp() if fin is not None else None
+    tareas = [(d, a.n, a.intentos, EXE, fin_ts) for d in pendientes]
     con, sin, hechas_ahora = 0, 0, 0
     t0 = time.time()
     with Pool(a.procesos) as pool, open(salida, 'a', encoding='ascii') as f:
         for r in pool.imap_unordered(calcular, tareas):
+            if r is None:
+                continue
             f.write(json.dumps(r) + '\n')
             f.flush()
             hechas_ahora += 1
@@ -95,9 +100,6 @@ def principal():
                 sin += 1
             if hechas_ahora % 25 == 0:
                 print('%d/%d (con variantes %d, sin %d) %.0f s' % (hechas_ahora, len(tareas), con, sin, time.time() - t0), flush=True)
-            if fin is not None and datetime.datetime.now() >= fin:
-                pool.terminate()
-                break
     print('listo: %d salas calculadas, %d con variantes y %d sin (%.0f s)' % (hechas_ahora, con, sin, time.time() - t0))
 
 
