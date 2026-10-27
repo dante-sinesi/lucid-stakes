@@ -30,9 +30,9 @@ for linea in open(sys.argv[1], encoding='utf-8'):
         sx, sz = sal[0][0] - x0, sal[0][2] - z0
         borde = lambda x, z: x in (0, w - 1) or z in (0, dd - 1)
         if not borde(ex, ez) or not borde(sx, sz): motivos.append('entrada o salida no externas')
-        if d['tipo'] in ('5x3', '8x3'):
+        if d['tipo'] in ('5x3', '8x3') and not d.get('giro'):   # (las salas con giro tienen la salida a 90 grados de la entrada)
             if abs(ex - sx) != w - 1: motivos.append('entrada y salida no están en puntas contrarias')
-        elif abs(ex - sx) + abs(ez - sz) < 3: motivos.append('entrada y salida demasiado cerca')
+        elif d['tipo'] == '3x3' and abs(ex - sx) + abs(ez - sz) < 3: motivos.append('entrada y salida demasiado cerca')
     if motivos:
         malas += 1
         print('MAL sala %d (%s): %s' % (n, d['tipo'], '; '.join(motivos)))
