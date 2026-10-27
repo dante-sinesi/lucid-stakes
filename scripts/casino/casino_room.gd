@@ -12,6 +12,7 @@ extends RefCounted
 const Stages := preload("res://scripts/datos/stages.gd")
 const Arte := preload("res://scripts/ui/contract_art.gd")
 const Muebles := preload("res://scripts/casino/casino_muebles.gd")
+const Paredes := preload("res://scripts/casino/casino_paredes.gd")
 const CELL_VOX := 5            # minibloques por celda
 const VOXEL := 0.2
 
@@ -461,7 +462,7 @@ static func _decorar(d: Dictionary, wall: Dictionary, lit: Dictionary, west: boo
 					_box(lit, a + 1, H - 3, 2, a + 3, H - 2, 3, L.lamp)
 
 
-static func build_voxels(stage := 8, tier_override := -1, muebles := true) -> Dictionary:   # (`muebles` falso: sólo la sala, para ponerle los muebles finos de `build_detalle`)
+static func build_voxels(stage := 8, tier_override := -1, muebles := true, paredes := true) -> Dictionary:   # (`muebles` y `paredes` falsos: sólo el piso y lo que queda, para ponerle los muebles y las paredes finos de `build_detalle`)
 	var lay := layout(stage, tier_override)
 	var L := look(stage, int(lay.tier))
 	var cor: float = L.corruption
@@ -479,8 +480,9 @@ static func build_voxels(stage := 8, tier_override := -1, muebles := true) -> Di
 	var H: int = WALL_H[tier]
 
 	_floor(solid, lay, L, cor)
-	_wall(ww, lay, L, true, cor)
-	_wall(wn, lay, L, false, cor)
+	if paredes:
+		_wall(ww, lay, L, true, cor)
+		_wall(wn, lay, L, false, cor)
 	# La pared oeste arranca en x = 0 y ocupa 2 de grosor; la norte, desde x = 2 y z = 0..1.
 	var door_x: int = lay.exit.x * CELL_VOX       # puerta de salida (pared norte)
 	var door_z: int = lay.entry.y * CELL_VOX      # puerta de llegada (pared oeste)
@@ -488,10 +490,11 @@ static func build_voxels(stage := 8, tier_override := -1, muebles := true) -> Di
 	# Decoración de las paredes del fondo (ver `paredes`: cada cosa con su tramo, sin pisar los muebles, las puertas ni otras decoraciones).
 	var tardio: bool = float(L.t) >= 0.7
 	var deco := paredes(lay, tardio)
-	for d in deco.norte.decor:
-		_decorar(d, wn, gn, false, H, L, tier)
-	for d in deco.oeste.decor:
-		_decorar(d, ww, gw, true, H, L, tier)
+	if paredes:
+		for d in deco.norte.decor:
+			_decorar(d, wn, gn, false, H, L, tier)
+		for d in deco.oeste.decor:
+			_decorar(d, ww, gw, true, H, L, tier)
 
 	# Tarima del gran casino: dos escalones alrededor de la mesa de la ruleta.
 	for c in lay.heights:
@@ -523,18 +526,19 @@ static func build_voxels(stage := 8, tier_override := -1, muebles := true) -> Di
 
 	# Portales: el de salida en la pared norte (frente a EXIT) y el de llegada en la pared oeste (frente a ENTRY, sólo estético). Acá van sólo los marcos;
 	# el interior, de ondas que se mueven, lo arma casino_scene.gd (shaders/portal.gdshader). Cuanto más avanzado el run, más claros; el de salida es algo más claro.
-	_box(wn, door_x - 1, 2, 0, door_x, H, 2, L.gold)
-	_box(wn, door_x + CELL_VOX, 2, 0, door_x + CELL_VOX + 1, H, 2, L.gold)
-	_box(wn, door_x, 12, 0, door_x + CELL_VOX, H, 2, L.gold)
-	_box(ww, 0, 2, door_z - 1, 2, H, door_z, L.gold)
-	_box(ww, 0, 2, door_z + CELL_VOX, 2, H, door_z + CELL_VOX + 1, L.gold)
-	_box(ww, 0, 12, door_z, 2, H, door_z + CELL_VOX, L.gold)
+	if paredes:
+		_box(wn, door_x - 1, 2, 0, door_x, H, 2, L.gold)
+		_box(wn, door_x + CELL_VOX, 2, 0, door_x + CELL_VOX + 1, H, 2, L.gold)
+		_box(wn, door_x, 12, 0, door_x + CELL_VOX, H, 2, L.gold)
+		_box(ww, 0, 2, door_z - 1, 2, H, door_z, L.gold)
+		_box(ww, 0, 2, door_z + CELL_VOX, 2, H, door_z + CELL_VOX + 1, L.gold)
+		_box(ww, 0, 12, door_z, 2, H, door_z + CELL_VOX, L.gold)
 
-	for x in range(door_x, door_x + CELL_VOX):   # los vanos de las puertas quedan abiertos (ahí va el portal de ondas)
+	for x in range(door_x, door_x + CELL_VOX) if paredes else []:   # los vanos de las puertas quedan abiertos (ahí va el portal de ondas)
 		for y in range(2, 12):
 			for z in 2:
 				wn.erase(Vector3i(x, y, z))
-	for z in range(door_z, door_z + CELL_VOX):
+	for z in range(door_z, door_z + CELL_VOX) if paredes else []:
 		for y in range(2, 12):
 			for x in 2:
 				ww.erase(Vector3i(x, y, z))
@@ -734,15 +738,16 @@ const CELL_FINO := CELL_VOX * ESCALA
 
 
 static func build_detalle(stage := 8, tier_override := -1, tablon := {}) -> Dictionary:   # (`tablon`: {papeles} con lo que cuelga del tablón; sin eso queda el corcho vacío)
-	var base := build_voxels(stage, tier_override, false)
+	var base := build_voxels(stage, tier_override, false, false)
 	var lay := layout(stage, tier_override)
 	var L := look(stage, int(lay.tier))
-	var out := {
-		"solid": _ampliar(base.solid), "glow": _ampliar(base.glow), "fino": {},
-		"west": {"solid": _ampliar(base.west.solid), "glow": _ampliar(base.west.glow)},
-		"north": {"solid": _ampliar(base.north.solid), "glow": _ampliar(base.north.glow)},
-	}
+	var out := {"solid": _ampliar(base.solid), "glow": _ampliar(base.glow), "fino": {}}
 	_marcar_juntas(out.solid, lay)
+	var paredes_finas := Paredes.armar(lay, L, paredes(lay, float(L.t) >= 0.7), int(WALL_H[int(lay.tier)]), float(L.corruption))   # (las paredes también se arman en la resolución fina)
+	for lado in ["west", "north"]:
+		out[lado] = paredes_finas[lado]
+		out.solid.merge(paredes_finas[lado].solid)
+		out.glow.merge(paredes_finas[lado].glow)
 	Muebles.armar(out.solid, out.glow, lay, L)   # (los muebles ya se arman en la resolución fina: no pasan por `_ampliar`)
 	if tablon.has("papeles") and lay.has("tablon"):   # (la escena del casino lo arma aparte con `build_tablon`, que cambia durante la visita)
 		var tab := build_tablon(stage, tier_override, tablon.papeles)

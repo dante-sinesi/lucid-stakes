@@ -291,6 +291,11 @@ func test_detalle() -> void:
 		for p in d.solid:
 			x_max = maxi(x_max, p.x)
 		check(x_max < Room.layout(st).cells.x * Room.CELL_FINO + 1, "etapa %d: la sala detallada mide lo mismo" % st)
+		var lay_d := Room.layout(st)
+		var ex: int = lay_d.exit.x * Room.CELL_FINO + 5
+		var ez: int = lay_d.entry.y * Room.CELL_FINO + 5
+		check(not d.solid.has(Vector3i(ex, 14, 1)) and not d.west.solid.has(Vector3i(1, 14, ez)) and d.north.solid.has(Vector3i(ex - 8, 14, 1)) and d.west.solid.has(Vector3i(1, 14, ez - 8)), "etapa %d: las paredes finas tienen el vano de las puertas libre y marco al lado" % st)
+		check(d.north.solid.size() > 1500 and d.west.solid.size() > 1500 and d.north.glow.size() > 3, "etapa %d: las paredes finas tienen material y luces" % st)
 		var west_x := 0
 		for p in con.fino:   # (los papeles del tablón están contra la pared oeste)
 			west_x = maxi(west_x, p.x)
