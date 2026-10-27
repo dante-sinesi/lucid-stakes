@@ -18,7 +18,7 @@ Al retirar la torre vieja se borraron, en vez de dejarlos sin efecto, los premio
 
 ## Propuestas para conversar
 
-- **Escenarios:** `escenarios_propuestas.md` (los cinco "Próximamente" repensados, cuatro nuevos y lo que falta en el código de cada uno).
+- **Escenarios:** `escenarios_propuestas.md` (siete escenarios que cambian reglas y no salas, con la habilidad de cada uno y lo que falta en el código).
 - **Logros de Steam:** `logros.md` (48 logros más secretos, con los 18 que se pueden ganar en la demo). Decidido: los logros de la demo no se transfieren al juego completo (la demo es otra app de Steam, sus logros son básicos y se vuelven a ganar enseguida). Mejora posible si sobra tiempo: que la demo guarde sus logros en su archivo y el juego completo los entregue al abrirse.
 
 ## Ideas de premios para esta torre

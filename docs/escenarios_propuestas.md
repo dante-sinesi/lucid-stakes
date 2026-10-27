@@ -1,88 +1,93 @@
-# Escenarios: propuestas para repensarlos
+# Escenarios: propuesta (los escenarios cambian reglas, no salas)
 
-Borrador para conversar: nada de esto está programado. Hoy se juegan tres (Tutorial, La Pesadilla y Sin piedad) y cinco dicen "Próximamente" con descripciones de antes de la torre actual (`scripts/datos/scenarios.gd`, `catalogo.md`).
+Borrador para conversar: nada de esto está programado salvo lo que se indica. Hoy se juegan tres (Tutorial, La Pesadilla y Sin piedad) y cinco dicen "Próximamente" con descripciones de antes de la torre actual (`scripts/datos/scenarios.gd`, `catalogo.md`).
+
+## La decisión: los escenarios cambian las reglas del juego, nunca qué salas salen
+
+Se descartó que un escenario elija salas por tema (Polvorín solo con bombas, Glaciar con hielo...). Con la biblioteca actual no alcanza para que las torres sigan pareciendo aleatorias:
+
+- Una partida usa unas **140 salas** (de 5 en la etapa 1 a 14 en la 15; las dos primeras de cada torre son comunes y cada sala tiene que encajar con la anterior).
+- Hay 272 salas con bomba (47 de Pesadilla), 402 con hielo, 287 con agrietado, 121 con pesado, 161 con pinchos y 168 con trampolín (6 de Pesadilla). Una torre solo de un tema gastaría más de la mitad del grupo en una partida y se repetiría enseguida.
+
+Por eso **la elección de salas es siempre la misma** (`Torre.armar` con su curva de dificultad y los especiales que se habilitan por etapa) y cada escenario cambia **cómo se juega**: vidas, movimientos, economía, contratos, qué especiales se habilitan cuándo. Así la aleatoriedad de las torres no se toca y los escenarios no dependen de generar más salas.
 
 ## Qué es un escenario
 
-Como un mazo de Balatro: **un cambio que se sienta distinto** al jugar, que se paga con Luz para entrar y que da una habilidad persistente al escapar. Cada uno define: entrada en Luz, multiplicador de Luz, qué pruebas pueden salir (`pool`), qué habilidades se pueden ganar y, opcionalmente, vidas, ficha, casino, errores permitidos o si se puede deshacer.
+Como un mazo de Balatro: un cambio de reglas que se siente al jugar, que se paga con Luz para entrar y que da una **habilidad persistente** al escapar (valen en todos los escenarios). Cada uno define su entrada en Luz, el multiplicador de Luz, qué pruebas pueden salir (`pool`) y, si hace falta, parámetros de reglas (hoy: `lives`, `permadeath`, `no_totem`, `no_extra_life`, `mistakes`, `no_undo`, `price_mult`, `casino_tier`).
 
-Tres familias de cambio (cada escenario cambia **una**, a lo sumo dos):
+Los escenarios que no son La Pesadilla se juegan en **Medio** (como Sin piedad: no tienen selector de dificultad). Las entradas y los multiplicadores de Luz siguen el rango actual (de 15 a 35 de entrada y de ×1,4 a ×2,2); son de partida y se calibran jugando.
 
-- **Salas:** qué especiales aparecen y cuáles abundan. Se apoya en la biblioteca de 2855 salas.
-- **Reglas del run:** vidas, movimientos, errores, deshacer.
-- **Economía:** ficha, casino, contratos.
+## Los siete escenarios
 
-## Qué cambió desde que se escribieron
-
-1. **La dificultad ya es un selector aparte** (Fácil, Medio, Difícil, Pesadilla) dentro de La Pesadilla. Un escenario no puede ser "lo mismo, más difícil": tiene que ser distinto.
-2. **La biblioteca ya viene por tema.** Salas con cada especial, por nivel:
-
-| Especial | Salas | Fácil | Media | Difícil | Pesadilla |
+| Escenario | Regla | Entrada | Luz | Habilidad | Estado |
 |---|---|---|---|---|---|
-| Hielo | 402 (229 con línea de 3 o más) | 108 | 117 | 126 | 51 |
-| Bomba | 272 | 73 | 76 | 76 | 47 |
-| Agrietado | 287 | 108 | 64 | 79 | 36 |
-| Pinchos | 161 | 33 | 33 | 53 | 42 |
-| Pesado | 121 | 26 | 31 | 39 | 25 |
-| Trampolín | 168 | 84 | 48 | 30 | 6 |
-| Sin especiales | 1664 | | | | |
+| Sin piedad | 2 movimientos en falso por sala; no se deshace | 25 | ×2,0 | Margen de error | jugable |
+| Compromiso | una sola vida; sin Tótem ni Vidas extra | 35 | ×2,2 | Corazón extra | falta la habilidad |
+| Gran Casino | casino de lujo desde el principio y ficha más barata; torres más difíciles | 30 | ×1,4 | Bolsillo de soñador, Segunda oportunidad | falta lo de las torres y las habilidades |
+| Relojería | menos movimientos por sala; ficha más barata | 25 | ×1,8 | Pies ligeros | falta el recorte de movimientos y la habilidad |
+| Contratista | el tablón manda: más contratos, fianzas y recompensas mayores | 20 | ×1,5 | Buena letra | regla nueva |
+| Mundo abierto | todos los especiales se habilitan desde la etapa 1 | 30 | ×2,0 | Mecha larga | regla nueva |
+| Usurero | Farolín cobra más, pero el casino paga más | 20 | ×1,5 | Buen regateo | regla nueva |
 
-   Por eso un escenario de salas puede elegir de su categoría sin quedarse corto: el único flojo es **Trampolín en Pesadilla** (6 salas) y **Pesado** en general (121).
-3. **Hay sistemas nuevos con los que jugar:** contratos y tablón, la ficha chica, los cuatro casinos y el Taller.
-4. **Trampa en pausa:** no hay salas con trampa, así que ningún escenario puede depender de ella.
+### Sin piedad (ya jugable)
+Cada sala permite 2 movimientos en falso (el que deja más pasos para salir); al tercero se pierde una vida. No se puede deshacer. Pruebas: Sin ayudas, Sin racha. Habilidad: **Margen de error** (3 movimientos en falso en lugar de 2). No hay nada que cambiar.
 
-## Las propuestas
+### Compromiso
+Una sola vida y no valen el Tótem ni las Vidas extra: perder una sala termina el run. Es el más duro y el más cercano a la muerte permanente. Ya está en el código (`lives: 1`, `permadeath`, `no_totem`, `no_extra_life`). Pruebas: Sin ayudas, Sin racha. Habilidad: **Corazón extra** (una vida más en todas las partidas, 4 corazones; no cuenta en Compromiso). *Falta:* la habilidad (`Abilities.PENDING`) y reescribir el texto del escenario.
 
-Las entradas y los multiplicadores de Luz siguen el rango actual (de 15 a 35 de entrada y de ×1,4 a ×2,2); son de partida y se calibran jugando.
+### Gran Casino
+El casino es de lujo desde el principio (`casino_tier: 3`) y la ficha cuesta un 20 % menos (`price_mult: 0.8`), pero las torres son más difíciles: toda la curva de niveles corre un escalón (como pasar de Medio a Difícil). Pruebas: Sin ayudas, Todo o nada, Sin racha. Habilidades: **Bolsillo de soñador** (un lugar más para consumibles) y **Segunda oportunidad** (reintentar la torre cuesta un 15 % menos). *Falta:* el corrimiento de dificultad por escenario y las dos habilidades.
 
-### Ya jugables
+### Relojería
+Cada sala da menos movimientos: el margen por sobre el mínimo (el factor y los movimientos extra de `Torre.max_movimientos`) se reduce a la mitad, a la manera de `MARGEN_DIFICULTAD`. A cambio, la ficha de la ruleta es más barata (×0,75, ya soportado). Pruebas: Todo o nada, Sin racha. Habilidad: **Pies ligeros** (cada sala tiene un movimiento más). *Falta:* un `MARGEN_ESCENARIO` junto a `MARGEN_DIFICULTAD`, y la habilidad.
 
-**La Pesadilla** (gratis, ×1). Sin cambios: es el juego base. Habilidades: Mente despejada, Ojos de gato, Racha firme.
+### Contratista
+El tablón de contratos pasa al centro. Hay **4 contratos activos a la vez** en lugar de 2, el tablón cuelga más papeles por visita, las fianzas son un 50 % más altas y las recompensas un 50 % mayores: más para ganar, más para perder. El casino y los contratos ya existen; el escenario ajusta sus números. Pruebas: Sin ayudas, Sin racha. Habilidad nueva: **Buena letra** (un contrato fallido por run devuelve su fianza). *Falta:* parámetros de contratos por escenario (activos, fianza y recompensa) y la habilidad.
 
-**Sin piedad** (25 de Luz, ×2). Sin cambios: 2 movimientos en falso por sala, no se deshace. Habilidad: Margen de error.
+### Mundo abierto
+Los bloques especiales (hielo, pesado, agrietado, pinchos, bomba y catapulta) se habilitan **desde la etapa 1** y no a medida que avanzan las etapas (`Torre.ETAPA_ESPECIAL`). La selección de salas sigue siendo igual de aleatoria, solo que entre un grupo mucho más ancho: no se pierde variedad, se gana. Los límites de aprendizaje de las primeras etapas (altura, pasos y bloques distintos) se mantienen, y las dos primeras salas de cada torre siguen siendo comunes. El tabernero avisa de cada bloque la primera vez que aparece, aunque sea en la etapa 1. Es el de más aprendizaje: la Luz es alta (×2,0). Pruebas: Sin ayudas, Todo o nada. Habilidad: **Mecha larga** (las cuentas de las bombas empiezan 3 movimientos más altas): tiene sentido acá porque las bombas llegan antes. *Falta:* que el escenario pueda cambiar la etapa de habilitación de los especiales y la habilidad. El bloque trampa queda fuera (en pausa).
 
-### Escenarios de salas
+### Usurero
+Farolín cobra un 40 % más en cada peaje, pero el casino paga más: la ficha cuesta un 30 % menos y los premios de las mesas valen un 25 % más. Para quien disfruta el casino y se anima a jugarlo. Pruebas: Sin ayudas, Todo o nada. Habilidad nueva: **Buen regateo** (el peaje de Farolín cuesta un 10 % menos). *Falta:* un multiplicador de peaje y uno de premios por escenario (el precio de la ficha ya existe) y la habilidad.
 
-**Polvorín** (20 de Luz, ×1,6). Las bombas dominan: cada sala del escenario es una de las 272 salas con bomba (y algunas mixtas con bomba). Desde la etapa 1, sin esperar a la 7 (la bomba se explica ahí con el tabernero). Pruebas: Sin ayudas. Habilidad propuesta: **Mecha larga** (las bombas empiezan con una mecha más). *Falta en el código:* que `Torre.armar` pueda forzar salas con un especial y saltarse `ETAPA_ESPECIAL`; la habilidad.
+## Habilidades
 
-**Ruinas** (15 de Luz, ×1,5). Dominan el agrietado y el pesado: casi nada se puede pisar dos veces. Salas con agrietado (287) y pesado (121). Pruebas: Sin ayudas, Todo o nada, Sin racha. Habilidad propuesta: **Pies ligeros** (un bloque agrietado aguanta un paso más una vez por sala). *Falta:* el mismo mecanismo de salas por especial, y la habilidad.
+| Habilidad | Efecto | Escenario |
+|---|---|---|
+| Margen de error | un movimiento en falso más en Sin piedad (3 en lugar de 2) | Sin piedad (ya existe) |
+| Corazón extra | una vida más en todas las partidas | Compromiso |
+| Bolsillo de soñador | un lugar más para consumibles | Gran Casino |
+| Segunda oportunidad | reintentar la torre cuesta un 15 % menos | Gran Casino |
+| Pies ligeros | cada sala tiene un movimiento más | Relojería |
+| Buena letra | un contrato fallido por run devuelve su fianza | Contratista (nueva) |
+| Mecha larga | las cuentas de las bombas empiezan 3 movimientos más altas | Mundo abierto |
+| Buen regateo | el peaje de Farolín cuesta un 10 % menos | Usurero (nueva) |
 
-**Glaciar** *(nuevo)* (20 de Luz, ×1,6). Hielo: las 402 salas con hielo, con preferencia por las líneas largas (229). Resbalar es el tema: lo que se aprende en el escenario sirve para leer las salas de hielo de los demás. Pruebas: Sin ayudas, Sin racha. Habilidad propuesta: **Suela de hielo** (un resbalón se detiene un bloque antes, una vez por sala). *Falta:* mecanismo de salas y habilidad.
+Las cinco habilidades que estaban pendientes (`Abilities.PENDING`) se reparten así, y se agregan dos nuevas. Las de La Pesadilla (Mente despejada, Ojos de gato, Racha firme) no cambian.
 
-**Cima** *(nuevo)* (25 de Luz, ×1,8). Catapultas y torres más altas: las 168 salas con trampolín. Poco hielo y poco pesado. Es el escenario "vertical". *Riesgo:* en Pesadilla hay solo 6 salas con trampolín; habría que generar más antes de abrirlo. Habilidad propuesta: **Salto largo** (la catapulta sube una celda más).
+## Qué hace falta en el código (resumen)
 
-### Escenarios de reglas
+| Pieza | La usan |
+|---|---|
+| Corrimiento de dificultad por escenario | Gran Casino |
+| `MARGEN_ESCENARIO` (recorte de movimientos) | Relojería |
+| Parámetros de contratos por escenario | Contratista |
+| Etapa de habilitación de los especiales por escenario | Mundo abierto |
+| Multiplicador de peaje y de premios | Usurero |
+| Las siete habilidades nuevas | todos menos Sin piedad |
 
-**Relojería** (25 de Luz, ×1,8). Cada sala da menos movimientos (el margen baja), pero la ficha de la ruleta es más barata (×0,75). Ya está en el código con `price_mult`; falta el recorte de movimientos (por ejemplo, un `MARGEN_ESCENARIO` junto a `MARGEN_DIFICULTAD`). Habilidad propuesta: **Tictac** (cada sala empieza con 2 movimientos más). Pruebas: Todo o nada, Sin racha.
+Cada pieza se puede hacer por separado, y cada escenario se habilita cuando tiene la suya. Al habilitarlos hay que regenerar el catálogo (`herramientas\catalogo.bat`) y agregar las frases en inglés.
 
-**Compromiso** (35 de Luz, ×2,2). Una sola vida; sin Tótem ni Vidas extra. Es el más duro y el más cercano al "permadeath": ya está en el código (`lives`, `permadeath`, `no_totem`, `no_extra_life`). Habilidad propuesta: **Corazón extra** (se empieza con una vida más *solo en los demás escenarios*: no puede ganar en el que no tiene vidas). Pruebas: Sin ayudas, Sin racha.
+## Ideas para después
 
-### Escenarios de economía
+- **Hemorragia:** la claridad que no está asegurada en un checkpoint baja con cada movimiento. Obliga a ir rápido.
+- **Racha o nada:** la claridad solo se gana con racha, con un multiplicador mayor, y se corta con cualquier retroceso.
+- **Doble o nada:** purificar da el doble de claridad, pero pisar un bloque ya purificado resta.
+- **Sin red:** sin checkpoints entre salas. Toca la estructura de la torre, así que hay que pensarlo con cuidado.
 
-**Gran Casino** (30 de Luz, ×1,4). Los casinos de lujo desde el principio (`casino_tier: 3`) y la ficha más barata (×0,8), pero con torres más difíciles. Ya está casi todo en el código. Habilidades propuestas: **Bolsillo de soñador** y **Segunda oportunidad**, a definir.
+## Preguntas abiertas
 
-**Contratista** *(nuevo)* (20 de Luz, ×1,5). El tablón manda: más contratos activos, fianzas más altas y recompensas mayores; el casino pone el foco en el tablón y no en las mesas. Habilidad propuesta: **Buena letra** (un contrato fallido devuelve la fianza una vez por run). *Falta:* parámetros de contratos por escenario.
-
-## Resumen
-
-| Escenario | Familia | Estado | Falta |
-|---|---|---|---|
-| La Pesadilla | base | jugable | |
-| Sin piedad | reglas | jugable | |
-| Polvorín | salas | definido | forzar salas por especial; habilidad |
-| Ruinas | salas | definido | lo mismo; habilidad |
-| Glaciar | salas | nuevo | lo mismo; habilidad |
-| Cima | salas | nuevo | más salas de trampolín altas; habilidad |
-| Relojería | reglas | casi | recorte de movimientos; habilidad |
-| Compromiso | reglas | casi | habilidad y revisar texto |
-| Gran Casino | economía | casi | habilidades |
-| Contratista | economía | nuevo | contratos por escenario; habilidad |
-
-## Decisiones tuyas
-
-1. **¿Cuántos?** Son 10 con los dos actuales. Se pueden quedar 6 o 7 y dejar el resto para después.
-2. **¿Las salas por tema son la línea principal?** (Polvorín, Ruinas, Glaciar, Cima.) Es lo que más aprovecha lo que ya generamos.
-3. **¿Cómo se desbloquean?** Hoy se pagan con Luz y se pueden jugar todos. Alternativa: escapar en uno abre el siguiente.
-4. **¿Las habilidades propuestas te cierran?** Las cinco pendientes hoy (Mecha larga, Pies ligeros, Corazón extra, Bolsillo de soñador, Segunda oportunidad) se reparten así o se redefinen.
-5. **¿Un escenario puede tener su propia prueba?** Ahora las pruebas se sortean de un pool.
-6. **Orden de construcción:** lo más barato es Compromiso, Gran Casino y Relojería (casi todo en el código); lo que más cambia la sensación es Polvorín y Glaciar (requieren el mecanismo de salas por especial, que sirve para los cuatro de salas).
+1. **Desbloqueo:** hoy se pagan con Luz y están todos disponibles. Alternativa: escapar en uno abre el siguiente.
+2. **Pruebas:** los escenarios eligen su pool de un grupo de tres (Sin ayudas, Todo o nada, Sin racha). ¿Hace falta alguna prueba propia de un escenario?
+3. **Números:** las entradas y los multiplicadores de Luz son de partida; se calibran jugando, no con el bot.
+4. **Orden de construcción:** lo más barato es Compromiso (solo la habilidad), seguido de Relojería, Contratista y Usurero. Mundo abierto y Gran Casino piden más piezas nuevas.
