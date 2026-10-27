@@ -89,7 +89,7 @@ Cada cierto número de movimientos sopla una **ventisca** que **empuja al jugado
 ### El gatito travieso
 Al entrar a cada sala, un **gatito** aparece, corre y **mueve de lugar de dos a tres bloques comunes** (una celda cada uno): más cuanto más alta es la sala. Cada sala se parece a la de siempre, pero no es igual.
 *Cómo se juega:* hay que mirar la sala antes de moverte porque ya no es como la viste en la ayuda o en la partida anterior.
-*Que siga siendo resoluble:* el cambio tiene que dejar la sala con solución. Hay dos caminos: (a) el juego **comprueba con el solucionador** que la sala sigue resolviéndose y, si no, el gatito elige otros bloques u otras celdas; o (b) cada sala trae **ya calculados** los cambios seguros. En los dos casos se **recalcula el mínimo** y con él el límite de movimientos de la sala.
+*Que siga siendo resoluble (decidido):* el cambio tiene que dejar la sala con solución, y **no se comprueba mientras se juega**: el solucionador es un programa compilado para Windows y no puede depender de él un juego que se quiere llevar a otras plataformas. En cambio, **los cambios seguros se calculan antes**, aquí, con el solucionador: para cada sala se guardan varias **variantes del gatito** (qué bloques mueve y hacia dónde), cada una **ya comprobada**, con su mínimo de movimientos y su camino. El juego solo elige una al azar. Así funciona en cualquier plataforma, también en la demo, y las pruebas pueden jugar cada variante para verificarla.
 **El personaje (decidido, para más adelante):** un **gato nuevo**, parecido a los de Minecraft pero no igual, con **más personalidad**, y con **animaciones**: entra corriendo, olfatea, empuja los bloques con la pata y se va satisfecho. Cuando termina de hacer de las suyas, **espera en el checkpoint junto a Farolín**, y los dos tienen **animaciones juntos** (el gato se frota contra Farolín, Farolín lo mira de reojo, el gato juega con la llama...). Esto último es la segunda etapa: primero la mecánica, después el personaje con su arte y sus animaciones.
 
 ### Sombra (reexplicada)
@@ -122,7 +122,7 @@ Hay una forma barata para varias de las pruebas con cuidado, y es **usar lo que 
 - **Solo tres bloques:** esa prueba solo usa salas cuya solución conocida mueva tres bloques distintos o menos (hay muchas: las fáciles mueven unos 3,7 de media). Así la sala es resoluble por construcción.
 - **Espalda mala:** el costo de la solución conocida es sus pasos más sus agarres. Si el límite de movimientos de la sala es ese costo con margen, es resoluble.
 - **Quebradizo:** se prueba la solución conocida con la regla (en el simulador del juego): las salas cuya solución nunca pisa dos veces el mismo bloque entran. Las demás se descartan para esta prueba.
-- **Terremoto y gatito:** después del cambio se vuelve a resolver la sala con el solucionador y, si no tiene solución, el cambio se elige de nuevo.
+- **Terremoto y gatito:** los cambios se calculan **antes** con el solucionador y se guardan ya comprobados (variantes seguras por sala, con su mínimo y su camino), así el juego no necesita el solucionador mientras se juega. Las variantes sirven para las dos pruebas.
 - **Mareo, Presupuesto compartido, Memoria de pez, A oscuras y Corrupción que vuelve** no cambian el puzzle, solo cómo se juega: son resolubles siempre.
 
 ## Cómo seguir
