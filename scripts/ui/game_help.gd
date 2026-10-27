@@ -52,7 +52,7 @@ const PAGES := {
 	"tablon": [
 		{"title": "El tablón de contratos", "art": "tablon_papeles", "text": "Cada papel pide algo para la próxima torre: llegar a una racha, no deshacer, purificar especiales... Acéptalo gratis y se cobra en cuanto lo cumples."},
 		{"title": "Los sellos", "art": "tablon_papeles", "text": "El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los papeles que no aceptes siguen colgados en el próximo casino."},
-		{"title": "Aceptar, descolgar y rotar", "art": "tablon_acciones", "text": "Puedes tener pocos contratos activos a la vez. Descolgar un papel libera su lugar: solo llegan dos papeles nuevos por torre. Rotar cambia todos y cada vez cuesta más."},
+		{"title": "Aceptar, descolgar y rotar", "art": "tablon_acciones", "text": "Puedes tener pocos contratos activos a la vez. Descolgar un papel libera su lugar y cancelar uno aceptado te devuelve la fianza. Rotar cambia todos y cada vez cuesta más."},
 		{"title": "Fianza y tienda", "art": "tablon_acciones", "text": "En el casino y el gran casino puedes aceptar con fianza: pagas ahora y, si cumples, cobras más y la recuperas. La pestaña de arriba te lleva a la tienda."},
 	],
 	"tienda": [
