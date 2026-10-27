@@ -965,17 +965,17 @@ func _bank_claridad() -> void:
 func _input(event: InputEvent) -> void:
 	if panel_info == null or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
-	var accion: String = Controls.action_of(event)
-	if accion != "panel_info" and accion != "panel_items":
+	if Controls.action_of(event) != "panel_info":
 		return
 	if not _panel_permitido():
 		return
 	get_viewport().set_input_as_handled()   # (Tab no mueve el foco de nadie)
-	var panel: Control = panel_info if accion == "panel_info" else panel_items
-	if panel.abierto and str(Settings.get_value("panel_modo")) == "alternar":
-		panel.cerrar()
+	if panel_info.abierto and str(Settings.get_value("panel_modo")) == "alternar":
+		panel_info.cerrar()
+		panel_items.cerrar()
 	else:
-		panel.abrir(_panel_datos() if accion == "panel_info" else _panel_items_datos())
+		panel_info.abrir(_panel_datos())   # (Tab abre los dos: el de la partida por la izquierda y el de boosts y consumibles por la derecha)
+		panel_items.abrir(_panel_items_datos())
 
 
 ## ¿Se puede ver el panel ahora? En la torre y en el sala del casino, sin menús, pausa, diálogos ni pantallas de juego encima.
@@ -1050,14 +1050,14 @@ func _panel_vigilar() -> void:
 		return
 	if torre != null:
 		torre.solo_camara = _panel_abierto()
-	for par in [[panel_info, "panel_info"], [panel_items, "panel_items"]]:
-		var p: Control = par[0]
-		if not p.abierto:
-			continue
-		if not _panel_permitido():
-			p.cerrar(true)
-		elif str(Settings.get_value("panel_modo")) == "mantener" and not Controls.held(par[1]):
-			p.cerrar()
+	if not _panel_abierto():
+		return
+	if not _panel_permitido():
+		panel_info.cerrar(true)
+		panel_items.cerrar(true)
+	elif str(Settings.get_value("panel_modo")) == "mantener" and not Controls.held("panel_info"):
+		panel_info.cerrar()
+		panel_items.cerrar()
 
 
 ## Teclas del juego fuera de la torre (la torre maneja sus movimientos y su cámara): la pausa, la consola de desarrollo y los consumibles con el mando.

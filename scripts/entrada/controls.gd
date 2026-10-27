@@ -41,8 +41,7 @@ const ACTIONS: Array[Dictionary] = [
 	{"id": "zoom_mas", "name": "Acercar la cámara", "group": "Cámara", "key": KEY_EQUAL, "pad": [{"button": JOY_BUTTON_RIGHT_STICK}]},
 	{"id": "zoom_menos", "name": "Alejar la cámara", "group": "Cámara", "key": KEY_MINUS, "pad": [{"button": JOY_BUTTON_LEFT_STICK}]},
 	{"id": "vista_torre", "name": "Vista de toda la torre", "group": "Cámara", "key": KEY_V, "pad": []},
-	{"id": "panel_info", "name": "Panel de información (mantener o alternar, ver Opciones)", "group": "Interfaz", "key": KEY_TAB, "pad": [{"button": JOY_BUTTON_BACK}]},
-	{"id": "panel_items", "name": "Panel de boosts y consumibles (mantener o alternar, ver Opciones)", "group": "Interfaz", "key": KEY_B, "pad": []},
+	{"id": "panel_info", "name": "Paneles de información y de ítems (mantener o alternar, ver Opciones)", "group": "Interfaz", "key": KEY_TAB, "pad": [{"button": JOY_BUTTON_BACK}]},
 	{"id": "pausa", "name": "Pausa", "group": "Interfaz", "key": KEY_ESCAPE, "pad": [{"button": JOY_BUTTON_START}]},
 ]
 

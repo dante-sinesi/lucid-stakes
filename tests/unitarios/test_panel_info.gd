@@ -83,7 +83,6 @@ func _init() -> void:
 	main.run.consumables.append("totem")
 	var di: Dictionary = main._panel_items_datos()
 	_ok(di.boosts.size() == 1 and di.consumibles.size() == 1 and str(di.boosts[0].desc) != "", "los datos del panel de ítems traen los boosts y consumibles con su descripción")
-	_ok(Controls.key_of("panel_items") == KEY_B, "B abre el panel de boosts y consumibles")
 	Settings.set_value("panel_modo", "alternar")
 	main.panel_items.abrir(di)
 	await _frames(30)

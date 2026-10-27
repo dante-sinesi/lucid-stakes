@@ -82,3 +82,7 @@ Cada paso se puede probar por separado, y la pausa se puede arreglar antes de sa
 1. **Claridad ganada:** al pisar un bloque sale el cartel de ganancia (por ejemplo "+10"), que se queda en el HUD. ¿Alcanza para ver cuánta claridad se junta, o quieres también un número chico fijo?
 2. **Movimientos cerca del límite:** hoy, con 5 o menos, el número aparece sobre el personaje; se mantiene.
 3. **Boosts en el panel:** ¿lo dejamos para más adelante o va ya, con el nombre y la descripción de cada uno?
+
+## Panel de boosts y consumibles
+
+Se abre junto con el de información con la misma tecla (Tab, o Select en el mando), por la derecha: lista cada boost y consumible con su ícono y su descripción. Con cualquiera de los dos abiertos la torre no se juega (sólo se mueve la cámara). El HUD de la torre queda con vidas, consumibles y boosts.

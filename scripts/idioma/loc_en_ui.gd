@@ -15,7 +15,6 @@ const TABLE := {
 	"Boosts %d/%d": "Boosts %d/%d",
 	"Consumibles %d/%d": "Consumables %d/%d",
 	"Ninguno todavía": "None yet",
-	"Panel de boosts y consumibles (mantener o alternar, ver Opciones)": "Boosts and consumables panel (hold or toggle, see Options)",
 	"Movimientos %d (sin límite)": "Moves %d (no limit)",
 	"Movimientos %d/%d": "Moves %d/%d",
 	"Movimientos en falso: quedan %d de %d": "False moves: %d of %d left",
@@ -25,7 +24,7 @@ const TABLE := {
 	"Etapa %d/%d": "Stage %d/%d",
 	"Sala %d/%d": "Room %d/%d",
 	"Vista de toda la torre": "View of the whole tower",
-	"Panel de información (mantener o alternar, ver Opciones)": "Information panel (hold or toggle, see Options)",
+	"Paneles de información y de ítems (mantener o alternar, ver Opciones)": "Information and items panels (hold or toggle, see Options)",
 	"Reintentar (−1 vida)": "Retry (−1 life)",
 	# --- HUD y mensajes de la torre (main.gd) ---
 	"Empezar": "Start",
