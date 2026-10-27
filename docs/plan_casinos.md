@@ -206,5 +206,5 @@ Ideas para diferenciar más, **sin decidir**: boosts exclusivos del gran casino,
 - Que el boost "Contratista" (cada contrato paga el doble) exista, su nombre y su rareza.
 - Porcentajes de Racha, Caja fuerte y Alcancía; rareza de cada ítem nuevo; si Caza recompensas es raro y si se acumula (y hasta cuántas veces).
 - Si algún boost debería ser exclusivo de un casino (sin limitar lo que sale en los demás).
-- Si el casino y el gran casino llevan alguna estación (hoy, sin la Caja fuerte, no tienen ninguna).
+- ~~Si el casino y el gran casino llevan alguna estación~~: decidido que no; solo el salón tiene el Taller.
 - Cuándo recalibrar el peaje (hoy es el 77 % de lo que rinde la torre en la etapa 1).
