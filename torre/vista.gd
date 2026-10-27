@@ -183,19 +183,6 @@ static func _zona(c: Vector3i, t) -> Node3D:
 	atras.material_override = _material_zona(true)
 	atras.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.add_child(atras)
-	# el centro: una bolita brillante que se ve aunque otros bloques la tapen (la bomba suele quedar metida en la pila)
-	var nucleo := MeshInstance3D.new()
-	var ns := SphereMesh.new()
-	ns.radius = 0.2
-	ns.height = 0.4
-	nucleo.mesh = ns
-	var nm := StandardMaterial3D.new()
-	nm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	nm.albedo_color = Color(1.0, 0.55, 0.1)
-	nm.no_depth_test = true
-	nm.render_priority = 10
-	nucleo.material_override = nm
-	mi.add_child(nucleo)
 	return mi
 
 
