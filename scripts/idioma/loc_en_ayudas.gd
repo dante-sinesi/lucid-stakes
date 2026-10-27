@@ -7,7 +7,7 @@ const TABLE := {
 	"Los sellos": "The seals",
 	"El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los papeles que no aceptes siguen colgados en el próximo casino.": "The seal tells how hard it is: gray, blue, purple, and black for the nearly impossible. The papers you don't accept stay hanging at the next casino.",
 	"Aceptar, descolgar y rotar": "Accept, take down and rotate",
-	"Puedes tener pocos contratos activos a la vez. Descolgar un papel libera su lugar: solo llegan dos papeles nuevos por torre. Rotar cambia todos y cada vez cuesta más.": "You can only have a few active contracts at a time. Taking a paper down frees its spot: only two new papers arrive per tower. Rotating swaps them all and costs more each time.",
+	"Puedes tener pocos contratos activos a la vez. Descolgar un papel libera su lugar y cancelar uno aceptado te devuelve la fianza. Rotar cambia todos y cada vez cuesta más.": "You can only have a few active contracts at a time. Taking a paper down frees its spot and cancelling an accepted one returns your deposit. Rotating changes them all and costs more each time.",
 	"Fianza y tienda": "Deposit and shop",
 	"En el casino y el gran casino puedes aceptar con fianza: pagas ahora y, si cumples, cobras más y la recuperas. La pestaña de arriba te lleva a la tienda.": "At the casino and the grand casino you can accept with a deposit: you pay now and, if you complete it, you earn more and get it back. The tab at the top takes you to the shop.",
 	"Ayuda": "Help",

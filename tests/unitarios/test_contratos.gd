@@ -20,6 +20,7 @@ func _init() -> void:
 	test_cartelera()
 	test_aceptar_y_limite()
 	test_fianza()
+	test_cancelar()
 	test_rotar()
 	test_seguimiento()
 	test_cobro()
@@ -138,6 +139,22 @@ func test_fianza() -> void:
 	check(not Contratos.aceptar(pobre, 0, true, 2).ok and Contratos.activos(pobre).is_empty(), "sin claridad no se paga la fianza")
 	var r := Contratos.aceptar(run, 0, true, 2)
 	check(r.ok and run.claridad == 1000 - f and int(Contratos.activos(run)[0].fianza) == f, "con fianza se paga ahora y queda anotada")
+
+
+func test_cancelar() -> void:
+	var run := make_run(9, 1000)
+	Contratos.entrar(run, rng_con(6), 2)
+	check(not Contratos.cancelar(run, 0).ok and not Contratos.cancelar(run, -1).ok, "sin contratos activos no hay nada que cancelar")
+	Contratos.aceptar(run, 0, false, 2)
+	Contratos.aceptar(run, 1, true, 2)
+	var f := int(Contratos.activos(run)[1].fianza)
+	check(f > 0 and run.claridad == 1000 - f, "(dos contratos activos, el segundo con fianza)")
+	var c := Contratos.cancelar(run, 0)
+	check(c.ok and int(c.devuelto) == 0 and Contratos.activos(run).size() == 1 and run.claridad == 1000 - f, "cancelar un contrato sin fianza no cuesta ni devuelve nada")
+	var c2 := Contratos.cancelar(run, 0)
+	check(c2.ok and int(c2.devuelto) == f and Contratos.activos(run).is_empty() and run.claridad == 1000, "cancelar uno con fianza la devuelve entera (%d)" % int(c2.devuelto))
+	check(Contratos.cartelera(run)[0] == null and Contratos.cartelera(run)[1] == null, "el papel cancelado no vuelve al tablón")
+	check(Contratos.aceptar(run, 2, false, 2).ok, "y el lugar activo queda libre para aceptar otro")
 
 
 func test_rotar() -> void:

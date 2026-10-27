@@ -396,6 +396,7 @@ class TiendaScreen extends Base:
 class TablonScreen extends Base:
 	var tier := 0              # el nivel del casino (lo pone quien la abre): decide si se acepta con fianza
 	var grid: Control
+	var grid_activos: Control    # los contratos que ya aceptaste (se pueden cancelar: la selección sigue de la cartelera a ellos)
 	var info: Control
 	var activos_label: Control
 	var accept_button: Button
@@ -415,6 +416,11 @@ class TablonScreen extends Base:
 		grid.name = "cartelera"
 		grid.pressed.connect(select)
 		col.add_child(grid)
+		grid_activos = Cartelera.new()
+		grid_activos.name = "cartelera_activos"
+		grid_activos.cubo = 3.0
+		grid_activos.pressed.connect(func(i: int): select(Contratos.cartelera(run).size() + i))
+		col.add_child(grid_activos)
 		info = UI.label(col, "", 2.5, Draw.MARBLE, true, 900)
 		info.custom_minimum_size = Vector2(900, 90)
 		info.vcenter = true
@@ -440,9 +446,13 @@ class TablonScreen extends Base:
 		_refresh()
 
 	func step_selection(dir: int) -> void:
-		var n := Contratos.cartelera(run).size()
+		var n := Contratos.cartelera(run).size() + Contratos.activos(run).size()
 		if n > 0:
 			select(posmod(sel + dir, n))
+
+	## ¿La selección está sobre un contrato ya aceptado (y no sobre un papel de la cartelera)?
+	func _es_activo() -> bool:
+		return sel >= Contratos.cartelera(run).size()
 
 	func toggle_fianza() -> void:
 		con_fianza = not con_fianza
@@ -450,7 +460,10 @@ class TablonScreen extends Base:
 
 	func _papel():
 		var cart := Contratos.cartelera(run)
-		return cart[sel] if sel >= 0 and sel < cart.size() else null
+		if sel >= cart.size():
+			var act := Contratos.activos(run)
+			return act[sel - cart.size()] if sel - cart.size() < act.size() else null
+		return cart[sel] if sel >= 0 else null
 
 	func accept() -> void:
 		var res: Dictionary = Contratos.aceptar(run, sel, con_fianza, tier)
@@ -463,6 +476,16 @@ class TablonScreen extends Base:
 		_refresh()
 
 	func reject() -> void:
+		if _es_activo():   # un contrato aceptado: se cancela y se devuelve la fianza
+			var c: Dictionary = Contratos.cancelar(run, sel - Contratos.cartelera(run).size())
+			if c.ok:
+				Sfx.play("chip")
+				say(Loc.f("Cancelaste el contrato (te devolvieron la fianza de %d).", [int(c.devuelto)]) if int(c.devuelto) > 0 else Loc.t("Cancelaste el contrato."), Color(0.9, 0.86, 1.0))
+				resolved.emit()
+			else:
+				say(str(c.error), BAD)
+			_refresh()
+			return
 		var res: Dictionary = Contratos.rechazar(run, sel)
 		if res.ok:
 			Sfx.play("chip")
@@ -485,8 +508,11 @@ class TablonScreen extends Base:
 	func _refresh() -> void:
 		super._refresh()
 		var cart := Contratos.cartelera(run)
-		sel = clampi(sel, 0, maxi(cart.size() - 1, 0))
-		grid.set_data(cart, sel, run.stage)
+		var activos := Contratos.activos(run)
+		sel = clampi(sel, 0, maxi(cart.size() + activos.size() - 1, 0))
+		grid.set_data(cart, sel if sel < cart.size() else -1, run.stage)
+		grid_activos.visible = not activos.is_empty()
+		grid_activos.set_data(activos, sel - cart.size() if sel >= cart.size() else -1, run.stage)
 		activos_label.text = Loc.f("Contratos activos: %d de %d", [Contratos.activos(run).size(), Contratos.limite(run)])
 		var papel = _papel()
 		var cost := Contratos.costo_rotar(run)
@@ -494,7 +520,18 @@ class TablonScreen extends Base:
 		rotate_button.disabled = not run.can_afford(cost)
 		if fianza_button != null:
 			fianza_button.set_label(Loc.t("Con fianza: sí") if con_fianza else Loc.t("Con fianza: no"))
-		if papel == null:
+		reject_button.set_label(Loc.t("Cancelar") if _es_activo() else Loc.t("Descolgar"))
+		if _es_activo() and papel != null:   # (un contrato aceptado: no se acepta de nuevo, se puede cancelar)
+			var cond := "%s
+%s
+%s" % [Contratos.titulo(papel), Contratos.condicion(papel), Loc.f("Recompensa: %d de claridad", [int(papel.monto)])]
+			if int(papel.fianza) > 0:
+				cond += "
+" + Loc.f("Con fianza de %d: si lo cancelas aquí, te la devuelven.", [int(papel.fianza)])
+			info.text = cond
+			accept_button.disabled = true
+			reject_button.disabled = false
+		elif papel == null:
 			info.text = Loc.t("Aquí no hay ningún papel. En la próxima torre pueden aparecer nuevos.") if cart.is_empty() or cart.count(null) == cart.size() else Loc.t("Este lugar está vacío.")
 			accept_button.disabled = true
 			reject_button.disabled = true
@@ -520,8 +557,8 @@ class TablonScreen extends Base:
 ## Los papeles colgados, dibujados con el arte de los contratos (contract_art.gd); un clic elige uno.
 class Cartelera extends Control:
 	signal pressed(index: int)
-	const CUBO := 5.0
 	const SEPARACION := 24.0
+	var cubo := 5.0   # el lado del cubito del papel (los contratos aceptados se dibujan más chicos)
 	var papeles: Array = []
 	var sel := 0
 	var stage := 1
@@ -533,24 +570,24 @@ class Cartelera extends Control:
 		papeles = lista
 		sel = elegido
 		stage = etapa
-		custom_minimum_size = Vector2(900.0, Arte.PAPEL_ROWS * CUBO + 24.0)
+		custom_minimum_size = Vector2(900.0, Arte.PAPEL_ROWS * cubo + 24.0)
 		queue_redraw()
 
 	## Dónde empieza el primer papel: la fila de papeles queda centrada.
 	func _x0() -> float:
-		var total := papeles.size() * Arte.PAPEL_COLS * CUBO + maxf(papeles.size() - 1.0, 0.0) * SEPARACION
+		var total := papeles.size() * Arte.PAPEL_COLS * cubo + maxf(papeles.size() - 1.0, 0.0) * SEPARACION
 		return maxf((size.x - total) * 0.5, 12.0)
 
 	func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			var paso := Arte.PAPEL_COLS * CUBO + SEPARACION
+			var paso := Arte.PAPEL_COLS * cubo + SEPARACION
 			var i := int((event.position.x - _x0() + SEPARACION * 0.5) / paso)
 			if i >= 0 and i < papeles.size():
 				pressed.emit(i)
 
 	func _draw() -> void:
-		var ancho := Arte.PAPEL_COLS * CUBO
-		var alto := Arte.PAPEL_ROWS * CUBO
+		var ancho := Arte.PAPEL_COLS * cubo
+		var alto := Arte.PAPEL_ROWS * cubo
 		for i in papeles.size():
 			var pos := Vector2(_x0() + i * (ancho + SEPARACION), 12.0)
 			var p = papeles[i]
@@ -561,4 +598,4 @@ class Cartelera extends Control:
 				draw_rect(Rect2(pos, Vector2(ancho, alto)), Color(0.45, 0.32, 0.20, 0.55))
 				draw_rect(Rect2(pos, Vector2(ancho, alto)), Color(0.30, 0.20, 0.12), false, 2.0)
 				continue
-			Arte.dibujar_papel(self, pos, CUBO, int(p.r), str(Contratos.OBJETIVOS[p.obj].icono), int(p.id), true)
+			Arte.dibujar_papel(self, pos, cubo, int(p.r), str(Contratos.OBJETIVOS[p.obj].icono), int(p.id), true)

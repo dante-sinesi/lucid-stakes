@@ -216,6 +216,20 @@ static func costo_rotar(run) -> int:
 	return maxi(int(round(float(Roulette.run_price(run)) * ROTAR_FRACCION * float(1 + int(estado.rotaciones)))), 1)
 
 
+## Cancela el contrato activo del lugar `indice` (en el casino, antes de que empiece la torre: todavía no corrió nada): se devuelve la fianza entera, si la había, y el papel no vuelve al tablón.
+## {ok, error, devuelto}.
+static func cancelar(run, indice: int) -> Dictionary:
+	var estado := _estado(run)
+	if indice < 0 or indice >= estado.activos.size():
+		return {"ok": false, "error": Loc.t("No hay ningún contrato ahí"), "devuelto": 0}
+	var papel: Dictionary = estado.activos[indice]
+	var f := int(papel.get("fianza", 0))
+	estado.activos.remove_at(indice)
+	if f > 0:
+		run.gain(f)
+	return {"ok": true, "error": "", "devuelto": f}
+
+
 ## Vuelve a sortear todos los papeles colgados (los activos no se tocan). {ok, error, costo}.
 static func rotar(run, rng: RandomNumberGenerator, tier: int) -> Dictionary:
 	var estado := _estado(run)
