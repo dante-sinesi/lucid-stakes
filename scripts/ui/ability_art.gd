@@ -34,6 +34,12 @@ const ART := {
 	"mecha_larga": {   # una bomba con la mecha larga
 		"pal": {"g": Color(0.22, 0.22, 0.26), "h": Color(0.5, 0.5, 0.56), "f": Color(0.6, 0.35, 0.12), "y": Color(1.0, 0.85, 0.2), "o": Color(1.0, 0.45, 0.1)},
 		"rows": [".....y..y", "......o..", ".....f...", "....f....", "..ggggg..", ".gghgggg.", ".ghgggggg", ".ggggggg.", "..ggggg.."]},
+	"buena_letra": {   # un papel con su sello de lacre: un contrato bien visto
+		"pal": {"p": Color(0.95, 0.88, 0.7), "d": Color(0.7, 0.55, 0.35), "k": Color(0.25, 0.15, 0.1), "r": Color(0.8, 0.15, 0.18)},
+		"rows": [".ppppppp.", ".pkkkkkp.", ".ppppppp.", ".pkkkkpp.", ".ppppppp.", "..pprrrp.", "..pprrrp.", ".ppppppp.", ".ddddddd."]},
+	"buen_regateo": {   # una moneda con una flecha hacia abajo: el peaje baja
+		"pal": {"g": Color(1.0, 0.85, 0.3), "o": Color(0.75, 0.55, 0.1), "w": Color(1.0, 0.97, 0.8), "a": Color(0.3, 0.75, 0.4)},
+		"rows": ["..ggggg..", ".gwggggo.", "gwggagggo", "gwggagggo", "gwaaaaago", "gggaaaggo", "ggggaggoo", ".gooooog.", "..ooooo.."]},
 }
 
 

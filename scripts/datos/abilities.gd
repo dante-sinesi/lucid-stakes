@@ -6,22 +6,21 @@ extends RefCounted
 
 const Trials := preload("res://scripts/datos/trials.gd")
 
+const REGATEO := 0.10   # Buen regateo: lo que baja el peaje de Farolín
+
 const ALL: Array[Dictionary] = [
 	{"id": "mente_despejada", "name": "Mente despejada", "desc": "Empiezas cada run con +25 de claridad."},
 	{"id": "ojos_de_gato", "name": "Ojos de gato", "desc": "Purificar un bloque da +1 de claridad.", "perk": "pies_de_luz"},
 	{"id": "racha_firme", "name": "Racha firme", "desc": "El tope del multiplicador de racha sube de ×4 a ×6.", "perk": "racha_larga"},
-	{"id": "margen_de_error", "name": "Margen de error", "desc": "En Sin piedad, cada sala permite un movimiento en falso más (3 en lugar de 2)."},
-]
-
-## Habilidades ya diseñadas cuyo escenario todavía no se puede jugar: no se pueden ganar, así que no aparecen en el juego. Al habilitar el escenario se pasan a ALL.
-const PENDING: Array[Dictionary] = [
-	{"id": "pies_ligeros", "name": "Pies ligeros", "desc": "Cada sala tiene 1 movimiento más."},
+	{"id": "margen_de_error", "name": "Margen de error", "desc": "En El camino corto, cada sala permite un movimiento en falso más (3 en lugar de 2)."},
+	{"id": "corazon_extra", "name": "Corazón extra", "desc": "Tienes una vida más en todas las partidas (4 corazones), salvo en Compromiso."},
 	{"id": "bolsillo_sonador", "name": "Bolsillo de soñador", "desc": "Un lugar más para consumibles."},
 	{"id": "segunda_oportunidad", "name": "Segunda oportunidad", "desc": "Reintentar la torre cuesta 15 % menos."},
-	{"id": "corazon_extra", "name": "Corazón extra", "desc": "Tienes una vida más en todas las partidas (4 corazones)."},
+	{"id": "pies_ligeros", "name": "Pies ligeros", "desc": "Cada sala tiene 1 movimiento más."},
+	{"id": "buena_letra", "name": "Buena letra", "desc": "Un contrato con fianza que fallas en cada partida te devuelve la fianza."},
 	{"id": "mecha_larga", "name": "Mecha larga", "desc": "Las cuentas de las bombas empiezan 3 movimientos más altas.", "perk": "reflejos"},
+	{"id": "buen_regateo", "name": "Buen regateo", "desc": "El peaje de Farolín cuesta 10 % menos."},
 ]
-
 
 static func get_ability(id: String) -> Dictionary:
 	for a in ALL:
@@ -54,3 +53,7 @@ static func apply_to_run(run, owned: Array) -> void:
 				run.restart_discount += 0.15
 			"corazon_extra":
 				run.bonus_lives += 1
+			"buena_letra":
+				run.buena_letra = true
+			"buen_regateo":
+				run.toll_meta_discount += REGATEO

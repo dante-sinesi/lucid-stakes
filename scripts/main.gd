@@ -432,12 +432,13 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.semilla = s
 	torre.etapa = stage_number
 	torre.boosts = perks
-	torre.dificultad = run.dificultad
+	torre.dificultad = run.dificultad_torre()   # (Gran Casino: un escalón más difícil)
+	torre.reglas = run.scenario()
 	torre.pista_permitida = run.dificultad == "facil" and tutorial_index < 0 and not training
 	torre.pista_activa = _pista_on and torre.pista_permitida
 	torre.pista_cambiada.connect(_torre_pista)
 	torre.mov_run = run.movs_extra   # (Pies ligeros y la mejora Aire de más: movimientos de más en cada sala)
-	var permitidos := 0   # Sin piedad: movimientos en falso por sala
+	var permitidos := 0   # El camino corto: movimientos en falso por sala
 	if not training:
 		permitidos = int(run.scenario().get("mistakes", 0))
 		if permitidos > 0 and Profile.has_ability("margen_de_error"):
@@ -528,7 +529,7 @@ func _torre_accion() -> void:
 	_refresh()
 
 
-## Sin piedad: lo que quedan de movimientos en falso en la sala (y el aviso si acaba de pasar uno).
+## El camino corto: lo que quedan de movimientos en falso en la sala (y el aviso si acaba de pasar uno).
 func _torre_falsos(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool) -> void:
 	if torre == null:
 		return
@@ -1346,8 +1347,9 @@ func _ask_abandon() -> void:
 ## Elegir un escenario nuevo: si hay una partida sin terminar, antes hay que confirmar que se pierde.
 func _on_new_game(scenario_id: String) -> void:
 	var dificultad := "media"
-	if scenario_id == Scenarios.FREE:   # La Pesadilla: primero se elige la dificultad (gradúa las salas de las 15 etapas)
-		difficulty_screen.ask()
+	var elegibles := Scenarios.difficulties(scenario_id)
+	if not elegibles.is_empty():   # primero se elige la dificultad (gradúa las salas de las 15 etapas); La Pesadilla tiene las cuatro y los demás escenarios, sin Fácil
+		difficulty_screen.ask(elegibles)
 		dificultad = await difficulty_screen.chosen
 		if dificultad == "":
 			return
@@ -1394,10 +1396,9 @@ func _titulo_pausa() -> String:
 	if run == null or training:
 		return ""
 	var nombre := str(run.scenario().get("name", ""))
-	if run.scenario_id == Scenarios.FREE:
-		for o in DifficultyScreen.OPTIONS:
-			if o.id == run.dificultad:
-				return Loc.t("%s - %s" % [nombre, o.name])   # (la frase entera está en la tabla: "La Pesadilla - Fácil"...)
+	for o in DifficultyScreen.OPTIONS:
+		if o.id == run.dificultad:
+			return Loc.f("%s - %s", [Loc.t(nombre), Loc.t(o.name)])   # ("La Pesadilla - Fácil", "Compromiso - Difícil"...)
 	return Loc.t(nombre)
 
 

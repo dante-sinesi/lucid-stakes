@@ -149,10 +149,7 @@ func test_compromiso() -> void:
 	var scn := Scenarios.get_scenario("compromiso")
 	check(scn.id == "compromiso" and scn.entry > 0 and scn.lives == 1 and scn.permadeath and scn.no_totem and scn.no_extra_life, "existe el escenario Compromiso: una vida, sin segundas oportunidades, sin Tótems ni Vidas extra")
 	check(Scenarios.ability_ids(scn) == ["corazon_extra"], "y da el Corazón extra")
-	var a := {}
-	for x in Abilities.PENDING:   # (todavía no se puede ganar: está entre las pendientes)
-		if x.id == "corazon_extra":
-			a = x
+	var a := Abilities.get_ability("corazon_extra")
 	check(not a.is_empty() and a.desc.contains("4"), "el Corazón extra existe (4 corazones)")
 	# en un escenario común el Corazón extra suma un corazón; en Compromiso sigue siendo una sola vida
 	var run := RunState.new()

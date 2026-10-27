@@ -13,7 +13,7 @@ var stage_label: Control
 var clarity
 var toll_label: Control      # lo que cobra Farolín del portal de salida
 var moves_label: Control     # los movimientos hechos en la sala 
-var mistakes: Control        # los movimientos en falso que quedan en la sala (Sin piedad): cubitos rojos
+var mistakes: Control        # los movimientos en falso que quedan en la sala (El camino corto): cubitos rojos
 
 
 ## `with_stage`: false en la taberna y el casino (sólo vida y claridad).

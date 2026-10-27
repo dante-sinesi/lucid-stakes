@@ -3,6 +3,7 @@ extends SceneTree
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_scenarios.gd
 
 const Scenarios := preload("res://scripts/datos/scenarios.gd")
+const ScenarioScreen := preload("res://scripts/ui/scenario_screen.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
 const AbilityArt := preload("res://scripts/ui/ability_art.gd")
 const Abilities := preload("res://scripts/datos/abilities.gd")
@@ -61,35 +62,35 @@ func test_catalog() -> void:
 	check(ids.size() == Scenarios.ALL.size() and Scenarios.ALL.size() >= 6, "hay varios escenarios distintos (%d)" % Scenarios.ALL.size())
 	check(Scenarios.get_scenario("no_existe").id == "pesadilla", "un escenario desconocido cae en el gratuito")
 	# Mas dificiles pagan mas Luz
-	check(Scenarios.get_scenario("relojeria").luz_mult > Scenarios.get_scenario("ruinas").luz_mult, "los escenarios mas dificiles pagan mas Luz")
+	check(Scenarios.get_scenario("relojeria").luz_mult > Scenarios.get_scenario("contratista").luz_mult, "los escenarios mas dificiles pagan mas Luz")
 	# Cada escenario permite ganar habilidades que le son propias
-	check(Scenarios.ability_ids(Scenarios.get_scenario("polvorin")).has("mecha_larga") and not Scenarios.ability_ids(Scenarios.get_scenario("pesadilla")).has("mecha_larga"), "la mecha larga sólo se gana en Ruinas")
-	check(Scenarios.ability_ids(Scenarios.get_scenario("compromiso")).has("corazon_extra") and Scenarios.ability_ids(Scenarios.get_scenario("polvorin")).has("mecha_larga"), "cada escenario tiene su habilidad exclusiva")
+	check(Scenarios.ability_ids(Scenarios.get_scenario("mundo_abierto")).has("mecha_larga") and not Scenarios.ability_ids(Scenarios.get_scenario("pesadilla")).has("mecha_larga"), "la mecha larga sólo se gana en Mundo abierto")
+	check(Scenarios.ability_ids(Scenarios.get_scenario("compromiso")).has("corazon_extra") and Scenarios.ability_ids(Scenarios.get_scenario("mundo_abierto")).has("mecha_larga"), "cada escenario tiene su habilidad exclusiva")
 
 
 func test_profile() -> void:
 	Profile.reset()
-	check(Profile.luz() == 0 and Profile.owned_abilities().is_empty() and not Profile.can_enter("ruinas") and Profile.can_enter("pesadilla"), "perfil nuevo: sin Luz, sin habilidades; el gratuito siempre se puede")
+	check(Profile.luz() == 0 and Profile.owned_abilities().is_empty() and not Profile.can_enter("contratista") and Profile.can_enter("pesadilla"), "perfil nuevo: sin Luz, sin habilidades; el gratuito siempre se puede")
 	check(Profile.pay_entry("pesadilla") and Profile.luz() == 0, "entrar al gratuito no cuesta nada")
-	check(not Profile.pay_entry("ruinas") and Profile.luz() == 0, "sin Luz no se entra a un escenario de pago (y no se cobra)")
+	check(not Profile.pay_entry("contratista") and Profile.luz() == 0, "sin Luz no se entra a un escenario de pago (y no se cobra)")
 	# Un run da Luz segun lo que avanzaste, multiplicada por el escenario
 	var run := RunState.new()
 	run.towers_cleared = 10
 	run.trials_cleared = 3
 	run.max_stage = 11
 	check(Profile.luz_for_run(run, false) == int(round(110 * 0.2)) and Profile.luz_for_run(run, true) == 110 + 100, "Luz: 5 por torre y 20 por prueba (sólo el 20 % si no se escapa), más 100 por escapar")
-	run.scenario_id = "ruinas"
+	run.scenario_id = "contratista"
 	check(Profile.luz_for_run(run, false) == int(round(110 * 0.2 * 1.5)) and Profile.luz_for_run(run, true) == int(round(210 * 1.5)), "el escenario multiplica la Luz")
 	run.scenario_id = "pesadilla"
 	var gained := Profile.record_run(run, false)
 	check(gained == 22 and Profile.luz() == 22 and Profile.data.runs == 1 and Profile.data.best_stage == 11 and Profile.data.trials_cleared == 3, "record_run suma Luz y estadisticas")
-	check(Profile.can_enter("ruinas") and Profile.pay_entry("ruinas") and Profile.luz() == 22 - 15, "con Luz se paga la entrada")
+	check(Profile.can_enter("contratista") and Profile.pay_entry("contratista") and Profile.luz() == 22 - 20, "con Luz se paga la entrada")
 	# Se guarda y se carga
 	Profile.grant_ability("pies_ligeros")
 	Profile.data = {}
 	Profile._loaded_from = ""
 	Profile.load_profile()
-	check(Profile.luz() == 22 - 15 and Profile.has_ability("pies_ligeros") and int(Profile.data.runs) == 1, "el perfil se guarda y se carga")
+	check(Profile.luz() == 22 - 20 and Profile.has_ability("pies_ligeros") and int(Profile.data.runs) == 1, "el perfil se guarda y se carga")
 	# Archivo roto: se ignora
 	var f := FileAccess.open(Profile.path, FileAccess.WRITE)
 	f.store_string("esto no es json {{{")
@@ -115,12 +116,12 @@ func test_award() -> void:
 	check(Profile.luz() == 0, "mientras hay habilidades por ganar no se da Luz")
 	var done := Profile.award_scenario_ability("pesadilla", rng)
 	check(done.ability == "" and done.luz == Profile.ABILITY_LUZ and Profile.luz() == Profile.ABILITY_LUZ, "cuando ya las tiene todas, da Luz (%d)" % Profile.ABILITY_LUZ)
-	var polvorin := Profile.award_scenario_ability("polvorin", rng)
-	check(polvorin.ability == "mecha_larga" and Profile.has_ability("mecha_larga"), "cada escenario da las suyas (Polvorín, la mecha larga)")
-	var again := Profile.award_scenario_ability("polvorin", rng)
-	check(again.ability == "" and again.luz == int(round(Profile.ABILITY_LUZ * 1.6)), "y la Luz de reemplazo escala con el escenario")
+	var mundo := Profile.award_scenario_ability("mundo_abierto", rng)
+	check(mundo.ability == "mecha_larga" and Profile.has_ability("mecha_larga"), "cada escenario da las suyas (Mundo abierto, la mecha larga)")
+	var again := Profile.award_scenario_ability("mundo_abierto", rng)
+	check(again.ability == "" and again.luz == int(round(Profile.ABILITY_LUZ * 2.0)), "y la Luz de reemplazo escala con el escenario")
 	check(Profile.award_scenario_ability("tutorial", rng) == {"ability": "", "luz": 0}, "el tutorial no da nada")
-	check(Scenarios.scenarios_for_ability("mecha_larga").size() == 1 and Scenarios.scenarios_for_ability("mecha_larga")[0].id == "polvorin", "se sabe en qué escenario se gana cada una")
+	check(Scenarios.scenarios_for_ability("mecha_larga").size() == 1 and Scenarios.scenarios_for_ability("mecha_larga")[0].id == "mundo_abierto", "se sabe en qué escenario se gana cada una")
 	Profile.reset()
 
 
@@ -188,9 +189,9 @@ func test_flow() -> void:
 	check(not all_text(main.run_end).contains("Luz"), "la pantalla de fin de run no nombra la Luz con texto")
 	# El escenario viaja en el guardado
 	var run2 := RunState.new()
-	run2.scenario_id = "polvorin"
+	run2.scenario_id = "mundo_abierto"
 	run2.price_mult = 1.0
-	check(RunState.from_dict(JSON.parse_string(JSON.stringify(run2.to_dict()))).scenario_id == "polvorin", "el escenario se guarda con el run")
+	check(RunState.from_dict(JSON.parse_string(JSON.stringify(run2.to_dict()))).scenario_id == "mundo_abierto", "el escenario se guarda con el run")
 	main.queue_free()
 	await process_frame
 	Profile.reset()
@@ -220,7 +221,7 @@ func test_screens() -> void:
 	check(sc.play_buttons["sin_piedad"].disabled and sc.luz_counter.value == 0, "sin Luz los de pago estan bloqueados")
 	Profile.data.luz = 30
 	sc.refresh()
-	check(not sc.play_buttons["sin_piedad"].disabled and sc.play_buttons["relojeria"].disabled and sc.luz_counter.value == 30, "con 30 de Luz se puede entrar a los que cuestan 25 o menos")
+	check(not sc.play_buttons["sin_piedad"].disabled and sc.play_buttons["compromiso"].disabled and sc.luz_counter.value == 30, "con 30 de Luz se puede entrar a los que cuestan 30 o menos y no a Compromiso (35)")
 	# Tarjetas: una por escenario, con "?" y el boton de entrada; se desplazan en horizontal
 	var card = sc.cards["sin_piedad"]
 	check(sc.cards.size() == Scenarios.ALL.size() + 1 and card.info_button.text == "?" and card.info_button.position.x > card.size.x * 0.7 and card.info_button.position.y < 30.0, "cada escenario es una tarjeta con un ? arriba a la derecha")
@@ -229,13 +230,8 @@ func test_screens() -> void:
 	await process_frame
 	await process_frame
 	check(sc.current_id() == "pesadilla" and sc.cards["pesadilla"].is_current and not sc.cards["tutorial"].is_current, "al abrir apunta a La Pesadilla, no al tutorial")
-	# los escenarios sin armar dicen "Próximamente": sin logo, sin entrar y sin detalles; Sin piedad, la Pesadilla y el tutorial sí
-	for id in ["ruinas", "polvorin", "relojeria", "compromiso", "gran_casino"]:
-		var cd = sc.cards[id]
-		check(cd.locked_soon and cd.enter_button.disabled and cd.info_button.disabled and str(cd.enter_button.text).contains("Próximamente"), id + ": Próximamente, sin entrar y sin detalles")
-		sc.show_info(id)
-		check(not sc.info_panel.visible, id + ": no abre sus detalles")
-	for id in ["tutorial", "pesadilla", "sin_piedad"]:
+	# todos los escenarios se pueden elegir y abrir (ya no queda ninguno en "Próximamente")
+	for id in ["tutorial", "pesadilla", "sin_piedad", "compromiso", "gran_casino", "relojeria", "contratista", "mundo_abierto", "usurero"]:
 		check(not sc.cards[id].locked_soon and not sc.cards[id].info_button.disabled, id + ": se puede elegir y abrir")
 	sc.scroll.scroll_horizontal = 0
 	sc.sel_index = 0
@@ -255,11 +251,30 @@ func test_screens() -> void:
 	check(sc.scroll.scroll_horizontal == 0 and sc.current_id() == "tutorial", "y se vuelve hasta el primero")
 	check(not all_text(sc).contains("Luz"), "el selector no nombra la Luz con texto: es el sol")
 	# El "?" abre toda la informacion
+	sc.info_scroll.custom_minimum_size.y = 200   # (un visor chico: así la información siempre tiene por dónde recorrerse)
 	card.info_button.pressed.emit()
 	var texts := all_text(sc.info_panel)
 	check(sc.info_panel.visible and texts.contains("Margen de error") and texts.contains("falso"), "el ? muestra las reglas, las pruebas y las habilidades del escenario")
 	check(sc.info_box.find_child("costo", true, false).value == 25 and sc.info_box.find_child("multiplicador", true, false).label.text == "x2.0", "...y el costo y lo que paga, con el sol")
 	check(not texts.contains("Luz"), "la informacion tampoco nombra la Luz con texto")
+	# la información se recorre con las flechas y WASD (aunque haya un botón con el foco)
+	await process_frame
+	await process_frame
+	check(sc.info_scroll.scroll_vertical == 0 and sc.info_box.size.y > sc.info_scroll.size.y, "la información empieza arriba y es más larga que el visor")
+	for k in [KEY_DOWN, KEY_S, KEY_DOWN]:
+		var ev := InputEventKey.new()
+		ev.keycode = k
+		ev.pressed = true
+		Input.parse_input_event(ev)
+		await process_frame
+	check(sc.info_scroll.scroll_vertical == 3 * ScenarioScreen.INFO_PASO, "las flechas y S bajan por la información (%d)" % sc.info_scroll.scroll_vertical)
+	for k in [KEY_UP, KEY_W]:
+		var ev2 := InputEventKey.new()
+		ev2.keycode = k
+		ev2.pressed = true
+		Input.parse_input_event(ev2)
+		await process_frame
+	check(sc.info_scroll.scroll_vertical == ScenarioScreen.INFO_PASO, "las flechas y W suben (%d)" % sc.info_scroll.scroll_vertical)
 	sc.info_close.pressed.emit()
 	check(not sc.info_panel.visible, "se cierra con Volver")
 	sc.back.emit()
@@ -282,7 +297,7 @@ func test_screens() -> void:
 	var colors_gray := {}
 	var ids: Array = AbilityArt.ART.keys()
 	ids.erase("corazon")   # (el corazón de las vidas usa el mismo dibujo pero no es una habilidad)
-	check(ids.size() == Abilities.ALL.size() + Abilities.PENDING.size() and AbilityArt.ART.has("corazon"), "cada habilidad tiene un icono (y las vidas su corazón)")
+	check(ids.size() == Abilities.ALL.size() and AbilityArt.ART.has("corazon"), "cada habilidad tiene un icono (y las vidas su corazón)")
 	for id in ids:
 		for row in AbilityArt.ART[id].rows:
 			for ch in row:
@@ -302,7 +317,7 @@ func test_screens() -> void:
 	check(AbilityArt.model("ojos_de_gato").size() > AbilityArt.ART.ojos_de_gato.rows.size() * 9 * 0.4, "el modelo tiene mas cubitos que celdas de la figura plana")
 	# Pasar el mouse por un icono muestra un cartel con la informacion (sin hacer clic)
 	meta.tiles["margen_de_error"].mouse_entered.emit()
-	check(meta.tip.visible and meta.tip.text.contains("Margen de error") and meta.tip.text.contains("movimiento en falso") and meta.tip.text.contains("Sin piedad") and not meta.tip.text.contains("Luz"), "al pasar el mouse sale un cartel con el nombre, el efecto y dónde se gana")
+	check(meta.tip.visible and meta.tip.text.contains("Margen de error") and meta.tip.text.contains("movimiento en falso") and meta.tip.text.contains("El camino corto") and not meta.tip.text.contains("Luz"), "al pasar el mouse sale un cartel con el nombre, el efecto y dónde se gana")
 	meta.tiles["margen_de_error"].mouse_exited.emit()
 	check(not meta.tip.visible, "y se va al sacar el mouse")
 	meta.tiles["ojos_de_gato"].mouse_entered.emit()
@@ -312,7 +327,7 @@ func test_screens() -> void:
 	meta.tiles["margen_de_error"].pressed.emit()
 	var t2 := all_text(meta.info_panel)
 	check(meta.info_panel.visible and t2.contains("Margen de error") and t2.contains("Ya la tienes") and t2.contains("movimiento en falso"), "tocar un icono muestra la habilidad que se tiene y su efecto")
-	check(t2.contains("Cómo la conseguiste") and t2.contains("Escapando de la pesadilla") and t2.contains("Sin piedad") and not t2.contains("La Pesadilla"), "dice que se gana al escapar y en que escenarios (Sin piedad, no La Pesadilla)")
+	check(t2.contains("Cómo la conseguiste") and t2.contains("Escapando de la pesadilla") and t2.contains("El camino corto") and not t2.contains("La Pesadilla"), "dice que se gana al escapar y en que escenarios (El camino corto, no La Pesadilla)")
 	meta.info_close.pressed.emit()
 	check(not meta.info_panel.visible, "se cierra con Volver")
 	meta.tiles["ojos_de_gato"].pressed.emit()
@@ -325,7 +340,7 @@ func test_screens() -> void:
 	meta.tiles["mente_despejada"].pressed.emit()
 	check(all_text(meta.info_panel).contains("La Pesadilla") and all_text(meta.info_panel).contains("(gratis)"), "Mente despejada se gana en La Pesadilla, que es gratis")
 	meta.info_close.pressed.emit()
-	meta.tiles["margen_de_error"].pressed.emit()   # (Sin piedad: un escenario de pago)
+	meta.tiles["margen_de_error"].pressed.emit()   # (El camino corto: un escenario de pago)
 	var luz_costs := 0
 	var stack: Array = [meta.info_panel]
 	while not stack.is_empty():

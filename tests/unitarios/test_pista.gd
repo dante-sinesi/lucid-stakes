@@ -61,11 +61,11 @@ func _init() -> void:
 	main.pause_game()
 	_ok(main.pause_menu.title_label.text == "La Pesadilla - Fácil", "la pausa dice el escenario y la dificultad (%s)" % main.pause_menu.title_label.text)
 	main.resume_game()
-	Profile.add_luz(100)   # (la entrada de Sin piedad cuesta Luz)
+	Profile.add_luz(100)   # (la entrada de El camino corto cuesta Luz)
 	main.start_game("sin_piedad", "media")
 	await _frames(4)
 	main.pause_game()
-	_ok(main.pause_menu.title_label.text == "Sin piedad", "en Sin piedad la pausa dice sólo el escenario (%s)" % main.pause_menu.title_label.text)
+	_ok(main.pause_menu.title_label.text == "El camino corto - Medio", "en El camino corto la pausa dice el escenario y la dificultad (%s)" % main.pause_menu.title_label.text)
 	main.resume_game()
 	# en Medio no hay pista ni movimientos ilimitados
 	main.start_game("pesadilla", "media")

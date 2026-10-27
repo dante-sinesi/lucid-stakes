@@ -1,5 +1,5 @@
 extends RefCounted
-## Movimientos en falso en la torre (el escenario "Sin piedad"): en cada sala, un movimiento es "en falso" si después de hacerlo faltan MÁS pasos para salir de la sala
+## Movimientos en falso en la torre (el escenario "El camino corto"): en cada sala, un movimiento es "en falso" si después de hacerlo faltan MÁS pasos para salir de la sala
 ## que antes de hacerlo (según el solucionador nativo exacto, desde el estado de la sala). Explorar un callejón, empujar un bloque que no ayuda o dejar la sala sin salida cuentan;
 ## volver sobre los pasos no se castiga dos veces. Cada sala permite `permitidos` en falso; el siguiente se cuenta como `agotado` (la sala se pierde como si se hubiera caído).
 ## El solucionador corre en un hilo aparte (un trabajo por movimiento, en orden); el resultado vuelve al juego unos instantes después. En las pruebas, `inline` lo resuelve en el momento.

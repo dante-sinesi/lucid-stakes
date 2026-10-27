@@ -7,7 +7,7 @@ const TABLE := {
 	"Compromiso": "Commitment",
 	"Una sola vida, sin segundas oportunidades: morir es el final. Los Tótems y las Vidas extra no funcionan. Hay que pasarlo sin caer ni una vez.": "A single life, no second chances: dying is the end. Totems and Extra lives do not work. You have to get through without falling even once.",
 	"Corazón extra": "Extra heart",
-	"Tienes una vida más en todas las partidas (4 corazones).": "You have one more life in every run (4 hearts).",
+	"Tienes una vida más en todas las partidas (4 corazones), salvo en Compromiso.": "You have one more life in every run (4 hearts), except in Commitment.",
 	"Moriste: en este escenario no hay segundas oportunidades.": "You died: there are no second chances in this scenario.",
 	"No funciona en este escenario": "It does not work in this scenario",
 	"Una sola vida: si mueres, se termina.": "A single life: if you die, it is over.",
@@ -44,7 +44,7 @@ const TABLE := {
 	"Tu mejor racha fue de %d victorias seguidas.": "Your best streak was %d wins in a row.",
 	"El pozo del jackpot quedó con %d de claridad sin cobrar.": "The jackpot pot was left with %d clarity uncollected.",
 	"Escapando de la pesadilla (las 27 etapas) en alguno de estos escenarios:": "By escaping the nightmare (all 27 stages) in one of these scenarios:",
-	"Habilidades que se pueden ganar al escapar (de a una por vez)": "Abilities you can earn by escaping (one at a time)",
+	"Habilidades al escapar (una por vez)": "Abilities on escape (one at a time)",
 	# la visita y los ahorros
 	"Racha de la casa": "House streak",
 	"En el casino, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta.": "At the casino, each bet you win in a row adds +10 % to the next payout (up to +50 %). A loss breaks it.",

@@ -1,6 +1,6 @@
 # Escenarios: propuesta (los escenarios cambian reglas, no temas de salas)
 
-Borrador para conversar: nada de esto está programado salvo lo que se indica. Hoy se juegan tres (Tutorial, La Pesadilla y Sin piedad, que acá pasa a llamarse **El camino corto**) y cinco dicen "Próximamente" con descripciones de antes de la torre actual (`scripts/datos/scenarios.gd`, `catalogo.md`).
+**Implementado** (rama `escenarios/reglas`; pruebas en `tests/unitarios/test_escenarios_reglas.gd`). Los números son de partida y se calibran jugando. Hoy se juegan tres (Tutorial, La Pesadilla y Sin piedad, que acá pasa a llamarse **El camino corto**) y cinco dicen "Próximamente" con descripciones de antes de la torre actual (`scripts/datos/scenarios.gd`, `catalogo.md`).
 
 ## La decisión: los escenarios cambian las reglas del juego, no los temas de salas
 
@@ -27,13 +27,13 @@ Los tres niveles usan la misma curva de niveles de las salas (`PENDIENTE_DIFICUL
 
 | Escenario | Regla | Entrada | Luz | Habilidad | Estado |
 |---|---|---|---|---|---|
-| El camino corto | 2 movimientos en falso por sala (Sin piedad, con otro nombre); no se deshace | 25 | ×2,0 | Margen de error | jugable |
-| Compromiso | una sola vida; sin Tótem ni Vidas extra | 35 | ×2,2 | Corazón extra | falta la habilidad |
-| Gran Casino | casino de lujo desde el principio y ficha más barata; torres más difíciles | 30 | ×1,4 | Bolsillo de soñador, Segunda oportunidad | falta lo de las torres y las habilidades |
-| Relojería | menos movimientos por sala; ficha más barata | 25 | ×1,8 | Pies ligeros | falta el recorte de movimientos y la habilidad |
-| Contratista | el tablón manda: más contratos, fianzas y recompensas mayores | 20 | ×1,5 | Buena letra | regla nueva |
-| Mundo abierto | todos los especiales se habilitan desde la etapa 1 | 30 | ×2,0 | Mecha larga | regla nueva |
-| Usurero | Farolín cobra más, pero el casino paga más | 20 | ×1,5 | Buen regateo | regla nueva |
+| El camino corto | 2 movimientos en falso por sala (Sin piedad, con otro nombre); no se deshace | 25 | ×2,0 | Margen de error | implementado |
+| Compromiso | una sola vida; sin Tótem ni Vidas extra | 35 | ×2,2 | Corazón extra | implementado |
+| Gran Casino | casino de lujo desde el principio y ficha más barata; torres más difíciles | 30 | ×1,4 | Bolsillo de soñador, Segunda oportunidad | implementado |
+| Relojería | menos movimientos por sala; ficha más barata | 25 | ×1,8 | Pies ligeros | implementado |
+| Contratista | el tablón manda: más contratos, fianzas y recompensas mayores | 20 | ×1,5 | Buena letra | implementado |
+| Mundo abierto | todos los especiales se habilitan desde la etapa 1 | 30 | ×2,0 | Mecha larga | implementado |
+| Usurero | Farolín cobra más, pero el casino paga más | 20 | ×1,5 | Buen regateo | implementado |
 
 ### El camino corto (ya jugable como Sin piedad)
 Es el escenario de la **precisión**: el mejor camino de cada sala es el que mide el solucionador, y alejarte de él se paga. Se le cambia el nombre (Sin piedad sonaba a castigo, y Compromiso ya es el escenario de la supervivencia: una sola vida). Cada sala permite 2 movimientos en falso (el que deja más pasos para salir); al tercero se pierde una vida. No se puede deshacer. Pruebas: Sin ayudas, Sin racha. Habilidad: **Margen de error** (3 movimientos en falso en lugar de 2). Solo cambia el nombre que se ve (en el código puede quedar el id `sin_piedad` para no romper partidas guardadas ni el perfil), y el texto en español, en inglés y en el catálogo.
@@ -71,7 +71,7 @@ Farolín cobra un 40 % más en cada peaje, pero el casino paga más: la ficha cu
 
 Las cinco habilidades que estaban pendientes (`Abilities.PENDING`) se reparten así, y se agregan dos nuevas. Las de La Pesadilla (Mente despejada, Ojos de gato, Racha firme) no cambian.
 
-## Qué hace falta en el código (resumen)
+## Qué se hizo en el código (resumen)
 
 | Pieza | La usan |
 |---|---|
@@ -84,7 +84,7 @@ Las cinco habilidades que estaban pendientes (`Abilities.PENDING`) se reparten a
 | Multiplicador de peaje y de premios | Usurero |
 | Las siete habilidades nuevas | todos menos El camino corto |
 
-Cada pieza se puede hacer por separado, y cada escenario se habilita cuando tiene la suya. Al habilitarlos hay que regenerar el catálogo (`herramientas\catalogo.bat`) y agregar las frases en inglés.
+Las piezas están en `Scenarios`, `RunState`, `Torre`, `Contratos`, `CasinoVisit` y `Abilities`; el catálogo se regeneró y las frases tienen su traducción al inglés.
 
 ## Ideas para después
 
