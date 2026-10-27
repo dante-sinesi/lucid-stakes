@@ -40,7 +40,7 @@ Todos gastan **un movimiento** (si salen bien); los que no salen bien no gastan 
 | t | Trampa | Parece común; al quedar parado encima se desarma y cae (con el jugador si abajo hay otro bloque) |
 | s | Pinchos | Quedar parado encima pierde la sala; se empuja y se tira como uno común |
 | k | Catapulta (trampolín) | Al llegar parado encima, sube 4 celdas (más hasta 2 buscando agarre) y queda colgado del costado de un bloque que tenga el borde de arriba libre; sólo hacia arriba |
-| b7 / d | Bomba con mecha / desactivada | La mecha (el número) baja **1 por acción mientras el jugador está dentro de su zona** (celdas con dx²+dy²+dz² ≤ 5); fuera se congela. Al llegar a 0 explota y se pierde la sala. Pararse encima la desactiva ("d", queda como un común); si cae fuera de la huella se pierde. Ganar en el mismo movimiento gana a la explosión |
+| b7 / d | Bomba con mecha / desactivada | La mecha (el número, dibujado dentro de una bombita con la mecha más corta cuanto menos queda, gris o roja si corre; los bloques de adelante la tapan) baja **1 por acción mientras el jugador está dentro de su zona** (celdas con dx²+dy²+dz² ≤ 5); fuera se congela. Al llegar a 0 explota y se pierde la sala. Pararse encima la desactiva ("d", queda como un común); si cae fuera de la huella se pierde. Ganar en el mismo movimiento gana a la explosión |
 
 Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada especial está en la sala por un propósito comprobado: si se lo cambia por un bloque común, cambia el camino o cuánto pesa cada movimiento (`docs/generador.md`).
 

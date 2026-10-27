@@ -4,6 +4,7 @@ extends RefCounted
 
 const BlockModels := preload("res://scripts/personajes/block_models.gd")
 const Escena := preload("res://torre/escena.gd")
+const CuentaBomba := preload("res://torre/cuenta_bomba.gd")
 const BlockArt := preload("res://scripts/personajes/block_art.gd")
 
 ## La etapa del run (0 = ninguna): decide cuánta corrupción tiene el arte de los bloques (block_art.gd). Lo pone torre_juego.gd antes de dibujar.
@@ -232,19 +233,10 @@ static func _malla_masa(celdas: Array[Vector3i]) -> ArrayMesh:
 	return m
 
 
-## La cuenta de una bomba: un número grande flotando arriba (rojo si el jugador está dentro de su zona y la mecha corre).
-static func _cuenta(c: Vector3i, mecha: int, jugador: Vector3i) -> Label3D:
-	var l := Label3D.new()
-	l.text = str(mecha)
-	l.font_size = 96
-	l.pixel_size = 0.012
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	l.no_depth_test = true
+## La cuenta de una bomba (ver `cuenta_bomba.gd`): roja si el jugador está dentro de su zona y la mecha corre.
+static func _cuenta(c: Vector3i, mecha: int, jugador: Vector3i) -> Sprite3D:
 	var d := jugador - c
-	l.modulate = Color(1.0, 0.25, 0.2) if d.x * d.x + d.y * d.y + d.z * d.z <= 5 else Color(0.95, 0.95, 0.95)
-	l.outline_size = 12
-	l.position = Vector3(c.x + 0.5, c.y + 1.25, c.z + 0.5)
-	return l
+	return CuentaBomba.crear(c, mecha, d.x * d.x + d.y * d.y + d.z * d.z <= 5)
 
 
 ## Una referencia tenue del anillo de la torre (11 x 11 con el vacío de 5 x 5): no es suelo, sólo ayuda a ubicarse.
