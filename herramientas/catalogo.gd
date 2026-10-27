@@ -87,15 +87,10 @@ func _scenarios() -> Array:
 	return out
 
 
-## El nombre de una habilidad (las pendientes todavía no están en el catálogo del juego: se busca también ahí).
+## El nombre de una habilidad.
 func _nombre_habilidad(id: String) -> String:
 	var a := Abilities.get_ability(id)
-	if a.is_empty():
-		for p in Abilities.PENDING:
-			if p.id == id:
-				return str(p.name) + " (pendiente)"
-		return id
-	return str(a.name)
+	return id if a.is_empty() else str(a.name)
 
 
 func _services() -> Array:

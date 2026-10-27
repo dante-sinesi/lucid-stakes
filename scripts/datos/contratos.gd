@@ -60,7 +60,13 @@ static func capacidad(tier: int) -> int:
 
 ## Cuántos contratos se pueden tener activos a la vez.
 static func limite(run) -> int:
-	return LIMITE_BASE + run.boosts.count("caza_recompensas")
+	return LIMITE_BASE + run.boosts.count("caza_recompensas") + int(_reglas(run).get("activos_extra", 0))
+
+
+## Las reglas de contratos del escenario ({} si no tiene: ver `Scenarios`, el Contratista).
+static func _reglas(run) -> Dictionary:
+	var r = run.scenario().get("contratos", {})
+	return r if r is Dictionary else {}
 
 
 static func activos(run) -> Array:
@@ -124,7 +130,7 @@ static func sortear(run, rng: RandomNumberGenerator, tier: int, hay_imposible :=
 		posibles = distintos
 	var obj: String = posibles[rng.randi() % posibles.size()]
 	var d: Dictionary = OBJETIVOS[obj]
-	var papel := {"id": int(estado.siguiente_id), "obj": obj, "r": r, "n": _n_de(d, r, run.stage), "pct": PCT_RECOMPENSA[r], "monto": 0, "fianza": 0}
+	var papel := {"id": int(estado.siguiente_id), "obj": obj, "r": r, "n": _n_de(d, r, run.stage), "pct": PCT_RECOMPENSA[r] * float(_reglas(run).get("premio_mult", 1.0)), "monto": 0, "fianza": 0}
 	estado.siguiente_id = int(estado.siguiente_id) + 1
 	return papel
 
@@ -156,7 +162,7 @@ static func entrar(run, rng: RandomNumberGenerator, tier: int) -> int:
 	for i in estado.cartelera.size():
 		if estado.cartelera[i] == null:
 			huecos.append(i)
-	var cuantos := huecos.size() if not bool(estado.iniciada) else mini(NUEVOS_POR_TORRE, huecos.size())
+	var cuantos := huecos.size() if not bool(estado.iniciada) else mini(NUEVOS_POR_TORRE + int(_reglas(run).get("nuevos_extra", 0)), huecos.size())
 	estado.iniciada = true
 	for k in cuantos:
 		var i: int = huecos[k]
@@ -366,6 +372,10 @@ static func _veredicto(p: Dictionary, s: Dictionary, fin: bool) -> int:
 ## Cobra (o pierde) un contrato. Devuelve {papel, cumplido, monto}: `monto` es lo que se cobró (positivo), la fianza perdida (negativa) o 0.
 static func _resolver(run, p: Dictionary, cumplido: bool) -> Dictionary:
 	if not cumplido:
+		if int(p.fianza) > 0 and run.buena_letra and not run.buena_letra_usada:   # Buena letra: la primera fianza que se pierde en la partida se devuelve
+			run.buena_letra_usada = true
+			run.gain(int(p.fianza))
+			return {"papel": p, "cumplido": false, "monto": 0, "devuelta": true}
 		return {"papel": p, "cumplido": false, "monto": -int(p.fianza)}
 	var mult := FIANZA_MULT if int(p.fianza) > 0 else 1.0
 	if run.boosts.has("contratista"):

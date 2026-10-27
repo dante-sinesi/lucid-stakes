@@ -7,7 +7,7 @@ const TABLE := {
 	"Compromiso": "Commitment",
 	"Una sola vida, sin segundas oportunidades: morir es el final. Los Tótems y las Vidas extra no funcionan. Hay que pasarlo sin caer ni una vez.": "A single life, no second chances: dying is the end. Totems and Extra lives do not work. You have to get through without falling even once.",
 	"Corazón extra": "Extra heart",
-	"Tienes una vida más en todas las partidas (4 corazones).": "You have one more life in every run (4 hearts).",
+	"Tienes una vida más en todas las partidas (4 corazones), salvo en Compromiso.": "You have one more life in every run (4 hearts), except in Commitment.",
 	"Moriste: en este escenario no hay segundas oportunidades.": "You died: there are no second chances in this scenario.",
 	"No funciona en este escenario": "It does not work in this scenario",
 	"Una sola vida: si mueres, se termina.": "A single life: if you die, it is over.",

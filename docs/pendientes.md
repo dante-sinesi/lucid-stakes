@@ -7,8 +7,6 @@ Lo que falta o se quitó a propósito, y las ideas anotadas (no son objetivos po
 Al retirar la torre vieja se borraron, en vez de dejarlos sin efecto, los premios, pruebas y escenarios que dependían de reglas que ya no existen. Hay que repensar premios y pruebas con la torre actual:
 
 - **Pruebas** que quedaron: Sin ayudas, Todo o nada y Sin racha. Se quitaron Niebla, Oscuridad, Prisa, Hielo total, Quebradizo, Polvorín y Lluvia de meteoritos (reglas propias de la torre vieja).
-- **Escenarios "Próximamente"** (tarjetas bloqueadas, sin entrar): Ruinas, Polvorín, Relojería, Compromiso y Gran Casino. Sus descripciones todavía hablan de mecánicas viejas (fila que cae, una sola vida): reescribir cuando se diseñen.
-- **Habilidades pendientes** (`Abilities.PENDING`): Mecha larga, Pies ligeros, Corazón extra, Bolsillo de soñador, Segunda oportunidad.
 - **Consumibles y boosts retirados:** Ojo de hielo, Escudo, Doble salto, Teletransporte, Ancla chica, los ocho conversores de bloque, Fuerza bruta y Aire de más. Los que dependían de elegir un bloque con el mouse necesitan un selector de bloques para la torre actual.
 - **Bot de balance:** funciona con la torre actual (`bot.md`) pero sólo juega por el camino mínimo y la ruleta (no tragamonedas ni blackjack).
 
@@ -18,7 +16,7 @@ Al retirar la torre vieja se borraron, en vez de dejarlos sin efecto, los premio
 
 ## Propuestas para conversar
 
-- **Escenarios:** `escenarios_propuestas.md` (siete escenarios que cambian reglas y no salas, con la habilidad de cada uno y lo que falta en el código).
+- **Escenarios:** `escenarios_propuestas.md` (los siete escenarios que cambian reglas y no salas, ya implementados; quedan las ideas para después: Hemorragia, Racha o nada, Doble o nada y Sin red, y las preguntas abiertas).
 - **Logros de Steam:** `logros.md` (48 logros más secretos, con los 18 que se pueden ganar en la demo). Decidido: los logros de la demo no se transfieren al juego completo (la demo es otra app de Steam, sus logros son básicos y se vuelven a ganar enseguida). Mejora posible si sobra tiempo: que la demo guarde sus logros en su archivo y el juego completo los entregue al abrirse.
 
 ## Ideas de premios para esta torre
@@ -36,7 +34,7 @@ Decisiones abiertas: cuántos entran en la primera tanda y si van al casino como
 - Los bloques ya no se aclaran con la etapa (solo el fondo y la luz): decidir si se retoma. Revisar también la ayuda de profundidad con la cámara de la torre.
 - Música: decidir tempo, volumen y si se agrega percusión (se probaron variantes al 90, 80 y 70 % sin preferencia clara: `herramientas/musica/render_estaciones.py --tempo=0.8 --solo-previa`).
 - Calibrar la economía con partidas reales (`economia.md`).
-- La exportación excluye `tools/*`: el solucionador nativo (`tools/salas.exe`), que usa Sin piedad, no viaja con el juego exportado; hay que empaquetarlo o tener respaldo.
+- La exportación excluye `tools/*`: el solucionador nativo (`tools/salas.exe`), que usa El camino corto, no viaja con el juego exportado; hay que empaquetarlo o tener respaldo.
 
 ## Ideas anotadas
 

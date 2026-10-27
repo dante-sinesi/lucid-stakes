@@ -177,14 +177,14 @@ static func cargar_paquete(ruta: String) -> Array:
 
 ## Movimientos que se le dan a una sala de `pasos` movimientos mínimos (o conocidos): un margen proporcional que baja con el nivel de la sala.
 ## En las primeras etapas el margen es la mitad (etapa 1) y crece hasta el completo en la etapa 8; `etapa` 0 (el prototipo) usa el completo.
-static func max_movimientos(pasos: int, nivel: String, etapa := 0, dif := "media") -> int:
+static func max_movimientos(pasos: int, nivel: String, etapa := 0, dif := "media", margen_escenario := 1.0) -> int:
 	var idx := ["facil", "media", "dificil", "pesadilla"].find(nivel)
 	var factores: Array = [1.9, 1.6, 1.4, 1.25]
 	var extras: Array = [10, 8, 6, 5]
 	var k: float = factores[maxi(idx, 0)]
 	var extra: int = extras[maxi(idx, 0)]
 	var s := 1.0 if etapa <= 0 else lerpf(0.5, 1.0, clampf(float(etapa - 1) / 7.0, 0.0, 1.0))
-	s *= float(MARGEN_DIFICULTAD.get(dif, 1.0))
+	s *= float(MARGEN_DIFICULTAD.get(dif, 1.0)) * margen_escenario   # (Relojería recorta el margen)
 	return int(ceil(pasos * (1.0 + (k - 1.0) * s))) + int(round(float(extra) * s))
 
 
@@ -234,14 +234,16 @@ static func _rect_sim(r: Rect2i, s: int) -> Rect2i:
 ## Arma una torre de `n` salas con la curva de dificultad CURVA (si n es mayor se repite el último tramo). Cada sala se gira o espeja y se desliza por el anillo
 ## hasta que su entrada caiga en la salida de la anterior; con `espiral` la torre da vueltas siempre hacia el mismo lado (cada sala sigue por delante de la anterior).
 ## Si no se puede con espiral se arma sin esa condición. Devuelve un Torre; si no pudo encadenar una sala queda más corta.
-static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_run := 0, dificultad := "media"):
+## `reglas`: las reglas del escenario que importan acá (`especiales_desde`: desde qué etapa se habilitan todos los especiales; `peso_especiales`: la fracción de las salas que tienen
+## especiales, entre las que se puedan poner; `margen_mov`: lo que multiplica el margen de movimientos); {} = las de siempre.
+static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_run := 0, dificultad := "media", reglas := {}):
 	var rng := RandomNumberGenerator.new()
 	rng.seed = semilla
 	var info := _info(paquete)
-	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral, "etapa": etapa_run, "dif": dificultad}
+	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral, "etapa": etapa_run, "dif": dificultad, "reglas": reglas}
 	var ok := _extender(ctx, 0)
 	if not ok and espiral:
-		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false, "etapa": etapa_run, "dif": dificultad}
+		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false, "etapa": etapa_run, "dif": dificultad, "reglas": reglas}
 		ok = _extender(ctx, 0)
 	var t = load("res://torre/torre.gd").new()
 	t.etapa = etapa_run
@@ -250,7 +252,7 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_r
 	for e in ctx.elegidas:
 		var g: Dictionary = e.d
 		e["off"] = off
-		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel), etapa_run, dificultad)
+		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel), etapa_run, dificultad, float(reglas.get("margen_mov", 1.0)))
 		t.salas.append(e)
 		off += int(g.meta) - 1   # la entrada de la siguiente (nivel 1) queda en el nivel de salida de ésta
 	if not t.salas.is_empty():
@@ -312,14 +314,25 @@ static func dentro_de_limites(d: Dictionary, lim: Dictionary) -> bool:
 
 
 ## ¿Todos los especiales de la sala están habilitados en esa etapa?
-static func especiales_habilitados(d: Dictionary, etapa_run: int) -> bool:
+## `desde` > 0: todos se habilitan desde esa etapa (Mundo abierto).
+static func especiales_habilitados(d: Dictionary, etapa_run: int, desde := 0) -> bool:
 	for b in d.bloques:
 		var l := str(b[3]).substr(0, 1)
 		if l == "d":
 			l = "b"
-		if ETAPA_ESPECIAL.has(l) and etapa_run < int(ETAPA_ESPECIAL[l]):
+		if ETAPA_ESPECIAL.has(l) and etapa_run < (mini(int(ETAPA_ESPECIAL[l]), desde) if desde > 0 else int(ETAPA_ESPECIAL[l])):
 			return false
 	return true
+
+
+## Las candidatas con las preferidas primero (con especiales o sin ellos), sin cambiar el orden entre las del mismo grupo.
+static func _preferir(lista: Array, info: Array, con_especiales: bool) -> Array:
+	var primero: Array = []
+	var despues: Array = []
+	for k in lista:
+		var tiene := str(info[k].d.get("categoria", "base")) != "base"
+		(primero if tiene == con_especiales else despues).append(k)
+	return primero + despues
 
 
 ## Busca (con vuelta atrás) la sala número i y las que siguen. Devuelve true si se armaron las n.
@@ -336,7 +349,7 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			continue
 		if i < 2 and str(d.get("categoria", "base")) != "base":
 			continue   # (las dos primeras salas son de bloques comunes)
-		if int(ctx.etapa) > 0 and not especiales_habilitados(d, int(ctx.etapa)):
+		if int(ctx.etapa) > 0 and not especiales_habilitados(d, int(ctx.etapa), int(ctx.reglas.get("especiales_desde", 0))):
 			continue
 		if not dentro_de_limites(d, limites_aprendizaje(int(ctx.etapa), i, int(ctx.n), str(ctx.dif))):
 			continue
@@ -351,6 +364,11 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 	var otras: Array = []
 	for k in orden:
 		(buenas if niveles.has(str(info[k].d.nivel)) else otras).append(k)
+	var peso := float(ctx.reglas.get("peso_especiales", 0.0))
+	if peso > 0.0 and i >= 2:   # Mundo abierto: se tira una moneda y esta sala sale, si se puede, con especiales o sin ellos (así la fracción de salas con especiales es `peso`)
+		var con_especiales := rng.randf() < peso
+		buenas = _preferir(buenas, info, con_especiales)
+		otras = _preferir(otras, info, con_especiales)
 	var prev_salida: Vector2i = Vector2i(-1, -1)
 	var prev_ang := 0.0
 	if i > 0:
@@ -540,7 +558,7 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 	return r
 
 
-## La sala se pierde por algo que decide el juego (por ejemplo el último movimiento en falso de Sin piedad): cuenta como una muerte.
+## La sala se pierde por algo que decide el juego (por ejemplo el último movimiento en falso de El camino corto): cuenta como una muerte.
 ## Reintentar la sala perdida: vuelve a su checkpoint con la sala virgen.
 ## Empieza en el checkpoint de la sala `i` (al continuar una partida guardada), con la claridad asegurada hasta ahí.
 func saltar_a_sala(i: int, banco: int) -> void:

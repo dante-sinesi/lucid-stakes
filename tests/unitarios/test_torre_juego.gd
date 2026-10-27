@@ -124,11 +124,11 @@ func _init() -> void:
 	main.save_game()
 	var data: Dictionary = main.SaveGame.read()
 	_ok(str(data.get("phase", "")) == "tower" and data.has("sala"), "el guardado marca la torre y la sala")
-	# Sin piedad: los movimientos en falso de la sala (el solucionador nativo mide cuántos pasos faltan)
+	# El camino corto: los movimientos en falso de la sala (el solucionador nativo mide cuántos pasos faltan)
 	main.run.scenario_id = "sin_piedad"
 	main._torre_arrancar(7)   # (una semilla fija: la prueba no depende del azar)
 	await _frames(3)
-	_ok(main.torre != null and main.torre.falsos != null and main.torre.falsos.permitidos == 2, "Sin piedad: la torre trae el medidor con 2 falsos por sala")
+	_ok(main.torre != null and main.torre.falsos != null and main.torre.falsos.permitidos == 2, "El camino corto: la torre trae el medidor con 2 falsos por sala")
 	main.torre.falsos.inline = true
 	main.torre.falsos.sala_nueva(main.torre.t.motor)
 	var vidas_sp: int = main.run.lives
@@ -140,7 +140,7 @@ func _init() -> void:
 		main.torre.accion(dirs[intentos % 4], 0)
 		max_cuenta = maxi(max_cuenta, main.torre.falsos.cuenta)
 		intentos += 1
-	_ok(max_cuenta >= 1, "Sin piedad: andar sin rumbo cuenta movimientos en falso (%d)" % max_cuenta)
+	_ok(max_cuenta >= 1, "El camino corto: andar sin rumbo cuenta movimientos en falso (%d)" % max_cuenta)
 	main.run.scenario_id = Scenarios.FREE
 	main.restart()
 	await _frames(2)

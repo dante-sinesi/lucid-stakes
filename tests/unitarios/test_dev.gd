@@ -246,7 +246,7 @@ func test_set_luz() -> void:
 	# funciona en el menu y actualiza lo que se esta viendo
 	main.open_main_menu()
 	main.main_menu.show_panel("escenarios")
-	check(main.main_menu.scenarios.luz_counter.value == 0 and main.main_menu.scenarios.play_buttons["sin_piedad"].disabled, "sin Luz Sin piedad esta bloqueado")
+	check(main.main_menu.scenarios.luz_counter.value == 0 and main.main_menu.scenarios.play_buttons["sin_piedad"].disabled, "sin Luz El camino corto esta bloqueado")
 	DevCommands.execute("set_luz 40", main)
 	check(main.main_menu.scenarios.luz_counter.value == 40 and not main.main_menu.scenarios.play_buttons["sin_piedad"].disabled, "el selector de escenarios se actualiza al instante")
 	main.main_menu.show_panel("despertar")

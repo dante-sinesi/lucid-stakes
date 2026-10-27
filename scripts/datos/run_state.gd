@@ -40,6 +40,9 @@ var restart_discount := 0.0
 var movs_extra := 0               # movimientos de más en cada sala (Pies ligeros y la mejora Aire de más)
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
 var bonus_lives := 0       # corazones de más que dan las habilidades persistentes (Corazón extra)
+var buena_letra := false   # habilidad Buena letra: un contrato con fianza fallido por partida devuelve la fianza
+var buena_letra_usada := false
+var toll_meta_discount := 0.0   # lo que baja el peaje de Farolín la habilidad Buen regateo
 var lives := MAX_LIVES    # vidas: cuántas veces se puede reintentar después de morir (3 por partida, sin importar la etapa)
 var casino_visit := {}    # estado de la visita al casino actual (casino_visit.gd); no se guarda
 var claridad_inicio_torre := 0   # la claridad con la que se empezó la torre actual (la Caja fuerte y la Alcancía cobran un porcentaje de eso al entrar al casino)
@@ -73,8 +76,18 @@ const INTEREST_CAP := 150   # (con un tope)
 func toll_after_discounts(base: int) -> int:
 	if base <= 0:
 		return 0
-	var cut := TOLL_DISCOUNT * float(boosts.count("descuento_duende")) + (BRIBE_DISCOUNT if toll_bribe else 0.0)
-	return maxi(int(round(float(base) * (1.0 - minf(cut, 0.9)))), 1)
+	var cut := TOLL_DISCOUNT * float(boosts.count("descuento_duende")) + (BRIBE_DISCOUNT if toll_bribe else 0.0) + toll_meta_discount
+	var priced := float(base) * float(scenario().get("toll_mult", 1.0))   # (el Usurero cobra de más antes de los descuentos)
+	return maxi(int(round(priced * (1.0 - minf(cut, 0.9)))), 1)
+
+
+## La dificultad con la que se arman las torres: la elegida, y un escalón (o más) por encima si el escenario las hace más difíciles (Gran Casino). Fácil no se corre.
+func dificultad_torre() -> String:
+	var orden := ["facil", "media", "dificil", "pesadilla"]
+	var i := orden.find(dificultad)
+	if i < 0 or dificultad == "facil":
+		return dificultad
+	return orden[clampi(i + int(scenario().get("escalon", 0)), 0, orden.size() - 1)]
 
 
 ## Al salir del casino: con el boost Interés, la claridad que queda crece (con tope). Devuelve lo que ganó.
@@ -347,7 +360,7 @@ func to_dict() -> Dictionary:
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "movs_extra": movs_extra,
 			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
-			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
+			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "buena_letra": buena_letra, "buena_letra_usada": buena_letra_usada, "toll_meta_discount": toll_meta_discount, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
 
 
 func _schedule_out() -> Dictionary:
@@ -400,5 +413,8 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	for st in d.get("trial_schedule", {}):
 		r.trial_schedule[int(st)] = str(d.trial_schedule[st])
 	r.bonus_lives = int(d.get("bonus_lives", 0))
+	r.buena_letra = bool(d.get("buena_letra", false))
+	r.buena_letra_usada = bool(d.get("buena_letra_usada", false))
+	r.toll_meta_discount = float(d.get("toll_meta_discount", 0.0))
 	r.lives = clampi(int(d.get("lives", r.max_lives())), 0, r.max_lives())
 	return r

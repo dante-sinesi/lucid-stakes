@@ -8,12 +8,21 @@ const ART := {
 	"pesadilla": {
 		"pal": {"a": Color(0.40, 0.17, 0.62), "d": Color(0.80, 0.55, 1.0), "c": Color(0.12, 0.04, 0.2), "b": Color(0.28, 0.1, 0.45)},
 		"rows": ["aaaaaaaaa", "adddddddb", "ad.aaaabb", "adacccabb", "adacc.abb", "adaaaaabb", "ad.aaaabb", "abbbbbbbb", ".b.b.b.b."]},
-	"ruinas": {
-		"pal": {"t": Color(0.95, 0.82, 0.58), "s": Color(0.78, 0.62, 0.40), "k": Color(0.22, 0.14, 0.08), "d": Color(0.55, 0.42, 0.26)},
-		"rows": ["ttttttttt", "tsssssssd", "tsskssssd", "tssskkssd", "tssssksdd", "tsskkssdd", "tskksssdd", "tsssssddd", "ddddddddd"]},
-	"polvorin": {
-		"pal": {"g": Color(0.22, 0.22, 0.26), "h": Color(0.5, 0.5, 0.56), "f": Color(0.55, 0.3, 0.1), "y": Color(1.0, 0.85, 0.2), "o": Color(1.0, 0.45, 0.1)},
-		"rows": ["......y.y", ".......o.", ".......f.", "..ggggf..", ".gghgggg.", ".ghgggggg", ".ggggggg.", ".gggggg..", "...ggg..."]},
+	"sin_piedad": {   # el camino corto: un recorrido recto que sube hasta la meta dorada
+		"pal": {"s": Color(0.55, 0.45, 0.7), "p": Color(0.9, 0.85, 1.0), "g": Color(1.0, 0.85, 0.3)},
+		"rows": [".......gg", ".......gg", "......pp.", ".....pp..", "....pp...", "...pp....", "..pp.....", ".ppssssss", "pp......."]},
+	"compromiso": {   # un solo corazón, entero
+		"pal": {"r": Color(0.92, 0.16, 0.27), "h": Color(1.0, 0.62, 0.68), "d": Color(0.62, 0.06, 0.16)},
+		"rows": [".........", ".rr...rr.", "rhrr.rrrr", "rrrrrrrrr", "rrrrrrrrr", ".rrrrrrd.", "..rrrrd..", "...rdd...", "....d...."]},
+	"contratista": {   # un papel colgado con su sello
+		"pal": {"p": Color(0.95, 0.88, 0.7), "d": Color(0.7, 0.55, 0.35), "k": Color(0.25, 0.15, 0.1), "r": Color(0.8, 0.15, 0.18), "n": Color(0.45, 0.3, 0.18)},
+		"rows": ["....n....", "..n.n.n..", ".pppnpppp", ".pkkkkkpd", ".ppppppd.", ".pkkkkpd.", ".pppppdd.", ".pprrrpd.", ".ddddddd."]},
+	"mundo_abierto": {   # una puerta abierta de par en par con bloques de todas las clases
+		"pal": {"k": Color(0.08, 0.05, 0.12), "w": Color(0.6, 0.5, 0.75), "i": Color(0.5, 0.85, 0.95), "h": Color(0.5, 0.5, 0.56), "r": Color(0.9, 0.35, 0.2), "g": Color(1.0, 0.85, 0.3)},
+		"rows": ["wwwwwwwww", "wkkkkkkkw", "wkkkgkkkw", "wkkkkkkkw", "ikkkkkkkr", "ikkkkkkkr", "hkkkkkkkr", "hkkkkkkkr", "wwwwwwwww"]},
+	"usurero": {   # una moneda y la mano que la guarda
+		"pal": {"g": Color(1.0, 0.85, 0.3), "o": Color(0.75, 0.55, 0.1), "w": Color(1.0, 0.97, 0.8), "b": Color(0.4, 0.25, 0.15)},
+		"rows": ["..ggggg..", ".gwggggo.", "gwgogggoo", "gwggogooo", "gwgogggoo", ".gggggoo.", "..ooooo..", "bbbbbbbbb", ".bbbbbbb."]},
 	"relojeria": {
 		"pal": {"g": Color(0.9, 0.7, 0.25), "w": Color(0.95, 0.93, 0.85), "h": Color(0.15, 0.1, 0.2)},
 		"rows": ["..ggggg..", ".gwwwwwg.", "gwwwhwwwg", "gwwwhwwwg", "gwwwhhhwg", "gwwwwwwwg", "gwwwwwwwg", ".gwwwwwg.", "..ggggg.."]},
@@ -25,8 +34,9 @@ const ART := {
 ## Color de fondo de la tarjeta de cada escenario.
 const THEME := {
 	"tutorial": Color(0.12, 0.26, 0.22),
-	"pesadilla": Color(0.14, 0.07, 0.24), "ruinas": Color(0.28, 0.20, 0.12),
-	"polvorin": Color(0.30, 0.10, 0.08), "relojeria": Color(0.18, 0.14, 0.26), "gran_casino": Color(0.30, 0.26, 0.38),
+	"pesadilla": Color(0.14, 0.07, 0.24), "sin_piedad": Color(0.16, 0.14, 0.30), "compromiso": Color(0.30, 0.08, 0.12),
+	"relojeria": Color(0.18, 0.14, 0.26), "gran_casino": Color(0.30, 0.26, 0.38), "contratista": Color(0.26, 0.20, 0.12),
+	"mundo_abierto": Color(0.10, 0.18, 0.26), "usurero": Color(0.28, 0.22, 0.08),
 }
 
 

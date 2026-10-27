@@ -43,7 +43,7 @@ func test_switch() -> void:
 	Demo.forced = 0
 	check(not Demo.on() and Demo.shown_final(15) == 15 and not Demo.is_last_casino(2) and Demo.scenario_allowed("sin_piedad") and Demo.cosmetic_allowed("copa") and Demo.character_allowed("conejo"), "apagada, todo está permitido")
 	Demo.forced = 1
-	check(Demo.scenario_allowed("tutorial") and Demo.scenario_allowed("pesadilla") and not Demo.scenario_allowed("sin_piedad") and not Demo.scenario_allowed("polvorin"), "en la demo sólo el tutorial y La Pesadilla")
+	check(Demo.scenario_allowed("tutorial") and Demo.scenario_allowed("pesadilla") and not Demo.scenario_allowed("sin_piedad") and not Demo.scenario_allowed("usurero"), "en la demo sólo el tutorial y La Pesadilla")
 	check(Demo.save_dir() == "user://demo", "la demo guarda aparte")
 	Demo.forced = 0
 	check(Demo.save_dir() == "user://", "el juego completo guarda donde siempre")

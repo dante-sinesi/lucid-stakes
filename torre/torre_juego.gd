@@ -46,7 +46,7 @@ signal accion_hecha                  ## después de cada acción que salió bien
 signal contrato_evento(evento: String, datos: Dictionary)   ## para los contratos: "accion" (lo de la acción y de la sala), "sala" (se superó una) o "sala_perdida"; ver contratos.gd
 signal ganancia(texto: String, cantidad: int)   ## la claridad que dio la última acción (el juego muestra el cartel "+N claridad")
 signal profundidad_pedida            ## se apretó la tecla de la ayuda de profundidad
-signal falsos_cambiaron(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool)   ## Sin piedad: lo que quedan de movimientos en falso en la sala
+signal falsos_cambiaron(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool)   ## El camino corto: lo que quedan de movimientos en falso en la sala
 signal deshacer_pedido               ## se apretó deshacer (el juego decide si se puede en este escenario)
 signal pista_cambiada(texto: String)   ## la pista que hay que mostrar arriba ("" = ninguna)
 signal reintentar_pedido             ## se apretó reintentar la torre
@@ -89,10 +89,11 @@ var sala_inicial := 0           # >0: la torre empieza en el checkpoint de esa s
 var banco_inicial := 0          # la claridad asegurada hasta ese checkpoint
 var salas_fijas: Array = []         # las salas de una lección del tutorial (en lugar de armar la torre con el paquete)
 var dificultad := "media"       # la dificultad del run (fácil, media, difícil o pesadilla)
+var reglas := {}             # las reglas del escenario que arman la torre (ver `Torre.armar`: margen_mov, especiales_desde, peso_especiales)
 var mov_run := 0             # movimientos de más por sala (mejoras permanentes del run)
 var vidas_fn := Callable()   # () -> int: las vidas del run
 var puede_jugar := Callable()   # () -> bool: false mientras hay un menú, un diálogo o una pausa
-var falsos_permitidos := 0     # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario no los usa)
+var falsos_permitidos := 0     # El camino corto: movimientos en falso que permite cada sala (0 = el escenario no los usa)
 var falsos = null              # el medidor (falsos.gd)
 var _dur_empuje := 0.0          # lo que dura el movimiento de los bloques de la última acción (lo que cae por perder apoyo empieza después)
 var _bloques_antes := {}      # id de cada bloque de la sala viva -> dónde se dibujó la última vez (para ver cómo se mueven)
@@ -219,7 +220,7 @@ func _nueva_torre() -> void:
 		if not salas_fijas.is_empty():
 			t = Torre.desde_salas(salas_fijas, etapa, dificultad)
 		else:
-			t = Torre.armar(paquete, semilla, n_salas_fijo if n_salas_fijo > 0 else Torre.salas_de_etapa(etapa), true, etapa, dificultad)
+			t = Torre.armar(paquete, semilla, n_salas_fijo if n_salas_fijo > 0 else Torre.salas_de_etapa(etapa), true, etapa, dificultad, reglas)
 		t.externo = true
 		t.aplicar_boosts(boosts)
 		t.mov_run = mov_run
@@ -774,7 +775,7 @@ func _procesar(r: Dictionary) -> void:
 	accion_hecha.emit()
 
 
-## Sin piedad: se pasó del último movimiento en falso de la sala: se pierde como si se hubiera caído.
+## El camino corto: se pasó del último movimiento en falso de la sala: se pierde como si se hubiera caído.
 func _falsos_agotados() -> void:
 	if t == null or t.terminada or t.perdida:
 		return
@@ -784,7 +785,7 @@ func _falsos_agotados() -> void:
 		falsos_cambiaron.emit(falsos.quedan(), falsos_permitidos, false, false)
 
 
-## Se pierde la sala por un motivo que no es un movimiento (Sin piedad, las pruebas): igual que caerse, sin camino que animar.
+## Se pierde la sala por un motivo que no es un movimiento (El camino corto, las pruebas): igual que caerse, sin camino que animar.
 func perder(motivo: String) -> void:
 	if t == null or t.terminada or t.perdida:
 		return

@@ -97,6 +97,9 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 			extra += int(round(float(reward) * 0.25))
 		if bool(v.get("double", false)):   # Doble o nada: lo que se gana el resto de la visita vale el doble
 			extra += reward
+		var premio_mult := float(run.scenario().get("premio_mult", 1.0))   # Usurero: los premios de las mesas valen más
+		if premio_mult > 1.0:
+			extra += int(round(float(reward) * (premio_mult - 1.0)))
 		if extra > 0:
 			out.bonus = int(out.bonus) + extra
 			out.notes.append(Loc.f("Casino: +%d de claridad.", [extra]))

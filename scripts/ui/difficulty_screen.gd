@@ -1,5 +1,5 @@
 extends Control
-## Selector de dificultad de La Pesadilla (al elegir el escenario): Fácil, Medio, Difícil y Pesadilla. La dificultad gradúa el nivel de las salas a lo largo de las 15 etapas
+## Selector de dificultad (al elegir el escenario): Fácil, Medio, Difícil y Pesadilla en La Pesadilla; los demás escenarios no tienen Fácil. La dificultad gradúa el nivel de las salas a lo largo de las 15 etapas
 ## (ver `Torre.niveles_para`) y cuánto margen de movimientos tienen. Se elige con las flechas (o WASD) y Espacio; Shift o Esc vuelven.
 ## `ask()` abre el cuadro y se contesta con `chosen(id)` ("" = volvió atrás).
 
@@ -23,6 +23,7 @@ var buttons := {}
 var desc_label: Control
 var hints
 var _open_t := 0.0
+var _elegibles: Array = ["facil", "media", "dificil", "pesadilla"]
 
 
 func _init() -> void:
@@ -70,10 +71,13 @@ func _init() -> void:
 	col.add_child(hints)
 
 
-## Abre el cuadro con "Medio" marcado.
-func ask() -> void:
+## Abre el cuadro con "Medio" marcado. `elegibles`: las dificultades que se ofrecen (las demás no se ven).
+func ask(elegibles: Array = ["facil", "media", "dificil", "pesadilla"]) -> void:
+	_elegibles = elegibles
 	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")},
 			{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Volver"), "call": func(): _choose("")}])
+	for o in OPTIONS:
+		buttons[str(o.id)].visible = elegibles.has(str(o.id))
 	_open_t = Time.get_ticks_msec() / 1000.0
 	visible = true
 	buttons["media"].grab_focus()
@@ -103,8 +107,8 @@ func _input(event: InputEvent) -> void:
 	if Time.get_ticks_msec() / 1000.0 - _open_t < 0.3:   # (una tecla que venía apretada no elige sin querer)
 		get_viewport().set_input_as_handled()
 		return
-	var ids: Array = OPTIONS.map(func(o): return str(o.id))
-	var cur := 1
+	var ids: Array = OPTIONS.map(func(o): return str(o.id)).filter(func(id): return _elegibles.has(id))
+	var cur := maxi(ids.find("media"), 0)
 	for i in ids.size():
 		if buttons[ids[i]].has_focus():
 			cur = i

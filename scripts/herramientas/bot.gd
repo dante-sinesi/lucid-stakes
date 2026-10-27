@@ -27,7 +27,7 @@ static func default_config() -> Dictionary:
 		"spend": 0.8,            # fracción de lo que sobra (después de apartar el precio de Farolín) que se juega en el casino
 		"max_rotations": 3,      # cuántas veces rota la vitrina buscando un premio de la lista
 		"play_blind": true,      # si no hay nada de la lista en la vitrina y no se puede rotar: juega igual una apuesta común
-		"mistakes": 0,           # Sin piedad: movimientos en falso que permite cada sala (0 = el escenario común); cada titubeo del bot cuenta como uno
+		"mistakes": 0,           # El camino corto: movimientos en falso que permite cada sala (0 = el escenario común); cada titubeo del bot cuenta como uno
 		"free_plays": 0,         # jugadas gratis por visita (el diseño de las monedas; el juego todavía no las tiene)
 		"max_casino_actions": 60,
 	}
@@ -84,7 +84,7 @@ static func _jugar_sala(t, run, rng: RandomNumberGenerator, cfg: Dictionary, p_s
 		if rng.randf() < hes_p:   # un titubeo: dos movimientos que no cambian nada pero gastan el temporizador y cortan la racha
 			t.movs += 2
 			t.cosecha.streak = 0
-			if allowed > 0:   # (en Sin piedad cada titubeo es un movimiento en falso de la sala)
+			if allowed > 0:   # (en El camino corto cada titubeo es un movimiento en falso de la sala)
 				falsos += 1
 				if falsos > allowed:
 					estado["false_death"] = true
