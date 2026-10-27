@@ -1,0 +1,196 @@
+"""Genera salas sin parar hasta una hora: salas base (con la misma distribución de siempre: niveles y tamaños de `trabajador_salas.ps1`) y salas con especiales (pinchos, pesado, agrietado,
+hielo -con líneas largas-, trampolín y bomba, y mixtas encadenando dos o tres roles) especializando salas base con `tools/salas.exe --especializar` (ver docs/generador.md).
+Varios procesos a la vez; todo va a bibliotecas/noche/<categoria>_<n>.jsonl y el avance a bibliotecas/noche/registro.txt (nada toca data/ ni el paquete: después se juntan con armar_paquete.py).
+Uso: python herramientas/noche_salas.py [--hasta 08:00 | --minutos 30] [--procesos 7]
+Portable: herramientas/armar_portable.bat arma bibliotecas/generador_portable/ (generador_salas.exe + salas.exe + paquete_salas.jsonl) para correrlo en otra computadora sin instalar nada."""
+import argparse, glob, json, os, random, subprocess, sys, time, datetime, math
+
+if getattr(sys, 'frozen', False):   # el .exe portable (herramientas/armar_portable.bat): salas.exe y lo que genera viven al lado
+    RAIZ = os.path.dirname(os.path.abspath(sys.executable))
+    EXE = os.path.join(RAIZ, 'salas.exe')
+    SALIDA = os.path.join(RAIZ, 'salida')
+    BASES = os.path.join(RAIZ, 'paquete_salas.jsonl')
+else:
+    RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+    EXE = os.path.join(RAIZ, 'tools', 'salas.exe')
+    SALIDA = os.path.join(RAIZ, 'bibliotecas', 'noche')
+    BASES = os.path.join(RAIZ, 'bibliotecas', 'paquete_salas.jsonl')
+ALTURAS = {'3x3': [5, 6, 7, 8, 9], '5x3': [6, 8, 9, 10, 12, 13, 15], '8x3': [8, 10, 12, 14, 16, 18, 20, 22, 24]}
+NIVELES = [1, 2, 1, 3, 2, 4, 3, 5]   # (se reparte entre los cinco niveles: más fáciles que difíciles)
+# los roles con su peso (el hielo pesa más: pidió líneas largas) y el tope del largo de la línea de hielo por tamaño
+ROLES = [('hielo', 28), ('pinchos', 12), ('pesado', 12), ('agrietado', 14), ('trampolin', 14), ('bomba', 14)]
+TOPE_HIELO = {'3x3': 3, '5x3': 5, '8x3': 6}
+
+
+def config_base(tipo, h, nivel):
+    """La misma fórmula de `trabajador_salas.ps1` (Config)."""
+    grande = tipo != '3x3'
+    extras_base = 2.3 * h if grande else 1.3 * h + 1
+    f = {1: 0.15, 2: 0.4, 3: 0.7, 4: 0.9, 5: 1.0}[nivel]
+    extras = int(max(1, math.ceil(extras_base * f)))
+    prof = {1: 8, 2: 20, 3: 40, 4: 60, 5: 80}[nivel]
+    climb = {1: 0, 2: 20, 3: 100, 4: 250, 5: 500}[nivel]
+    exacto = 1 if h <= 9 else 0
+    tope = 200000 if h <= 9 else 60000
+    ef = 1 if (nivel <= 2 or grande) else 2
+    dist = 1 if nivel <= 2 else int(math.floor(0.6 * (h - 1)))
+    refinar = 0 if h <= 9 else 3000000
+    return ['tipo=%s' % tipo, 'h=%d' % h, 'extras=%d' % extras, 'ef=%d' % ef, 'dist=1', 'dist_exactos=%d' % dist, 'climb=%d' % climb, 'tope_climb=%d' % tope,
+            'tope_eval=%d' % tope, 'tope_nivel=%d' % tope, 'prof=%d' % prof, 'cand=300', 'ancho=12', 'pre=30', 'exacto=%d' % exacto, 'refinar=%d' % refinar, 'riesgo=1']
+
+
+def a_texto(d):
+    """Una sala (jsonl) en el texto que lee `leer_sala` del ejecutable."""
+    lineas = ['meta %d' % d['meta'], 'jugador %d %d %d' % tuple(int(v) for v in d['jugador']), 'colgado %d 0 %d' % (int(d['colgado'][0]), int(d['colgado'][1])), 'tope 200000']
+    for b in d['bloques']:
+        lineas.append('b %d %d %d %s' % (int(b[0]), int(b[1]), int(b[2]), b[3]))
+    return '\n'.join(lineas) + '\n'
+
+
+def nivel_de(c):
+    return 'facil' if c < 60 else 'media' if c < 110 else 'dificil' if c < 180 else 'pesadilla'
+
+
+def correr(args, entrada=None, env=None, espera=900):
+    try:
+        r = subprocess.run([EXE] + args, input=entrada, capture_output=True, text=True, timeout=espera, env=env, cwd=RAIZ)
+        return r.stdout
+    except subprocess.TimeoutExpired:
+        return ''
+
+
+def guardar(archivo, d):
+    with open(archivo, 'a', encoding='ascii') as f:
+        f.write(json.dumps(d) + '\n')
+
+
+def trabajar(idx, fin, base_inicial, cont):
+    rng = random.Random(time.time_ns() ^ (idx * 7919))
+    k = idx * 3
+    semilla = 5000 + idx * 100000 + int(time.time()) % 90000
+    pool = list(base_inicial)
+    tipos = ['3x3', '5x3', '8x3']
+    while datetime.datetime.now() < fin:
+        if rng.random() < 0.45 or not pool:   # una sala base nueva
+            tipo = rng.choices(tipos, weights=[40, 35, 25])[0]
+            h = rng.choice([a for a in ALTURAS[tipo] if a <= (20 if tipo == '8x3' else 15)])
+            nivel = NIVELES[k % 8]
+            k += 1
+            semilla += 1
+            cfg = config_base(tipo, h, nivel) + ['wd=12', 'evaluar=16', 'temp=3', 'salto=3', 'n=1', 'seed=%d' % semilla]
+            salida = correr(['--gen'] + cfg)
+            for l in salida.splitlines():
+                if l.strip().startswith('{'):
+                    try:
+                        d = json.loads(l)
+                    except ValueError:
+                        continue
+                    d['nivel'] = nivel_de(d.get('complejidad', 0))
+                    d['categoria'] = 'base'
+                    guardar(os.path.join(SALIDA, 'base_%d.jsonl' % idx), d)
+                    pool.append(d)
+                    cont['base'] = cont.get('base', 0) + 1
+            continue
+        # una sala con especiales: una base (o una ya especializada, para las mixtas) y uno a tres roles encadenados
+        d = rng.choice(pool)
+        n_roles = rng.choices([1, 2, 3], weights=[62, 28, 10])[0]
+        roles = []
+        actual = d
+        for paso in range(n_roles):
+            rol = rng.choices([r for r, _ in ROLES], weights=[w for _, w in ROLES])[0]
+            if rol in roles and rol != 'hielo':
+                continue
+            env = dict(os.environ)
+            tipo = actual['tipo']
+            if rol == 'hielo' and rng.random() < 0.75:   # (casi siempre una línea larga: de 3 hasta el tope del tamaño)
+                env['SALAS_LARGO'] = str(rng.randint(3, TOPE_HIELO[tipo]))
+            semilla += 1
+            salida = correr(['--especializar', 'rol=' + rol, 'tipo=' + tipo, 'max=4', 'ganancia=2', 'tope=200000', 'wd=12', 'seed=%d' % semilla], a_texto(actual), env, 600)
+            nueva = None
+            for l in salida.splitlines():
+                if l.strip().startswith('{'):
+                    try:
+                        j = json.loads(l)
+                    except ValueError:
+                        continue
+                    if j.get('ok', True) is not False and 'bloques' in j:
+                        nueva = j
+            if nueva is None:
+                break
+            roles.append(rol)
+            nueva['nivel_base'] = d.get('nivel', 'facil')
+            nueva['roles'] = roles[:]
+            nueva['nivel'] = nivel_de(nueva.get('complejidad', 0))
+            actual = nueva
+            cat = roles[0] if len(roles) == 1 else 'mixta'
+            nueva['categoria'] = cat
+            guardar(os.path.join(SALIDA, '%s_%d.jsonl' % (cat, idx)), nueva)
+            cont[cat] = cont.get(cat, 0) + 1
+            if rol == 'hielo':
+                cont['hielo_largo'] = cont.get('hielo_largo', 0) + (1 if int(nueva.get('especiales', {}).get('i', 0)) >= 3 else 0)
+    return cont
+
+
+def principal():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--hasta', default='')
+    ap.add_argument('--minutos', type=float, default=0)
+    ap.add_argument('--procesos', type=int, default=7)
+    a = ap.parse_args()
+    ahora = datetime.datetime.now()
+    if a.minutos > 0:
+        fin = ahora + datetime.timedelta(minutes=a.minutos)
+    else:
+        h, m = [int(v) for v in (a.hasta or '08:00').split(':')]
+        fin = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
+        if fin <= ahora:
+            fin += datetime.timedelta(days=1)
+    os.makedirs(SALIDA, exist_ok=True)
+    base = []
+    ruta = BASES
+    if os.path.exists(ruta):
+        for l in open(ruta, encoding='utf-8'):
+            if l.strip():
+                d = json.loads(l)
+                if d.get('categoria') == 'base':
+                    base.append(d)
+    registro = os.path.join(SALIDA, 'registro.txt')
+    with open(registro, 'a', encoding='utf-8') as f:
+        f.write('%s: arranca con %d procesos hasta las %s (%d salas base de partida)\n' % (ahora.strftime('%d/%m %H:%M'), a.procesos, fin.strftime('%H:%M'), len(base)))
+    import multiprocessing as mp
+    procs = []
+    for i in range(a.procesos):
+        p = mp.Process(target=_proceso, args=(i, fin, base))
+        p.start()
+        procs.append(p)
+    while any(p.is_alive() for p in procs):
+        time.sleep(60 if a.minutos and a.minutos < 20 else 600)
+        with open(registro, 'a', encoding='utf-8') as f:
+            f.write('%s: %s\n' % (datetime.datetime.now().strftime('%H:%M'), _resumen()))
+    with open(registro, 'a', encoding='utf-8') as f:
+        f.write('%s: terminó. %s\n' % (datetime.datetime.now().strftime('%d/%m %H:%M'), _resumen()))
+
+
+def _proceso(idx, fin, base):
+    trabajar(idx, fin, base, {})   # (el resumen se saca de los archivos)
+
+
+def _resumen():
+    partes = []
+    for cat in ['base', 'hielo', 'pinchos', 'pesado', 'agrietado', 'trampolin', 'bomba', 'mixta']:
+        n = 0
+        largo = 0
+        for f in glob.glob(os.path.join(SALIDA, cat + '_*.jsonl')):
+            for l in open(f, encoding='ascii'):
+                if l.strip():
+                    n += 1
+                    if cat == 'hielo' and '"i": 3' in l or cat == 'hielo' and any('"i": %d' % q in l for q in (4, 5, 6)):
+                        largo += 1
+        partes.append('%s %d%s' % (cat, n, (' (%d con línea de 3 o más)' % largo) if cat == 'hielo' else ''))
+    return ', '.join(partes)
+
+
+if __name__ == '__main__':
+    import multiprocessing
+    multiprocessing.freeze_support()
+    principal()
