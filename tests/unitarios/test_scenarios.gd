@@ -3,6 +3,7 @@ extends SceneTree
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_scenarios.gd
 
 const Scenarios := preload("res://scripts/datos/scenarios.gd")
+const ScenarioScreen := preload("res://scripts/ui/scenario_screen.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
 const AbilityArt := preload("res://scripts/ui/ability_art.gd")
 const Abilities := preload("res://scripts/datos/abilities.gd")
@@ -250,11 +251,30 @@ func test_screens() -> void:
 	check(sc.scroll.scroll_horizontal == 0 and sc.current_id() == "tutorial", "y se vuelve hasta el primero")
 	check(not all_text(sc).contains("Luz"), "el selector no nombra la Luz con texto: es el sol")
 	# El "?" abre toda la informacion
+	sc.info_scroll.custom_minimum_size.y = 200   # (un visor chico: así la información siempre tiene por dónde recorrerse)
 	card.info_button.pressed.emit()
 	var texts := all_text(sc.info_panel)
 	check(sc.info_panel.visible and texts.contains("Margen de error") and texts.contains("falso"), "el ? muestra las reglas, las pruebas y las habilidades del escenario")
 	check(sc.info_box.find_child("costo", true, false).value == 25 and sc.info_box.find_child("multiplicador", true, false).label.text == "x2.0", "...y el costo y lo que paga, con el sol")
 	check(not texts.contains("Luz"), "la informacion tampoco nombra la Luz con texto")
+	# la información se recorre con las flechas y WASD (aunque haya un botón con el foco)
+	await process_frame
+	await process_frame
+	check(sc.info_scroll.scroll_vertical == 0 and sc.info_box.size.y > sc.info_scroll.size.y, "la información empieza arriba y es más larga que el visor")
+	for k in [KEY_DOWN, KEY_S, KEY_DOWN]:
+		var ev := InputEventKey.new()
+		ev.keycode = k
+		ev.pressed = true
+		Input.parse_input_event(ev)
+		await process_frame
+	check(sc.info_scroll.scroll_vertical == 3 * ScenarioScreen.INFO_PASO, "las flechas y S bajan por la información (%d)" % sc.info_scroll.scroll_vertical)
+	for k in [KEY_UP, KEY_W]:
+		var ev2 := InputEventKey.new()
+		ev2.keycode = k
+		ev2.pressed = true
+		Input.parse_input_event(ev2)
+		await process_frame
+	check(sc.info_scroll.scroll_vertical == ScenarioScreen.INFO_PASO, "las flechas y W suben (%d)" % sc.info_scroll.scroll_vertical)
 	sc.info_close.pressed.emit()
 	check(not sc.info_panel.visible, "se cierra con Volver")
 	sc.back.emit()

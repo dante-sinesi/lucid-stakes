@@ -21,6 +21,7 @@ signal chosen(scenario_id: String)
 signal back
 
 const CARD_STEP := 324.0   # ancho de una tarjeta más la separación
+const INFO_PASO := 60       # lo que baja o sube la información con cada pulsación
 
 var luz_counter
 var scroll: ScrollContainer
@@ -33,6 +34,7 @@ var right_button: Button
 var info_panel: Control  # información completa de un escenario (se abre con el "?")
 var info_close: Button
 var info_box: VBoxContainer
+var info_scroll: ScrollContainer   # el desplazamiento de la información (flechas, WASD, Re Pág y Av Pág)
 
 
 func _init() -> void:
@@ -151,13 +153,13 @@ func _build_info_panel() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 12)
 	center.add_child(col)
-	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(980, 540)
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	col.add_child(sc)
+	info_scroll = ScrollContainer.new()
+	info_scroll.custom_minimum_size = Vector2(980, 540)
+	info_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(info_scroll)
 	info_box = VBoxContainer.new()
 	info_box.add_theme_constant_override("separation", 8)
-	sc.add_child(info_box)
+	info_scroll.add_child(info_box)
 	info_close = UI.button("Volver", true)
 	info_close.name = "cerrar_info"
 	info_close.pressed.connect(func(): info_panel.visible = false)
@@ -213,12 +215,34 @@ func _scroll_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or not (event is InputEventKey) or not event.pressed or event.echo:
+	if not visible or not (event is InputEventKey) or not event.pressed:
 		return
-	if info_panel.visible:
-		if event.keycode == KEY_ESCAPE:
-			info_panel.visible = false
+	if info_panel.visible:   # la información: Esc cierra; las flechas, WASD y Re Pág / Av Pág la recorren (también manteniendo apretado)
+		var paso := 0
+		match event.keycode:
+			KEY_UP, KEY_W:
+				paso = -INFO_PASO
+			KEY_DOWN, KEY_S:
+				paso = INFO_PASO
+			KEY_PAGEUP:
+				paso = -int(info_scroll.size.y * 0.8)
+			KEY_PAGEDOWN:
+				paso = int(info_scroll.size.y * 0.8)
+			KEY_HOME:
+				info_scroll.scroll_vertical = 0
+				get_viewport().set_input_as_handled()
+			KEY_END:
+				info_scroll.scroll_vertical = int(info_box.size.y)
+				get_viewport().set_input_as_handled()
+			KEY_ESCAPE:
+				if not event.echo:
+					info_panel.visible = false
+					get_viewport().set_input_as_handled()
+		if paso != 0:
+			info_scroll.scroll_vertical += paso
 			get_viewport().set_input_as_handled()
+		return
+	if event.echo:
 		return
 	if event.keycode == KEY_RIGHT or event.keycode == KEY_D:
 		scroll_cards(1)
