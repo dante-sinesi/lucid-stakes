@@ -162,7 +162,7 @@ static func camino_estricto(d: Dictionary, obstaculos: Array = []) -> bool:
 	return t.ganado
 
 
-# --- el gatito travieso (docs/pruebas.md): los cambios seguros de cada sala se calcularon antes (herramientas/variantes_gato.py) y viajan en data/variantes_gato.jsonl ---
+# --- la prueba Travesuras (Ama, docs/gatito_travieso.md): los cambios seguros de cada sala se calcularon antes (herramientas/variantes_gato.py) y viajan en data/variantes_gato.jsonl ---
 
 const DIRS_VARIANTE := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 static var _variantes := {}
@@ -298,7 +298,7 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_r
 		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel), etapa_run, dificultad, float(reglas.get("margen_mov", 1.0)))
 		t.salas.append(e)
 		off += int(g.meta) - 1   # la entrada de la siguiente (nivel 1) queda en el nivel de salida de ésta
-	if bool(reglas.get("gatito", false)):   # la prueba "El gatito travieso": cada sala trae (si se puede) lo que va a mover el gato
+	if bool(reglas.get("travesuras", false)):   # la prueba "Travesuras": cada sala trae (si se puede) lo que va a mover Ama
 		t._poner_gatos(semilla, reglas)
 	if not t.salas.is_empty():
 		t._entrar(0)

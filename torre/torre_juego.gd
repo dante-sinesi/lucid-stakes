@@ -923,7 +923,7 @@ func deshacer() -> bool:
 	return true
 
 
-# --- el gatito travieso (docs/pruebas.md): al entrar a una sala de la prueba, un gato salta de bloque en bloque y los mueve de lugar ---
+# --- la prueba Travesuras (docs/gatito_travieso.md): al entrar a una sala de la prueba, Ama salta de bloque en bloque y los mueve de lugar ---
 
 ## Ama terminó (o se cortó, por ejemplo porque se cambió de sala): se puede jugar y la cámara vuelve al personaje.
 func _gatito_termina() -> void:

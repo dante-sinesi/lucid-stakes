@@ -5,7 +5,7 @@ extends RefCounted
 ## Comandos:
 ##   help                       lista de comandos
 ##   tower <etapa> [escenario] [semilla]   una partida nueva con una torre de esa etapa (1-15) y escenario (por defecto pesadilla), sin pagar la entrada; se usa desde el menú principal
-##   prueba <id> <etapa> [escenario] [semilla]   como tower, pero con esa prueba (sin_ayudas, todo_o_nada, sin_racha, gatito) en esa etapa
+##   prueba <id> <etapa> [escenario] [semilla]   como tower, pero con esa prueba (sin_ayudas, todo_o_nada, sin_racha, travesuras) en esa etapa
 ##   goto_end  (o win)          da por ganada la torre actual (y de ahí al casino)
 ##   goto_casino <etapa>        te lleva directo al casino de esa etapa (1-15: taberna 1-3, salón 4-7, casino 8-11, gran casino 12-15)
 ##   set_luz <n>                fija la Luz del perfil en n (sirve en el menú y en el juego; no baja de 0)
@@ -53,7 +53,7 @@ static func execute(line: String, game) -> String:
 		"prueba", "trial":
 			var ids: Array = Trials.CATALOG.keys()
 			if parts.size() < 3 or not ids.has(parts[1]) or not parts[2].is_valid_int() or int(parts[2]) < 1 or int(parts[2]) > 15:
-				return "Uso: prueba <id> <etapa 1-15> [escenario] [semilla]   (pruebas: %s; por ejemplo: prueba gatito 3)" % ", ".join(ids)
+				return "Uso: prueba <id> <etapa 1-15> [escenario] [semilla]   (pruebas: %s; por ejemplo: prueba travesuras 3)" % ", ".join(ids)
 			var semilla := -1
 			if parts.size() > 4:
 				if not parts[4].is_valid_int():

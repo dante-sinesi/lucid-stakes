@@ -1,6 +1,6 @@
-# El gatito travieso: el personaje
+# Ama, la gata traviesa: el personaje de la prueba Travesuras
 
-El gato de la prueba "El gatito travieso" (`pruebas.md`) se llama **Ama**, como la gata de Dante en la que está inspirado: un gato de pelo largo, gris atigrado, con la mirada seria y las orejas en punta. El modelo es `scripts/personajes/gatito_travieso.gd`, las poses y movimientos están en `scripts/personajes/gatito_anim.gd` y se pueden ver con `tests/capturas/shot_gatito_modelo.gd`.
+El gato de la prueba **Travesuras** (`pruebas.md`) se llama **Ama**, como la gata de Dante en la que está inspirado: un gato de pelo largo, gris atigrado, con la mirada seria y las orejas en punta. El modelo es `scripts/personajes/gatito_travieso.gd`, las poses y movimientos están en `scripts/personajes/gatito_anim.gd` y se pueden ver con `tests/capturas/shot_gatito_modelo.gd`.
 
 ## Cómo es
 

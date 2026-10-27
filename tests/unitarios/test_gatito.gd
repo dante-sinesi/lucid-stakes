@@ -1,5 +1,5 @@
 extends SceneTree
-## La prueba "El gatito travieso" (docs/pruebas.md): está entre las pruebas, la torre elige para cada sala un cambio seguro del gato (de data/variantes_gato.jsonl), el gato lo aplica al entrar a la
+## La prueba "Travesuras" (docs/pruebas.md): está entre las pruebas, la torre elige para cada sala un cambio seguro del gato (de data/variantes_gato.jsonl), el gato lo aplica al entrar a la
 ## sala (con su propio límite de movimientos y sin tocar lo que ya se jugó) y en el juego sale en la etapa de la prueba (headless).
 ## Ejecutar: GAME_SANDBOX=1 tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_gatito.gd
 
@@ -28,11 +28,11 @@ func _init() -> void:
 
 
 func test_catalogo() -> void:
-	check(Trials.CATALOG.has("gatito") and bool(Trials.CATALOG.gatito.get("gatito", false)) and str(Trials.CATALOG.gatito.name) == "El gatito travieso", "el gatito travieso está entre las pruebas")
+	check(Trials.CATALOG.has("travesuras") and bool(Trials.CATALOG.travesuras.get("travesuras", false)) and str(Trials.CATALOG.travesuras.name) == "Travesuras", "Travesuras está entre las pruebas")
 	for s in Scenarios.ALL:
-		check((s.pool as Array).has("gatito"), "%s: puede tocar el gatito" % s.id)
-	var t := Trials.for_stage({6: "gatito"}, 6)
-	check(t.get("gatito", false) and float(t.mult) > 1.0, "la prueba de la etapa 6 es la del gatito y paga más")
+		check((s.pool as Array).has("travesuras"), "%s: puede tocar Travesuras" % s.id)
+	var t := Trials.for_stage({6: "travesuras"}, 6)
+	check(t.get("travesuras", false) and float(t.mult) > 1.0, "la prueba de la etapa 6 es Travesuras y paga más")
 
 
 func _salas_de_prueba() -> Array:
@@ -43,7 +43,7 @@ func test_torre() -> void:
 	var paquete := _salas_de_prueba()
 	check(paquete.size() > 1000, "hay biblioteca (%d salas)" % paquete.size())
 	var sin = Torre.armar(paquete, 5, 10, true, 6, "media")
-	var con = Torre.armar(paquete, 5, 10, true, 6, "media", {"gatito": true})
+	var con = Torre.armar(paquete, 5, 10, true, 6, "media", {"travesuras": true})
 	var con_gato := 0
 	for e in sin.salas:
 		check(not e.has("gato"), "sin la prueba ninguna sala trae gato")
@@ -62,7 +62,7 @@ func test_torre() -> void:
 		check(g.d.bloques != e.d.bloques, "sala %d: la sala cambiada es distinta de la original" % int(e.id))
 	check(con_gato >= con.salas.size() * 7 / 10, "casi todas las salas traen gato (%d de %d)" % [con_gato, con.salas.size()])
 	# los cambios son los mismos con la misma semilla
-	var otra = Torre.armar(paquete, 5, 10, true, 6, "media", {"gatito": true})
+	var otra = Torre.armar(paquete, 5, 10, true, 6, "media", {"travesuras": true})
 	var igual := true
 	for i in con.salas.size():
 		igual = igual and (con.salas[i].has("gato") == otra.salas[i].has("gato"))
@@ -80,7 +80,7 @@ func test_torre() -> void:
 
 func test_entrada() -> void:
 	var paquete := _salas_de_prueba()
-	var t = Torre.armar(paquete, 5, 10, true, 6, "media", {"gatito": true})
+	var t = Torre.armar(paquete, 5, 10, true, 6, "media", {"travesuras": true})
 	var i := -1
 	for k in t.salas.size():
 		if t.salas[k].has("gato"):
@@ -125,14 +125,14 @@ func test_juego() -> void:
 		await process_frame
 	while main.generating or main.torre == null:
 		await process_frame
-	check(main.torre.reglas.get("gatito", false) == false, "una torre común no lleva la regla del gatito")
-	main.run.trial_schedule = {1: "gatito"}   # (la prueba en la etapa 1, para probar)
+	check(main.torre.reglas.get("travesuras", false) == false, "una torre común no lleva la regla de Travesuras")
+	main.run.trial_schedule = {1: "travesuras"}   # (la prueba en la etapa 1, para probar)
 	main.new_tower(77)
 	for k in 6:
 		await process_frame
 	while main.generating or main.torre == null:
 		await process_frame
-	check(main.trial.get("gatito", false) and main.torre.reglas.get("gatito", false), "en la etapa de la prueba la torre lleva la regla del gatito")
+	check(main.trial.get("travesuras", false) and main.torre.reglas.get("travesuras", false), "en la etapa de la prueba la torre lleva la regla de Travesuras")
 	var torre = main.torre
 	var hubo := false
 	for k in torre.t.salas.size():
@@ -168,8 +168,8 @@ func test_juego() -> void:
 	else:
 		check(true, "(la primera sala de esta torre no tiene variante)")
 	# el comando de desarrollo "prueba": esa prueba en esa etapa
-	check(DevCommands.execute("prueba no_existe 3", main).begins_with("Uso:") and DevCommands.execute("prueba gatito 99", main).begins_with("Uso:"), "el comando prueba pide una prueba y una etapa válidas")
-	var msg := DevCommands.execute("prueba gatito 3 pesadilla 55", main)
-	check(msg.contains("etapa 3") and main.run.trial_at(3).get("gatito", false), "el comando prueba pone el gatito en la etapa 3 (%s)" % msg)
+	check(DevCommands.execute("prueba no_existe 3", main).begins_with("Uso:") and DevCommands.execute("prueba travesuras 99", main).begins_with("Uso:"), "el comando prueba pide una prueba y una etapa válidas")
+	var msg := DevCommands.execute("prueba travesuras 3 pesadilla 55", main)
+	check(msg.contains("etapa 3") and main.run.trial_at(3).get("travesuras", false), "el comando prueba pone Travesuras en la etapa 3 (%s)" % msg)
 	main.queue_free()
 	await process_frame

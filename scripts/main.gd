@@ -433,9 +433,9 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.etapa = stage_number
 	torre.boosts = perks
 	torre.dificultad = run.dificultad_torre()   # (Gran Casino: un escalón más difícil)
-	var reglas: Dictionary = run.scenario().duplicate()   # (las del escenario y, en la prueba del gatito, la del gato)
-	if trial.get("gatito", false):
-		reglas["gatito"] = true
+	var reglas: Dictionary = run.scenario().duplicate()   # (las del escenario y, en la prueba Travesuras, la de Ama)
+	if trial.get("travesuras", false):
+		reglas["travesuras"] = true
 	torre.reglas = reglas
 	torre.pista_permitida = run.dificultad == "facil" and tutorial_index < 0 and not training
 	torre.pista_activa = _pista_on and torre.pista_permitida

@@ -20,7 +20,7 @@ func _init() -> void:
 	main.dice.auto_start = true
 	main.dice.set_ready(true)
 	await create_timer(1.5).timeout
-	main.run.trial_schedule = {etapa: "gatito"}
+	main.run.trial_schedule = {etapa: "travesuras"}
 	main.stage_number = etapa
 	main.run.stage = etapa
 	main.new_tower(semilla)
