@@ -11,6 +11,7 @@ const CasinoVisit := preload("res://scripts/casino/casino_visit.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
 const Torre := preload("res://torre/torre.gd")
 const DifficultyScreen := preload("res://scripts/ui/difficulty_screen.gd")
+const ScenarioScreen := preload("res://scripts/ui/scenario_screen.gd")
 
 var fails := 0
 
@@ -33,6 +34,7 @@ func _init() -> void:
 	Profile.reset()
 	test_catalogo()
 	test_dificultades()
+	test_reglas_en_pantalla()
 	test_gran_casino()
 	test_relojeria()
 	test_contratista()
@@ -252,3 +254,17 @@ func test_arranque() -> void:
 		await process_frame
 	check(main.torre.t.max_mov() == Torre.SIN_LIMITE and main.torre.dificultad == "facil", "La Pesadilla en Fácil sigue con movimientos ilimitados")
 	main.queue_free()
+
+
+## La información de cada escenario lista sus reglas en frases cortas (y el camino corto, con su aclaración del movimiento en falso).
+func test_reglas_en_pantalla() -> void:
+	var camino := Scenarios.get_scenario("sin_piedad")
+	check(ScenarioScreen.rule_lines(camino) == ["Cada sala permite solo 2 movimientos en falso*; al siguiente se pierde una vida.", "No se puede deshacer."], "El camino corto: sus dos reglas (%s)" % str(ScenarioScreen.rule_lines(camino)))
+	check(ScenarioScreen.rule_notes(camino) == ["* Movimiento en falso: movimiento que te deja a más pasos del final que antes."], "...y la aclaración del movimiento en falso")
+	check(ScenarioScreen.rule_notes(Scenarios.get_scenario("usurero")).is_empty(), "los que no usan asterisco no llevan aclaración")
+	for s in Scenarios.ALL:
+		var lineas := ScenarioScreen.rule_lines(s)
+		if s.id == "pesadilla":
+			check(lineas == ["Las reglas de siempre."], "La Pesadilla: las reglas de siempre")
+		else:
+			check(not lineas.has("Las reglas de siempre.") and lineas.size() >= 2, "%s: lista sus reglas propias (%d)" % [s.id, lineas.size()])

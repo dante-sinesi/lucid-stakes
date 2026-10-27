@@ -228,23 +228,50 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## Reglas propias de un escenario, en frases (salen de sus campos).
+## Reglas propias de un escenario, en frases cortas (salen de sus campos). Una regla puede llevar un asterisco: su aclaración sale en `rule_notes`.
 static func rule_lines(s: Dictionary) -> Array[String]:
 	var out: Array[String] = []
-	if float(s.get("price_mult", 1.0)) < 1.0:
-		out.append(Loc.f("La ficha de la ruleta cuesta %d %% menos.", [int(round((1.0 - float(s.price_mult)) * 100.0))]))
-	if int(s.get("casino_tier", -1)) >= 0:
-		out.append("El casino es de lujo desde la primera etapa.")
 	if int(s.get("mistakes", 0)) > 0:
-		out.append(Loc.f("Cada sala permite sólo %d movimientos en falso; al siguiente pierdes una vida.", [int(s.mistakes)]))
+		out.append(Loc.f("Cada sala permite solo %d movimientos en falso*; al siguiente se pierde una vida.", [int(s.mistakes)]))
 	if bool(s.get("no_undo", false)):
 		out.append("No se puede deshacer.")
 	if bool(s.get("permadeath", false)):
 		out.append("Una sola vida: si mueres, se termina.")
 	if bool(s.get("no_totem", false)) or bool(s.get("no_extra_life", false)):
 		out.append("Los Tótems y las Vidas extra no funcionan.")
+	if int(s.get("casino_tier", -1)) >= 0:
+		out.append("El casino es de lujo desde la primera etapa.")
+	if int(s.get("escalon", 0)) > 0:
+		out.append("Las torres son un escalón más difíciles.")
+	if float(s.get("margen_mov", 1.0)) < 1.0:
+		out.append("Cada sala da menos movimientos de margen.")
+	var contratos: Dictionary = s.get("contratos", {})
+	if int(contratos.get("activos_extra", 0)) > 0:
+		out.append(Loc.f("Hasta %d contratos activos a la vez.", [2 + int(contratos.activos_extra)]))
+	if int(contratos.get("nuevos_extra", 0)) > 0:
+		out.append("Llegan más papeles nuevos al tablón en cada visita.")
+	if float(contratos.get("premio_mult", 1.0)) > 1.0:
+		out.append(Loc.f("Las recompensas y las fianzas de los contratos son %d %% mayores.", [int(round((float(contratos.premio_mult) - 1.0) * 100.0))]))
+	if int(s.get("especiales_desde", 0)) > 0:
+		out.append("Todos los bloques especiales aparecen desde la primera etapa.")
+	if float(s.get("peso_especiales", 0.0)) > 0.0:
+		out.append("Las salas con especiales salen mucho más seguido.")
+	if float(s.get("toll_mult", 1.0)) > 1.0:
+		out.append(Loc.f("Farolín cobra un %d %% más en cada peaje.", [int(round((float(s.toll_mult) - 1.0) * 100.0))]))
+	if float(s.get("price_mult", 1.0)) < 1.0:
+		out.append(Loc.f("La ficha de la ruleta cuesta %d %% menos.", [int(round((1.0 - float(s.price_mult)) * 100.0))]))
+	if float(s.get("premio_mult", 1.0)) > 1.0:
+		out.append(Loc.f("Los premios de las mesas valen un %d %% más.", [int(round((float(s.premio_mult) - 1.0) * 100.0))]))
 	if out.is_empty():
 		out.append("Las reglas de siempre.")
+	return out
+
+
+## Las aclaraciones de las reglas que llevan asterisco.
+static func rule_notes(s: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	if int(s.get("mistakes", 0)) > 0:
+		out.append("* Movimiento en falso: movimiento que te deja a más pasos del final que antes.")
 	return out
 
 
@@ -257,8 +284,8 @@ func show_info(id: String) -> void:
 		info_box.remove_child(ch)
 		ch.queue_free()
 	UI.label(info_box, s.name, 5, UI.GOLD, false)
-	UI.label(info_box, s.desc, 3, Draw.MARBLE, false, 900)
-	if id == "tutorial":   # no es un escenario: no hay pruebas, habilidades ni Luz
+	if id == "tutorial":   # no es un escenario: no hay reglas, pruebas, habilidades ni Luz; solo lo que se aprende
+		UI.label(info_box, s.desc, 3, Draw.MARBLE, false, 900)
 		UI.label(info_box, "Lo que vas a aprender", 3, UI.GOLD, false)
 		for line in ["Moverte según la brújula y girar la cámara", "Trepar, empujar, tirar y colgarte de los bordes", "El hielo, los bloques pesados y agrietados, y las bombas", "Cómo son las torres de verdad", "Para qué sirven la claridad, la ruleta, las pruebas y las habilidades"]:
 			UI.label(info_box, Loc.f("- %s", [Loc.t(line)]), 2, Color(0.88, 0.84, 0.96), false, 900)
@@ -279,14 +306,16 @@ func show_info(id: String) -> void:
 	UI.label(info_box, "Reglas", 3, UI.GOLD, false)
 	for line in rule_lines(s):
 		UI.label(info_box, Loc.f("- %s", [Loc.t(line)]), 2, Color(0.88, 0.84, 0.96), false, 900)
-	UI.label(info_box, "Pruebas que pueden salir (de a una cada 3 etapas)", 3, UI.GOLD, false)
+	for nota in rule_notes(s):
+		UI.label(info_box, Loc.t(nota), 2, Color(0.66, 0.62, 0.78), false, 900)
+	UI.label(info_box, "Pruebas (una cada 3 etapas)", 3, UI.GOLD, false)
 	var seen := {}
 	for tid in s.pool:
 		if seen.has(tid):
 			continue
 		seen[tid] = true
 		UI.label(info_box, Loc.f("- %s: %s", [Loc.t(Trials.CATALOG[tid].name), Loc.t(Trials.CATALOG[tid].desc)]), 2, Color(0.88, 0.84, 0.96), false, 900)
-	UI.label(info_box, "Habilidades que se pueden ganar al escapar (de a una por vez)", 3, Color(0.65, 0.95, 0.8), false, 900)
+	UI.label(info_box, "Habilidades al escapar (una por vez)", 3, Color(0.65, 0.95, 0.8), false, 900)
 	for aid in Scenarios.ability_ids(s):
 		var a := Abilities.get_ability(aid)
 		UI.label(info_box, Loc.f("- %s: %s%s", [Loc.t(a.name), Loc.t(a.desc), Loc.t("  (ya la tienes)") if Profile.has_ability(aid) else ""]), 2, Color(0.75, 0.95, 0.85), false, 900)

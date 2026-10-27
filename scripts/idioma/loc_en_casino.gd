@@ -44,7 +44,7 @@ const TABLE := {
 	"Tu mejor racha fue de %d victorias seguidas.": "Your best streak was %d wins in a row.",
 	"El pozo del jackpot quedó con %d de claridad sin cobrar.": "The jackpot pot was left with %d clarity uncollected.",
 	"Escapando de la pesadilla (las 27 etapas) en alguno de estos escenarios:": "By escaping the nightmare (all 27 stages) in one of these scenarios:",
-	"Habilidades que se pueden ganar al escapar (de a una por vez)": "Abilities you can earn by escaping (one at a time)",
+	"Habilidades al escapar (una por vez)": "Abilities on escape (one at a time)",
 	# la visita y los ahorros
 	"Racha de la casa": "House streak",
 	"En el casino, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). Perder la corta.": "At the casino, each bet you win in a row adds +10 % to the next payout (up to +50 %). A loss breaks it.",

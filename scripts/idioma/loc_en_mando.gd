@@ -45,7 +45,6 @@ const TABLE := {
 	"En este escenario no se puede deshacer": "You can't undo in this scenario",
 	"¡Sin salida! Movimiento en falso %d de %d": "No way out! False move %d of %d",
 	"¡Movimiento en falso! %d de %d": "False move! %d of %d",
-	"Cada sala permite sólo %d movimientos en falso; al siguiente pierdes una vida.": "Each room only allows %d false moves; the next one costs a life.",
 	"No se puede deshacer.": "You can't undo.",
 	"Tercer movimiento en falso": "Third false move",
 }
