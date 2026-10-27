@@ -12,6 +12,15 @@ Al retirar la torre vieja se borraron, en vez de dejarlos sin efecto, los premio
 - **Consumibles y boosts retirados:** Ojo de hielo, Escudo, Doble salto, Teletransporte, Ancla chica, los ocho conversores de bloque, Fuerza bruta y Aire de más. Los que dependían de elegir un bloque con el mouse necesitan un selector de bloques para la torre actual.
 - **Bot de balance:** funciona con la torre actual (`bot.md`) pero sólo juega por el camino mínimo y la ruleta (no tragamonedas ni blackjack).
 
+## En pausa
+
+- **Bloque trampa:** descontinuado hasta nuevo aviso. No hay salas con trampa (el generador no tiene el rol; `generador.md`) y ningún escenario ni logro puede depender de ella. Para retomarla hay que decidir su propósito en la sala: celda prohibida disfrazada, puente de un solo uso o bloque que hay que mover antes de pisarlo. El código del motor, el arte y la guía de bloques siguen ahí.
+
+## Propuestas para conversar
+
+- **Escenarios:** `escenarios_propuestas.md` (los cinco "Próximamente" repensados, cuatro nuevos y lo que falta en el código de cada uno).
+- **Logros de Steam:** `logros.md` (48 logros más secretos, con los 18 que se pueden ganar en la demo). Decidido: los logros de la demo no se transfieren al juego completo (la demo es otra app de Steam, sus logros son básicos y se vuelven a ganar enseguida). Mejora posible si sobra tiempo: que la demo guarde sus logros en su archivo y el juego completo los entregue al abrirse.
+
 ## Ideas de premios para esta torre
 
 Consumibles: **Susurro de Farolín** (ilumina el próximo movimiento óptimo con el solucionador nativo), **Reinicio limpio** (reinicia la sala sin perder una vida), **Dado de Farolín** (cambia la sala siguiente por otra del mismo nivel), **Ancla de checkpoint** (el próximo checkpoint asegura el doble, con riesgo), **Cuerda** (colgarse y trepar por cornisa no gastan movimientos).
