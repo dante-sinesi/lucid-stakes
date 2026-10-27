@@ -32,7 +32,7 @@ La demo llega hasta el casino de la etapa 6 (tutorial, La Pesadilla, las dos pri
 | Escapar con cabeza | Escapar en Medio. | |
 | Escapar con agallas | Escapar en Difícil. | M |
 | Escapar de verdad | Escapar en Pesadilla. | M |
-| Sin piedad | Escapar en Sin piedad. | M |
+| El camino corto | Escapar en El camino corto (antes Sin piedad). | M |
 | Sin una raya | Escapar sin perder ninguna vida. | M |
 | Dar la vuelta | Escapar en cada dificultad. | M |
 
