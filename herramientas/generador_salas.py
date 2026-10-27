@@ -79,10 +79,10 @@ def trabajar(idx, fin, base_inicial, cont, cfg):
     rng = random.Random(time.time_ns() ^ (idx * 7919))
     k = idx * 3
     semilla = 5000 + idx * 100000 + int(time.time()) % 90000
-    pool = list(base_inicial)
     tipos = cfg['tipos']
+    pool = [d for d in base_inicial if d['tipo'] in tipos]   # (con --tipos, también las especiales se arman solo sobre esos tamaños)
     pesos_tipo = [{'3x3': 40, '5x3': 35, '8x3': 25}[t] for t in tipos]
-    roles = cfg['roles']
+    pesos_rol = cfg['roles']
     while datetime.datetime.now() < fin and not os.path.exists(PARAR):
         if rng.random() < cfg['base'] / 100.0 or not pool:   # una sala base nueva
             tipo = rng.choices(tipos, weights=pesos_tipo)[0]
@@ -91,8 +91,8 @@ def trabajar(idx, fin, base_inicial, cont, cfg):
             nivel = cfg['nivel'] or NIVELES[k % 8]
             k += 1
             semilla += 1
-            cfg = config_base(tipo, h, nivel) + ['wd=12', 'evaluar=16', 'temp=3', 'salto=3', 'n=1', 'seed=%d' % semilla]
-            salida = correr(['--gen'] + cfg)
+            args_gen = config_base(tipo, h, nivel) + ['wd=12', 'evaluar=16', 'temp=3', 'salto=3', 'n=1', 'seed=%d' % semilla]
+            salida = correr(['--gen'] + args_gen)
             for l in salida.splitlines():
                 if l.strip().startswith('{'):
                     try:
@@ -111,7 +111,7 @@ def trabajar(idx, fin, base_inicial, cont, cfg):
         roles = []
         actual = d
         for paso in range(n_roles):
-            rol = rng.choices([r for r, _ in roles], weights=[w for _, w in roles])[0]
+            rol = rng.choices([r for r, _ in pesos_rol], weights=[w for _, w in pesos_rol])[0]
             if rol in roles and rol != 'hielo':
                 continue
             env = dict(os.environ)
