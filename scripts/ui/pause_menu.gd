@@ -56,7 +56,7 @@ func _init() -> void:
 	add_child(info)
 	contratos = ContratosColumna.new()
 	add_child(contratos)
-	hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
+	hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Continuar"), "call": func(): resume.emit()}])
 	options = OptionsScreen.new()
 	options.back.connect(func(): show_options(false))

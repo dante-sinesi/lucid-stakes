@@ -95,7 +95,7 @@ func _init() -> void:
 	credits_button.pressed.connect(func(): show_panel("creditos"))
 	add_child(credits_button)
 	buttons["creditos"] = credits_button
-	main_hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
+	main_hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")},
 			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Créditos"), "keycode": KEY_C, "call": func(): show_panel("creditos"), "when": func(): return main_center.visible}], [credits_button])
 
 

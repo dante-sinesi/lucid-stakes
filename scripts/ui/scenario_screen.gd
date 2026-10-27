@@ -85,8 +85,7 @@ func _init() -> void:
 	back_button.pressed.connect(func(): back.emit())
 	col.add_child(back_button)
 	_build_info_panel()
-	PadHints.attach(self, [{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir escenario")},
-			{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Entrar"), "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": _enter_current, "when": func(): return not info_panel.visible},
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Entrar"), "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": _enter_current, "when": func(): return not info_panel.visible},
 			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Información"), "keycode": KEY_C, "call": _info_current, "when": func(): return not info_panel.visible},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Volver"), "keycode": KEY_ESCAPE, "call": func(): back.emit(), "when": func(): return not info_panel.visible}],
 			[back_button, left_button, right_button])

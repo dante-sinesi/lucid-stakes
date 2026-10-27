@@ -101,7 +101,7 @@ func _can_rotate() -> bool:
 func _update_hints() -> void:
 	if hints == null:
 		return
-	var items := [{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Tipo de apuesta"), "call": func(): pass}]
+	var items := []
 	if _can_rotate():
 		items.append({"name": "LT", "key": "R", "text": Loc.f("Rotar vitrina (%d)", [Showcase.rotate_cost(run)]), "call": rotate_here, "dim": not run.can_afford(Showcase.rotate_cost(run))})
 	items.append({"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Cerrar"), "call": close_window})

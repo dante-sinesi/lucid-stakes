@@ -72,7 +72,7 @@ func _init() -> void:
 
 ## Abre el cuadro con "Medio" marcado.
 func ask() -> void:
-	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")}, {"name": "DPAD", "key": "↑ | ↓", "text": Loc.t("Moverse")},
+	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")},
 			{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Volver"), "call": func(): _choose("")}])
 	_open_t = Time.get_ticks_msec() / 1000.0
 	visible = true
