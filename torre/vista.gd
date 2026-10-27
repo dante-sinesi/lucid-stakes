@@ -4,6 +4,7 @@ extends RefCounted
 
 const BlockModels := preload("res://scripts/personajes/block_models.gd")
 const Escena := preload("res://torre/escena.gd")
+const CuentaBomba := preload("res://torre/cuenta_bomba.gd")
 const BlockArt := preload("res://scripts/personajes/block_art.gd")
 
 ## La etapa del run (0 = ninguna): decide cuánta corrupción tiene el arte de los bloques (block_art.gd). Lo pone torre_juego.gd antes de dibujar.
@@ -119,7 +120,7 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 		m.position = world_pos(c)
 		parent.add_child(m)
 		if letra.length() >= 2 and letra[0] == "b":
-			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador))
+			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador, t.bloques.has(c + Vector3i(0, 1, 0))))
 			parent.add_child(_zona(c, t))
 	if con_jugador:
 		parent.add_child(_figura_jugador(t))
@@ -182,19 +183,6 @@ static func _zona(c: Vector3i, t) -> Node3D:
 	atras.material_override = _material_zona(true)
 	atras.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.add_child(atras)
-	# el centro: una bolita brillante que se ve aunque otros bloques la tapen (la bomba suele quedar metida en la pila)
-	var nucleo := MeshInstance3D.new()
-	var ns := SphereMesh.new()
-	ns.radius = 0.2
-	ns.height = 0.4
-	nucleo.mesh = ns
-	var nm := StandardMaterial3D.new()
-	nm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	nm.albedo_color = Color(1.0, 0.55, 0.1)
-	nm.no_depth_test = true
-	nm.render_priority = 10
-	nucleo.material_override = nm
-	mi.add_child(nucleo)
 	return mi
 
 
@@ -232,19 +220,11 @@ static func _malla_masa(celdas: Array[Vector3i]) -> ArrayMesh:
 	return m
 
 
-## La cuenta de una bomba: un número grande flotando arriba (rojo si el jugador está dentro de su zona y la mecha corre).
-static func _cuenta(c: Vector3i, mecha: int, jugador: Vector3i) -> Label3D:
-	var l := Label3D.new()
-	l.text = str(mecha)
-	l.font_size = 96
-	l.pixel_size = 0.012
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	l.no_depth_test = true
+## La cuenta de una bomba (ver `cuenta_bomba.gd`): roja si el jugador está dentro de su zona y la mecha corre.
+## Con un bloque justo arriba de la bomba la cuenta quedaría adentro de él: en ese caso (`tapada`) se dibuja sin respetar la profundidad para que se pueda leer.
+static func _cuenta(c: Vector3i, mecha: int, jugador: Vector3i, tapada := false) -> Sprite3D:
 	var d := jugador - c
-	l.modulate = Color(1.0, 0.25, 0.2) if d.x * d.x + d.y * d.y + d.z * d.z <= 5 else Color(0.95, 0.95, 0.95)
-	l.outline_size = 12
-	l.position = Vector3(c.x + 0.5, c.y + 1.25, c.z + 0.5)
-	return l
+	return CuentaBomba.crear(c, mecha, d.x * d.x + d.y * d.y + d.z * d.z <= 5, tapada)
 
 
 ## Una referencia tenue del anillo de la torre (11 x 11 con el vacío de 5 x 5): no es suelo, sólo ayuda a ubicarse.
