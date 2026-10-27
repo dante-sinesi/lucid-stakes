@@ -248,8 +248,6 @@ func _show_page() -> void:
 	_count.text = "%d / %d" % [page + 1, _pages.size()]
 	var last := page >= _pages.size() - 1
 	var items := []
-	if _pages.size() > 1:
-		items.append({"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Página"), "call": func(): pass})
 	items.append({"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Entendido") if last else Loc.t("Siguiente"), "call": next_page})
 	items.append({"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Cerrar"), "call": close})
 	_hints.set_items(items)

@@ -296,8 +296,7 @@ class TallerScreen extends Base:
 		_update_taller_hints()
 
 	func _update_taller_hints() -> void:
-		_set_hints([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir")},
-				{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": sell_button.text, "dim": sell_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not sell_button.disabled: sell()},
+		_set_hints([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": sell_button.text, "dim": sell_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not sell_button.disabled: sell()},
 				{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": swap_button.text, "dim": swap_button.disabled, "keycode": KEY_SHIFT, "call": func(): if not swap_button.disabled: swap()}])
 
 
@@ -389,8 +388,7 @@ class TiendaScreen extends Base:
 		_update_tienda_hints()
 
 	func _update_tienda_hints() -> void:
-		_set_hints([{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir")},
-				{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": buy_button.text, "dim": buy_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not buy_button.disabled: buy()}])
+		_set_hints([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": buy_button.text, "dim": buy_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not buy_button.disabled: buy()}])
 
 
 ## El tablón de contratos: los papeles colgados (3 a 6, según el casino), con lo que pide cada uno. Se aceptan gratis (o con fianza, en el casino y el gran casino), se descuelgan o se rotan
@@ -511,8 +509,7 @@ class TablonScreen extends Base:
 		_update_tablon_hints()
 
 	func _update_tablon_hints() -> void:
-		var items: Array = [{"name": "DPAD_LR", "key": "← | →", "text": Loc.t("Elegir")},
-				{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": accept_button.text, "dim": accept_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not accept_button.disabled: accept()},
+		var items: Array = [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": accept_button.text, "dim": accept_button.disabled, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): if not accept_button.disabled: accept()},
 				{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": reject_button.text, "dim": reject_button.disabled, "keycode": KEY_SHIFT, "call": func(): if not reject_button.disabled: reject()},
 				{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": rotate_button.text, "dim": rotate_button.disabled, "keycode": KEY_C, "call": func(): if not rotate_button.disabled: rotate_papers()}]
 		if fianza_button != null:

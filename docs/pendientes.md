@@ -25,7 +25,6 @@ Decisiones abiertas: cuántos entran en la primera tanda y si van al casino como
 - **El Taller:** ya es una fragua con chimenea, horno encendido y yunque (`casino_muebles.gd`); falta ver si en el juego llama a descubrirse (se podría sumar un personaje o una animación de las chispas).
 - **Casinos, lo que falta del plan (`plan_casinos.md`):** que el bot juegue contratos. (Decidido: el casino y el gran casino no llevan estación; solo el Taller del salón.)
 - Los bloques ya no se aclaran con la etapa (solo el fondo y la luz): decidir si se retoma. Revisar también la ayuda de profundidad con la cámara de la torre.
-- La ayuda de texto de los menús no menciona WASD.
 - Música: decidir tempo, volumen y si se agrega percusión (se probaron variantes al 90, 80 y 70 % sin preferencia clara: `herramientas/musica/render_estaciones.py --tempo=0.8 --solo-previa`).
 - Calibrar la economía con partidas reales (`economia.md`).
 - La exportación excluye `tools/*`: el solucionador nativo (`tools/salas.exe`), que usa Sin piedad, no viaja con el juego exportado; hay que empaquetarlo o tener respaldo.

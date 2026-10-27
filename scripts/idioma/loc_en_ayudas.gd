@@ -11,7 +11,6 @@ const TABLE := {
 	"Fianza y tienda": "Deposit and shop",
 	"En el casino y el gran casino puedes aceptar con fianza: pagas ahora y, si cumples, cobras más y la recuperas. La pestaña de arriba te lleva a la tienda.": "At the casino and the grand casino you can accept with a deposit: you pay now and, if you complete it, you earn more and get it back. The tab at the top takes you to the shop.",
 	"Ayuda": "Help",
-	"Página": "Page",
 	"Siguiente": "Next",
 	"Entendido": "Got it",
 	"La ruleta": "The roulette",
