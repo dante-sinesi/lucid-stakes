@@ -453,6 +453,8 @@ static uint64_t clave_sim(const Sim& s) {
 	return h;
 }
 
+static bool g_sin_agarrar = false;   // (variantes del gatito) si está prendida, los solucionadores no usan la acción de agarrar: sirve para saber si una sala se pasa sin mover ningún bloque
+
 struct Nodo { Estado e; int padre; uint8_t accion; int g; };
 
 struct Resolucion {
@@ -511,6 +513,7 @@ static Resolucion resolver(const Estado& e0, int meta, int tope, bool con_stats 
 		for (int a = 0; a < 12; a++) {
 			int dx = DIRS[a % 4].x, dz = DIRS[a % 4].z, modo = a / 4;
 			if (s.colgando() && modo != 0) continue;
+			if (g_sin_agarrar && modo == 1) continue;
 			t.copiar_de(s);
 			if (!t.actuar(dx, dz, modo)) continue;
 			uint64_t k = clave_sim(t);
@@ -616,6 +619,7 @@ static vector<int> acortar(const Estado& e0, int meta, vector<int> acc, int vent
 				for (int a = 0; a < 12; a++) {
 					int modo = a / 4;
 					if (t.colgando() && modo != 0) continue;
+					if (g_sin_agarrar && modo == 1) continue;
 					u.copiar_de(t);
 					if (!u.actuar(DIRS[a % 4].x, DIRS[a % 4].z, modo)) continue;
 					uint64_t k = clave_sim(u);
@@ -708,6 +712,7 @@ static Resolucion resolver_compacto(const Estado& e0, int meta, long tope, int u
 		for (int a = 0; a < 12; a++) {
 			int dx = DIRS[a % 4].x, dz = DIRS[a % 4].z, modo = a / 4;
 			if (s.colgando() && modo != 0) continue;
+			if (g_sin_agarrar && modo == 1) continue;
 			t.copiar_de(s);
 			if (!t.actuar(dx, dz, modo)) continue;
 			uint64_t k = clave_sim(t);
@@ -1898,6 +1903,154 @@ static int generar_main(int argc, char** argv) {
 	return 0;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Variantes del gatito travieso (prueba "El gatito travieso", docs/pruebas.md): al entrar a una sala, un gato mueve de lugar unos bloques COMUNES una celda.
+// Los cambios seguros se calculan acá, antes, y viajan con el juego (el solucionador compilado no puede ser parte del juego en otras plataformas).
+//   --variantes tipo=3x3 [n=3] [intentos=30] [tope=200000] [seed=1] [conocido=texto del camino de la sala]   (la sala por la entrada, en texto)
+// Cuántos bloques mueve depende de la altura: de 4 a 7 pisos, 1 o 2; de 8 a 11, 2; de 12 a 15, 3; de 16 a 19, 4; de 20 en adelante, 5.
+// Cada variante se acepta sólo si la sala sigue teniendo solución, el jugador sigue arrancando sobre su checkpoint con todo apoyado, y no se vuelve TRIVIAL:
+//   - no se puede pasar sin mover ningún bloque (se prueba resolviéndola con la acción de agarrar apagada) si la sala original tampoco se podía;
+//   - la solución sigue moviendo bloques (al menos el 70 % de los bloques distintos de la original, y uno como mínimo);
+//   - el largo del camino queda entre el 75 % y el 160 % del original (si no, sería otra sala);
+//   - se nota: el camino de la sala original deja de servir (si no, el gato no habría molestado a nadie).
+// Salida (una línea JSON): {"ok":true,"base":{...},"variantes":[{"k","mov":[[x,y,z,nx,nz],...],"pasos","agarres","distintos","camino" (texto: una letra por acción)}],"intentos":N}
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+// El camino en un texto compacto: una letra por acción ('a' + modo * 4 + índice de DIRS: este, oeste, sur, norte), para que las variantes pesen poco.
+static string camino_texto(const vector<int>& acc) {
+	string t;
+	for (int a : acc) t += (char)('a' + a);
+	return t;
+}
+
+static void bloques_gato(int pisos, int& kmin, int& kmax) {
+	if (pisos <= 7) { kmin = 1; kmax = 2; }
+	else if (pisos <= 11) { kmin = 2; kmax = 2; }
+	else if (pisos <= 15) { kmin = 3; kmax = 3; }
+	else if (pisos <= 19) { kmin = 4; kmax = 4; }
+	else { kmin = 5; kmax = 5; }
+}
+
+static int variantes_main(int argc, char** argv) {
+	Estado e0; int meta, tope_leido;
+	leer_sala(e0, meta, tope_leido);
+	string tipo = arg_texto(argc, argv, "tipo", "3x3");
+	int n = (int)arg_largo(argc, argv, "n", 3);
+	long intentos = arg_largo(argc, argv, "intentos", 30);
+	int tope = (int)arg_largo(argc, argv, "tope", 200000);
+	mt19937_64 rng((unsigned long long)arg_largo(argc, argv, "seed", 1));
+	vector<int> conocido;   // el camino que trae la sala en la biblioteca, en el texto compacto de `camino_texto` (opcional)
+	for (char c : arg_texto(argc, argv, "conocido", "")) if (c >= 'a' && c <= 'l') conocido.push_back(c - 'a');
+	int x0, z0, w, d;
+	huella(tipo, x0, z0, w, d);
+	int kmin, kmax;
+	bloques_gato(meta - 1, kmin, kmax);
+	Resolucion base = resolver_sala(e0, meta, tope);
+	if (!base.ok) { printf("{\"ok\":false,\"error\":\"la sala base no se resolvió\"}\n"); return 0; }
+	g_sin_agarrar = true;
+	Resolucion caminando = resolver_sala(e0, meta, tope);
+	g_sin_agarrar = false;
+	bool base_caminable = caminando.ok;
+	int min_distintos = base_caminable ? 0 : max(1, (int)floor(0.7 * base.distintos));
+	int min_pasos = (int)ceil(0.75 * base.moves), max_pasos = (int)floor(1.6 * base.moves) + 1;
+	// los bloques comunes que el gato puede mover
+	vector<int> comunes;
+	for (uint32_t b : e0.bloques) if ((b & 255) == N) comunes.push_back((int)(b >> 8));
+	string variantes_json;
+	int hechas = 0;
+	long gastados = 0;
+	unordered_set<uint64_t> vistos;
+	long max_generaciones = intentos * max(n, 1) * 4;
+	long generaciones = 0;
+	while (hechas < n && gastados < intentos * max(n, 1) && generaciones < max_generaciones && !comunes.empty()) {
+		generaciones++;
+		int k = kmin + (kmax > kmin ? (int)(rng() % (unsigned long long)(kmax - kmin + 1)) : 0);
+		k = min(k, (int)comunes.size());
+		Sim s;
+		cargar(s, e0, meta);
+		vector<array<int, 5>> movs;
+		unordered_set<int> tocados;   // las celdas finales de los bloques que ya movió (no se mueve el mismo dos veces)
+		bool ok = true;
+		for (int paso = 0; paso < k && ok; paso++) {
+			bool puesto = false;
+			for (int prueba = 0; prueba < 40 && !puesto; prueba++) {
+				// un bloque común al azar (que no sea uno ya movido) y una dirección al azar
+				int desde = -1;
+				for (int t = 0; t < 20 && desde < 0; t++) {
+					int c = comunes[rng() % comunes.size()];
+					if (s.g[c] == N && !tocados.count(c)) desde = c;
+				}
+				if (desde < 0) {   // (los comunes de la sala original pueden haber cambiado de lugar: se busca entre los actuales)
+					vector<int> actuales;
+					for (int c : s.cel) if (s.g[c] == N && !tocados.count(c)) actuales.push_back(c);
+					if (actuales.empty()) break;
+					desde = actuales[rng() % actuales.size()];
+				}
+				V dir = DIRS[rng() % 4];
+				int nx = ix(desde) + dir.x, nz = iz(desde) + dir.z, y = iy(desde);
+				if (nx < x0 || nx >= x0 + w || nz < z0 || nz >= z0 + d) continue;
+				if (s.hay(nx, y, nz)) continue;
+				if (nx == s.px && y == s.py && nz == s.pz) continue;
+				Sim t2;
+				t2.copiar_de(s);
+				t2.g[desde] = NONE;
+				t2.sacar_cel(desde);
+				int hacia = idx(nx, y, nz);
+				t2.g[hacia] = N;
+				t2.agregar_cel(hacia);
+				if (!estable(t2)) continue;   // el jugador sigue sobre su checkpoint y todo sigue apoyado
+				s.copiar_de(t2);
+				tocados.insert(hacia);
+				movs.push_back({ix(desde), y, iz(desde), nx, nz});
+				puesto = true;
+			}
+			if (!puesto) ok = false;
+		}
+		if (!ok || (int)movs.size() < k) continue;
+		Estado e1;
+		guardar(s, e1);
+		uint64_t clave = clave_estado(e1);
+		if (vistos.count(clave)) continue;
+		vistos.insert(clave);
+		gastados++;
+		Resolucion r = resolver_sala(e1, meta, tope);
+		if (!r.ok) continue;
+		if (r.distintos < min_distintos || r.moves < min_pasos || r.moves > max_pasos) continue;
+		{   // que el gato se note: el camino de la sala original (el que calcula el solucionador y el que trae la biblioteca, `conocido`) tiene que dejar de funcionar
+			bool sirve = false;
+			for (const vector<int>* camino : {&base.acc, &conocido}) {
+				if (camino->empty()) continue;
+				Sim q;
+				cargar(q, e1, meta);
+				bool sigue = true;
+				for (int ac : *camino) {
+					if (!q.actuar(DIRS[ac % 4].x, DIRS[ac % 4].z, ac / 4)) { sigue = false; break; }
+				}
+				if (sigue && q.ganado) sirve = true;
+			}
+			if (sirve) continue;
+		}
+		if (!base_caminable) {   // que no se pueda pasar caminando, sin mover ningún bloque
+			g_sin_agarrar = true;
+			Resolucion c = resolver_sala(e1, meta, tope);
+			g_sin_agarrar = false;
+			if (c.ok || c.tope) continue;
+		}
+		string mv = "[";
+		for (size_t i = 0; i < movs.size(); i++) {
+			if (i) mv += ",";
+			mv += "[" + to_string(movs[i][0]) + "," + to_string(movs[i][1]) + "," + to_string(movs[i][2]) + "," + to_string(movs[i][3]) + "," + to_string(movs[i][4]) + "]";
+		}
+		mv += "]";
+		if (hechas) variantes_json += ",";
+		variantes_json += "{\"k\":" + to_string(k) + ",\"mov\":" + mv + ",\"pasos\":" + to_string(r.moves) + ",\"agarres\":" + to_string(r.agarres) + ",\"distintos\":" + to_string(r.distintos) + ",\"camino\":\"" + camino_texto(r.acc) + "\"}";
+		hechas++;
+	}
+	printf("{\"ok\":true,\"base\":{\"pasos\":%d,\"agarres\":%d,\"distintos\":%d,\"caminable\":%s},\"variantes\":[%s],\"intentos\":%ld}\n",
+			base.moves, base.agarres, base.distintos, base_caminable ? "true" : "false", variantes_json.c_str(), gastados);
+	return 0;
+}
+
 int main(int argc, char** argv) {
 	init_tablas();
 	if (argc > 1 && string(argv[1]) == "--gen") return generar_main(argc, argv);
@@ -1906,5 +2059,6 @@ int main(int argc, char** argv) {
 	if (argc > 1 && string(argv[1]) == "--conocido") return conocido_main(argc, argv);
 	if (argc > 1 && string(argv[1]) == "--especializar") return especializar_main(argc, argv);
 	if (argc > 1 && string(argv[1]) == "--revisar") return revisar_main(argc, argv);
+	if (argc > 1 && string(argv[1]) == "--variantes") return variantes_main(argc, argv);
 	return resolver_main();
 }

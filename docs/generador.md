@@ -47,6 +47,15 @@ A* exacto con poda por la cota superior `ub` (el largo de un camino conocido). S
 
 `bibliotecas/` no se versiona. El paquete vigente tiene 2855 salas de 4 a 23 pisos.
 
+## Variantes del gatito travieso (`--variantes`)
+
+La prueba "Travesuras" (`docs/gatito_travieso.md`) mueve de lugar unos bloques comunes de la sala al entrar. Para que el juego no dependa del solucionador compilado (no se puede llevar a otras plataformas), **los cambios seguros se calculan antes** y viajan en `data/variantes_gato.jsonl`: una línea por sala, `{"id", "variantes": [{"k", "mov": [[x, y, z, nx, nz], ...], "pasos", "agarres", "distintos", "camino"}]}`. `mov` son los bloques que mueve el gato, en orden (cada uno, una celda hacia una celda libre de la huella); `camino` es la solución de la sala ya cambiada en un texto compacto (una letra por acción: `'a' + modo * 4 + índice` de este, oeste, sur y norte).
+
+- **Cuántos bloques mueve:** según los pisos: de 4 a 7, uno o dos; de 8 a 11, dos; de 12 a 15, tres; de 16 a 19, cuatro; de 20 en adelante, cinco.
+- **Cómo se acepta una variante** (`tools/salas.exe --variantes tipo=3x3 [n=3] [intentos=30] [conocido=camino]`): solo bloques comunes; la sala queda apoyada y el jugador sigue sobre su checkpoint; **tiene solución**; **no se vuelve trivial** (si la original no se podía pasar sin mover bloques, la variante tampoco: se prueba resolviéndola con la acción de agarrar apagada; y la solución sigue moviendo al menos el 70 % de los bloques distintos de la original); el camino queda entre el 75 % y el 160 % del original; y **se nota**: el camino de la sala original (el del solucionador y el que trae la biblioteca) deja de servir.
+- **Generarlas:** `python herramientas/variantes_gato.py [--procesos 7] [--n 3] [--minutos 8]`: es reanudable (no repite las salas que ya están en el archivo) y sin hora límite hasta terminar. Con la biblioteca de 2855 salas tarda unos 40 minutos y deja unas 7.600 variantes en 1,2 MB (el 93 % de las salas tiene al menos una; las que no, no cambian). Cuando se suman salas nuevas a la biblioteca, se vuelve a correr y calcula solo las nuevas.
+- **Probarlas:** `tests/unitarios/test_variantes_gato.gd` aplica cada variante, comprueba el apoyo, juega su camino en el motor de GDScript (que coincide con el solucionador en las 7.641) y que se note.
+
 ## Estudio de salas
 
 `herramientas\estudio_salas.bat [archivo.jsonl]` abre `torre/estudio.tscn`: lista de salas, reproducción desde atrás del jugador, edición, resolver con el nativo y guardar. `herramientas\torre_prototipo.bat [semilla] [salas]` abre una torre jugable aislada del juego. Capturas del Estudio: `tests/capturas/shot_estudio.gd` + `herramientas/montaje_salas.py` (siempre desde detrás del jugador).

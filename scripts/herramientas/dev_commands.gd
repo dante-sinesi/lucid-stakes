@@ -5,6 +5,7 @@ extends RefCounted
 ## Comandos:
 ##   help                       lista de comandos
 ##   tower <etapa> [escenario] [semilla]   una partida nueva con una torre de esa etapa (1-15) y escenario (por defecto pesadilla), sin pagar la entrada; se usa desde el menú principal
+##   prueba <id> <etapa> [escenario] [semilla]   como tower, pero con esa prueba (sin_ayudas, todo_o_nada, sin_racha, travesuras) en esa etapa
 ##   goto_end  (o win)          da por ganada la torre actual (y de ahí al casino)
 ##   goto_casino <etapa>        te lleva directo al casino de esa etapa (1-15: taberna 1-3, salón 4-7, casino 8-11, gran casino 12-15)
 ##   set_luz <n>                fija la Luz del perfil en n (sirve en el menú y en el juego; no baja de 0)
@@ -13,6 +14,7 @@ extends RefCounted
 ##   items                      lista los ids de boosts y consumibles
 
 const Items := preload("res://scripts/datos/items.gd")
+const Trials := preload("res://scripts/datos/trials.gd")
 
 
 ## ¿Se puede usar el modo dev? Sólo en el editor y en compilaciones de depuración; nunca en una exportación release.
@@ -25,7 +27,7 @@ static func available() -> bool:
 
 
 static func help_text() -> String:
-	return "Comandos: help | tower <etapa> [escenario] [semilla] | goto_end (o win) | goto_casino <1-15> | set_claridad <n> | set_luz <n> | give <id> | items"
+	return "Comandos: help | tower <etapa> [escenario] [semilla] | prueba <id> <etapa> [escenario] [semilla] | goto_end (o win) | goto_casino <1-15> | set_claridad <n> | set_luz <n> | give <id> | items"
 
 
 ## Ejecuta una línea de la consola. `game` es el nodo principal (main.gd). Devuelve el texto a mostrar ("" si no hay).
@@ -48,6 +50,16 @@ static func execute(line: String, game) -> String:
 					return "La semilla tiene que ser un número"
 				seed = int(parts[3])
 			return game.dev_tower(int(parts[1]), parts[2] if parts.size() > 2 else "", seed)
+		"prueba", "trial":
+			var ids: Array = Trials.CATALOG.keys()
+			if parts.size() < 3 or not ids.has(parts[1]) or not parts[2].is_valid_int() or int(parts[2]) < 1 or int(parts[2]) > 15:
+				return "Uso: prueba <id> <etapa 1-15> [escenario] [semilla]   (pruebas: %s; por ejemplo: prueba travesuras 3)" % ", ".join(ids)
+			var semilla := -1
+			if parts.size() > 4:
+				if not parts[4].is_valid_int():
+					return "La semilla tiene que ser un número"
+				semilla = int(parts[4])
+			return game.dev_tower(int(parts[2]), parts[3] if parts.size() > 3 else "", semilla, parts[1])
 		"goto_end", "win":
 			return game.dev_goto_end()
 		"goto_casino", "casino":
