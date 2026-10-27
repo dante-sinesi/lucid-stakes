@@ -123,6 +123,7 @@ var _gatito_pose := ""         # la pose de espera en la que está (en el checkp
 var _gatito_t := 0.0           # (el tiempo en esa pose)
 var gatito_actuando := false   # el gato está moviendo bloques: no se juega hasta que termina
 var _gatito_sala := -1         # la sala en la que está el gato (si se cambia de sala, se esconde)
+var _gatito_vuelve := false    # la cámara vuelve del centro de la sala (mientras Ama movía bloques) al personaje
 var _temblando := false      # la sala tiembla cuando quedan la mitad de los movimientos o menos
 
 
@@ -468,17 +469,20 @@ func _poner_camara(animar: bool) -> void:
 		tam = maxf(alto * 0.75, 24.0)
 	if _camara_tween != null and _camara_tween.is_valid():
 		_camara_tween.kill()
+	var libre := (gatito_actuando or _gatito_vuelve) and not panorama   # (mientras Ama mueve bloques la cámara está en la sala y vuelve sola: ver `_gatito_camara`)
 	if animar:
 		_camara_tween = create_tween().set_parallel(true)
-		_camara_tween.tween_property(pivot, "position", foco, 0.25).set_trans(Tween.TRANS_SINE)
+		if not libre:
+			_camara_tween.tween_property(pivot, "position", foco, 0.25).set_trans(Tween.TRANS_SINE)
+			_camara_tween.tween_property(cam, "size", tam, 0.25).set_trans(Tween.TRANS_SINE)
 		_camara_tween.tween_property(pivot, "rotation_degrees:y", yaw_target, 0.25).set_trans(Tween.TRANS_SINE)
 		_camara_tween.tween_property(pitch_node, "rotation_degrees:x", cam_pitch, 0.25).set_trans(Tween.TRANS_SINE)
-		_camara_tween.tween_property(cam, "size", tam, 0.25).set_trans(Tween.TRANS_SINE)
 	else:
-		pivot.position = foco
+		if not libre:
+			pivot.position = foco
+			cam.size = tam
 		pivot.rotation_degrees.y = yaw_target
 		pitch_node.rotation_degrees.x = cam_pitch
-		cam.size = tam
 
 
 ## Farolín está parado sobre el bloque de salida de la sala actual (el próximo checkpoint), en una esquina de la cara de arriba, mirando hacia la cámara.
@@ -563,7 +567,19 @@ func _process(delta: float) -> void:
 	efectos.proceso(delta, activa)
 	if not panorama and not _cayendo:   # la cámara sigue siempre al personaje (también mientras camina o se desliza), aunque algo la haya movido
 		var foco := gato_nodo.position + Vector3(0, 0.5, 0)
-		pivot.position = pivot.position.lerp(foco, 1.0 - exp(-14.0 * delta))
+		var rapidez := 14.0
+		if gatito_actuando or _gatito_vuelve:   # (Ama mueve bloques: la cámara pasa al centro de la sala, con el zoom que la contiene, y después vuelve al personaje)
+			rapidez = 4.5
+			var tam_objetivo := zoom
+			if gatito_actuando:
+				var c := _gatito_camara()
+				foco = c.foco
+				tam_objetivo = c.tam
+			cam.size = lerpf(cam.size, tam_objetivo, 1.0 - exp(-rapidez * delta))
+			if not gatito_actuando and absf(cam.size - zoom) < 0.05 and pivot.position.distance_to(foco) < 0.08:
+				_gatito_vuelve = false
+				cam.size = zoom
+		pivot.position = pivot.position.lerp(foco, 1.0 - exp(-rapidez * delta))
 	_temblar()
 	_poner_mancha()
 	_pista_proceso()
@@ -909,6 +925,22 @@ func deshacer() -> bool:
 
 # --- el gatito travieso (docs/pruebas.md): al entrar a una sala de la prueba, un gato salta de bloque en bloque y los mueve de lugar ---
 
+## Ama terminó (o se cortó, por ejemplo porque se cambió de sala): se puede jugar y la cámara vuelve al personaje.
+func _gatito_termina() -> void:
+	gatito_actuando = false
+	_gatito_vuelve = true
+
+
+## La cámara mientras Ama mueve bloques: en el centro de la sala y con el zoom justo para que entre toda ({foco, tam}).
+func _gatito_camara() -> Dictionary:
+	var sala: Dictionary = t.sala_actual()
+	var r: Rect2i = Torre.huella(sala.d)
+	var meta := int(sala.d.meta)
+	var foco := Vector3(r.position.x + r.size.x * 0.5, float(int(sala.off)) + (meta + 2) * 0.5, r.position.y + r.size.y * 0.5)
+	var tam := clampf(maxf(zoom, maxf(float(meta) * 1.0 + 5.0, float(maxi(r.size.x, r.size.y)) * 1.1 + 4.0)), 6.0, 36.0)
+	return {"foco": foco, "tam": tam}
+
+
 ## Si la sala que se acaba de dibujar tiene un cambio del gato pendiente, el gato entra en escena. Si se cambió de sala, se esconde.
 func _gatito_revisar() -> void:
 	if not en_juego or gatito_nodo == null or t == null:
@@ -965,14 +997,14 @@ func _gatito_actuar(g: Dictionary) -> void:
 	await _gatito_esperar(0.45)
 	for m in g.mov:
 		if not vivo_aun.call():
-			gatito_actuando = false
+			_gatito_termina()
 			return
 		var desde: Vector3i = m[0]
 		var hasta: Vector3i = m[1]
 		var dir := Vector3(hasta.x - desde.x, 0, hasta.z - desde.z)
 		await _gatito_saltar(Vector3(desde.x + 0.5, desde.y + 1 + off, desde.z + 0.5), 0.38)   # arriba del bloque que va a mover
 		if not vivo_aun.call():
-			gatito_actuando = false
+			_gatito_termina()
 			return
 		gatito_nodo.rotation.y = atan2(dir.x, dir.z)
 		var malla := _malla_en(desde)
@@ -990,7 +1022,7 @@ func _gatito_actuar(g: Dictionary) -> void:
 		await _gatito_esperar(0.3)
 		GatitoAnim.aplicar(gatito_modelo, GatitoAnim.pose("reposo"))
 	if not vivo_aun.call():
-		gatito_actuando = false
+		_gatito_termina()
 		return
 	# se va al bloque de salida, donde espera junto a Farolín
 	var s: Vector2i = Torre.salida_xz(t.sala_actual().d)
@@ -999,13 +1031,14 @@ func _gatito_actuar(g: Dictionary) -> void:
 		await _gatito_saltar(Vector3(s.x + 0.5 - 0.17 * _faro_esquina.x, off + meta + 1, s.y + 0.5 - 0.17 * _faro_esquina.y), 0.6, 0.9)
 		gatito_nodo.rotation.y = atan2(float(_faro_esquina.x), float(_faro_esquina.y))   # (mirando a Farolín)
 	if not vivo_aun.call():
-		gatito_actuando = false
+		_gatito_termina()
 		return
 	t.aplicar_gato()   # la sala pasa a ser la cambiada (con su límite de movimientos)
 	if falsos != null:
 		falsos.sala_nueva(t.motor)
 		falsos_cambiaron.emit(falsos.quedan(), falsos_permitidos, false, false)
 	gatito_actuando = false
+	_gatito_vuelve = true   # (la cámara vuelve al personaje, de a poco)
 	_refrescar(false)
 	accion_hecha.emit()
 	_gatito_esperar_junto_a_farolin(sala_i, torre_ref)

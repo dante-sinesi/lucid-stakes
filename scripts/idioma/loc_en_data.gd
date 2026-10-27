@@ -59,7 +59,7 @@ const TABLE := {
 	"No hay reintentos: si caes, se termina el run.": "No retries: if you fall, the run is over.",
 	"Sin racha": "No streak",
 	"El gatito travieso": "The mischievous kitten",
-	"Al entrar a cada sala, un gato mueve de lugar unos bloques.": "When you enter each room, a cat moves some blocks around.",
+	"Ama, una gata traviesa, mueve de lugar unos bloques al entrar a cada sala.": "Ama, a mischievous cat, moves some blocks around when you enter each room.",
 	"La racha no sube el multiplicador de claridad.": "The streak doesn't raise the clarity multiplier.",
 	"Recompensa: %s": "Reward: %s",
 	"Recompensa: %d de claridad": "Reward: %d clarity",

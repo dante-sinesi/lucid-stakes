@@ -8,6 +8,8 @@ extends RefCounted
 
 const Cosmetics := preload("res://scripts/personajes/cosmetics.gd")
 
+const NOMBRE := "Ama"   # el gato se llama como la gata de Dante
+
 const PELO := Color(0.58, 0.56, 0.6)
 const OSCURO := Color(0.33, 0.32, 0.38)
 const CLARO := Color(0.94, 0.92, 0.88)

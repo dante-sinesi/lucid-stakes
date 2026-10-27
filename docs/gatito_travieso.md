@@ -1,6 +1,6 @@
 # El gatito travieso: el personaje
 
-El gato de la prueba "El gatito travieso" (`pruebas.md`). Está **inspirado en Ama, la gata de Dante**: un gato de pelo largo, gris atigrado, con la mirada seria y las orejas en punta. El modelo es `scripts/personajes/gatito_travieso.gd`, las poses y movimientos están en `scripts/personajes/gatito_anim.gd` y se pueden ver con `tests/capturas/shot_gatito_modelo.gd`.
+El gato de la prueba "El gatito travieso" (`pruebas.md`) se llama **Ama**, como la gata de Dante en la que está inspirado: un gato de pelo largo, gris atigrado, con la mirada seria y las orejas en punta. El modelo es `scripts/personajes/gatito_travieso.gd`, las poses y movimientos están en `scripts/personajes/gatito_anim.gd` y se pueden ver con `tests/capturas/shot_gatito_modelo.gd`.
 
 ## Cómo es
 
@@ -23,6 +23,8 @@ Lo "travieso" que se agregó: un **collar azul con cascabel** que suena cuando s
 2. **Saltar** de bloque en bloque: estira las patas en el aire y cae con un cascabelazo.
 3. **Empujar** el bloque con la patita, en tres golpecitos, **mirando al jugador de reojo**; el gato se va con el bloque encima.
 4. **Esperar junto a Farolín** en el checkpoint (abajo).
+
+**La cámara.** Mientras Ama mueve bloques, la cámara **pasa al centro de la sala y el zoom cambia para contenerla entera**, así se la ve moverse de bloque en bloque. Cuando llega al checkpoint, la cámara **vuelve al personaje** y al zoom de siempre, de a poco. (El zoom es el justo para la altura y el ancho de la sala; en las salas bajas casi no cambia.)
 
 **La espera: las poses de las fotos de Ama.** El gato espera en el bloque de salida mirando a Farolín. **Cuanto más tarda el jugador, más se va durmiendo**, pasando por las cuatro poses de las fotos:
 

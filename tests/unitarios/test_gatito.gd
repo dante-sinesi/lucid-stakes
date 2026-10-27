@@ -144,12 +144,27 @@ func test_juego() -> void:
 		check(torre.gatito_actuando, "el gato está en escena")
 		check(not torre.accion(Vector3i(1, 0, 0), 0).ok, "mientras el gato mueve bloques no se puede mover")
 		var tope := 0
+		var tam_max := 0.0
+		var cerca := 999.0
+		var lejos := 0.0
 		while torre.gatito_actuando and tope < 900:
 			await process_frame
 			OS.delay_msec(8)
 			tope += 1
+			var c: Dictionary = torre._gatito_camara()
+			tam_max = maxf(tam_max, torre.cam.size)
+			cerca = minf(cerca, torre.pivot.position.distance_to(c.foco))
+			lejos = maxf(lejos, torre.pivot.position.distance_to(torre.gato_nodo.position))
+		var meta_sala := int(torre.t.sala_actual().d.meta)
+		check(tam_max >= torre.zoom - 0.01 and tam_max >= minf(float(meta_sala) * 0.9 + 4.0, 36.0) - 0.6 and cerca < 1.0 and lejos > 0.5, "mientras Ama mueve bloques la cámara pasa al centro de la sala con el zoom que la contiene (%.1f para %d pisos, zoom de siempre %.1f, a %.2f del centro)" % [tam_max, meta_sala - 1, torre.zoom, cerca])
 		check(not torre.gatito_actuando and torre.t.gato_pendiente().is_empty(), "el gato terminó y la sala quedó cambiada")
 		check(torre.gatito_nodo.visible, "el gato se queda esperando en el checkpoint")
+		var vuelta := 0
+		while torre._gatito_vuelve and vuelta < 900:
+			await process_frame
+			OS.delay_msec(8)
+			vuelta += 1
+		check(not torre._gatito_vuelve and absf(torre.cam.size - torre.zoom) < 0.1 and torre.pivot.position.distance_to(torre.gato_nodo.position + Vector3(0, 0.5, 0)) < 0.2, "cuando Ama llega al checkpoint la cámara vuelve al personaje y al zoom de siempre (zoom %.2f)" % torre.cam.size)
 	else:
 		check(true, "(la primera sala de esta torre no tiene variante)")
 	# el comando de desarrollo "prueba": esa prueba en esa etapa

@@ -18,7 +18,7 @@ const CATALOG := {
 	"sin_ayudas": {"name": "Sin ayudas", "desc": "No se pueden usar consumibles.", "no_items": true},
 	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caes, se termina el run.", "no_retry": true},
 	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true},
-	"gatito": {"name": "El gatito travieso", "desc": "Al entrar a cada sala, un gato mueve de lugar unos bloques.", "gatito": true},
+	"gatito": {"name": "El gatito travieso", "desc": "Ama, una gata traviesa, mueve de lugar unos bloques al entrar a cada sala.", "gatito": true},
 }
 
 
