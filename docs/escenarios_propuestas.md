@@ -1,15 +1,15 @@
-# Escenarios: propuesta (los escenarios cambian reglas, no salas)
+# Escenarios: propuesta (los escenarios cambian reglas, no temas de salas)
 
 Borrador para conversar: nada de esto está programado salvo lo que se indica. Hoy se juegan tres (Tutorial, La Pesadilla y Sin piedad, que acá pasa a llamarse **El camino corto**) y cinco dicen "Próximamente" con descripciones de antes de la torre actual (`scripts/datos/scenarios.gd`, `catalogo.md`).
 
-## La decisión: los escenarios cambian las reglas del juego, nunca qué salas salen
+## La decisión: los escenarios cambian las reglas del juego, no los temas de salas
 
 Se descartó que un escenario elija salas por tema (Polvorín solo con bombas, Glaciar con hielo...). Con la biblioteca actual no alcanza para que las torres sigan pareciendo aleatorias:
 
 - Una partida usa unas **140 salas** (de 5 en la etapa 1 a 14 en la 15; las dos primeras de cada torre son comunes y cada sala tiene que encajar con la anterior).
 - Hay 272 salas con bomba (47 de Pesadilla), 402 con hielo, 287 con agrietado, 121 con pesado, 161 con pinchos y 168 con trampolín (6 de Pesadilla). Una torre solo de un tema gastaría más de la mitad del grupo en una partida y se repetiría enseguida.
 
-Por eso **la elección de salas es siempre la misma** (`Torre.armar` con su curva de dificultad y los especiales que se habilitan por etapa) y cada escenario cambia **cómo se juega**: vidas, movimientos, economía, contratos, qué especiales se habilitan cuándo. Así la aleatoriedad de las torres no se toca y los escenarios no dependen de generar más salas.
+Por eso **ningún escenario elige un tema de salas**: la elección sigue siendo la de `Torre.armar` (curva de dificultad y especiales que se habilitan por etapa) y cada escenario cambia **cómo se juega**: vidas, movimientos, economía, contratos, y en un caso qué tan temprano llegan los especiales y con qué frecuencia (Mundo abierto, sin favorecer ningún especial en particular). Así la aleatoriedad de las torres se conserva y los escenarios no dependen de generar más salas.
 
 ## Qué es un escenario
 
