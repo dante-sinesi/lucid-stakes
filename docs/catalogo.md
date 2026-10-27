@@ -146,6 +146,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Sin ayudas | No se pueden usar consumibles. |
 | Todo o nada | No hay reintentos: si caes, se termina el run. |
 | Sin racha | La racha no sube el multiplicador de claridad. |
+| El gatito travieso | Al entrar a cada sala, un gato mueve de lugar unos bloques. |
 
 ## Servicios del casino
 

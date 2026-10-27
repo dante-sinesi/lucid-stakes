@@ -17,7 +17,7 @@ Resumen (detalle en `reglas_torre.md`): un anillo de 11x11 alrededor de un vací
 - **Dificultad** (`Torre.niveles_para`): la curva de niveles de las salas sube por etapa; `PENDIENTE_DIFICULTAD` la corre según la dificultad elegida, `limites_aprendizaje` limita altura y largo en las primeras etapas (sobre todo en Fácil y Medio) y `MARGEN_DIFICULTAD` cambia el margen de movimientos. Los bloques especiales se habilitan de a poco (`ETAPA_ESPECIAL`: hielo, pesado, agrietado, trampa, pinchos, bomba, catapulta) y el tabernero avisa al descubrir uno nuevo.
 - **Claridad** (`torre/cosecha.gd`): valor por bloque purificado, racha y boosts de cosecha; se asegura en cada checkpoint y se pierde la del intento al morir.
 - **Biblioteca de salas:** `data/salas_torre.jsonl` (2855 salas), generada con `native/salas.cpp` (`generador.md`). El juego arma cada torre en el momento (`Torre.armar`, determinista por semilla); la demo también.
-- Las pruebas con reglas propias (Niebla, Oscuridad, Lluvia de meteoritos, Prisa, Hielo total, Quebradizo…) y varios premios y escenarios se retiraron junto con la torre vieja: hoy hay tres pruebas (Sin ayudas, Todo o nada, Sin racha). Las ideas pendientes están en `pendientes.md`.
+- Las pruebas con reglas propias (Niebla, Oscuridad, Lluvia de meteoritos, Prisa, Hielo total, Quebradizo…) y varios premios y escenarios se retiraron junto con la torre vieja: hoy hay cuatro pruebas (Sin ayudas, Todo o nada, Sin racha y **El gatito travieso**: al entrar a cada sala un gato mueve de dos a tres bloques comunes, con cambios seguros calculados antes en `data/variantes_gato.jsonl`; ver `generador.md`; las demás ideas están en `pruebas.md`). Las ideas pendientes están en `pendientes.md`.
 
 ## Casino
 

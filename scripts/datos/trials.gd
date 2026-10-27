@@ -4,7 +4,7 @@ extends RefCounted
 ## cuántas etapas faltan. Cada prueba cambia una regla de la torre, paga más claridad, regala un boost al superarla y, la primera
 ## vez, da un regalo (ver `reward`). Las habilidades persistentes no salen de acá: se ganan por escenario (ver scenarios.gd).
 ##
-## Una prueba es un diccionario: {id, name, desc, no_items (sin consumibles), no_retry (sin reintentos: si caes se termina el run), no_streak (la racha no sube el multiplicador)}.
+## Una prueba es un diccionario: {id, name, desc, no_items (sin consumibles), no_retry (sin reintentos: si caes se termina el run), no_streak (la racha no sube el multiplicador), gatito (al entrar a cada sala un gato mueve unos bloques: ver `Torre.armar` y docs/pruebas.md)}.
 ## `mult` (multiplicador de la claridad juntada) y `index` (0..4) se completan al sortear: las últimas pagan más.
 
 const Items := preload("res://scripts/datos/items.gd")
@@ -18,6 +18,7 @@ const CATALOG := {
 	"sin_ayudas": {"name": "Sin ayudas", "desc": "No se pueden usar consumibles.", "no_items": true},
 	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caes, se termina el run.", "no_retry": true},
 	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true},
+	"gatito": {"name": "El gatito travieso", "desc": "Al entrar a cada sala, un gato mueve de lugar unos bloques.", "gatito": true},
 }
 
 

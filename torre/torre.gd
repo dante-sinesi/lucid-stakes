@@ -152,6 +152,49 @@ static func camino_ok(d: Dictionary, obstaculos: Array = []) -> bool:
 
 # --- armado ---
 
+## Como `camino_ok`, pero un movimiento que no se puede hacer corta el camino (el de una variante del gato tiene que andar entero).
+static func camino_estricto(d: Dictionary, obstaculos: Array = []) -> bool:
+	var t = Vista.motor_de(d)
+	t.agregar_obstaculos(obstaculos)
+	for a in d.get("camino", []):
+		if not t.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2])).ok:
+			return false
+	return t.ganado
+
+
+# --- el gatito travieso (docs/pruebas.md): los cambios seguros de cada sala se calcularon antes (herramientas/variantes_gato.py) y viajan en data/variantes_gato.jsonl ---
+
+const DIRS_VARIANTE := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+static var _variantes := {}
+static var _variantes_cargadas := false
+
+
+## Las variantes de una sala de la biblioteca (por su id): [{k, mov: [[x, y, z, nx, nz]...], pasos, agarres, distintos, camino (texto)}]; [] si no tiene.
+static func variantes_de(id: int) -> Array:
+	if not _variantes_cargadas:
+		_variantes_cargadas = true
+		var f := FileAccess.open("res://data/variantes_gato.jsonl", FileAccess.READ)
+		if f != null:
+			while not f.eof_reached():
+				var l := f.get_line().strip_edges()
+				if l == "":
+					continue
+				var r = JSON.parse_string(l)
+				if r is Dictionary and not (r.variantes as Array).is_empty():
+					_variantes[int(r.id)] = r.variantes
+	return _variantes.get(id, [])
+
+
+## El camino de una variante (una letra por acción: 'a' + modo * 4 + índice de DIRS_VARIANTE) como lista de [dx, dz, modo].
+static func decodificar_camino(texto: String) -> Array:
+	var out: Array = []
+	for i in texto.length():
+		var a := texto.unicode_at(i) - 97
+		var dir: Vector2i = DIRS_VARIANTE[a % 4]
+		out.append([dir.x, dir.y, a / 4])
+	return out
+
+
 ## El paquete de salas que viaja con el juego (data/salas_torre.jsonl); si no está, el de bibliotecas/ (desarrollo).
 static func cargar_paquete_del_juego() -> Array:
 	var p := cargar_paquete("res://data/salas_torre.jsonl")
@@ -255,6 +298,8 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_r
 		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel), etapa_run, dificultad, float(reglas.get("margen_mov", 1.0)))
 		t.salas.append(e)
 		off += int(g.meta) - 1   # la entrada de la siguiente (nivel 1) queda en el nivel de salida de ésta
+	if bool(reglas.get("gatito", false)):   # la prueba "El gatito travieso": cada sala trae (si se puede) lo que va a mover el gato
+		t._poner_gatos(semilla, reglas)
 	if not t.salas.is_empty():
 		t._entrar(0)
 	return t
@@ -414,7 +459,7 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 					rechazos_choque += 1
 					continue
 			aceptados += 1
-			ctx.elegidas.append({"d": g, "sim": s, "id": int(datos.d.id)})
+			ctx.elegidas.append({"d": g, "sim": s, "id": int(datos.d.id), "dx": dx, "dz": dz, "orig": datos.d})
 			ctx.usadas[int(datos.d.id)] = true
 			if _extender(ctx, i + 1):
 				return true
@@ -494,6 +539,77 @@ func max_mov() -> int:
 	if perks.has("aire_extra"):
 		m += 4.0
 	return int(ceil(m)) + mov_extra + mov_run
+
+
+## Lo que va a hacer el gato al entrar a la sala actual ({} si no hace nada o ya lo hizo): {d (la sala ya cambiada), mov: [[desde, hasta]...] (celdas de la sala), max_mov}.
+func gato_pendiente() -> Dictionary:
+	var e: Dictionary = salas[indice]
+	return e.gato if e.has("gato") and not bool(e.get("gato_hecho", false)) else {}
+
+
+## El gato ya movió los bloques: la sala pasa a ser la cambiada (con su límite de movimientos) y se entra de nuevo, sin haber jugado nada.
+func aplicar_gato() -> void:
+	var g := gato_pendiente()
+	if g.is_empty():
+		return
+	var e: Dictionary = salas[indice]
+	e["d"] = g.d
+	e["max_mov"] = g.max_mov
+	e["gato_hecho"] = true
+	_entrar(indice)
+
+
+## Elige para cada sala una variante del gato que se pueda jugar en la torre: los bloques movidos caen en el anillo y el camino anda entero con los bloques de la sala de arriba al alcance.
+func _poner_gatos(semilla: int, reglas: Dictionary) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = semilla * 31 + 17
+	for i in salas.size():
+		var e: Dictionary = salas[i]
+		if not e.has("orig"):
+			continue
+		var vs: Array = variantes_de(int(e.id)).duplicate()
+		for k in range(vs.size() - 1, 0, -1):
+			var j := rng.randi_range(0, k)
+			var tmp = vs[k]
+			vs[k] = vs[j]
+			vs[j] = tmp
+		var obstaculos: Array = obstaculos_de(salas[i + 1].d, int(e.d.meta)) if i + 1 < salas.size() else []
+		for v in vs:
+			var g := _sala_con_gato(e, v)
+			if g.is_empty() or not camino_estricto(g.d, obstaculos):
+				continue
+			e["gato"] = {"d": g.d, "mov": g.mov, "max_mov": max_movimientos(int(v.pasos), str(e.d.nivel), etapa, dificultad, float(reglas.get("margen_mov", 1.0)))}
+			break
+
+
+## La sala `e` de la torre con una variante del gato aplicada (en el sistema de la torre: girada y corrida como la sala), o {} si no se puede.
+func _sala_con_gato(e: Dictionary, v: Dictionary) -> Dictionary:
+	var vd: Dictionary = (e.orig as Dictionary).duplicate(true)
+	var s := int(e.sim)
+	var dx := int(e.dx)
+	var dz := int(e.dz)
+	var movs: Array = []
+	for m in v.mov:
+		var y := int(m[1])
+		var hallado := false
+		for b in vd.bloques:
+			if int(b[0]) == int(m[0]) and int(b[1]) == y and int(b[2]) == int(m[2]) and str(b[3]) == "n":
+				b[0] = int(m[3])
+				b[2] = int(m[4])
+				hallado = true
+				break
+		if not hallado:
+			return {}
+		var a := xz_sim(int(m[0]), int(m[2]), s) + Vector2i(dx, dz)
+		var h := xz_sim(int(m[3]), int(m[4]), s) + Vector2i(dx, dz)
+		if not es_anillo(a.x, a.y) or not es_anillo(h.x, h.y):
+			return {}
+		movs.append([Vector3i(a.x, y, a.y), Vector3i(h.x, y, h.y)])
+	vd["camino"] = decodificar_camino(str(v.camino))
+	vd["pasos"] = int(v.pasos)
+	vd["agarres"] = int(v.agarres)
+	vd["distintos"] = int(v.distintos)
+	return {"d": mover(girar(vd, s), dx, dz), "mov": movs}
 
 
 func _entrar(i: int) -> void:

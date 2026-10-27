@@ -21,6 +21,7 @@ const Solucionador := preload("res://torre/solucionador.gd")
 const Nat := preload("res://torre/nativo.gd")
 const Farolin := preload("res://scripts/personajes/farolin.gd")
 const Animacion := preload("res://scripts/personajes/animacion.gd")
+const Sfx := preload("res://scripts/sonido/sfx.gd")
 const Efectos := preload("res://torre/efectos.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const Profile := preload("res://scripts/datos/profile.gd")     # (el personaje y los cosméticos que eligió el jugador)
@@ -113,6 +114,11 @@ var _rastro_pendiente: Array = []   # las celdas por las que pasó el personaje 
 var farolin: Node3D            # Farolín espera en el próximo checkpoint (sólo en ése)
 var faro_modelo: Node3D        # (su modelo, sentado)
 var faro_tronco: Node3D        # (el tronquito en el que se apoya)
+var _faro_esquina := Vector2i(-1, -1)   # (la esquina del bloque de salida en la que se sienta Farolín)
+var gatito_nodo: Node3D        # el gato de la prueba "El gatito travieso" (por ahora un gatito del juego; después tendrá su propio modelo)
+var gatito_anim: Node          # (sus animaciones)
+var gatito_actuando := false   # el gato está moviendo bloques: no se juega hasta que termina
+var _gatito_sala := -1         # la sala en la que está el gato (si se cambia de sala, se esconde)
 var _temblando := false      # la sala tiembla cuando quedan la mitad de los movimientos o menos
 
 
@@ -163,6 +169,14 @@ func _ready() -> void:
 	var tronco := Farolin.tronco()
 	tronco.position = Vector3(0.0, 0.065, -0.17)   # (detrás de Farolín, atravesado)
 	pivote.add_child(tronco)
+	gatito_nodo = Node3D.new()
+	gatito_nodo.visible = false
+	add_child(gatito_nodo)
+	var gatito_modelo := Characters.build("gato", "", "")
+	gatito_nodo.add_child(gatito_modelo)
+	gatito_nodo.scale = Vector3(0.72, 0.72, 0.72)   # (más chico que el personaje: un gatito)
+	gatito_anim = Animacion.new(gatito_modelo)
+	gatito_nodo.add_child(gatito_anim)
 	player_node = gato_nodo
 	efectos = Efectos.new(self)
 	efectos.juice.body = gato
@@ -265,6 +279,7 @@ func _refrescar(animar := false) -> void:
 	else:
 		_ocultar_arriba()
 	_poner_farolin()
+	_gatito_revisar()
 	texto_hud.visible = not en_juego   # (dentro del juego no hay texto de depuración: el HUD es el del juego)
 	texto_hud.text = "Sala %d de %d   ·   Movimientos %d / %d   ·   Vidas %d   ·   Claridad %d%s" % [t.indice + 1, t.salas.size(), t.movs, t.max_mov(), (int(vidas_fn.call()) if vidas_fn.is_valid() else t.vidas), t.cosecha.claridad(), ("  (racha ×%.1f)" % t.cosecha.streak_mult(t.cosecha.streak)) if t.cosecha.streak > 1 else ""]
 
@@ -486,6 +501,7 @@ func _poner_farolin() -> void:
 		if p < mejor_puntaje:
 			mejor_puntaje = p
 			mejor = esq
+	_faro_esquina = mejor
 	var ang := atan2(-float(mejor.x), -float(mejor.y))   # (de la esquina hacia el centro del cubo)
 	var pos := Vector3(0.27 * mejor.x, 0.0, 0.27 * mejor.y)
 	faro_modelo.position = pos
@@ -691,6 +707,8 @@ func _avisar_contratos(m, evento: String) -> void:
 
 ## Una acción del jugador (también la usan las pruebas).
 func accion(dir: Vector3i, modo: int) -> Dictionary:
+	if gatito_actuando:   # (el gato todavía está moviendo bloques)
+		return {"ok": false, "msg": "", "evento": ""}
 	var motor_antes = t.motor
 	var antes_y: int = motor_antes.jugador.y
 	var off_antes := float(int(t.sala_actual().off))
@@ -852,7 +870,7 @@ func _caer_derrota(motivo: String, lento: float) -> void:
 
 ## Volver a empezar la sala perdida (reintentar): se acomoda todo como al entrar a ella.
 func reiniciar_sala() -> void:
-	if t == null:
+	if t == null or gatito_actuando:
 		return
 	t.reintentar_sala()
 	for tw in _tweens_derrota:   # (si se reintenta antes de que termine la caída, ésta se corta: si no, seguiría moviendo al personaje y la sala)
@@ -878,13 +896,107 @@ func actualizar() -> void:
 
 ## Deshace el último movimiento de la sala actual. true si había algo que deshacer.
 func deshacer() -> bool:
-	if t == null or not t.deshacer():
+	if t == null or gatito_actuando or not t.deshacer():
 		return false
 	if falsos != null:
 		falsos.medir(t.motor)   # (después de deshacer se mide de nuevo sin contar)
 	_refrescar(false)
 	accion_hecha.emit()
 	return true
+
+
+# --- el gatito travieso (docs/pruebas.md): al entrar a una sala de la prueba, un gato salta de bloque en bloque y los mueve de lugar ---
+
+## Si la sala que se acaba de dibujar tiene un cambio del gato pendiente, el gato entra en escena. Si se cambió de sala, se esconde.
+func _gatito_revisar() -> void:
+	if not en_juego or gatito_nodo == null or t == null:
+		return
+	if not gatito_actuando and _gatito_sala != t.indice:
+		gatito_nodo.visible = false
+	if gatito_actuando:
+		return
+	var g: Dictionary = t.gato_pendiente()
+	if not g.is_empty():
+		_gatito_actuar(g)
+
+
+func _gatito_esperar(seg: float) -> void:
+	await get_tree().create_timer(seg).timeout
+
+
+## El gato va de un punto a otro con un salto (un arco) y mirando hacia adonde va.
+func _gatito_saltar(destino: Vector3, seg: float, altura := 0.55) -> void:
+	var origen := gatito_nodo.position
+	var d := destino - origen
+	if absf(d.x) + absf(d.z) > 0.01:
+		gatito_nodo.rotation.y = atan2(d.x, d.z)
+	gatito_anim.reproducir("caminar", seg)
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void: gatito_nodo.position = origen.lerp(destino, k) + Vector3(0.0, sin(k * PI) * altura, 0.0), 0.0, 1.0, seg)
+	await tw.finished
+
+
+## La malla del bloque que está en la celda `c` de la sala viva.
+func _malla_en(c: Vector3i) -> Node3D:
+	for h in vivo.get_children():
+		var mi := h as Node3D
+		if mi != null and Vector3i(floori(mi.position.x), floori(mi.position.y), floori(mi.position.z)) == c and t.motor.ids.has(c):
+			return mi
+	return null
+
+
+func _gatito_actuar(g: Dictionary) -> void:
+	gatito_actuando = true
+	var torre_ref = t
+	var sala_i: int = t.indice
+	_gatito_sala = sala_i
+	var off := float(int(t.sala_actual().off))
+	var vivo_aun := func() -> bool: return is_inside_tree() and t == torre_ref and t.indice == sala_i
+	var entrada: Vector3i = t.motor.jugador
+	gatito_nodo.position = Vector3(entrada.x + 0.5 + 0.2, entrada.y + off, entrada.z + 0.5 + 0.2)   # (aparece sobre el bloque de entrada, al lado del personaje)
+	gatito_nodo.visible = true
+	await _gatito_esperar(0.45)
+	for m in g.mov:
+		if not vivo_aun.call():
+			gatito_actuando = false
+			return
+		var desde: Vector3i = m[0]
+		var hasta: Vector3i = m[1]
+		var dir := Vector3(hasta.x - desde.x, 0, hasta.z - desde.z)
+		await _gatito_saltar(Vector3(desde.x + 0.5, desde.y + 1 + off, desde.z + 0.5), 0.38)   # arriba del bloque que va a mover
+		if not vivo_aun.call():
+			gatito_actuando = false
+			return
+		gatito_nodo.rotation.y = atan2(dir.x, dir.z)
+		var malla := _malla_en(desde)
+		gatito_anim.reproducir("empujar", 0.5)
+		await _gatito_esperar(0.25)
+		Sfx.play("chip", 1.25, -6.0)
+		if malla != null and is_instance_valid(malla):
+			malla.create_tween().tween_property(malla, "position", malla.position + dir, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		var tw := create_tween()   # (el gato se va con el bloque: viaja encima)
+		tw.tween_property(gatito_nodo, "position", gatito_nodo.position + dir, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		await tw.finished
+		await _gatito_esperar(0.15)
+	if not vivo_aun.call():
+		gatito_actuando = false
+		return
+	# se va al bloque de salida, donde espera junto a Farolín
+	var s: Vector2i = Torre.salida_xz(t.sala_actual().d)
+	var meta: int = int(t.sala_actual().d.meta)
+	if s.x >= 0:
+		await _gatito_saltar(Vector3(s.x + 0.5 - 0.27 * _faro_esquina.x, off + meta + 1, s.y + 0.5 - 0.27 * _faro_esquina.y), 0.6, 0.9)
+		gatito_nodo.rotation.y = atan2(float(_faro_esquina.x), float(_faro_esquina.y))
+	if not vivo_aun.call():
+		gatito_actuando = false
+		return
+	t.aplicar_gato()   # la sala pasa a ser la cambiada (con su límite de movimientos)
+	if falsos != null:
+		falsos.sala_nueva(t.motor)
+		falsos_cambiaron.emit(falsos.quedan(), falsos_permitidos, false, false)
+	gatito_actuando = false
+	_refrescar(false)
+	accion_hecha.emit()
 
 
 ## La sala anterior cae por el checkpoint: se la ve hundirse y desaparece.
