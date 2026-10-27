@@ -1,10 +1,10 @@
 @echo off
-rem Arma bibliotecas\generador_portable\: generador_salas.exe (el generador de noche_salas.py hecho .exe, sin Python) + salas.exe + las salas base de partida (las de data\salas_torre.jsonl).
+rem Arma bibliotecas\generador_portable\: generador_salas.exe (el generador de generador_salas.py hecho .exe, sin Python) + salas.exe + las salas base de partida (las de data\salas_torre.jsonl).
 rem Se copia la carpeta entera a otra computadora con Windows y se corre generador_salas.bat (no hace falta instalar nada). Hace falta PyInstaller (pip install pyinstaller).
 setlocal
 cd /d "%~dp0.."
 if not exist tools\salas.exe call native\construir.bat
-python -m PyInstaller --onefile --noconfirm --name generador_salas --distpath bibliotecas\generador_portable --workpath bibliotecas\pyi_trabajo --specpath bibliotecas\pyi_trabajo herramientas\noche_salas.py
+python -m PyInstaller --onefile --noconfirm --name generador_salas --distpath bibliotecas\generador_portable --workpath bibliotecas\pyi_trabajo --specpath bibliotecas\pyi_trabajo herramientas\generador_salas.py
 if errorlevel 1 exit /b 1
 copy /y tools\salas.exe bibliotecas\generador_portable\salas.exe >nul
 copy /y data\salas_torre.jsonl bibliotecas\generador_portable\paquete_salas.jsonl >nul

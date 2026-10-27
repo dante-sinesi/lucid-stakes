@@ -1,7 +1,8 @@
-"""Genera salas sin parar hasta una hora: salas base (con la misma distribución de siempre: niveles y tamaños de `trabajador_salas.ps1`) y salas con especiales (pinchos, pesado, agrietado,
-hielo -con líneas largas-, trampolín y bomba, y mixtas encadenando dos o tres roles) especializando salas base con `tools/salas.exe --especializar` (ver docs/generador.md).
-Varios procesos a la vez; todo va a bibliotecas/noche/<categoria>_<n>.jsonl y el avance a bibliotecas/noche/registro.txt (nada toca data/ ni el paquete: después se juntan con armar_paquete.py).
-Uso: python herramientas/noche_salas.py [--hasta 08:00 | --minutos 30] [--procesos 7]   (sin --hasta ni --minutos no tiene límite: se corta creando `parar.txt` en la carpeta de salida o cerrando la ventana)
+"""EL generador de salas: genera sin parar (o hasta una hora) salas base y salas con especiales (pinchos, pesado, agrietado, hielo -con líneas largas-, trampolín, bomba y mixtas que
+encadenan dos o tres), especializando salas base con `tools/salas.exe --especializar` (ver docs/generador.md). Varios procesos a la vez.
+Lo generado va a bibliotecas/generadas/<categoria>_<n>.jsonl y el avance a bibliotecas/generadas/registro.txt (nada toca data/: después se suma con sumar_salas.py).
+Uso: python herramientas/generador_salas.py [--hasta 08:00 | --minutos 30] [--procesos 7] [--tipos 3x3,5x3,8x3] [--hmax N] [--nivel 1-5] [--base 45] [--roles hielo=60,bomba=40]
+Sin --hasta ni --minutos no tiene límite: se corta creando `parar.txt` en la carpeta de salida (mata las salas en curso) o cerrando la ventana.
 Portable: herramientas/armar_portable.bat arma bibliotecas/generador_portable/ (generador_salas.exe + salas.exe + paquete_salas.jsonl) para correrlo en otra computadora sin instalar nada."""
 import argparse, glob, json, os, random, subprocess, sys, time, datetime, math
 
@@ -13,7 +14,7 @@ if getattr(sys, 'frozen', False):   # el .exe portable (herramientas/armar_porta
 else:
     RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
     EXE = os.path.join(RAIZ, 'tools', 'salas.exe')
-    SALIDA = os.path.join(RAIZ, 'bibliotecas', 'noche')
+    SALIDA = os.path.join(RAIZ, 'bibliotecas', 'generadas')
     BASES = os.path.join(RAIZ, 'bibliotecas', 'paquete_salas.jsonl')
 ALTURAS = {'3x3': [5, 6, 7, 8, 9], '5x3': [6, 8, 9, 10, 12, 13, 15], '8x3': [8, 10, 12, 14, 16, 18, 20, 22, 24]}
 NIVELES = [1, 2, 1, 3, 2, 4, 3, 5]   # (se reparte entre los cinco niveles: más fáciles que difíciles)
@@ -24,7 +25,7 @@ TOPE_HIELO = {'3x3': 3, '5x3': 5, '8x3': 6}
 
 
 def config_base(tipo, h, nivel):
-    """La misma fórmula de `trabajador_salas.ps1` (Config)."""
+    """La configuración del generador de una sala base según su tamaño, altura y nivel (1 muy fácil a 5 pesadilla)."""
     grande = tipo != '3x3'
     extras_base = 2.3 * h if grande else 1.3 * h + 1
     f = {1: 0.15, 2: 0.4, 3: 0.7, 4: 0.9, 5: 1.0}[nivel]
@@ -74,17 +75,20 @@ def guardar(archivo, d):
         f.write(json.dumps(d) + '\n')
 
 
-def trabajar(idx, fin, base_inicial, cont):
+def trabajar(idx, fin, base_inicial, cont, cfg):
     rng = random.Random(time.time_ns() ^ (idx * 7919))
     k = idx * 3
     semilla = 5000 + idx * 100000 + int(time.time()) % 90000
     pool = list(base_inicial)
-    tipos = ['3x3', '5x3', '8x3']
+    tipos = cfg['tipos']
+    pesos_tipo = [{'3x3': 40, '5x3': 35, '8x3': 25}[t] for t in tipos]
+    roles = cfg['roles']
     while datetime.datetime.now() < fin and not os.path.exists(PARAR):
-        if rng.random() < 0.45 or not pool:   # una sala base nueva
-            tipo = rng.choices(tipos, weights=[40, 35, 25])[0]
-            h = rng.choice([a for a in ALTURAS[tipo] if a <= (20 if tipo == '8x3' else 15)])
-            nivel = NIVELES[k % 8]
+        if rng.random() < cfg['base'] / 100.0 or not pool:   # una sala base nueva
+            tipo = rng.choices(tipos, weights=pesos_tipo)[0]
+            alturas = [a for a in ALTURAS[tipo] if a <= min(cfg['hmax'], 20 if tipo == '8x3' else 15)] or [min(ALTURAS[tipo])]
+            h = rng.choice(alturas)
+            nivel = cfg['nivel'] or NIVELES[k % 8]
             k += 1
             semilla += 1
             cfg = config_base(tipo, h, nivel) + ['wd=12', 'evaluar=16', 'temp=3', 'salto=3', 'n=1', 'seed=%d' % semilla]
@@ -107,7 +111,7 @@ def trabajar(idx, fin, base_inicial, cont):
         roles = []
         actual = d
         for paso in range(n_roles):
-            rol = rng.choices([r for r, _ in ROLES], weights=[w for _, w in ROLES])[0]
+            rol = rng.choices([r for r, _ in roles], weights=[w for _, w in roles])[0]
             if rol in roles and rol != 'hielo':
                 continue
             env = dict(os.environ)
@@ -146,7 +150,22 @@ def principal():
     ap.add_argument('--hasta', default='')
     ap.add_argument('--minutos', type=float, default=0)
     ap.add_argument('--procesos', type=int, default=7)
+    ap.add_argument('--tipos', default='3x3,5x3,8x3', help='tamaños a generar, separados por coma')
+    ap.add_argument('--hmax', type=int, default=99, help='altura máxima de las salas base (en niveles)')
+    ap.add_argument('--nivel', type=int, default=0, help='un nivel fijo para las salas base (1 muy fácil a 5 pesadilla); 0 las reparte')
+    ap.add_argument('--base', type=int, default=45, help='porcentaje de salas base nuevas (el resto son salas con especiales)')
+    ap.add_argument('--roles', default='', help='pesos de los especiales, por ejemplo hielo=60,bomba=40 (los que no se nombran no salen); por omisión, el reparto de siempre')
     a = ap.parse_args()
+    roles = ROLES
+    if a.roles:
+        roles = [(x.split('=')[0], int(x.split('=')[1]) if '=' in x else 1) for x in a.roles.split(',') if x]
+        desconocidos = [r for r, _ in roles if r not in dict(ROLES)]
+        if desconocidos:
+            sys.exit('rol desconocido: %s (los que hay: %s)' % (', '.join(desconocidos), ', '.join(r for r, _ in ROLES)))
+    tipos = [t for t in a.tipos.split(',') if t in ALTURAS]
+    if not tipos:
+        sys.exit('tipos desconocidos: hay 3x3, 5x3 y 8x3')
+    cfg = {'tipos': tipos, 'hmax': a.hmax, 'nivel': a.nivel, 'base': a.base, 'roles': roles}
     ahora = datetime.datetime.now()
     if a.minutos > 0:
         fin = ahora + datetime.timedelta(minutes=a.minutos)
@@ -175,7 +194,7 @@ def principal():
     import multiprocessing as mp
     procs = []
     for i in range(a.procesos):
-        p = mp.Process(target=_proceso, args=(i, fin, base))
+        p = mp.Process(target=_proceso, args=(i, fin, base, cfg))
         p.start()
         procs.append(p)
     ultimo = 0.0
@@ -190,8 +209,8 @@ def principal():
         f.write('%s: terminó. %s\n' % (datetime.datetime.now().strftime('%d/%m %H:%M'), _resumen()))
 
 
-def _proceso(idx, fin, base):
-    trabajar(idx, fin, base, {})   # (el resumen se saca de los archivos)
+def _proceso(idx, fin, base, cfg):
+    trabajar(idx, fin, base, {}, cfg)   # (el resumen se saca de los archivos)
 
 
 def _resumen():

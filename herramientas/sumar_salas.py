@@ -1,4 +1,4 @@
-"""Suma a la biblioteca del juego (data/salas_torre.jsonl) las salas que dejó `noche_salas.py` (o el .exe portable) en una o más carpetas.
+"""Suma a la biblioteca del juego (data/salas_torre.jsonl) las salas que dejó `generador_salas.py` (o el .exe portable) en una o más carpetas.
 Las salas que ya estaban no se tocan ni cambian de id; las nuevas se agregan al final (sin repetidas: mismos bloques y mismo jugador), con id, nivel por complejidad y pisos.
 Uso: python herramientas/sumar_salas.py carpeta [carpeta ...] [salida=data/salas_torre.jsonl]
 Después: herramientas/revisar_forma_salas.py y tests/unitarios/test_paquete_salas.gd sobre el resultado (ver docs/generador.md)."""
