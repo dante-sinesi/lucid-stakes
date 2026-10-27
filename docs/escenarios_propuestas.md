@@ -19,9 +19,9 @@ Las entradas y los multiplicadores de Luz siguen el rango actual (de 15 a 35 de 
 
 ## Dificultades
 
-**Todos los escenarios tienen las cuatro dificultades de La Pesadilla** (Fácil, Medio, Difícil y Pesadilla), con el mismo selector, la misma curva de niveles de las salas (`PENDIENTE_DIFICULTAD`) y los mismos márgenes de movimientos (`MARGEN_DIFICULTAD`). La dificultad se elige al empezar, después del escenario.
+**La Pesadilla** tiene las cuatro (Fácil, Medio, Difícil y Pesadilla), como hoy. **Los demás escenarios tienen solo Medio, Difícil y Pesadilla**: sin Fácil. Fácil es el modo de práctica de La Pesadilla (movimientos ilimitados y modo pista) y con eso las reglas propias de un escenario perderían sentido (Relojería no recorta movimientos que no se cuentan, y los movimientos en falso de El camino corto no pesan con una pista a mano).
 
-**En Fácil, todos los escenarios tienen la misma regla que La Pesadilla:** movimientos ilimitados, modo pista, Luz ×0,25 y sin cosméticos. O sea, en Fácil la regla propia del escenario no corre: es la práctica de siempre. Las reglas propias se sienten en Medio, Difícil y Pesadilla. (Si preferías que la regla del escenario siga también en Fácil, ver pregunta 1.)
+Los tres niveles usan la misma curva de niveles de las salas (`PENDIENTE_DIFICULTAD`) y los mismos márgenes de movimientos (`MARGEN_DIFICULTAD`) que en La Pesadilla. La dificultad se elige al empezar, después del escenario.
 
 ## Los siete escenarios
 
@@ -42,7 +42,7 @@ Es el escenario de la **precisión**: el mejor camino de cada sala es el que mid
 Una sola vida y no valen el Tótem ni las Vidas extra: perder una sala termina el run. Es el más duro y el más cercano a la muerte permanente. Ya está en el código (`lives: 1`, `permadeath`, `no_totem`, `no_extra_life`). Pruebas: Sin ayudas, Sin racha. Habilidad: **Corazón extra** (una vida más en todas las partidas, 4 corazones; no cuenta en Compromiso). *Falta:* la habilidad (`Abilities.PENDING`) y reescribir el texto del escenario.
 
 ### Gran Casino
-El casino es de lujo desde el principio (`casino_tier: 3`) y la ficha cuesta un 20 % menos (`price_mult: 0.8`), pero las torres son más difíciles: toda la curva de niveles corre un escalón por encima de la dificultad elegida (con tope en Pesadilla; en Fácil no corre). Pruebas: Sin ayudas, Todo o nada, Sin racha. Habilidades: **Bolsillo de soñador** (un lugar más para consumibles) y **Segunda oportunidad** (reintentar la torre cuesta un 15 % menos). *Falta:* el corrimiento de dificultad por escenario y las dos habilidades.
+El casino es de lujo desde el principio (`casino_tier: 3`) y la ficha cuesta un 20 % menos (`price_mult: 0.8`), pero las torres son más difíciles: toda la curva de niveles corre un escalón por encima de la dificultad elegida (con tope en Pesadilla). Pruebas: Sin ayudas, Todo o nada, Sin racha. Habilidades: **Bolsillo de soñador** (un lugar más para consumibles) y **Segunda oportunidad** (reintentar la torre cuesta un 15 % menos). *Falta:* el corrimiento de dificultad por escenario y las dos habilidades.
 
 ### Relojería
 Cada sala da menos movimientos: el margen por sobre el mínimo (el factor y los movimientos extra de `Torre.max_movimientos`) se reduce a la mitad, a la manera de `MARGEN_DIFICULTAD`. A cambio, la ficha de la ruleta es más barata (×0,75, ya soportado). Pruebas: Todo o nada, Sin racha. Habilidad: **Pies ligeros** (cada sala tiene un movimiento más). *Falta:* un `MARGEN_ESCENARIO` junto a `MARGEN_DIFICULTAD`, y la habilidad.
@@ -79,7 +79,7 @@ Las cinco habilidades que estaban pendientes (`Abilities.PENDING`) se reparten a
 | `MARGEN_ESCENARIO` (recorte de movimientos) | Relojería |
 | Parámetros de contratos por escenario | Contratista |
 | Etapa de habilitación de los especiales por escenario y peso de las salas con especiales en `Torre.armar` | Mundo abierto |
-| Selector de dificultad en todos los escenarios y regla propia apagada en Fácil | todos |
+| Selector de dificultad (Medio, Difícil y Pesadilla) en los escenarios que no son La Pesadilla | todos |
 | Cambiar el nombre de Sin piedad a El camino corto (texto, inglés, catálogo) | El camino corto |
 | Multiplicador de peaje y de premios | Usurero |
 | Las siete habilidades nuevas | todos menos El camino corto |
@@ -95,8 +95,7 @@ Cada pieza se puede hacer por separado, y cada escenario se habilita cuando tien
 
 ## Preguntas abiertas
 
-1. **Fácil sin la regla propia:** entendí que en Fácil todos juegan con la regla de La Pesadilla (movimientos ilimitados y pista), así que la regla del escenario no corre. Alternativa: que la regla del escenario siga en Fácil menos lo que choque con los movimientos ilimitados (Relojería y los movimientos en falso de El camino corto no tienen sentido con pista). ¿Cuál preferís? Además: ¿al escapar en Fácil se gana la habilidad del escenario? Hoy Fácil da la Luz reducida y ningún cosmético.
-2. **Desbloqueo:** hoy se pagan con Luz y están todos disponibles. Alternativa: escapar en uno abre el siguiente.
-3. **Pruebas:** los escenarios eligen su pool de un grupo de tres (Sin ayudas, Todo o nada, Sin racha). ¿Hace falta alguna prueba propia de un escenario?
-4. **Números:** las entradas y los multiplicadores de Luz son de partida; se calibran jugando, no con el bot.
-5. **Orden de construcción:** lo más barato es Compromiso (solo la habilidad), seguido de Relojería, Contratista y Usurero. Mundo abierto y Gran Casino piden más piezas nuevas.
+1. **Desbloqueo:** hoy se pagan con Luz y están todos disponibles. Alternativa: escapar en uno abre el siguiente.
+2. **Pruebas:** los escenarios eligen su pool de un grupo de tres (Sin ayudas, Todo o nada, Sin racha). ¿Hace falta alguna prueba propia de un escenario?
+3. **Números:** las entradas y los multiplicadores de Luz son de partida; se calibran jugando, no con el bot.
+4. **Orden de construcción:** lo más barato es Compromiso (solo la habilidad), seguido de Relojería, Contratista y Usurero. Mundo abierto y Gran Casino piden más piezas nuevas.
