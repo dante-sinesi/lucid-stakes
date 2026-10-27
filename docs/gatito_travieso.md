@@ -1,54 +1,48 @@
 # El gatito travieso: el personaje
 
-Diseño del gato de la prueba "El gatito travieso" (`pruebas.md`). Hoy el juego usa de reemplazo el modelo del personaje gatito; esto es el diseño del gato verdadero.
+El gato de la prueba "El gatito travieso" (`pruebas.md`). Está **inspirado en Ama, la gata de Dante**: un gato de pelo largo, gris atigrado, con la mirada seria y las orejas en punta. El modelo es `scripts/personajes/gatito_travieso.gd`, las poses y movimientos están en `scripts/personajes/gatito_anim.gd` y se pueden ver con `tests/capturas/shot_gatito_modelo.gd`.
 
 ## Cómo es
 
-Un gato **de cuatro patas, cuerpo largo y cabeza cuadrada** como los de Minecraft, pero con personalidad propia. Mide la mitad de un personaje (unos 0,5 de alto y de largo), así que se ve chiquito al lado de quien juega. El código es `scripts/personajes/gatito_travieso.gd` y hay una captura para compararlos (`tests/capturas/shot_gatito_modelo.gd`).
+Un gato **de cuatro patas, cuerpo largo y cabeza cuadrada** como los de Minecraft, pero con la personalidad de Ama. Mide la mitad de un personaje y cabe en un bloque.
 
-Lo que lo diferencia de un gato de Minecraft:
-- **Orejas desparejas:** una tiene la punta doblada (una oreja que se rompió en alguna travesura).
-- **Ojos de reojo:** entornados, con la pupila vertical y el párpado marcado, como si siempre estuviera planeando algo. En el atigrado, **de distinto color** (uno verde y uno ámbar).
-- **Cascabel:** un collar con cascabel que suena cuando salta (y delata sus travesuras).
-- **Cola con punta clara y en gancho.**
-- **Más expresivo:** orejas y bigotes que se mueven, y animaciones propias (abajo).
+De Ama:
+- **Pelo gris atigrado**, con rayas finas en los costados, las patas y el lomo, y los anillos en la cola esponjada, que termina en punta oscura.
+- **Pechera blanca** esponjosa, cachetes crema y las patitas claras.
+- **La "M" de la frente**: tres rayas oscuras, y las marcas a los costados de los ojos.
+- **Ojos verde claro** con la pupila vertical y el párpado a medio cerrar: la mirada seria y de reojo de las fotos.
+- **Orejas en punta con mechones**, de adentro rosadas. La derecha tiene la punta **doblada**, como en una de las fotos.
+- **Nariz durazno** y bigotes largos y claros.
 
-## Los tres diseños para elegir
-
-| | Diseño | Cómo es |
-|---|---|---|
-| 1 | **Atigrado** | gris con rayas oscuras en el lomo y la frente, medias y pecho blancos, ojos de distinto color, collar rojo |
-| 2 | **Smoking** | negro con pecho, patas y hocico blancos, bigote blanco, ojos amarillos, collar azul |
-| 3 | **Siamés** | crema con máscara, orejas, patas y cola marrón oscuro, ojos azules, collar verde |
-
-Ninguno se parece al gatito naranja del jugador. El atigrado tiene los ojos de colores distintos, que es lo más "con personalidad"; el smoking es el más elegante y el que mejor se lee sobre los bloques oscuros de la torre; el siamés es el más claro y el que más resalta.
+Lo "travieso" que se agregó: un **collar azul con cascabel** que suena cuando salta (y delata sus travesuras).
 
 ## Las animaciones
 
-**Para la prueba (primero):**
-1. **Aparecer:** entra trotando al bloque de entrada.
-2. **Trotar:** cuatro patas en diagonal, la cola en alto.
-3. **Saltar:** se agacha, salta y cae con un cascabelazo.
-4. **Empujar:** se para y empuja el bloque con la patita, mirando al jugador de reojo.
-5. **Esperar sentado:** en el checkpoint, la cola se mueve, las orejas giran, parpadea.
+**En la prueba:**
+1. **Aparecer** sobre el bloque de entrada, junto al personaje.
+2. **Saltar** de bloque en bloque: estira las patas en el aire y cae con un cascabelazo.
+3. **Empujar** el bloque con la patita, en tres golpecitos, **mirando al jugador de reojo**; el gato se va con el bloque encima.
+4. **Esperar junto a Farolín** en el checkpoint (abajo).
 
-**Con Farolín (después):**
-6. **Se frota contra Farolín** y ronronea (tiembla un poquito).
-7. **Persigue la llama** con la mirada y la quiere atrapar con la pata; Farolín la aleja.
-8. **Farolín lo mira de reojo** y se hace el distraído mientras el gato le roba el sombrero (¡una travesura más!).
-9. **Se duerme** hecho un bollito junto a Farolín cuando el jugador tarda mucho.
+**La espera: las poses de las fotos de Ama.** El gato espera en el bloque de salida mirando a Farolín. **Cuanto más tarda el jugador, más se va durmiendo**, pasando por las cuatro poses de las fotos:
 
-**Reacciones del gato en la torre (opcional):** se erizan los pelos si hay una bomba cerca; se tapa los ojos con la pata si el jugador pierde la sala.
+| Pose | De qué foto | Cuánto dura |
+|---|---|---|
+| **Sentada**, atenta, con la cabeza girada de reojo | el retrato | 6 s |
+| **Esfinge** ("pan de carne"): echada, con las patitas metidas, atenta | la que está acostada sobre el piso | 9 s |
+| **Estirada**: las patas delanteras estiradas hacia adelante, la cabeza baja, los ojos cerrados | la que está dormitando estirada | 9 s |
+| **Bollito**: hecha un ovillo, durmiendo, con una patita estirada y la cola alrededor | la que duerme al sol | hasta que el jugador sigue |
 
-## Cómo se construiría
+En todas mueve la cola despacio, las orejas de vez en cuando y parpadea (dormida, casi no se mueve). Los cambios de pose son suaves.
 
-- Cada parte tiene un nombre para las animaciones: `cabeza`, `oreja_i`, `oreja_d`, `pata_di`, `pata_dd`, `pata_ti`, `pata_td` (delanteras y traseras), `cola_1`, `cola_2` y `cascabel`.
-- Las animaciones del gato son propias (no sirven las del personaje, que es de dos patas): un módulo aparte con las poses de cada una.
-- El modelo se hace con cubos en el código, como Farolín y los personajes. Si prefieres retocarlo a mano después, se puede pasar al **editor de modelos** (`editor_modelos.md`).
+## Lo que viene (segunda etapa)
 
-## Preguntas
+Las animaciones con Farolín: se frota contra él y ronronea, persigue la llama con la mirada, le roba el sombrero mientras se hace el distraído, y se duerme apoyado en él. También reacciones en la torre (se eriza si hay una bomba cerca, se tapa los ojos con la pata si el jugador pierde la sala).
 
-1. ¿Cuál de los tres diseños?
-2. ¿Le damos un nombre? Mi propuesta: **Cascabel**.
-3. ¿Las animaciones con Farolín las dejamos para una segunda etapa?
-4. ¿Algún detalle más de personalidad que quieras?
+## Cómo está hecho
+
+- Cada parte tiene un nombre: `cuerpo`, `cabeza`, `oreja_i`, `oreja_d`, `pata_di`, `pata_dd`, `pata_ti`, `pata_td` (delanteras y traseras), `cola_1`, `cola_2`, `cascabel`, `ojo_i` y `ojo_d`.
+- Una **pose** es un diccionario por parte (posición, giro y escala) que se aplica de golpe o se mezcla con otra para los cambios suaves.
+- Las animaciones del gato son propias (no sirven las del personaje, que es de dos patas).
+- El modelo se hace con cubos en el código, como Farolín y los personajes; si se prefiere retocar a mano, se puede pasar al **editor de modelos** (`editor_modelos.md`).
+- Pruebas: `tests/unitarios/test_gatito_modelo.gd` (el modelo, las poses y los movimientos) y `tests/unitarios/test_gatito.gd` (la prueba en el juego).
