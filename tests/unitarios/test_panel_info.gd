@@ -26,6 +26,14 @@ func _tecla(main, k: Key, apretada: bool) -> void:
 	main._input(e)
 
 
+func _tecla_torre(main, k: Key) -> void:
+	var e := InputEventKey.new()
+	e.keycode = k
+	e.physical_keycode = k
+	e.pressed = true
+	main.torre._input(e)
+
+
 func _init() -> void:
 	Profile.path = "user://test_profile_panel.json"
 	Profile.reset()
@@ -69,6 +77,25 @@ func _init() -> void:
 	main.pause_game()
 	_ok(not main.panel_info.abierto and not main.panel_info.visible, "al pausar el panel se esconde")
 	main.resume_game()
+	Settings.set_value("panel_modo", "mantener")
+	# el panel de boosts y consumibles (derecha): lista lo que se tiene y bloquea el juego, menos la cámara
+	main.run.boosts.append("segundo_aliento")
+	main.run.consumables.append("totem")
+	var di: Dictionary = main._panel_items_datos()
+	_ok(di.boosts.size() == 1 and di.consumibles.size() == 1 and str(di.boosts[0].desc) != "", "los datos del panel de ítems traen los boosts y consumibles con su descripción")
+	_ok(Controls.key_of("panel_items") == KEY_B, "B abre el panel de boosts y consumibles")
+	Settings.set_value("panel_modo", "alternar")
+	main.panel_items.abrir(di)
+	await _frames(30)
+	_ok(main.panel_items.abierto and main.panel_items.get_node("ventana").offset_right <= 1.0, "el panel de ítems entra por la derecha")
+	main._panel_vigilar()
+	_ok(main.torre.solo_camara, "con un panel abierto la torre sólo mueve la cámara")
+	var antes: int = main.torre.t.movs
+	_tecla_torre(main, KEY_W)
+	_ok(main.torre.t.movs == antes, "con un panel abierto no se juega")
+	main.panel_items.cerrar(true)
+	main._panel_vigilar()
+	_ok(not main.torre.solo_camara, "al cerrar el panel se vuelve a jugar")
 	Settings.set_value("panel_modo", "mantener")
 	if fallos == 0:
 		print("panel de información: todo bien")

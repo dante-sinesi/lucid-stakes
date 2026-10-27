@@ -51,7 +51,7 @@ func _init() -> void:
 	panel = Control.new()
 	panel.name = "ventana"
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	panel.set_anchors_preset(Control.PRESET_RIGHT_WIDE if _derecha() else Control.PRESET_LEFT_WIDE)
 	panel.draw.connect(func(): Draw.card(panel, Rect2(Vector2.ZERO, panel.size), 5.0, 0, 0.1, 4242, false, -1.0))
 	add_child(panel)
 	var margen := MarginContainer.new()
@@ -89,13 +89,22 @@ func abrir(datos: Dictionary) -> void:
 
 ## Lo que ya entró del panel (de 0 a 1), para que abrir y cerrar a mitad de camino no salte.
 func _avance() -> float:
-	return clampf(panel.offset_right / ANCHO, 0.0, 1.0)
+	return clampf((-panel.offset_left if _derecha() else panel.offset_right) / ANCHO, 0.0, 1.0)
+
+
+## ¿Entra por la derecha? (el panel de boosts y consumibles lo cambia)
+func _derecha() -> bool:
+	return false
 
 
 ## Pone el panel a `k` (de 0 afuera a 1 entero adentro) del camino.
 func _poner_avance(k: float) -> void:
-	panel.offset_left = lerpf(-ANCHO, 0.0, k)
-	panel.offset_right = lerpf(0.0, ANCHO, k)
+	if _derecha():
+		panel.offset_left = lerpf(0.0, -ANCHO, k)
+		panel.offset_right = lerpf(ANCHO, 0.0, k)
+	else:
+		panel.offset_left = lerpf(-ANCHO, 0.0, k)
+		panel.offset_right = lerpf(0.0, ANCHO, k)
 
 
 ## Lo guarda sin animar: se refresca el contenido (por ejemplo, después de un movimiento) con el panel abierto.

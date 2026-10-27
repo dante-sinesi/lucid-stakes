@@ -556,6 +556,9 @@ func _ocultar_arriba() -> void:
 		portal.visible = not (desde_arriba and t.indice < t.salas.size() - 1)
 
 
+var solo_camara := false   # un panel de información está abierto: no se juega, sólo se mueve la cámara (lo pone main.gd)
+
+
 func _process(delta: float) -> void:
 	_gatito_procesar(delta)
 	if t == null or pivot == null:
@@ -617,6 +620,8 @@ func _temblar() -> void:
 func _input(ev: InputEvent) -> void:
 	if en_juego and puede_jugar.is_valid() and not puede_jugar.call():
 		return
+	if solo_camara and ev is InputEventKey and not ["camara_izquierda", "camara_derecha", "camara_arriba", "camara_abajo", "vista_izquierda", "vista_derecha", "zoom_mas", "zoom_menos"].has(Controls.action_of(ev)):
+		return   # (con un panel de información abierto no se juega: sólo se mueve la cámara)
 	if ev is InputEventMouseButton and ev.pressed:
 		if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
 			acercar(1.0 / ZOOM_FACTOR)

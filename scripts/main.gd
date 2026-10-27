@@ -14,6 +14,7 @@ const BlockGuide := preload("res://scripts/datos/block_guide.gd")
 const Farolin := preload("res://scripts/personajes/farolin.gd")
 const TrialBanner := preload("res://scripts/ui/trial_banner.gd")
 const PanelInfo := preload("res://scripts/ui/panel_info.gd")
+const PanelItems := preload("res://scripts/ui/panel_items.gd")
 const Telemetry := preload("res://scripts/datos/telemetry.gd")
 const Demo := preload("res://scripts/datos/demo.gd")
 const DemoEndScreen := preload("res://scripts/ui/demo_end_screen.gd")
@@ -148,6 +149,7 @@ var compass              # rosa de los vientos (qué eje mueve cada tecla)
 var clarity_counter       # [ícono] claridad (la del run más la juntada en esta torre)
 var dev_console           # consola del modo dev (sólo en compilaciones de desarrollo; null en las release)
 var console_open := false
+var panel_items: Control     # el panel de boosts y consumibles (B), por la derecha
 var panel_info: Control      # el panel de información (Tab): la partida contada por la izquierda
 var run_end             # pantalla de fin de run
 var demo_end            # pantalla de fin de la demo (demo_end_screen.gd)
@@ -303,6 +305,8 @@ func _build_hud() -> void:
 	add_child(panel_layer)
 	panel_info = PanelInfo.new()
 	panel_layer.add_child(panel_info)
+	panel_items = PanelItems.new()
+	panel_layer.add_child(panel_items)
 	var banner_layer := CanvasLayer.new()   # el cartel de la prueba va por encima de los menús (y se va al pausar)
 	banner_layer.layer = 105
 	add_child(banner_layer)
@@ -909,13 +913,15 @@ func _refresh_torre() -> void:
 	var show_toll: bool = not training and tutorial_index < 0 and not (test_mode and not toll_in_tests)
 	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
 	hud_panel.set_toll(0)
-	hud_panel.set_moves(torre.t.movs if torre.t != null else 0)
 	if total > clarity_counter.value:
 		juice.pop(clarity_counter, 1.25)
 	clarity_counter.value = total
 	_update_perk_label()
 	if panel_info != null and panel_info.abierto:
 		panel_info.actualizar(_panel_datos())
+	if panel_items != null and panel_items.abierto:
+		panel_items.actualizar(_panel_items_datos())
+	clarity_counter.visible = false   # (el total de claridad se lee en el panel de información; el HUD de la torre sólo lleva las vidas, los consumibles y los boosts)
 
 
 func _refresh() -> void:
@@ -957,15 +963,19 @@ func _bank_claridad() -> void:
 
 ## El panel de información (docs/panel_informacion.md): se abre al apretar su tecla (Tab; Select en el mando) y, según Opciones, se ve mientras se mantiene apretada o hasta un nuevo toque.
 func _input(event: InputEvent) -> void:
-	if panel_info == null or not (event is InputEventKey) or not event.pressed or event.echo or Controls.action_of(event) != "panel_info":
+	if panel_info == null or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	var accion: String = Controls.action_of(event)
+	if accion != "panel_info" and accion != "panel_items":
 		return
 	if not _panel_permitido():
 		return
 	get_viewport().set_input_as_handled()   # (Tab no mueve el foco de nadie)
-	if panel_info.abierto and str(Settings.get_value("panel_modo")) == "alternar":
-		panel_info.cerrar()
+	var panel: Control = panel_info if accion == "panel_info" else panel_items
+	if panel.abierto and str(Settings.get_value("panel_modo")) == "alternar":
+		panel.cerrar()
 	else:
-		panel_info.abrir(_panel_datos())
+		panel.abrir(_panel_datos() if accion == "panel_info" else _panel_items_datos())
 
 
 ## ¿Se puede ver el panel ahora? En la torre y en el sala del casino, sin menús, pausa, diálogos ni pantallas de juego encima.
@@ -1015,14 +1025,39 @@ func _panel_datos() -> Dictionary:
 	return d
 
 
-## Si el panel está abierto: se cierra cuando ya no se puede ver o, en modo "mantener", cuando se suelta la tecla; y se refresca lo que cuenta.
+## Lo que cuenta el panel de boosts y consumibles ahora (ver `PanelItems`).
+func _panel_items_datos() -> Dictionary:
+	var d := {"boosts": [], "consumibles": [], "max_boosts": 0, "max_consumibles": 0}
+	if run == null:
+		return d
+	for par in [["boosts", run.boosts], ["consumibles", run.consumables]]:
+		for id in par[1]:
+			var it: Dictionary = Items.get_item(str(id))
+			d[par[0]].append({"id": str(id), "nombre": Loc.t(str(it.get("name", id))), "desc": Loc.t(str(it.get("desc", "")))})
+	d["max_boosts"] = run.boost_capacity()
+	d["max_consumibles"] = run.consumable_capacity()
+	return d
+
+
+## ¿Hay un panel de información abierto? Entonces la torre no se juega (sólo se mueve la cámara).
+func _panel_abierto() -> bool:
+	return (panel_info != null and panel_info.abierto) or (panel_items != null and panel_items.abierto)
+
+
+## Si un panel está abierto: se cierra cuando ya no se puede ver o, en modo "mantener", cuando se suelta su tecla; y se refresca lo que cuenta.
 func _panel_vigilar() -> void:
-	if panel_info == null or not panel_info.abierto:
+	if panel_info == null:
 		return
-	if not _panel_permitido():
-		panel_info.cerrar(true)
-	elif str(Settings.get_value("panel_modo")) == "mantener" and not Controls.held("panel_info"):
-		panel_info.cerrar()
+	if torre != null:
+		torre.solo_camara = _panel_abierto()
+	for par in [[panel_info, "panel_info"], [panel_items, "panel_items"]]:
+		var p: Control = par[0]
+		if not p.abierto:
+			continue
+		if not _panel_permitido():
+			p.cerrar(true)
+		elif str(Settings.get_value("panel_modo")) == "mantener" and not Controls.held(par[1]):
+			p.cerrar()
 
 
 ## Teclas del juego fuera de la torre (la torre maneja sus movimientos y su cámara): la pausa, la consola de desarrollo y los consumibles con el mando.
@@ -1045,6 +1080,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if casino != null:  # en el casino manda su propia escena
 		return
 	if run != null and left_bar != null:
+		if _panel_abierto():
+			return   # (con un panel abierto no se usan consumibles)
 		var pick: Dictionary = consumable_pick.process(event, run.consumables.size())
 		if pick.taken:
 			left_bar.set_pick(consumable_pick.marked())
@@ -1057,7 +1094,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Usa el consumible del casillero `slot` (teclas 1 a 4): los que tienen sentido en la torre (cosecha, racha, luz, movimientos, bombas) funcionan; el resto avisa y no se gasta.
 func use_consumable_slot(slot: int) -> void:
-	if torre == null or in_menu or generating or casino != null or torre.t == null or torre.t.terminada:
+	if _panel_abierto() or torre == null or in_menu or generating or casino != null or torre.t == null or torre.t.terminada:
 		return
 	if slot >= run.consumables.size():
 		return
@@ -1483,6 +1520,7 @@ func pause_game() -> void:
 	pause_menu.set_tutorial_lock(tutorial_forced)
 	if panel_info != null:
 		panel_info.cerrar(true)
+		panel_items.cerrar(true)
 	if trial_banner != null:
 		trial_banner.hide_for_pause()   # (el cartel grande no se ve en la pausa: la prueba, los contratos y el resto se leen en el panel de información)
 	pause_menu.set_restart(run.lives, training, casino != null)
