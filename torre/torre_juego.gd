@@ -806,22 +806,32 @@ var _rng_reglas := RandomNumberGenerator.new()
 var _sala_reglas := -1          # la sala y el movimiento para los que están sorteados los momentos de abajo
 var _movs_reglas := 0
 var _sig_corrupcion := 0        # en qué movimiento de la sala vuelve a corromperse el próximo bloque
-var _sig_viento := 0            # ... sopla el próximo viento (se avisa un movimiento antes)
+var _viento_acciones := 0       # movimientos desde el último viento (cuentan de una sala a la otra: el viento no se reinicia con cada sala)
+var _viento_cada := 0           # cuántos movimientos faltan para el próximo viento (sorteado entre 5 y 11, al soplar el anterior)
+var _viento_aviso := 1          # cuántos movimientos antes se avisa (de 1 a 3, sorteado cada vez)
 var _sig_temblor := 0           # ... tiembla la torre (se avisa un movimiento antes)
 var _temblor := 0.0             # segundos que le quedan a la sacudida de los bloques
 const MEMORIA_SEG := 1.8
 
 
 ## Sortea en qué movimientos de la sala pasa cada cosa: nunca a intervalos fijos (la corrupción cada 3 a 5 movimientos, el viento cada 5 a 11 y el temblor cada 6 a 10).
+func _sortear_viento() -> void:
+	_viento_cada = _rng_reglas.randi_range(5, 11)
+	_viento_aviso = _rng_reglas.randi_range(1, 3)
+
+
 func _sortear_momentos(m: int) -> void:
 	_sala_reglas = t.indice
 	_sig_corrupcion = m + _rng_reglas.randi_range(3, 5)
-	_sig_viento = m + _rng_reglas.randi_range(5, 11)
 	_sig_temblor = m + _rng_reglas.randi_range(6, 10)
 
 
 ## Después de cada acción: el mareo gira la cámara cada dos movimientos y, cuando toca, vuelve a corromperse un bloque, sopla el viento (avisado un movimiento antes) o tiembla la torre (también avisado).
 func _reglas_despues(r: Dictionary) -> void:
+	if en_juego and t != null and bool(reglas.get("ventisca", false)):
+		if _viento_cada <= 0:
+			_sortear_viento()
+		_viento_acciones += 1   # (el viento cuenta los movimientos de toda la torre, no de cada sala)
 	if not en_juego or t == null or t.muerta or t.terminada or t.perdida or str(r.evento) != "":
 		return
 	var m: int = t.movs
@@ -839,12 +849,15 @@ func _reglas_despues(r: Dictionary) -> void:
 	var aviso_viento := false
 	var hay_viento := false
 	if bool(reglas.get("ventisca", false)):
-		if _viento == Vector3i.ZERO and m >= _sig_viento - 1:
-			aviso_viento = true
-			_sig_viento = maxi(_sig_viento, m + 1)
-		elif _viento != Vector3i.ZERO and m >= _sig_viento:
+		if _viento == Vector3i.ZERO and _viento_acciones >= _viento_cada - _viento_aviso and _viento_acciones < _viento_cada:
+			aviso_viento = true   # (las líneas de viento empiezan de 1 a 3 movimientos antes)
+		elif _viento == Vector3i.ZERO and _viento_acciones >= _viento_cada:
+			aviso_viento = true   # (se pasó la ventana del aviso, por ejemplo con el movimiento que cambió de sala: se avisa ahora y sopla en el siguiente)
+			_viento_cada = _viento_acciones + 1
+		elif _viento != Vector3i.ZERO and _viento_acciones >= _viento_cada:
 			hay_viento = true
-			_sig_viento = m + _rng_reglas.randi_range(5, 11)
+			_viento_acciones = 0
+			_sortear_viento()
 	var aviso_temblor := false
 	var hay_temblor := false
 	if bool(reglas.get("terremoto", false)):

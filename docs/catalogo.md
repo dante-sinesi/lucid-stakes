@@ -154,9 +154,9 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Presupuesto compartido | Los movimientos de toda la torre son un solo fondo, justo para resolverla: lo que ahorras en una sala te sirve en las siguientes. |
 | Solo tres bloques | En cada sala solo puedes mover tres bloques distintos; las salas piden dos o tres. |
 | Espalda mala | Empujar o tirar de un bloque cuesta dos movimientos; las salas piden empujar o tirar muchas veces. |
-| Ventisca | De a ratos sopla un viento que te empuja una celda; las líneas de viento avisan un movimiento antes hacia dónde. |
+| Ventisca | De a ratos sopla un viento que te empuja una celda; las líneas de viento avisan unos movimientos antes hacia dónde. |
 | Quebradizo | Muchos bloques son agrietados: se rompen en cuanto te bajas de ellos y solo se pisan una vez. |
-| A oscuras | Al menos la mitad de los bloques son negros y no sabes qué son hasta que los pisas. |
+| A oscuras | Muchos bloques son negros, sobre todo los especiales, y no sabes qué son hasta que los pisas. |
 | La Pesadilla despierta | La última torre combina dos pruebas. |
 
 ## Servicios del casino

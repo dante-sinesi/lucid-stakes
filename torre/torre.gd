@@ -198,15 +198,28 @@ static func _piso_de(m) -> int:
 
 ## A oscuras: qué bloques de la sala se ven negros hasta que se pisan (más de la mitad de los bloques; nunca el checkpoint ni la salida): {número de bloque: true}.
 static func oscuros_de(m, id_sala: int) -> Dictionary:
+	var comunes := 0
+	var especiales := 0
+	for c in m.bloques:
+		var letra := str(m.bloques[c])
+		if letra == "f" or letra == "p" or letra == "d" or (letra.length() >= 2 and letra[0] == "b") or m.obstaculos.has(c):
+			continue
+		if letra == "n":
+			comunes += 1
+		else:
+			especiales += 1
+	# se esconde sobre todo lo especial (hielo, pesados, agrietados, trampas, pinchos, catapultas): casi todos; y de los comunes, los que hacen falta para llegar a más de la mitad de la sala (pero nunca menos del 25 %)
+	var p_especial := 90
+	var p_comun := 55
+	if comunes > 0:
+		p_comun = clampi(int(round((0.55 * float(comunes + especiales) - 0.9 * float(especiales)) / float(comunes) * 100.0)), 25, 55)
 	var out := {}
 	for c in m.bloques:
 		var letra := str(m.bloques[c])
-		if letra == "f" or letra == "p" or letra == "d" or (letra.length() >= 2 and letra[0] == "b"):
+		if letra == "f" or letra == "p" or letra == "d" or (letra.length() >= 2 and letra[0] == "b") or m.obstaculos.has(c):
 			continue   # (los checkpoint, las bombas y las desactivadas se ven siempre: la bomba tiene su cuenta)
-		if m.obstaculos.has(c):
-			continue
 		var h := absi(c.x * 73856093 ^ c.y * 19349663 ^ c.z * 83492791 ^ id_sala * 2654435761) % 100
-		if h < 55 and m.ids.has(c):
+		if h < (p_comun if letra == "n" else p_especial) and m.ids.has(c):
 			out[m.ids[c]] = true
 	return out
 
@@ -806,14 +819,30 @@ func _terremoto_uno(rng: RandomNumberGenerator) -> Dictionary:
 	for e in candidatos:   # (los más cercanos al jugador primero, con algo de azar: se nota más)
 		puntuados.append([cerca.call(e), e])
 	puntuados.sort_custom(func(a, b): return a[0] < b[0])
-	for p in puntuados.slice(0, 14):   # (el primero que no rompa la solución conocida de la sala)
+	for p in puntuados.slice(0, 14):   # (el primero que no tire ningún otro bloque y no rompa la solución conocida de la sala)
 		var e: Array = p[1]
-		if not _terremoto_seguro(e[0], e[1]):
+		if not _corrimiento_limpio(motor, e[0], e[1]) or not _terremoto_seguro(e[0], e[1]):
 			continue
 		_temblores.append({"en": deshacer_pila.size(), "id": int(motor.ids.get(e[0], -1)), "delta": e[1] - e[0]})
 		motor.desplazar(e[0], e[1])
 		return {"de": e[0], "a": e[1]}
 	return {}
+
+
+## ¿Correr el bloque de `de` a `a` deja todo lo demás donde estaba? Si con el corrimiento cae un bloque (o más), o se mueve algo más que ése, no vale: el temblor tiene que molestar, no desarmar el puzzle.
+static func _corrimiento_limpio(m, de: Vector3i, a: Vector3i) -> bool:
+	var copia = m.duplicar()
+	copia.desplazar(de, a)
+	if not copia.caidos_fuera.is_empty() or copia.perdido or copia.bloques.size() != m.bloques.size() or copia.jugador != m.jugador or copia.colgado != m.colgado:
+		return false
+	var id_movido := int(m.ids.get(de, -1))
+	for c in m.ids:
+		var id := int(m.ids[c])
+		if id == id_movido:
+			continue
+		if not copia.ids.has(c) or int(copia.ids[c]) != id:
+			return false   # (algún otro bloque cambió de lugar: cayó)
+	return true
 
 
 ## ¿La solución conocida de la sala sigue andando si ese bloque se corre en este momento? Se repite desde el principio con el corrimiento hecho después de las acciones que lleva el jugador: si se juega siguiendo la
@@ -838,6 +867,8 @@ func _terremoto_seguro(de: Vector3i, a: Vector3i) -> bool:
 				if int(m.ids[k]) == int(c.id):
 					celda = k
 			if celda.x == -999 or m.bloques.has(celda + c.delta) or m.jugador == celda + c.delta:
+				return false
+			if not _corrimiento_limpio(m, celda, celda + c.delta):
 				return false
 			m.desplazar(celda, celda + c.delta)
 		if not m.actuar(Vector3i(int(camino[i][0]), 0, int(camino[i][1])), int(camino[i][2])).ok:

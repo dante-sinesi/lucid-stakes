@@ -28,9 +28,9 @@ const CATALOG := {
 	"presupuesto": {"name": "Presupuesto compartido", "desc": "Los movimientos de toda la torre son un solo fondo, justo para resolverla: lo que ahorras en una sala te sirve en las siguientes.", "reglas": {"presupuesto": true}, "desde": 6},
 	"solo_tres": {"name": "Solo tres bloques", "desc": "En cada sala solo puedes mover tres bloques distintos; las salas piden dos o tres.", "reglas": {"solo_bloques": 3}, "desde": 6},
 	"espalda_mala": {"name": "Espalda mala", "desc": "Empujar o tirar de un bloque cuesta dos movimientos; las salas piden empujar o tirar muchas veces.", "reglas": {"espalda_mala": true}, "desde": 9},
-	"ventisca": {"name": "Ventisca", "desc": "De a ratos sopla un viento que te empuja una celda; las líneas de viento avisan un movimiento antes hacia dónde.", "reglas": {"ventisca": true}, "desde": 9},
+	"ventisca": {"name": "Ventisca", "desc": "De a ratos sopla un viento que te empuja una celda; las líneas de viento avisan unos movimientos antes hacia dónde.", "reglas": {"ventisca": true}, "desde": 9},
 	"quebradizo": {"name": "Quebradizo", "desc": "Muchos bloques son agrietados: se rompen en cuanto te bajas de ellos y solo se pisan una vez.", "reglas": {"quebradizo": true}, "desde": 9},
-	"a_oscuras": {"name": "A oscuras", "desc": "Al menos la mitad de los bloques son negros y no sabes qué son hasta que los pisas.", "reglas": {"a_oscuras": true}, "desde": 9},
+	"a_oscuras": {"name": "A oscuras", "desc": "Muchos bloques son negros, sobre todo los especiales, y no sabes qué son hasta que los pisas.", "reglas": {"a_oscuras": true}, "desde": 9},
 	"pesadilla_despierta": {"name": "La Pesadilla despierta", "desc": "La última torre combina dos pruebas.", "final": true, "desde": 15},
 }
 

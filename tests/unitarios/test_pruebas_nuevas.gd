@@ -288,6 +288,21 @@ func test_terremoto_y_corrupcion() -> void:
 		check(t.motor.bloques.size() <= cuenta_antes, "Terremoto: no aparecen bloques")
 	else:
 		check(true, "(Terremoto: la primera sala no tiene un bloque que se pueda correr)")
+	# un temblor no tira ningún bloque: cambia de lugar los que corre y deja todo lo demás como estaba
+	var caidas := 0
+	var sacudidas := 0
+	var rng4 := RandomNumberGenerator.new()
+	rng4.seed = 9
+	for k in 10:
+		var tt = _torre({"terremoto": true}, 12, 800 + k)
+		for q in 4:
+			var cuenta_q: int = tt.motor.bloques.size()
+			var rq2: Dictionary = tt.terremoto(rng4, 3)
+			if bool(rq2.ok):
+				sacudidas += 1
+				if tt.motor.bloques.size() != cuenta_q or not tt.motor.caidos_fuera.is_empty():
+					caidas += 1
+	check(sacudidas > 0 and caidas == 0, "Terremoto: en %d temblores no se cayó ningún bloque (cayeron en %d)" % [sacudidas, caidas])
 	var varios := 0
 	var rng3 := RandomNumberGenerator.new()
 	rng3.seed = 3
@@ -381,16 +396,31 @@ func test_oscuros() -> void:
 	check(oscuros > 0 and oscuros < total, "A oscuras: algunos bloques de la sala se ven negros, no todos (%d de %d)" % [oscuros, total])
 	var oscuros_torre := 0
 	var bloques_torre := 0
-	for e in t.salas:
-		var mo = Vista.motor_de(e.d)
-		var os: Dictionary = Torre.oscuros_de(mo, int(e.id))
-		for c in mo.bloques:
-			var letra := str(mo.bloques[c])
-			if letra == "f" or letra == "p" or letra == "d" or (letra.length() >= 2 and letra[0] == "b"):
-				continue
-			bloques_torre += 1
-			oscuros_torre += 1 if os.has(mo.ids[c]) else 0
-	check(float(oscuros_torre) / float(maxi(bloques_torre, 1)) >= 0.5, "A oscuras: más de la mitad de los bloques de la torre son negros (%d de %d)" % [oscuros_torre, bloques_torre])
+	var esp_total := 0
+	var esp_oscuros := 0
+	var com_total := 0
+	var com_oscuros := 0
+	for etapa in [9, 12, 15]:
+		var tq = _torre({"a_oscuras": true}, etapa, 700 + etapa)
+		for e in tq.salas:
+			var mo = Vista.motor_de(e.d)
+			var os: Dictionary = Torre.oscuros_de(mo, int(e.id))
+			for c in mo.bloques:
+				var letra := str(mo.bloques[c])
+				if letra == "f" or letra == "p" or letra == "d" or (letra.length() >= 2 and letra[0] == "b"):
+					continue
+				bloques_torre += 1
+				var oscuro: bool = os.has(mo.ids[c])
+				oscuros_torre += 1 if oscuro else 0
+				if letra == "n":
+					com_total += 1
+					com_oscuros += 1 if oscuro else 0
+				else:
+					esp_total += 1
+					esp_oscuros += 1 if oscuro else 0
+	check(esp_total > 20 and float(esp_oscuros) / float(esp_total) >= 0.8, "A oscuras: casi todos los bloques especiales se esconden (%d de %d)" % [esp_oscuros, esp_total])
+	check(float(com_oscuros) / float(maxi(com_total, 1)) >= 0.2 and float(com_oscuros) / float(maxi(com_total, 1)) <= 0.6, "A oscuras: de los comunes se esconde una parte (%d de %d)" % [com_oscuros, com_total])
+	check(float(oscuros_torre) / float(maxi(bloques_torre, 1)) >= 0.45, "A oscuras: cerca de la mitad o más de los bloques de la torre son negros (%d de %d)" % [oscuros_torre, bloques_torre])
 	var sin_f := true
 	for c in primera.bloques:
 		var letra := str(primera.bloques[c])
@@ -465,24 +495,33 @@ func test_en_el_juego() -> void:
 	check(tj.t.motor.purificados.size() == antes_p - 1, "Corrupción que vuelve: en el juego se corrompe un bloque purificado (%d -> %d)" % [antes_p, tj.t.motor.purificados.size()])
 	main.queue_free()
 	await process_frame
-	# Ventisca: se avisa un movimiento antes (líneas de minicubos) y sopla en el siguiente; los momentos son al azar
+	# Ventisca: se avisa de 1 a 3 movimientos antes (líneas de minicubos) y sopla; los momentos son al azar y no se reinician con cada sala
 	main = await _main_con("ventisca")
-	var sala_v: int = main.torre.t.indice
-	main.torre._sala_reglas = sala_v
-	main.torre._movs_reglas = 3
-	main.torre._sig_viento = 5   # (un movimiento antes: se avisa)
+	main.torre._viento_cada = 6
+	main.torre._viento_aviso = 1
+	main.torre._viento_acciones = 4   # (con la acción de ahora son 5: un movimiento antes del viento, se avisa)
 	await _paso_con_movs(main, 3)
-	check(main.torre._viento != Vector3i.ZERO and main.torre._viento_chorro != null and main.torre._viento_chorro.emitting, "Ventisca: un movimiento antes aparecen las líneas de minicubos del viento")
+	check(main.torre._viento != Vector3i.ZERO and main.torre._viento_chorro != null and main.torre._viento_chorro.emitting, "Ventisca: antes del viento aparecen las líneas de minicubos")
 	check(main.torre._viento_chorro.mesh != null and main.torre._viento_chorro.direction == Vector3(main.torre._viento), "Ventisca: las líneas corren hacia donde va a soplar")
 	var siguiente: Array = main.torre.t.sala_actual().d.camino[1] if main.torre.t.sala_actual().d.camino.size() > 1 else main.torre.t.sala_actual().d.camino[0]
 	main.torre.accion(Vector3i(int(siguiente[0]), 0, int(siguiente[1])), int(siguiente[2]))
 	await create_timer(0.8).timeout
 	check(main.torre._viento == Vector3i.ZERO, "Ventisca: en el movimiento siguiente sopla y se limpia el aviso")
 	var intervalos := {}
-	for k in 30:
-		main.torre._sortear_momentos(0)
-		intervalos[main.torre._sig_viento] = true
+	var avisos := {}
+	for k in 60:
+		main.torre._sortear_viento()
+		intervalos[main.torre._viento_cada] = true
+		avisos[main.torre._viento_aviso] = true
 	check(intervalos.size() >= 4 and intervalos.keys().min() >= 5 and intervalos.keys().max() <= 11, "Ventisca: el momento del viento se sortea entre 5 y 11 movimientos (%s)" % str(intervalos.keys()))
+	check(avisos.has(1) and avisos.has(2) and avisos.has(3) and avisos.size() == 3, "Ventisca: el aviso viene de 1 a 3 movimientos antes (%s)" % str(avisos.keys()))
+	# el viento no se reinicia con cada sala: sigue contando
+	main.torre._viento_acciones = 3
+	main.torre._viento_cada = 9
+	main.torre._viento_aviso = 2
+	var antes_sala: int = main.torre._viento_acciones
+	main.torre._reglas_despues({"ok": true, "evento": "checkpoint"})
+	check(main.torre._viento_acciones == antes_sala + 1, "Ventisca: un movimiento que cambia de sala también cuenta para el viento")
 	main.queue_free()
 	await process_frame
 	# Terremoto: tiembla la torre (los bloques se sacuden) y se corren varios bloques
