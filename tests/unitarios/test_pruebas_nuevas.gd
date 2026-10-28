@@ -29,6 +29,7 @@ func _init() -> void:
 	test_viento()
 	test_terremoto_y_corrupcion()
 	await test_en_el_juego()
+	test_torres_completas()
 	test_oscuros()   # (al final: dibujar registra las variables globales de los shaders, y el juego las registra al empezar)
 	print("tests de las pruebas nuevas terminados, fallos: %d" % fails)
 	quit(1 if fails > 0 else 0)
@@ -268,6 +269,23 @@ func test_terremoto_y_corrupcion() -> void:
 	t2.cosecha.streak = 4
 	t2.corromper()
 	check(t2.motor.purificados.size() <= 1 and t2.cosecha.streak == 0, "Corrupción que vuelve: los bloques se corrompen otra vez (queda el que pisas) y se corta la racha")
+
+
+## Torres enteras con cada regla (y con las combinaciones del jefe final): jugando la solución conocida de cada sala se llega al portal sin perder ninguna.
+func test_torres_completas() -> void:
+	var casos := [
+		["espalda_mala", {"espalda_mala": true}], ["presupuesto", {"presupuesto": true}], ["solo_tres", {"solo_bloques": 3}], ["quebradizo", {"quebradizo": true}], ["a_oscuras", {"a_oscuras": true}],
+		["presupuesto + espalda mala", {"presupuesto": true, "espalda_mala": true}], ["a oscuras + corrupcion", {"a_oscuras": true, "corrupcion": true}], ["mareo + terremoto", {"mareo": true, "terremoto": true}],
+	]
+	for caso in casos:
+		for etapa in [6, 12]:
+			var t = _torre(caso[1], etapa, 200 + etapa)
+			var completa: bool = t.salas.size() == Torre.salas_de_etapa(etapa)
+			for k in t.salas.size():
+				if t.terminada or t.muerta:
+					break
+				_jugar_camino(t)
+			check(completa and t.terminada and t.muertes == 0, "%s, etapa %d: se llega al portal con la solución conocida de cada sala (salas %d, muertes %d)" % [caso[0], etapa, t.salas.size(), t.muertes])
 
 
 func test_oscuros() -> void:

@@ -365,7 +365,7 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_r
 		var suma_pasos := 0
 		for e in t.salas:
 			suma_max += int(e.max_mov)
-			suma_pasos += int(e.d.pasos)
+			suma_pasos += int(e.d.pasos) + (int(e.d.get("agarres", 0)) if bool(reglas.get("espalda_mala", false)) else 0)   # (con Espalda mala cada agarre de la solución cuesta uno más)
 		t.presupuesto_total = maxi(int(ceil(float(suma_max) * 0.85)), int(ceil(float(suma_pasos) * 1.12)) + 2 * t.salas.size())
 	if bool(reglas.get("travesuras", false)):   # la prueba "Travesuras": cada sala trae (si se puede) lo que va a mover Ama
 		t._poner_gatos(semilla, reglas)
