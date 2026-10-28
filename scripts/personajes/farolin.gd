@@ -132,11 +132,15 @@ static func build(v := -1, seated := false) -> Node3D:
 	for sx in [-1, 1]:   # marco: cuatro parantes
 		for sz in [-1, 1]:
 			_box(r, Vector3(0.09 * sx, 0.27, 0.09 * sz), Vector3(0.025, 0.21, 0.025), iron)
-	_box(r, Vector3(0, 0.385, 0), Vector3(0.24, 0.04, 0.24), iron)       # tapa
-	_box(r, Vector3(0, 0.425, 0), Vector3(0.13, 0.04, 0.13), iron)
-	_box(r, Vector3(0, 0.505, 0), Vector3(0.11, 0.02, 0.02), iron)       # asa
-	_box(r, Vector3(-0.055, 0.465, 0), Vector3(0.02, 0.08, 0.02), iron)
-	_box(r, Vector3(0.055, 0.465, 0), Vector3(0.02, 0.08, 0.02), iron)
+	r.sombrero = Node3D.new()   # la tapa y el asa son su "sombrero": un solo nodo, para que Ama pueda robárselo (ver ama_farolin.gd)
+	r.sombrero.name = "sombrero"
+	r.sombrero.position = Vector3(0, 0.385, 0)
+	r.add_child(r.sombrero)
+	_box(r.sombrero, Vector3(0, 0.0, 0), Vector3(0.24, 0.04, 0.24), iron)       # tapa
+	_box(r.sombrero, Vector3(0, 0.04, 0), Vector3(0.13, 0.04, 0.13), iron)
+	_box(r.sombrero, Vector3(0, 0.12, 0), Vector3(0.11, 0.02, 0.02), iron)      # asa
+	_box(r.sombrero, Vector3(-0.055, 0.08, 0), Vector3(0.02, 0.08, 0.02), iron)
+	_box(r.sombrero, Vector3(0.055, 0.08, 0), Vector3(0.02, 0.08, 0.02), iron)
 	r.smile = Node3D.new()   # la cara "contenta" (la de siempre lleva sonrisa; los diseños nuevos no)
 	r.add_child(r.smile)
 	r.frown = Node3D.new()   # la cara "triste"

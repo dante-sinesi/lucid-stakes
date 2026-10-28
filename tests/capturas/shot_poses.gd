@@ -36,10 +36,7 @@ func _init() -> void:
 		mundo.add_child(lugar)
 		lugar.add_child(m)
 		Animacion.pose(m, str(p[0]), float(p[1]), amp, exagerado)
-		var l := Label3D.new()
-		l.text = str(p[0])
-		l.font_size = 48
-		l.pixel_size = 0.004
+		var l := preload("res://scripts/ui/rotulo_pixel.gd").crear(str(p[0]), Color.WHITE, false, 0.011)   # (con la fuente del juego)
 		l.position = lugar.position + Vector3(0, -0.15, 0.3)
 		mundo.add_child(l)
 	var cam := Camera3D.new()

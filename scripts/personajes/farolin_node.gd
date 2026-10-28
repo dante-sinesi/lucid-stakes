@@ -10,6 +10,10 @@ var brazo_d: Node3D
 var pata_i: Node3D
 var pata_d: Node3D
 var sentado := false
+var sombrero: Node3D       # la tapa y el asa del farol (lo que Ama le roba)
+var _sombrero_pos := Vector3.ZERO   # dónde va en Farolín
+var _dormido := false      # se quedó dormido junto a Ama: la llama baja
+var _ronrona := 0.0        # segundos que le quedan de brillar contento (Ama se frota contra él)
 var _t := randf() * 10.0
 var _base_energy := 1.6
 var _accion := ""      # lo que hace ahora mientras espera ("" = nada: sólo respira y titila)
@@ -27,9 +31,15 @@ var _rot_escrita := Vector3.INF
 const ACCIONES := ["patas", "saludo", "rascar", "mirar", "bostezo"]
 
 
+func _ready() -> void:
+	if sombrero != null:
+		_sombrero_pos = sombrero.position   # (ya sentado: la torre lo agrega al árbol cuando está armado)
+
+
 func _process(delta: float) -> void:
 	_t += delta
-	var k := 1.0 + 0.18 * sin(_t * 7.3) + 0.1 * sin(_t * 12.1 + 1.3)
+	_ronrona = maxf(_ronrona - delta, 0.0)
+	var k := (1.0 + 0.18 * sin(_t * 7.3) + 0.1 * sin(_t * 12.1 + 1.3)) * (0.6 if _dormido else 1.0) * (1.0 + 0.45 * minf(_ronrona, 1.0))
 	if light != null:
 		light.light_energy = 1.3 * k
 	if flame != null:
@@ -37,6 +47,38 @@ func _process(delta: float) -> void:
 		if mat != null:
 			mat.emission_energy_multiplier = _base_energy * k
 	_animar(delta)
+
+
+## Hace un pasatiempo ahora (una de `ACCIONES`) si está sentado y libre: Ama lo usa para que Farolín reaccione.
+func reaccionar(nombre: String) -> void:
+	if sentado and _accion == "" and _hop < 0.0:
+		_accion = nombre
+		_accion_t = 0.0
+
+
+## Brilla más contento unos segundos (Ama se frota contra él y ronronea).
+func ronronear(segundos: float) -> void:
+	_ronrona = segundos
+
+
+## Se duerme junto a Ama (la llama baja y titila más despacio) o se despierta.
+func dormir(on: bool) -> void:
+	_dormido = on
+
+
+## Dónde va el sombrero en Farolín (local).
+func sombrero_origen() -> Vector3:
+	return _sombrero_pos
+
+
+## El sombrero vuelve a su lugar en Farolín (si alguien se lo había llevado).
+func sombrero_devolver() -> void:
+	if sombrero == null or sombrero.get_parent() == self:
+		return
+	sombrero.reparent(self, false)
+	sombrero.position = _sombrero_pos
+	sombrero.rotation = Vector3.ZERO
+	sombrero.scale = Vector3.ONE
 
 
 ## "contento" (sonríe) o "triste" (boca para abajo, la llama baja).
@@ -133,7 +175,7 @@ func _animar(delta: float) -> void:
 	_pos_escrita = position
 	_rot_escrita = rotation
 	if flame != null:
-		flame.scale = Vector3(1.0, llama, 1.0)
+		flame.scale = Vector3(1.0, llama * (0.7 if _dormido else 1.0), 1.0)
 
 
 ## El chispazo del farolito (o del portal): un puñado de chispas doradas y un destello de luz.

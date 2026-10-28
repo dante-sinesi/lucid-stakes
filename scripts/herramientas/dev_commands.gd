@@ -5,7 +5,8 @@ extends RefCounted
 ## Comandos:
 ##   help                       lista de comandos
 ##   tower <etapa> [escenario] [semilla]   una partida nueva con una torre de esa etapa (1-15) y escenario (por defecto pesadilla), sin pagar la entrada; se usa desde el menú principal
-##   prueba <id> <etapa> [escenario] [semilla]   como tower, pero con esa prueba (sin_ayudas, todo_o_nada, sin_racha, travesuras) en esa etapa
+##   prueba <id> <etapa> [escenario] [semilla]   como tower, pero con esa prueba en esa etapa (los ids: sin_ayudas, todo_o_nada, sin_racha, travesuras, mareo, corrupcion, memoria_pez, terremoto, presupuesto, solo_tres,
+##                              espalda_mala, ventisca, quebradizo, a_oscuras, pesadilla_despierta; el jefe final con una combinación elegida: pesadilla_despierta_1 a _4); sin ayuda muestra la lista
 ##   goto_end  (o win)          da por ganada la torre actual (y de ahí al casino)
 ##   goto_casino <etapa>        te lleva directo al casino de esa etapa (1-15: taberna 1-3, salón 4-7, casino 8-11, gran casino 12-15)
 ##   set_luz <n>                fija la Luz del perfil en n (sirve en el menú y en el juego; no baja de 0)
@@ -52,7 +53,8 @@ static func execute(line: String, game) -> String:
 			return game.dev_tower(int(parts[1]), parts[2] if parts.size() > 2 else "", seed)
 		"prueba", "trial":
 			var ids: Array = Trials.CATALOG.keys()
-			if parts.size() < 3 or not ids.has(parts[1]) or not parts[2].is_valid_int() or int(parts[2]) < 1 or int(parts[2]) > 15:
+			var id_valido: bool = parts.size() > 1 and (ids.has(parts[1]) or (parts[1].begins_with(Trials.FINAL_TRIAL + "_") and parts[1].substr(Trials.FINAL_TRIAL.length() + 1).is_valid_int()))
+			if parts.size() < 3 or not id_valido or not parts[2].is_valid_int() or int(parts[2]) < 1 or int(parts[2]) > 15:
 				return "Uso: prueba <id> <etapa 1-15> [escenario] [semilla]   (pruebas: %s; por ejemplo: prueba travesuras 3)" % ", ".join(ids)
 			var semilla := -1
 			if parts.size() > 4:

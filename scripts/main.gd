@@ -46,6 +46,7 @@ const Compass := preload("res://scripts/ui/compass.gd")
 const Juice := preload("res://scripts/ui/juice.gd")
 const Tutorial := preload("res://scripts/datos/tutorial.gd")
 const Trials := preload("res://scripts/datos/trials.gd")
+const CasinoEventos := preload("res://scripts/casino/casino_eventos.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
 const Scenarios := preload("res://scripts/datos/scenarios.gd")
 const Abilities := preload("res://scripts/datos/abilities.gd")
@@ -448,6 +449,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	var reglas: Dictionary = run.scenario().duplicate()   # (las del escenario y, en la prueba Travesuras, la de Ama)
 	if trial.get("travesuras", false):
 		reglas["travesuras"] = true
+	reglas.merge(trial.get("reglas", {}), true)   # (las reglas de la prueba: Mareo, Terremoto, Presupuesto compartido... ver trials.gd)
 	torre.reglas = reglas
 	torre.pista_permitida = run.dificultad == "facil" and tutorial_index < 0 and not training
 	torre.pista_activa = _pista_on and torre.pista_permitida
@@ -1011,6 +1013,12 @@ func _panel_datos() -> Dictionary:
 		de_la_torre = torre.t.cosecha.claridad() if not banked else 0   # (ya sumada al run al llegar al portal: no se cuenta dos veces)
 		d["movs"] = torre.t.movs
 		d["max_movs"] = torre.t.max_mov()
+		if torre.t.presupuesto_total > 0:   # (Presupuesto compartido: un solo fondo para toda la torre)
+			d["fondo"] = true
+			d["movs"] = torre.t.gastado_antes + torre.t.movs
+			d["max_movs"] = torre.t.presupuesto_total + torre.t.mov_extra + torre.t.mov_run
+		if torre.t.motor.limite_movibles >= 0:   # (Solo tres bloques)
+			d["movibles"] = {"usados": torre.t.motor.movidos.size(), "limite": torre.t.motor.limite_movibles}
 		d["sin_limite"] = torre.t.max_mov() >= 99999
 		if torre.falsos != null and torre.falsos_permitidos > 0:
 			d["falsos"] = {"quedan": torre.falsos.quedan(), "permitidos": torre.falsos_permitidos}
@@ -1367,7 +1375,31 @@ func enter_casino(restoring := false) -> void:
 	casino.keeper_talk.connect(_on_keeper_talk)
 	hud_layer.visible = false
 	banner.text = ""
+	_evento_del_casino()
 	save_game()
+
+
+## Los eventos aleatorios del casino (casino_eventos.gd): se sortea (o se recuerda) el de esta etapa; si es nuevo, lo cuenta el personaje en un diálogo y, con el peaje por adelantado, Farolín cobra en el acto.
+func _evento_del_casino() -> void:
+	if casino == null or training or tutorial_index >= 0 or story_kind != "":
+		return
+	var rng_ev := RandomNumberGenerator.new()
+	rng_ev.randomize()
+	var precio: int = casino.toll_base if casino.toll_base <= 0 else run.toll_after_discounts(casino.toll_base)
+	var ev: Dictionary = CasinoEventos.al_entrar(run, rng_ev, int(casino.lay.tier), precio)
+	if ev.is_empty():
+		return
+	casino.poner_evento(ev)
+	if not bool(ev.get("nuevo", false)):
+		return
+	var cobrado := CasinoEventos.aplicar_entrada(run, ev, precio)
+	casino._refresh_hud()
+	var a := CasinoEventos.anuncio(ev, cobrado, Story.SPEAKER, Farolin.SPEAKER)
+	if test_mode:
+		return   # (en las pruebas no se muestra el diálogo)
+	_keeper_talk = true
+	casino.input_locked = true
+	dialogue.show_lines(a.lines, str(a.speaker), true)
 
 
 ## El tabernero del casino habla (regla de la casa y próxima prueba): el cuadro de diálogo, y mientras tanto no se camina.
@@ -1644,7 +1676,7 @@ func start_game(scenario_id := Scenarios.FREE, dificultad := "media") -> void:
 	run.dificultad = dificultad if ["facil", "media", "dificil", "pesadilla"].has(dificultad) else "media"
 	var draw_rng := RandomNumberGenerator.new()
 	draw_rng.randomize()
-	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng)   # qué prueba toca en cada etapa 3, 6, 9...
+	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng, run.dificultad == "facil")   # qué prueba toca en cada etapa 3, 6, 9... (en Fácil no salen las que tratan de los movimientos)
 	run_new_abilities.clear()
 	Profile.apply_to_run(run)   # habilidades persistentes y reglas del escenario
 	_bind_bars()
@@ -2033,7 +2065,7 @@ func dev_tower(stage: int, scenario_id := "", seed := -1, prueba := "") -> Strin
 	run.scenario_id = sc
 	var draw_rng := RandomNumberGenerator.new()
 	draw_rng.randomize()
-	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng)
+	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng, run.dificultad == "facil")
 	if prueba != "":   # (el comando prueba: esa prueba en esa etapa)
 		run.trial_schedule[stage] = prueba
 	run_new_abilities.clear()

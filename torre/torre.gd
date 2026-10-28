@@ -40,6 +40,10 @@ var dificultad := "media"     # la dificultad elegida para el run: fácil, media
 var etapa := 0                # 0: curva fija de prueba; si no, la etapa del run (sube la dificultad y se habilitan los especiales de a poco)
 var externo := false          # las vidas son las del run (las lleva el juego): morir reinicia la sala y avisa, pero no resta
 var perks := {}               # boosts del run
+var reglas := {}              # las reglas de la torre (las del escenario y las de la prueba): Solo tres bloques, Quebradizo, Espalda mala, Presupuesto compartido... (ver trials.gd)
+var presupuesto_total := 0    # Presupuesto compartido: los movimientos de toda la torre son un solo fondo (0: cada sala tiene los suyos)
+var gastado_antes := 0        # Presupuesto compartido: lo que gastaron las salas que ya se superaron
+var _temblores: Array = []    # Terremoto: los corrimientos de la sala actual ({en: acciones que llevaba, id: del bloque, delta}), para comprobar que la solución conocida siga andando
 var mov_run := 0              # movimientos de más en cada sala por mejoras permanentes del run (Aire de más, Pies ligeros)
 var mov_extra := 0            # movimientos de más para la sala actual (Freno, Reloj de arena)
 var aliento_usado := false    # Segundo aliento: una vez por torre
@@ -148,6 +152,76 @@ static func camino_ok(d: Dictionary, obstaculos: Array = []) -> bool:
 	for a in d.get("camino", []):
 		t.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
 	return t.ganado
+
+
+static var _quebradizas := {}   # id de sala -> la sala con sus bloques quebradizos (se arma una vez por sala)
+
+
+## Quebradizo (docs/pruebas.md): los bloques comunes de la sala que su solución conocida pisa una sola vez (y nunca mueve después) se vuelven agrietados: se rompen en cuanto te bajas de ellos. Los que la solución
+## necesita más de una vez siguen siendo piedra común, así la sala se puede resolver siempre (y se ve cuáles son cuáles). Si la sala con los cambios no anda, queda como estaba.
+static func quebrar(d: Dictionary) -> Dictionary:
+	var id := int(d.get("id", -1))
+	if id >= 0 and _quebradizas.has(id):
+		return _quebradizas[id]
+	var m = Vista.motor_de(d)   # (los bloques se numeran en el orden de `d.bloques`)
+	var episodios := {}   # cuántas veces la solución se para en cada bloque (cada vez que llega a él desde otro lugar)
+	var movidos := {}     # los bloques que la solución empuja o tira
+	var ultimo := _piso_de(m)
+	if ultimo >= 0:
+		episodios[ultimo] = 1
+	for a in d.get("camino", []):
+		m.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
+		for c in m.ultimos_movidos:
+			if m.ids.has(c):
+				movidos[m.ids[c]] = true
+		var p := _piso_de(m)
+		if p >= 0 and p != ultimo:
+			episodios[p] = int(episodios.get(p, 0)) + 1
+		ultimo = p
+	var nueva := d.duplicate(true)
+	for i in nueva.bloques.size():
+		var b: Array = nueva.bloques[i]
+		if str(b[3]) == "n" and int(episodios.get(i, 0)) <= 1 and not movidos.has(i):
+			b[3] = "c"
+	var resultado: Dictionary = nueva if camino_ok(nueva) else d
+	if id >= 0:
+		_quebradizas[id] = resultado
+	return resultado
+
+
+## El número del bloque sobre el que está parado el motor (-1 si está colgado o en el aire).
+static func _piso_de(m) -> int:
+	if m.colgado != Vector3i.ZERO:
+		return -1
+	return int(m.ids.get(m.jugador + Vector3i(0, -1, 0), -1))
+
+
+## A oscuras: qué bloques de la sala se ven negros hasta que se pisan (más de la mitad de los bloques; nunca el checkpoint ni la salida): {número de bloque: true}.
+static func oscuros_de(m, id_sala: int) -> Dictionary:
+	var comunes := 0
+	var especiales := 0
+	for c in m.bloques:
+		var letra := str(m.bloques[c])
+		if letra == "f" or letra == "p" or letra == "d" or (letra.length() >= 2 and letra[0] == "b") or m.obstaculos.has(c):
+			continue
+		if letra == "n":
+			comunes += 1
+		else:
+			especiales += 1
+	# se esconde sobre todo lo especial (hielo, pesados, agrietados, trampas, pinchos, catapultas): casi todos; y de los comunes, los que hacen falta para llegar a más de la mitad de la sala (pero nunca menos del 25 %)
+	var p_especial := 90
+	var p_comun := 55
+	if comunes > 0:
+		p_comun = clampi(int(round((0.55 * float(comunes + especiales) - 0.9 * float(especiales)) / float(comunes) * 100.0)), 25, 55)
+	var out := {}
+	for c in m.bloques:
+		var letra := str(m.bloques[c])
+		if letra == "f" or letra == "p" or letra == "d" or (letra.length() >= 2 and letra[0] == "b") or m.obstaculos.has(c):
+			continue   # (los checkpoint, las bombas y las desactivadas se ven siempre: la bomba tiene su cuenta)
+		var h := absi(c.x * 73856093 ^ c.y * 19349663 ^ c.z * 83492791 ^ id_sala * 2654435761) % 100
+		if h < (p_comun if letra == "n" else p_especial) and m.ids.has(c):
+			out[m.ids[c]] = true
+	return out
 
 
 # --- armado ---
@@ -295,9 +369,19 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_r
 	for e in ctx.elegidas:
 		var g: Dictionary = e.d
 		e["off"] = off
-		e["max_mov"] = max_movimientos(int(g.pasos), str(g.nivel), etapa_run, dificultad, float(reglas.get("margen_mov", 1.0)))
+		var costo := int(g.pasos) + (int(g.get("agarres", 0)) if bool(reglas.get("espalda_mala", false)) else 0)   # (Espalda mala: cada agarre de la solución cuesta uno de más)
+		e["max_mov"] = max_movimientos(costo, str(g.nivel), etapa_run, dificultad, float(reglas.get("margen_mov", 1.0)))
 		t.salas.append(e)
 		off += int(g.meta) - 1   # la entrada de la siguiente (nivel 1) queda en el nivel de salida de ésta
+	t.reglas = reglas
+	if bool(reglas.get("presupuesto", false)):   # la prueba "Presupuesto compartido": un solo fondo para toda la torre (el de las salas, un poco recortado, pero nunca menos que sus mínimos con un margen)
+		var suma_max := 0
+		var suma_pasos := 0
+		for e in t.salas:
+			suma_max += int(e.max_mov)
+			suma_pasos += int(e.d.pasos) + (int(e.d.get("agarres", 0)) if bool(reglas.get("espalda_mala", false)) else 0)   # (con Espalda mala cada agarre de la solución cuesta uno más)
+		var margen := float({"facil": 1.45, "media": 1.25, "dificil": 1.15, "pesadilla": 1.08}.get(dificultad, 1.25))   # (el fondo sólo da un poco más que los mínimos: hay que ir casi sin errores)
+		t.presupuesto_total = mini(int(ceil(float(suma_pasos) * margen)) + t.salas.size(), suma_max)
 	if bool(reglas.get("travesuras", false)):   # la prueba "Travesuras": cada sala trae (si se puede) lo que va a mover Ama
 		t._poner_gatos(semilla, reglas)
 	if not t.salas.is_empty():
@@ -398,6 +482,10 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			continue
 		if not dentro_de_limites(d, limites_aprendizaje(int(ctx.etapa), i, int(ctx.n), str(ctx.dif))):
 			continue
+		if int(ctx.reglas.get("solo_bloques", -1)) >= 0 and (int(d.get("distintos", 99)) > int(ctx.reglas.solo_bloques) or int(d.get("distintos", 0)) < int(ctx.reglas.solo_bloques) - 1):
+			continue   # (Solo tres bloques: sólo salas cuya solución conocida mueve dos o tres bloques distintos: se pueden resolver con la regla y la regla se nota; con uno solo no cambiaría nada)
+		if bool(ctx.reglas.get("espalda_mala", false)) and int(d.get("agarres", 0)) < 4:
+			continue   # (Espalda mala: sólo salas en las que la solución empuja o tira al menos cuatro veces: si no, el doble costo casi no se nota)
 		orden.append(k)
 	# primero las del nivel que toca (mezcladas) y después las otras
 	for k in range(orden.size() - 1, 0, -1):
@@ -450,9 +538,10 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 				if dif < deg_to_rad(12.0) or dif > deg_to_rad(150.0):
 					continue
 			ctx.presupuesto -= 1
-			var g := mover(girar(datos.d, s), dx, dz)
+			var g := mover(girar(quebrar(datos.d) if bool(ctx.reglas.get("quebradizo", false)) else datos.d, s), dx, dz)
 			if not camino_ok(g):
 				continue
+
 			if i > 0:   # la sala nueva queda sobre la anterior: el camino de la anterior tiene que seguir andando con sus bloques al alcance
 				var prev: Dictionary = ctx.elegidas[i - 1].d
 				if not camino_ok(prev, obstaculos_de(g, int(prev.meta))):
@@ -533,6 +622,8 @@ const SIN_LIMITE := 999999
 func max_mov() -> int:
 	if dificultad == "facil":
 		return SIN_LIMITE
+	if presupuesto_total > 0:   # (Presupuesto compartido: lo que queda del fondo de toda la torre)
+		return maxi(presupuesto_total - gastado_antes, 0) + mov_extra + mov_run
 	var m := float(salas[indice].max_mov)
 	if perks.has("madrugada"):
 		m *= 1.25
@@ -618,8 +709,12 @@ func _entrar(i: int) -> void:
 	motor.luz_propia = cosecha.perks.has("luz_propia")
 	if i + 1 < salas.size():   # (los bloques de la sala de arriba que quedan al alcance de ésta)
 		motor.agregar_obstaculos(obstaculos_de(salas[i + 1].d, int(salas[i].d.meta)))
+	motor.limite_movibles = int(reglas.get("solo_bloques", -1))
+	if bool(reglas.get("a_oscuras", false)):
+		motor.oscuros = oscuros_de(motor, int(salas[i].id))
 	movs = 0
 	mov_extra = 0
+	_temblores.clear()
 	t0_sala = Time.get_ticks_msec()
 	deshacer_pila.clear()
 	encendidos = {}
@@ -648,8 +743,13 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 	if deshacer_pila.size() > DESHACER_MAX:
 		deshacer_pila.pop_front()
 	if not (perks.has("paso_firme") and not motor.agarro and absi(motor.jugador.y - antes_y) == 1):   # Paso firme: trepar y bajar un piso no gasta movimiento
-		movs += 1
+		movs += 2 if (motor.agarro and bool(reglas.get("espalda_mala", false))) else 1   # (Espalda mala: empujar o tirar cuesta doble)
 	movs_total += 1
+	return _tras_efecto(r, true)
+
+
+## Lo que pasa después de que algo movió al jugador o a un bloque (una acción, el viento o un terremoto): la claridad, ganar la sala, perderla o seguir. `limite`: también se comprueba el temporizador.
+func _tras_efecto(r: Dictionary, limite: bool) -> Dictionary:
 	cosecha.despues_de_accion(motor.ultimos_purificados, motor.agarro, int(salas[indice].off) + motor.jugador.y)
 	if motor.ganado:
 		ultima_sala = _info_sala("ganada", "")
@@ -663,15 +763,142 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 			r["evento"] = "torre"
 			return r
 		ultima_caida = indice
+		gastado_antes += movs   # (Presupuesto compartido)
 		_entrar(indice + 1)   # (la sala anterior cae; la entrada de la nueva es la celda de la salida de la anterior)
 		r["evento"] = "checkpoint"
 		return r
 	if motor.perdido:
 		return _morir(str(motor.motivo) if str(motor.motivo) != "" else "Caíste")
-	if movs >= max_mov():
+	if limite and movs >= max_mov():
 		return _morir("Se acabaron los movimientos")
 	r["evento"] = ""
 	return r
+
+
+## Ventisca: el viento empuja al jugador una celda hacia `dir` (no gasta movimientos). Devuelve como `actuar` ({ok: false} si no lo movió).
+func viento(dir: Vector3i) -> Dictionary:
+	if terminada or perdida or muerta or not motor.viento(dir):
+		return {"ok": false, "msg": "", "evento": ""}
+	return _tras_efecto({"ok": true, "msg": ""}, false)
+
+
+## Terremoto: un bloque suelto (común, sin nada encima, que no sea el que pisas ni del que te cuelgas) se corre una celda hacia donde haya lugar dentro del anillo.
+## Devuelve {ok, evento, de, a}; ok es false si no había ninguno que se pudiera correr.
+func terremoto(rng: RandomNumberGenerator, cuantos := 3) -> Dictionary:
+	if terminada or perdida or muerta:
+		return {"ok": false, "msg": "", "evento": ""}
+	var movidos: Array = []
+	for n in cuantos:
+		var par := _terremoto_uno(rng)
+		if par.is_empty():
+			break
+		movidos.append(par)
+	if movidos.is_empty():
+		return {"ok": false, "msg": "", "evento": ""}
+	var r := _tras_efecto({"ok": true, "msg": ""}, false)
+	r["movidos"] = movidos
+	return r
+
+
+## Corre un bloque suelto una celda y devuelve {de, a} ({} si no hay ninguno que se pueda correr sin romper la solución).
+func _terremoto_uno(rng: RandomNumberGenerator) -> Dictionary:
+	var candidatos: Array = []
+	var prohibido: Vector3i = motor.jugador + Vector3i(0, -1, 0) if motor.colgado == Vector3i.ZERO else motor.jugador + motor.colgado
+	for c in motor.bloques:
+		if str(motor.bloques[c]) != "n" or c == prohibido or motor.obstaculos.has(c) or motor.bloques.has(c + Vector3i(0, 1, 0)):
+			continue
+		if motor.jugador == c + Vector3i(0, 1, 0) or (motor.colgado != Vector3i.ZERO and motor.jugador == c):
+			continue
+		for d in Motor.DIRS:
+			var a: Vector3i = c + d
+			if motor.bloques.has(a) or not es_anillo(a.x, a.z) or a == motor.jugador:
+				continue
+			candidatos.append([c, a])
+	var cerca := func(e: Array) -> float: return Vector2(e[0].x - motor.jugador.x, e[0].z - motor.jugador.z).length() + float(absi(e[0].y - motor.jugador.y)) + rng.randf() * 2.5
+	var puntuados: Array = []
+	for e in candidatos:   # (los más cercanos al jugador primero, con algo de azar: se nota más)
+		puntuados.append([cerca.call(e), e])
+	puntuados.sort_custom(func(a, b): return a[0] < b[0])
+	for p in puntuados.slice(0, 14):   # (el primero que no tire ningún otro bloque y no rompa la solución conocida de la sala)
+		var e: Array = p[1]
+		if not _corrimiento_limpio(motor, e[0], e[1]) or not _terremoto_seguro(e[0], e[1]):
+			continue
+		_temblores.append({"en": deshacer_pila.size(), "id": int(motor.ids.get(e[0], -1)), "delta": e[1] - e[0]})
+		motor.desplazar(e[0], e[1])
+		return {"de": e[0], "a": e[1]}
+	return {}
+
+
+## ¿Correr el bloque de `de` a `a` deja todo lo demás donde estaba? Si con el corrimiento cae un bloque (o más), o se mueve algo más que ése, no vale: el temblor tiene que molestar, no desarmar el puzzle.
+static func _corrimiento_limpio(m, de: Vector3i, a: Vector3i) -> bool:
+	var copia = m.duplicar()
+	copia.desplazar(de, a)
+	if not copia.caidos_fuera.is_empty() or copia.perdido or copia.bloques.size() != m.bloques.size() or copia.jugador != m.jugador or copia.colgado != m.colgado:
+		return false
+	var id_movido := int(m.ids.get(de, -1))
+	for c in m.ids:
+		var id := int(m.ids[c])
+		if id == id_movido:
+			continue
+		if not copia.ids.has(c) or int(copia.ids[c]) != id:
+			return false   # (algún otro bloque cambió de lugar: cayó)
+	return true
+
+
+## ¿La solución conocida de la sala sigue andando si ese bloque se corre en este momento? Se repite desde el principio con el corrimiento hecho después de las acciones que lleva el jugador: si se juega siguiendo la
+## solución, el temblor no la rompe (el bloque que se corre es en la práctica uno de los que sobran). Si el jugador ya se pasó de la solución conocida, no hay nada que comprobar.
+func _terremoto_seguro(de: Vector3i, a: Vector3i) -> bool:
+	var s: Dictionary = salas[indice]
+	var camino: Array = s.d.get("camino", [])
+	var hechas := deshacer_pila.size()
+	if hechas >= camino.size():
+		return true
+	var m = Vista.motor_de(s.d)
+	if indice + 1 < salas.size():
+		m.agregar_obstaculos(obstaculos_de(salas[indice + 1].d, int(s.d.meta)))
+	var corrimientos: Array = _temblores.duplicate()
+	corrimientos.append({"en": hechas, "id": int(motor.ids.get(de, -1)), "delta": a - de})
+	for i in camino.size():
+		for c in corrimientos:   # (los temblores de antes y éste, cada uno después de las acciones que llevaba el jugador)
+			if int(c.en) != i:
+				continue
+			var celda := Vector3i(-999, -999, -999)
+			for k in m.ids:
+				if int(m.ids[k]) == int(c.id):
+					celda = k
+			if celda.x == -999 or m.bloques.has(celda + c.delta) or m.jugador == celda + c.delta:
+				return false
+			if not _corrimiento_limpio(m, celda, celda + c.delta):
+				return false
+			m.desplazar(celda, celda + c.delta)
+		if not m.actuar(Vector3i(int(camino[i][0]), 0, int(camino[i][1])), int(camino[i][2])).ok:
+			return false
+	return m.ganado
+
+
+## Corrupción que vuelve: el bloque purificado más viejo (que no sea el que pisas o del que te cuelgas, ni los checkpoint) se corrompe otra vez y se pierde la claridad que dio en esta sala.
+## Pisarlo de nuevo la vuelve a dar. Devuelve {ok, celda, perdida}; ok es false si no hay ninguno.
+func corromper() -> Dictionary:
+	var pisado := -1
+	if motor.colgado == Vector3i.ZERO and motor.ids.has(motor.jugador + Vector3i(0, -1, 0)):
+		pisado = int(motor.ids[motor.jugador + Vector3i(0, -1, 0)])
+	elif motor.colgado != Vector3i.ZERO and motor.ids.has(motor.jugador + motor.colgado):
+		pisado = int(motor.ids[motor.jugador + motor.colgado])
+	for id in motor.purificados.keys():   # (en el orden en que se purificaron: el más viejo primero)
+		if int(id) == pisado:
+			continue
+		var celda := Vector3i(-999, -999, -999)
+		for c in motor.ids:
+			if int(motor.ids[c]) == int(id):
+				celda = c
+		var letra := str(motor.bloques.get(celda, ""))
+		if letra == "" or letra == "f" or letra == "p":
+			if letra == "":
+				motor.purificados.erase(id)   # (el bloque ya no está)
+			continue
+		motor.purificados.erase(id)
+		return {"ok": true, "celda": celda, "perdida": cosecha.perder_bloque(letra)}
+	return {"ok": false, "celda": Vector3i.ZERO, "perdida": 0}
 
 
 ## La sala se pierde por algo que decide el juego (por ejemplo el último movimiento en falso de El camino corto): cuenta como una muerte.
@@ -680,6 +907,10 @@ func actuar(dir: Vector3i, modo: int) -> Dictionary:
 func saltar_a_sala(i: int, banco: int) -> void:
 	if i <= 0 or i >= salas.size():
 		return
+	if presupuesto_total > 0:   # (al continuar una partida el fondo no se guardó: se calcula lo que habrían gastado las salas de antes)
+		gastado_antes = 0
+		for j in i:
+			gastado_antes += int(ceil(float(salas[j].d.pasos) * 1.15))
 	cosecha.banco = banco
 	cosecha.sala = 0
 	_entrar(i)
@@ -730,6 +961,8 @@ func deshacer() -> bool:
 	if deshacer_pila.is_empty() or terminada or perdida or muerta:
 		return false
 	var f: Dictionary = deshacer_pila.pop_back()
+	while not _temblores.is_empty() and int(_temblores[_temblores.size() - 1].en) > deshacer_pila.size():
+		_temblores.pop_back()   # (los temblores que vinieron después de la acción deshecha también se deshacen)
 	motor = f.motor
 	movs = int(f.movs)
 	cosecha.restaurar(f.cosecha)

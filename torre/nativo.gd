@@ -1,5 +1,7 @@
 extends RefCounted
-## Puente al solucionador nativo (tools/salas.exe, se arma con native/salas.cpp). Misma respuesta que torre/solucionador.gd, mucho más rápido.
+## Puente al solucionador nativo (native/salas.cpp). Misma respuesta que torre/solucionador.gd, mucho más rápido. Tiene dos formas, con la misma respuesta: la **extensión de Godot** (`SolverNativo`, extension/solver.gdextension, que se
+## arma con native/construir_extension.bat: se llama directo, sin lanzar un proceso, y es la que viaja con el juego) y el **ejecutable** tools/salas.exe (se arma con native/construir.bat: lo usan las herramientas de desarrollo y es el
+## respaldo si no está la extensión). `resolver` prefiere la extensión; el resto (`minimo`, `medir`, `conocido`...) son del ejecutable. Ver docs/solver_extension.md.
 
 const Motor := preload("res://torre/motor.gd")
 
@@ -11,8 +13,14 @@ static func exe() -> String:
 	return ProjectSettings.globalize_path("res://tools/salas.exe")
 
 
+## ¿Está cargada la extensión de Godot del solucionador?
+static func extension() -> bool:
+	return ClassDB.class_exists("SolverNativo")
+
+
+## ¿Se puede resolver? Con la extensión o con el ejecutable.
 static func disponible() -> bool:
-	return FileAccess.file_exists(exe())
+	return extension() or FileAccess.file_exists(exe())
 
 
 ## El estado en el formato de texto de salas.exe.
@@ -23,8 +31,21 @@ static func a_texto(t, tope := 1500000) -> String:
 	return s
 
 
-## { ok, moves, path:[[dir, modo]], states, agarres, distintos } igual que Solucionador.resolver. tope = nodos como mucho.
+## { ok, moves, path:[[dir, modo]], states, agarres, distintos } igual que Solucionador.resolver. tope = nodos como mucho. Con la extensión se llama directo; si no, se lanza el ejecutable.
 static func resolver(t, tope := 1500000) -> Dictionary:
+	if extension():
+		return resolver_extension(t, tope)
+	return resolver_exe(t, tope)
+
+
+## Lo mismo con la extensión de Godot (hay que comprobar antes `extension()`).
+static func resolver_extension(t, tope := 1500000) -> Dictionary:
+	var solver = ClassDB.instantiate("SolverNativo")
+	return _interpretar(String(solver.resolver_texto(a_texto(t, tope))))
+
+
+## Lo mismo lanzando tools/salas.exe (por la entrada, con un archivo temporal).
+static func resolver_exe(t, tope := 1500000) -> Dictionary:
 	var dir := OS.get_environment("TEMP")
 	var entrada := dir.path_join("cil_%d_%d.txt" % [OS.get_process_id(), randi()])
 	var f := FileAccess.open(entrada, FileAccess.WRITE)
@@ -33,7 +54,11 @@ static func resolver(t, tope := 1500000) -> Dictionary:
 	var out: Array = []
 	OS.execute("cmd", ["/c", "\"%s\" < \"%s\"" % [exe().replace("/", "\\"), entrada.replace("/", "\\")]], out, true)
 	DirAccess.remove_absolute(entrada)
-	var texto := String(out[0]) if out.size() > 0 else ""
+	return _interpretar(String(out[0]) if out.size() > 0 else "")
+
+
+## Las líneas RESULT y PATH del solucionador (de la extensión o del ejecutable) como diccionario.
+static func _interpretar(texto: String) -> Dictionary:
 	var res := {"ok": false, "moves": 0, "path": [], "states": 0, "agarres": 0, "distintos": 0}
 	for linea in texto.split("\n"):
 		var p := linea.strip_edges().split(" ")

@@ -283,11 +283,15 @@ func _armar() -> void:
 		_linea(c, 3.0, COLOR_TEXTO, "claridad")
 		if int(d.get("claridad_torre", 0)) > 0:
 			_linea(Loc.f("(%s de esta torre)", [NumberFormat.fmt(int(d.claridad_torre))]), 2.2, COLOR_SUAVE, "claridad_torre")
-	if d.has("movs"):
+	if d.has("movs") and bool(d.get("fondo", false)):
+		_linea(Loc.f("Fondo de movimientos %d/%d", [int(d.movs), int(d.max_movs)]), 3.0, COLOR_TEXTO, "movimientos")
+	elif d.has("movs"):
 		if bool(d.get("sin_limite", false)):
 			_linea(Loc.f("Movimientos %d (sin límite)", [int(d.movs)]), 3.0, COLOR_TEXTO, "movimientos")
 		else:
 			_linea(Loc.f("Movimientos %d/%d", [int(d.movs), int(d.max_movs)]), 3.0, COLOR_TEXTO, "movimientos")
+	if d.has("movibles"):
+		_linea(Loc.f("Bloques movidos: %d de %d", [int(d.movibles.usados), int(d.movibles.limite)]), 2.6, COLOR_TEXTO, "movibles")
 	if d.has("falsos"):
 		_linea(Loc.f("Movimientos en falso: quedan %d de %d", [int(d.falsos.quedan), int(d.falsos.permitidos)]), 2.6, COLOR_TEXTO, "falsos")
 	if d.has("peaje"):

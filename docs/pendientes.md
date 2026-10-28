@@ -6,7 +6,7 @@ Lo que falta o se quitó a propósito, y las ideas anotadas (no son objetivos po
 
 Al retirar la torre vieja se borraron, en vez de dejarlos sin efecto, los premios, pruebas y escenarios que dependían de reglas que ya no existen. Hay que repensar premios y pruebas con la torre actual:
 
-- **Pruebas** que quedaron: Sin ayudas, Todo o nada y Sin racha. Se quitaron Niebla, Oscuridad, Prisa, Hielo total, Quebradizo, Polvorín y Lluvia de meteoritos (reglas propias de la torre vieja).
+- **Pruebas:** las de la torre vieja se retiraron (Niebla, Oscuridad, Prisa, Hielo total, Quebradizo, Polvorín y Lluvia de meteoritos); las nuevas, pensadas para la torre actual, están en `pruebas.md` (quedan pendientes Sombra, Plomo, Hielo total y Pegamento).
 - **Consumibles y boosts retirados:** Ojo de hielo, Escudo, Doble salto, Teletransporte, Ancla chica, los ocho conversores de bloque, Fuerza bruta y Aire de más. Los que dependían de elegir un bloque con el mouse necesitan un selector de bloques para la torre actual.
 - **Bot de balance:** funciona con la torre actual (`bot.md`) pero sólo juega por el camino mínimo y la ruleta (no tragamonedas ni blackjack).
 
@@ -34,7 +34,7 @@ Decisiones abiertas: cuántos entran en la primera tanda y si van al casino como
 - Los bloques ya no se aclaran con la etapa (solo el fondo y la luz): decidir si se retoma. Revisar también la ayuda de profundidad con la cámara de la torre.
 - Música: decidir tempo, volumen y si se agrega percusión (se probaron variantes al 90, 80 y 70 % sin preferencia clara: `herramientas/musica/render_estaciones.py --tempo=0.8 --solo-previa`).
 - Calibrar la economía con partidas reales (`economia.md`).
-- La exportación excluye `tools/*`: el solucionador nativo (`tools/salas.exe`), que usa El camino corto, no viaja con el juego exportado; hay que empaquetarlo o tener respaldo.
+- **El solucionador en el juego exportado:** ya viaja como extensión de Godot para Windows (`solver_extension.md`; hay que armar la biblioteca release con `native\construir_extension.bat` antes de exportar). Falta armarla para Linux, macOS y Android (y bajar los topes de estados en celulares) cuando se quiera portar.
 
 ## Ideas anotadas
 

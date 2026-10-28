@@ -178,7 +178,10 @@ func test_flow() -> void:
 	var pool: Array = Scenarios.get_scenario("relojeria").pool
 	var all_in_pool := true
 	for st in main.run.trial_schedule:
-		all_in_pool = all_in_pool and pool.has(main.run.trial_schedule[st])
+		var id_sorteado := str(main.run.trial_schedule[st])
+		if id_sorteado.begins_with("pesadilla_despierta_"):   # (el jefe final lleva la combinación sorteada: pesadilla_despierta_N)
+			id_sorteado = "pesadilla_despierta"
+		all_in_pool = all_in_pool and pool.has(id_sorteado)
 	check(all_in_pool, "las pruebas del sorteo salen del conjunto del escenario")
 	# Al terminar el run la Luz se multiplica por el escenario y queda anotada
 	main.run.towers_cleared = 40   # (sin victoria sólo se conserva el 20 % del avance)

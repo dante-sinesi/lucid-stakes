@@ -21,6 +21,8 @@ var showcase := {}        # la vitrina de esta visita al casino (ver showcase.gd
 var free_chip := false    # Ficha gratis: la próxima apuesta no cuesta la ficha (no se guarda: se usa en la misma visita)
 var xray := false         # Rayos X: la próxima mano de blackjack muestra la carta tapada del crupier
 var toll_bribe := false   # Soborno: Farolín de este casino cobra menos (se gasta al pagar)
+var toll_adelanto := 0    # el peaje por adelantado (evento del casino): lo que Farolín ya cobró de esta salida (ver casino_eventos.gd)
+var casino_evento := {}   # el evento sorteado para el casino de esta etapa: {stage, id, solo} (casino_eventos.gd); se guarda
 var casino_spent := 0   # estadísticas del run
 var casino_won := 0
 var retries := 0          # reintentos de torre en todo el run
@@ -360,7 +362,7 @@ func to_dict() -> Dictionary:
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "movs_extra": movs_extra,
 			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
-			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "buena_letra": buena_letra, "buena_letra_usada": buena_letra_usada, "toll_meta_discount": toll_meta_discount, "toll_bribe": toll_bribe, "showcase": showcase.duplicate(true)}
+			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "buena_letra": buena_letra, "buena_letra_usada": buena_letra_usada, "toll_meta_discount": toll_meta_discount, "toll_bribe": toll_bribe, "toll_adelanto": toll_adelanto, "casino_evento": casino_evento.duplicate(), "showcase": showcase.duplicate(true)}
 
 
 func _schedule_out() -> Dictionary:
@@ -408,6 +410,9 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.contratos = d.get("contratos", {}) if d.get("contratos", {}) is Dictionary else {}
 	r.sello_oro = bool(d.get("sello_oro", false))
 	r.toll_bribe = bool(d.get("toll_bribe", false))
+	r.toll_adelanto = int(d.get("toll_adelanto", 0))
+	var cev = d.get("casino_evento", {})
+	r.casino_evento = (cev as Dictionary).duplicate() if cev is Dictionary else {}
 	var sc = d.get("showcase", {})
 	r.showcase = sc.duplicate(true) if sc is Dictionary else {}
 	for st in d.get("trial_schedule", {}):
