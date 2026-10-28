@@ -46,6 +46,7 @@ const Compass := preload("res://scripts/ui/compass.gd")
 const Juice := preload("res://scripts/ui/juice.gd")
 const Tutorial := preload("res://scripts/datos/tutorial.gd")
 const Trials := preload("res://scripts/datos/trials.gd")
+const CasinoEventos := preload("res://scripts/casino/casino_eventos.gd")
 const Profile := preload("res://scripts/datos/profile.gd")
 const Scenarios := preload("res://scripts/datos/scenarios.gd")
 const Abilities := preload("res://scripts/datos/abilities.gd")
@@ -1374,7 +1375,31 @@ func enter_casino(restoring := false) -> void:
 	casino.keeper_talk.connect(_on_keeper_talk)
 	hud_layer.visible = false
 	banner.text = ""
+	_evento_del_casino()
 	save_game()
+
+
+## Los eventos aleatorios del casino (casino_eventos.gd): se sortea (o se recuerda) el de esta etapa; si es nuevo, lo cuenta el personaje en un diálogo y, con el peaje por adelantado, Farolín cobra en el acto.
+func _evento_del_casino() -> void:
+	if casino == null or training or tutorial_index >= 0 or story_kind != "":
+		return
+	var rng_ev := RandomNumberGenerator.new()
+	rng_ev.randomize()
+	var precio: int = casino.toll_base if casino.toll_base <= 0 else run.toll_after_discounts(casino.toll_base)
+	var ev: Dictionary = CasinoEventos.al_entrar(run, rng_ev, int(casino.lay.tier), precio)
+	if ev.is_empty():
+		return
+	casino.poner_evento(ev)
+	if not bool(ev.get("nuevo", false)):
+		return
+	var cobrado := CasinoEventos.aplicar_entrada(run, ev, precio)
+	casino._refresh_hud()
+	var a := CasinoEventos.anuncio(ev, cobrado, Story.SPEAKER, Farolin.SPEAKER)
+	if test_mode:
+		return   # (en las pruebas no se muestra el diálogo)
+	_keeper_talk = true
+	casino.input_locked = true
+	dialogue.show_lines(a.lines, str(a.speaker), true)
 
 
 ## El tabernero del casino habla (regla de la casa y próxima prueba): el cuadro de diálogo, y mientras tanto no se camina.
