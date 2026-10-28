@@ -4,7 +4,8 @@ extends RefCounted
 ## cuántas etapas faltan. Cada prueba cambia una regla de la torre, paga más claridad, regala un boost al superarla y, la primera
 ## vez, da un regalo (ver `reward`). Las habilidades persistentes no salen de acá: se ganan por escenario (ver scenarios.gd).
 ##
-## Una prueba es un diccionario: {id, name, desc, no_items (sin consumibles), no_retry (sin reintentos: si caes se termina el run), no_streak (la racha no sube el multiplicador), travesuras (al entrar a cada sala Ama, una gata, mueve unos bloques: ver `Torre.armar` y docs/gatito_travieso.md)}.
+## Una prueba es un diccionario: {id, name, desc, no_items (sin consumibles), no_retry (sin reintentos: si caes se termina el run), no_streak (la racha no sube el multiplicador), travesuras (al entrar a cada sala Ama, una gata, mueve unos bloques: ver `Torre.armar` y docs/gatito_travieso.md),
+## reglas (las reglas de la torre que pone: se suman a las del escenario; ver docs/pruebas.md), desde (la primera etapa en la que puede caer: las serias no salen en la 3), final (sólo cae en la etapa 15)}.
 ## `mult` (multiplicador de la claridad juntada) y `index` (0..4) se completan al sortear: las últimas pagan más.
 
 const Items := preload("res://scripts/datos/items.gd")
@@ -13,13 +14,33 @@ const Loc := preload("res://scripts/idioma/loc.gd")
 
 const FIRST_STAGE := 3
 const EVERY := 3
+const FINAL_TRIAL := "pesadilla_despierta"   # el jefe final: sólo cae en la última etapa y combina dos reglas de las de abajo
 
 const CATALOG := {
 	"sin_ayudas": {"name": "Sin ayudas", "desc": "No se pueden usar consumibles.", "no_items": true},
 	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caes, se termina el run.", "no_retry": true},
 	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true},
 	"travesuras": {"name": "Travesuras", "desc": "Ama, una gata traviesa, mueve de lugar unos bloques al entrar a cada sala.", "travesuras": true},
+	"mareo": {"name": "Mareo", "desc": "Cada cinco movimientos la cámara gira sola.", "reglas": {"mareo": true}},
+	"corrupcion": {"name": "Corrupción que vuelve", "desc": "Cada diez movimientos los bloques que purificaste se corrompen otra vez y se corta la racha.", "reglas": {"corrupcion": true}},
+	"memoria_pez": {"name": "Memoria de pez", "desc": "La torre se ve entera solo un momento después de cada movimiento; después, solo los bloques de al lado.", "reglas": {"memoria_pez": true}, "desde": 6},
+	"terremoto": {"name": "Terremoto", "desc": "Cada ocho movimientos tiembla la torre y un bloque suelto se corre una celda.", "reglas": {"terremoto": true}, "desde": 6},
+	"presupuesto": {"name": "Presupuesto compartido", "desc": "Los movimientos de toda la torre son un solo fondo: lo que ahorras en una sala te sirve en las siguientes.", "reglas": {"presupuesto": true}, "desde": 6},
+	"solo_tres": {"name": "Solo tres bloques", "desc": "En cada sala solo puedes mover tres bloques distintos.", "reglas": {"solo_bloques": 3}, "desde": 6},
+	"espalda_mala": {"name": "Espalda mala", "desc": "Empujar o tirar de un bloque cuesta dos movimientos.", "reglas": {"espalda_mala": true}, "desde": 9},
+	"ventisca": {"name": "Ventisca", "desc": "Cada nueve movimientos el viento te empuja una celda; un silbido avisa un movimiento antes.", "reglas": {"ventisca": true}, "desde": 9},
+	"quebradizo": {"name": "Quebradizo", "desc": "Cada bloque se rompe en cuanto te bajas de él: solo se pisa una vez.", "reglas": {"quebradizo": true}, "desde": 9},
+	"a_oscuras": {"name": "A oscuras", "desc": "Muchos bloques son negros y no sabes qué son hasta que los pisas.", "reglas": {"a_oscuras": true}, "desde": 9},
+	"pesadilla_despierta": {"name": "La Pesadilla despierta", "desc": "La última torre combina dos pruebas.", "final": true, "desde": 15},
 }
+
+## Las dos reglas que combina La Pesadilla despierta (una combinación por partida, según su sorteo): {ids: [prueba, prueba], desc}.
+const COMBOS := [
+	{"ids": ["mareo", "terremoto"], "desc": "El mundo entero se mueve: la cámara gira cada cinco movimientos y cada ocho tiembla la torre."},
+	{"ids": ["memoria_pez", "ventisca"], "desc": "No ves y te empujan: la torre se esconde después de cada movimiento y el viento te corre de lugar."},
+	{"ids": ["presupuesto", "espalda_mala"], "desc": "Cada movimiento cuenta: un solo fondo para toda la torre y empujar o tirar cuesta el doble."},
+	{"ids": ["a_oscuras", "corrupcion"], "desc": "Nada es lo que parece: los bloques negros esconden lo que son y la corrupción vuelve cada diez movimientos."},
+]
 
 
 static func stages() -> Array[int]:
@@ -31,12 +52,17 @@ static func stages() -> Array[int]:
 	return out
 
 
-## Sortea las pruebas de una partida: {etapa: id}. Nunca repite la misma prueba dos veces seguidas.
+## Sortea las pruebas de una partida: {etapa: id}. Nunca repite la misma prueba dos veces seguidas; las serias no caen en las primeras etapas (`desde`) y el jefe final (si el escenario lo admite) cae siempre en la última.
 static func draw_schedule(pool: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var out := {}
 	var prev := ""
 	for st in stages():
-		var options: Array = pool.filter(func(id): return id != prev)
+		if st == Stages.FINAL and pool.has(FINAL_TRIAL):
+			out[st] = FINAL_TRIAL
+			continue
+		var options: Array = pool.filter(func(id): return id != prev and id != FINAL_TRIAL and int((CATALOG.get(id, {}) as Dictionary).get("desde", FIRST_STAGE)) <= st)
+		if options.is_empty():
+			options = pool.filter(func(id): return id != FINAL_TRIAL)
 		if options.is_empty():
 			options = pool
 		var id: String = options[rng.randi() % options.size()]
@@ -55,6 +81,14 @@ static func for_stage(schedule: Dictionary, stage: int) -> Dictionary:
 	var t: Dictionary = (CATALOG[id] as Dictionary).duplicate(true)
 	var index := (stage - FIRST_STAGE) / EVERY
 	t["id"] = id
+	if id == FINAL_TRIAL:   # (combina las reglas de dos pruebas; la combinación sale del sorteo de la partida, así es la misma al volver a empezar la torre)
+		var combo: Dictionary = COMBOS[absi(str(schedule).hash()) % COMBOS.size()]
+		var reglas := {}
+		for sub in combo.ids:
+			reglas.merge((CATALOG[sub].reglas as Dictionary), true)
+		t["reglas"] = reglas
+		t["desc"] = combo.desc
+		t["combo"] = combo.ids
 	t["index"] = index
 	t["mult"] = 1.5 + 0.3 * index    # 1,5 en la primera, 2,7 en la última (son 5)
 	return t

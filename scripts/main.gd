@@ -448,6 +448,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	var reglas: Dictionary = run.scenario().duplicate()   # (las del escenario y, en la prueba Travesuras, la de Ama)
 	if trial.get("travesuras", false):
 		reglas["travesuras"] = true
+	reglas.merge(trial.get("reglas", {}), true)   # (las reglas de la prueba: Mareo, Terremoto, Presupuesto compartido... ver trials.gd)
 	torre.reglas = reglas
 	torre.pista_permitida = run.dificultad == "facil" and tutorial_index < 0 and not training
 	torre.pista_activa = _pista_on and torre.pista_permitida
@@ -1011,6 +1012,12 @@ func _panel_datos() -> Dictionary:
 		de_la_torre = torre.t.cosecha.claridad() if not banked else 0   # (ya sumada al run al llegar al portal: no se cuenta dos veces)
 		d["movs"] = torre.t.movs
 		d["max_movs"] = torre.t.max_mov()
+		if torre.t.presupuesto_total > 0:   # (Presupuesto compartido: un solo fondo para toda la torre)
+			d["fondo"] = true
+			d["movs"] = torre.t.gastado_antes + torre.t.movs
+			d["max_movs"] = torre.t.presupuesto_total + torre.t.mov_extra + torre.t.mov_run
+		if torre.t.motor.limite_movibles >= 0:   # (Solo tres bloques)
+			d["movibles"] = {"usados": torre.t.motor.movidos.size(), "limite": torre.t.motor.limite_movibles}
 		d["sin_limite"] = torre.t.max_mov() >= 99999
 		if torre.falsos != null and torre.falsos_permitidos > 0:
 			d["falsos"] = {"quedan": torre.falsos.quedan(), "permitidos": torre.falsos_permitidos}

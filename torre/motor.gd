@@ -48,6 +48,9 @@ var ultimos_purificados: Array = []   # las letras de los bloques que se purific
 var ultimos_origenes: Array = []         # de dónde salió cada uno de esos bloques (mismo orden que `ultimos_movidos`)
 var agarro := false      # en la última acción se movió un bloque (empujar o tirar)
 var purificados := {}    # los bloques que el jugador ya pisó o de los que se colgó (número -> true): el aspecto de la torre lo usa
+var limite_movibles := -1   # prueba "Solo tres bloques": cuántos bloques distintos se pueden mover (empujar o tirar) en la sala (-1: sin límite)
+var movidos := {}           # los bloques (por número) que ya se movieron en la sala, para ese límite
+var oscuros := {}           # prueba "A oscuras": los bloques (por número) que se ven negros hasta que se pisan (sólo cambia cómo se ven)
 
 
 func duplicar():
@@ -65,6 +68,9 @@ func duplicar():
 	t.purificados = purificados.duplicate()
 	t.obstaculos = obstaculos.duplicate()
 	t.luz_propia = luz_propia
+	t.limite_movibles = limite_movibles
+	t.movidos = movidos.duplicate()
+	t.oscuros = oscuros
 	return t
 
 
@@ -145,6 +151,78 @@ func actuar(d: Vector3i, modo: Modo = Modo.MOVER) -> Dictionary:
 	return r
 
 
+## Ventisca: el viento te empuja una celda hacia `d` sin gastar un movimiento. Un bloque en el camino lo frena (no pasa nada); con piso caminas, un escalón más abajo bajas y, si no hay piso, quedas colgado del
+## borde del bloque en el que estabas (o caes, si no hay de dónde colgarse, o si es hielo). Devuelve true si te movió.
+func viento(d: Vector3i) -> bool:
+	if ganado or perdido or colgado != Vector3i.ZERO:
+		return false
+	var t := jugador + d
+	if bloques.has(t) or not en_limites(t):
+		return false
+	ultimos_purificados = []
+	agarro = false
+	ultimos_movidos = []
+	ultimos_origenes = []
+	tipo_agarre = ""
+	trampa_rota = false
+	resbalo = false
+	salto = false
+	desarmo = false
+	exploto = false
+	caidos_fuera = []
+	ultimas_celdas_purificadas = []
+	rastro = [jugador]
+	var grieta := NINGUNA
+	if tipo_en(jugador + DOWN) == "c":
+		grieta = jugador + DOWN
+	if solido(t + DOWN):
+		jugador = t
+		_llegar(d)
+	elif solido(t + DOWN * 2):
+		jugador = t + DOWN
+		_llegar(d)
+	elif bloques.has(jugador + DOWN) and tipo_en(jugador + DOWN) != "i" and _alcance_cuelgue(t + DOWN):
+		jugador = t + DOWN   # (el viento te saca del borde y te agarras con las manos del bloque donde estabas)
+		colgado = -d
+	else:
+		jugador = t   # (sin de dónde agarrarse: se cae)
+	_despues(grieta)
+	return true
+
+
+## Terremoto: el bloque de la celda `de` se corre una celda hasta `a` (sin que nadie lo empuje); lo que se apoyaba en él se asienta.
+func desplazar(de: Vector3i, a: Vector3i) -> void:
+	ultimos_purificados = []
+	ultimos_movidos = []
+	ultimos_origenes = []
+	caidos_fuera = []
+	ultimas_celdas_purificadas = []
+	rastro = [jugador]
+	agarro = false
+	var tipo = bloques[de]
+	bloques.erase(de)
+	bloques[a] = tipo
+	ultimos_movidos.append(a)
+	ultimos_origenes.append(de)
+	if ids.has(de):
+		ids[a] = ids[de]
+		ids.erase(de)
+	_asentar()
+	_peligros()
+
+
+## ¿Se pueden mover estos bloques (celdas)? Con un límite de bloques distintos (Solo tres bloques) no, si con ellos se pasaría.
+func _cupo(celdas: Array) -> bool:
+	if limite_movibles < 0:
+		return true
+	var nuevos := {}
+	for c in celdas:
+		var id := int(ids.get(c, -1))
+		if not movidos.has(id):
+			nuevos[id] = true
+	return movidos.size() + nuevos.size() <= limite_movibles
+
+
 func _ok() -> Dictionary:
 	return {"ok": true, "msg": ""}
 
@@ -184,6 +262,8 @@ func _agarrar(d: Vector3i) -> Dictionary:
 			return _no("Bloque pesado")
 		if bloques.has(dest):
 			return _empujar_fila(t, d)
+		if not _cupo([t]):
+			return _no("Ya moviste todos los bloques que se pueden mover")
 		if tipo_en(t) == "i":   # el hielo se desliza hasta chocar con algo o salir de la huella
 			while en_huella(dest):
 				var n := dest + d
@@ -199,6 +279,8 @@ func _agarrar(d: Vector3i) -> Dictionary:
 			return _no("Bloque pesado")
 		if not en_limites(t):
 			return _no("Borde")
+		if not _cupo([jugador - d]):
+			return _no("Ya moviste todos los bloques que se pueden mover")
 		if not solido(t + DOWN):
 			var h := t + DOWN
 			if solido(h + DOWN):   # un escalón más abajo: se baja
@@ -234,6 +316,8 @@ func _empujar_fila(t: Vector3i, d: Vector3i) -> Dictionary:
 		if fila.size() > MAX_FILA:
 			return _no("Demasiados bloques")
 		c += d
+	if not _cupo(fila):
+		return _no("Ya moviste todos los bloques que se pueden mover")
 	for i in range(fila.size() - 1, -1, -1):
 		_mover(fila[i], fila[i] + d)
 	return _ok()
@@ -353,6 +437,7 @@ func _mover(de: Vector3i, a: Vector3i) -> void:
 	ultimos_origenes.append(de)
 	tipo_agarre = "pull" if a == jugador else "push"   # (al tirar, el bloque llega a la celda donde estabas)
 	if ids.has(de):
+		movidos[ids[de]] = true
 		ids[a] = ids[de]
 		ids.erase(de)
 
