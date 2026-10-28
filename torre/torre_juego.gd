@@ -105,6 +105,7 @@ var _sala_dibujada := -1
 var ultimo_agarre := ""          # "push" o "pull" si la última acción movió un bloque
 var _rastro_muerte: Array = []   # el camino de la última acción (si ésta termina en derrota se anima antes de caer)
 var _tweens_derrota: Array = []   # las animaciones de la derrota en marcha (al reintentar se cortan)
+var _entrando_portal := false   # el personaje se mete en el cubo-portal (la animación de llegada): nadie lo acomoda en su sitio mientras tanto
 var _cayendo := false   # la animación de la derrota está en marcha: la cámara no sigue al personaje que cae
 var _pos_previa := Vector3.ZERO   # dónde estaba el personaje antes de la última acción (la caída de la derrota arranca de ahí)
 var efectos                    # sonidos y efectos visuales de las acciones (efectos.gd)
@@ -228,6 +229,10 @@ func _ready() -> void:
 
 
 func _nueva_torre() -> void:
+	_entrando_portal = false
+	if gato_nodo != null:   # (por si la torre anterior terminó con el personaje metiéndose en el portal)
+		gato_nodo.scale = Vector3.ONE
+		gato_nodo.visible = true
 	for n in estaticas:
 		if n != null and is_instance_valid(n):
 			n.queue_free()
@@ -256,7 +261,7 @@ func _nueva_torre() -> void:
 		var m_est = Vista.motor_de(t.salas[i].d)
 		if bool(reglas.get("a_oscuras", false)):   # (A oscuras: las salas de arriba también se ven con sus bloques negros)
 			m_est.oscuros = Torre.oscuros_de(m_est, int(t.salas[i].id))
-		Vista.poblar(nodo, m_est, {}, false, false, true, true, portal != null and i == t.salas.size() - 1)
+		Vista.poblar(nodo, m_est, {}, false, false, true, true, false)
 		estaticas.append(nodo)
 	_poner_portal()
 	_refrescar()
@@ -271,7 +276,7 @@ func _refrescar(animar := false) -> void:
 			continue
 		n.visible = i > t.indice   # la actual se dibuja viva; las de abajo ya cayeron
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
-	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true, portal != null and t.indice == t.salas.size() - 1)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
+	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true, false)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
 	_animar_bloques(animar or t.muerta)
 	_limitar_sombras()
 	_poner_gato(animar)
@@ -327,7 +332,7 @@ func _animar_bloques(animar: bool) -> void:
 	_sala_dibujada = t.indice
 
 
-## El cubo-portal sobre el bloque de salida de la última sala.
+## El cubo-portal sobre el bloque de salida de la última sala: ocupa la celda donde el personaje termina el último movimiento (el último paso lo mete en el portal, todo en horizontal).
 func _poner_portal() -> void:
 	if portal == null or t == null or t.salas.is_empty():
 		return
@@ -335,7 +340,7 @@ func _poner_portal() -> void:
 	var s: Vector2i = Torre.salida_xz(ultima.d)
 	if portal.get_parent() == null:
 		add_child(portal)
-	portal.position = Vector3(s.x + 0.5, int(ultima.off) + int(ultima.d.meta) + 0.5, s.y + 0.5)
+	portal.position = Vector3(s.x + 0.5, int(ultima.off) + int(ultima.d.meta) + 1.5, s.y + 0.5)
 
 
 ## Dónde están los pies del personaje (colgado, el cuerpo se arrima al bloque del que se agarra).
@@ -374,7 +379,7 @@ func _poner_mancha() -> void:
 			if t.motor.bloques.has(Vector3i(j.x, y - 1, j.z)):
 				tope = y
 				break
-	mancha.visible = tope > -1000
+	mancha.visible = tope > -1000 and not _entrando_portal
 	if mancha.visible:
 		mancha.position = Vector3(gato_nodo.position.x, float(tope) + float(int(t.sala_actual().off)) + 0.02, gato_nodo.position.z)
 
@@ -391,7 +396,43 @@ func _limitar_sombras() -> void:
 				g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if n.position.y + g.position.y <= tope else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
+## La llegada al portal: el último paso del personaje lo mete en la celda del cubo-portal (un solo desplazamiento, sin subir a nada), atraviesa la cara del cubo y adentro se achica hasta desaparecer; el cubo late y suelta el destello dorado. Dura menos de un segundo (el juego espera antes de seguir).
+func _entrar_portal() -> void:
+	if portal == null or not is_instance_valid(portal) or gato_nodo == null:
+		return
+	_entrando_portal = true
+	if _paso_tween != null and _paso_tween.is_valid():
+		_paso_tween.kill()
+	await get_tree().process_frame
+	if not _entrando_portal or not is_inside_tree():
+		return
+	var desde := gato_nodo.position
+	var centro := portal.position - Vector3(0, 0.5, 0)   # (los pies, en el centro de la celda del portal)
+	var aviso := centro - desde
+	aviso.y = 0.0
+	var inicio := gato_nodo.rotation.y
+	var adentro := atan2(aviso.x, aviso.z) if aviso.length() > 0.01 else inicio
+	animador.reproducir(_tipo_anim, 0.8)
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void:
+		gato_nodo.position = desde.lerp(centro, smoothstep(0.0, 1.0, k))
+		gato_nodo.rotation.y = lerp_angle(inicio, adentro, clampf(k / 0.4, 0.0, 1.0)), 0.0, 1.0, STEP_TIME * 1.6)
+	tw.tween_method(func(k: float) -> void:
+		gato_nodo.position = centro + Vector3(0, 0.35 * k, 0)
+		gato_nodo.scale = Vector3.ONE * lerpf(1.0, 0.03, smoothstep(0.0, 1.0, k)), 0.0, 1.0, 0.4)
+	var latido := create_tween()   # (el cubo-portal late al recibirlo)
+	latido.tween_interval(STEP_TIME * 1.6 + 0.1)
+	latido.tween_property(portal, "scale", Vector3.ONE * 1.3, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	latido.tween_property(portal, "scale", Vector3.ONE, 0.25)
+	tw.tween_callback(func():
+		gato_nodo.visible = false
+		efectos.juice.gold_burst(portal.position)
+		efectos.juice.zoom_punch(0.06))
+
+
 func _poner_gato(animar: bool) -> void:
+	if _entrando_portal:
+		return
 	if en_juego and t.muerta:   # (perdió la sala: la animación de la derrota lleva al personaje; no se lo acomoda en su sitio)
 		return
 	var destino := _pos_gato()
@@ -1050,6 +1091,7 @@ func _procesar(r: Dictionary) -> void:
 			checkpoint_alcanzado.emit(t.salas.size() - t.indice, t.salas.size())
 		"torre":
 			if en_juego:
+				_entrar_portal()
 				torre_completa.emit()
 			else:
 				_aviso("¡Llegaste al portal! Pulsa R para otra torre.", 0.0)
