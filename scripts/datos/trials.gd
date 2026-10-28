@@ -76,13 +76,17 @@ static func for_stage(schedule: Dictionary, stage: int) -> Dictionary:
 	if not schedule.has(stage):
 		return {}
 	var id: String = schedule[stage]
+	var forzada := -1   # (para probar: "pesadilla_despierta_2" es el jefe final con la segunda combinación)
+	if id.begins_with(FINAL_TRIAL + "_") and id.substr(FINAL_TRIAL.length() + 1).is_valid_int():
+		forzada = clampi(int(id.substr(FINAL_TRIAL.length() + 1)) - 1, 0, COMBOS.size() - 1)
+		id = FINAL_TRIAL
 	if not CATALOG.has(id):
 		return {}
 	var t: Dictionary = (CATALOG[id] as Dictionary).duplicate(true)
 	var index := (stage - FIRST_STAGE) / EVERY
 	t["id"] = id
 	if id == FINAL_TRIAL:   # (combina las reglas de dos pruebas; la combinación sale del sorteo de la partida, así es la misma al volver a empezar la torre)
-		var combo: Dictionary = COMBOS[absi(str(schedule).hash()) % COMBOS.size()]
+		var combo: Dictionary = COMBOS[forzada if forzada >= 0 else absi(str(schedule).hash()) % COMBOS.size()]
 		var reglas := {}
 		for sub in combo.ids:
 			reglas.merge((CATALOG[sub].reglas as Dictionary), true)

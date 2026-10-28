@@ -84,6 +84,9 @@ func test_sorteo() -> void:
 		for k in (Trials.CATALOG[sub].reglas as Dictionary):
 			check(jefe.reglas.has(k), "el jefe lleva la regla %s de %s" % [k, sub])
 	check(Trials.for_stage(sch2, 15).combo == jefe.combo, "la combinación del jefe es la misma de la partida")
+	for n in range(1, 5):   # (para probar: el jefe final con cada combinación elegida a mano)
+		var forzado := Trials.for_stage({15: "pesadilla_despierta_%d" % n}, 15)
+		check(forzado.id == Trials.FINAL_TRIAL and forzado.combo == Trials.COMBOS[n - 1].ids, "pesadilla_despierta_%d es el jefe final con la combinación %d" % [n, n])
 	var sin_final := Trials.draw_schedule(["sin_ayudas", "sin_racha"], rng)
 	check(sin_final[15] != Trials.FINAL_TRIAL, "un escenario sin el jefe en su lista no lo tiene")
 
