@@ -35,3 +35,7 @@ Los jugadores tienen las manos en WASD, las flechas, Shift y Espacio, así que e
 **La botonera de ayuda no muestra las flechas ni la cruceta para moverse o elegir en los menús** (se sobreentienden y valen igual con WASD): solo lo que no es obvio (Espacio, Shift, C, Esc, Q/E, R). Las flechas solo aparecen cuando hacen algo propio de un juego (la casilla de la ruleta, el dado o el número de los dados, retener en la tragamonedas).
 
 Pruebas: `tests/unitarios/test_mando.gd`; sonda de la derrota con el juego real: `tests/sondas/probe_teclas_derrota.gd`.
+
+## Panel de información
+
+Select abre el panel de información en la torre y el casino (`panel_info`; "mantener" o "alternar" en Opciones → General). Por eso reintentar la torre con Select ya no existe: sólo se reintenta desde la pausa (Start). En la ayuda de los juegos Select sigue abriendo la ayuda (H). La vista de toda la torre (V) no tiene botón del mando por omisión.

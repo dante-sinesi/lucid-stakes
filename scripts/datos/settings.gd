@@ -38,6 +38,8 @@ static func defaults() -> Dictionary:
 		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
 		"focus_frame": false,     # marco blanco que titila alrededor del botón apuntado (ayuda con el mando; por defecto sólo las flechitas doradas)
 		"compass": true,          # rosa de los vientos (la que indica a qué eje va cada tecla)
+		"panel_modo": "mantener", # el panel de información: "mantener" (se ve mientras se mantiene apretada la tecla) o "alternar" (un toque lo abre y otro lo cierra)
+		"ayuda_profundidad": 1,   # 0 ninguna, 1 más claro lo cercano, 2 más claro lo cercano y transparencia cercana (ver main.gd)
 		"fondo_animado": true,    # el remolino del fondo del juego (apagado: el color liso de la etapa)
 		"volume": VOLUME_STEPS,   # en pasos de 0 a VOLUME_STEPS
 		"music": MUSIC_DEFAULT,   # música (se multiplica por el volumen general); por defecto al 80 %
@@ -72,6 +74,9 @@ static func _sanitize() -> void:
 	data.reading_mode = data.reading_mode is bool and data.reading_mode
 	data.high_contrast = data.high_contrast is bool and data.high_contrast
 	data.compass = not (data.compass is bool) or data.compass
+	if not ["mantener", "alternar"].has(str(data.panel_modo)):
+		data.panel_modo = "mantener"
+	data.ayuda_profundidad = clampi(int(data.ayuda_profundidad), 0, 2)
 	data.fondo_animado = not (data.fondo_animado is bool) or data.fondo_animado
 	data.focus_frame = data.focus_frame is bool and data.focus_frame
 	var us := int(data.ui_scale)

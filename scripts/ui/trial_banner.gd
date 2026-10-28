@@ -1,15 +1,13 @@
 extends Control
 ## El cartel de la prueba: letras grandes de cubitos abajo en la pantalla, sin fondo ("Prueba" chico, el nombre grande y bailando, la descripción abajo).
-## Aparece al empezar la torre, se queda unos segundos y se desvanece lento. Al pausar se muestra otra vez completo (`pin`), igual que al principio, y al volver
-## al juego se desvanece de nuevo (`release`).
+## Aparece al empezar la torre, se queda unos segundos y se desvanece lento. Al pausar se va (`hide_for_pause`): la prueba se lee en el panel de información.
 
 const VoxelLabel := preload("res://scripts/ui/voxel_label.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 
 const HOLD := 4.0   # segundos que se queda entero
 const FADE := 3.0   # y lo que tarda en desvanecerse
-const RELEASE_HOLD := 1.2
-const RELEASE_FADE := 2.0
+const MARGEN_ABAJO := 74.0   # lo que queda libre abajo (la guía de controles)
 
 var title_label: Control
 var name_label: Control
@@ -43,10 +41,14 @@ func _make(cube: float, color: Color) -> Control:
 	return l
 
 
+## Las tres líneas se apilan desde abajo según lo que miden (la descripción puede tener una línea o varias) y dejan libre el borde de abajo, donde va la guía de controles.
 func _layout() -> void:
-	title_label.y_offset = size.y - 204.0
-	name_label.y_offset = size.y - 172.0
-	desc_label.y_offset = size.y - 70.0
+	var abajo := size.y - MARGEN_ABAJO
+	var alto_desc: float = float(desc_label.layout().size.y + 2) * float(desc_label.cube)
+	desc_label.y_offset = abajo - alto_desc
+	var alto_nombre: float = float(name_label.layout().size.y + 2) * float(name_label.cube)
+	name_label.y_offset = desc_label.y_offset - alto_nombre + 14.0
+	title_label.y_offset = name_label.y_offset - 32.0
 
 
 ## Empieza la torre con una prueba: aparece, se queda y se desvanece lento.
@@ -54,23 +56,16 @@ func play(trial_name: String, trial_desc: String) -> void:
 	title_label.text = Loc.t("Prueba")
 	name_label.text = trial_name
 	desc_label.text = trial_desc
+	_layout()
 	active = true
 	_fade(HOLD, FADE)
 
 
-## Se pausa: se muestra completo y se queda mientras dure la pausa.
-func pin() -> void:
-	if not active:
-		return
+## Se pausa: el cartel se va (la prueba se ve en el panel de información, que no tapa ni choca con nada).
+func hide_for_pause() -> void:
 	_kill()
-	visible = true
-	modulate.a = 1.0
-
-
-## Se vuelve al juego: se queda un momento y se desvanece de nuevo.
-func release() -> void:
-	if active and visible:
-		_fade(RELEASE_HOLD, RELEASE_FADE)
+	visible = false
+	modulate.a = 0.0
 
 
 ## Sin prueba (otra torre, el menú, el casino): se saca de golpe.

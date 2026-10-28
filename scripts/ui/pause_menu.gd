@@ -6,7 +6,6 @@ const PadHints := preload("res://scripts/ui/pad_hints.gd")
 const PadGlyph := preload("res://scripts/ui/pad_glyph.gd")
 const MenuAnim := preload("res://scripts/ui/menu_anim.gd")
 const OptionsScreen := preload("res://scripts/ui/options_screen.gd")
-const ContratosColumna := preload("res://scripts/ui/contratos_columna.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 
 signal resume
@@ -21,8 +20,6 @@ var center: CenterContainer
 var options: Control
 var hints
 var title_label: Control   # el título: "Pausa" o el escenario en el que se está
-var info: VBoxContainer   # a la izquierda: la etapa y el peaje (la torre no los muestra en el HUD)
-var contratos: Control   # a la derecha: los íconos de los contratos activos, en columna
 
 
 func _init() -> void:
@@ -48,14 +45,6 @@ func _init() -> void:
 	_button("abandonar", Loc.t("Abandonar partida"), false, func(): abandon_run.emit())
 	_button("opciones", Loc.t("Opciones"), false, func(): show_options(true))
 	_button("salir", Loc.t("Salir del juego"), false, func(): quit_game.emit())
-	info = VBoxContainer.new()
-	info.add_theme_constant_override("separation", 12)
-	info.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-	info.position = Vector2(120, 0)
-	info.grow_vertical = Control.GROW_DIRECTION_BOTH
-	add_child(info)
-	contratos = ContratosColumna.new()
-	add_child(contratos)
 	hints = PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Elegir")},
 			{"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Continuar"), "call": func(): resume.emit()}])
 	options = OptionsScreen.new()
@@ -87,27 +76,6 @@ func set_restart(lives: int, free: bool, in_casino: bool) -> void:
 	buttons["abandonar"].visible = not free
 
 
-## Las líneas de la izquierda (etapa y peaje); `rojo`: la línea que va en rojo (el peaje que no alcanza).
-func set_info(lines: Array, rojo := -1) -> void:
-	for c in info.get_children():
-		c.queue_free()
-	for i in lines.size():
-		var l := UI.label(info, str(lines[i]), 4.0, Color(1.0, 0.55, 0.45) if i == rojo else Color(0.97, 0.95, 0.9), false)
-		l.name = "info_%d" % i
-	info.visible = not lines.is_empty()
-
-
-## Los contratos activos (lista de {objetivo, rareza}): se ven solo como íconos, en columna, a la derecha del menú.
-func set_contratos(lista: Array) -> void:
-	contratos.mostrar(lista)
-
-
-## Con una prueba activa el cartel de la prueba se ve entero al pausar (abajo): el menú sube un poco para no taparlo.
-func make_room_for_banner(on: bool) -> void:
-	center.offset_top = -100.0 if on else 0.0
-	center.offset_bottom = -100.0 if on else 0.0
-
-
 ## La primera vez, en el tutorial, no se puede volver al menú principal ni abandonar.
 func set_tutorial_lock(on: bool) -> void:
 	buttons["menu"].visible = not on
@@ -118,8 +86,6 @@ func set_tutorial_lock(on: bool) -> void:
 ## Muestra u oculta las opciones dentro de la pausa.
 func show_options(on: bool) -> void:
 	center.visible = not on
-	info.visible = info.visible and not on
-	contratos.visible = not on and not contratos.contratos.is_empty()
 	if hints != null:
 		hints.visible = not on
 	options.visible = on

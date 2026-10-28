@@ -4,7 +4,7 @@ extends Node3D
 ## Se ve como en el juego: cámara isométrica ortogonal que sigue al personaje (por defecto el gatito) y se puede girar.
 ## Teclas: WASD mueve (W es la dirección que más sube en la pantalla), Shift + dirección agarra (empuja o tira), Espacio + dirección se cuelga.
 ## Cámara (como en el juego): arrastrar con el mouse gira e inclina, la rueda acerca y aleja, las flechas giran e inclinan, Q / E vuelven al ángulo isométrico y giran 90°,
-## + / - el zoom, Tab alterna la vista de toda la torre. R arma otra torre, Esc sale.
+## + / - el zoom, V alterna la vista de toda la torre. R arma otra torre, Esc sale.
 ## Variables de entorno: SALAS_PAQUETE (archivo .jsonl, por defecto bibliotecas/paquete_salas.jsonl), SALAS_SEMILLA (para repetir una torre), SALAS_CANTIDAD (cuántas salas),
 ## SALAS_PERSONAJE (gato, perro, conejo, dante o gaby).
 
@@ -48,7 +48,6 @@ signal camara_usada(accion: String)   ## se movió la cámara con una de las tec
 signal accion_hecha                  ## después de cada acción que salió bien (el juego actualiza su HUD)
 signal contrato_evento(evento: String, datos: Dictionary)   ## para los contratos: "accion" (lo de la acción y de la sala), "sala" (se superó una) o "sala_perdida"; ver contratos.gd
 signal ganancia(texto: String, cantidad: int)   ## la claridad que dio la última acción (el juego muestra el cartel "+N claridad")
-signal profundidad_pedida            ## se apretó la tecla de la ayuda de profundidad
 signal falsos_cambiaron(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool)   ## El camino corto: lo que quedan de movimientos en falso en la sala
 signal deshacer_pedido               ## se apretó deshacer (el juego decide si se puede en este escenario)
 signal pista_cambiada(texto: String)   ## la pista que hay que mostrar arriba ("" = ninguna)
@@ -557,6 +556,9 @@ func _ocultar_arriba() -> void:
 		portal.visible = not (desde_arriba and t.indice < t.salas.size() - 1)
 
 
+var solo_camara := false   # un panel de información está abierto: no se juega, sólo se mueve la cámara (lo pone main.gd)
+
+
 func _process(delta: float) -> void:
 	_gatito_procesar(delta)
 	if t == null or pivot == null:
@@ -618,6 +620,8 @@ func _temblar() -> void:
 func _input(ev: InputEvent) -> void:
 	if en_juego and puede_jugar.is_valid() and not puede_jugar.call():
 		return
+	if solo_camara and ev is InputEventKey and not ["camara_izquierda", "camara_derecha", "camara_arriba", "camara_abajo", "vista_izquierda", "vista_derecha", "zoom_mas", "zoom_menos"].has(Controls.action_of(ev)):
+		return   # (con un panel de información abierto no se juega: sólo se mueve la cámara)
 	if ev is InputEventMouseButton and ev.pressed:
 		if ev.button_index == MOUSE_BUTTON_WHEEL_UP:
 			acercar(1.0 / ZOOM_FACTOR)
@@ -637,10 +641,7 @@ func _input(ev: InputEvent) -> void:
 	if k == KEY_ESCAPE and not en_juego:   # (dentro del juego Esc abre la pausa del juego)
 		get_tree().quit()
 		return
-	if accion_id == "profundidad":   # la ayuda de profundidad es del juego (main.gd)
-		profundidad_pedida.emit()
-		return
-	if k == KEY_TAB:   # la vista de toda la torre
+	if accion_id == "vista_torre":   # la vista de toda la torre (V por omisión)
 		panorama = not panorama
 		_refrescar(true)
 		return

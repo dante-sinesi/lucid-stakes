@@ -26,7 +26,7 @@ const ACTIONS: Array[Dictionary] = [
 	{"id": "colgarse", "name": "Colgarse (mantener)", "group": "Acciones", "key": KEY_SPACE, "pad": [{"button": JOY_BUTTON_X}]},
 	{"id": "deshacer", "name": "Deshacer el último movimiento", "group": "Acciones", "key": KEY_Z, "pad": []},
 	{"id": "pista", "name": "Modo pista (activar o apagar)", "group": "Acciones", "key": KEY_H, "pad": [{"button": JOY_BUTTON_Y}]},
-	{"id": "reintentar", "name": "Reintentar la torre", "group": "Acciones", "key": KEY_R, "pad": [{"button": JOY_BUTTON_BACK}]},
+	{"id": "reintentar", "name": "Reintentar la torre", "group": "Acciones", "key": KEY_R, "pad": []},   # (con el mando se reintenta desde la pausa: Select es del panel de información)
 	{"id": "consumible_1", "name": "Usar consumible 1", "group": "Consumibles", "key": KEY_1, "pad": []},
 	{"id": "consumible_2", "name": "Usar consumible 2", "group": "Consumibles", "key": KEY_2, "pad": []},
 	{"id": "consumible_3", "name": "Usar consumible 3", "group": "Consumibles", "key": KEY_3, "pad": []},
@@ -40,7 +40,8 @@ const ACTIONS: Array[Dictionary] = [
 	{"id": "vista_derecha", "name": "Vista isométrica, girar a la derecha", "group": "Cámara", "key": KEY_E, "pad": [{"button": JOY_BUTTON_RIGHT_SHOULDER}]},
 	{"id": "zoom_mas", "name": "Acercar la cámara", "group": "Cámara", "key": KEY_EQUAL, "pad": [{"button": JOY_BUTTON_RIGHT_STICK}]},
 	{"id": "zoom_menos", "name": "Alejar la cámara", "group": "Cámara", "key": KEY_MINUS, "pad": [{"button": JOY_BUTTON_LEFT_STICK}]},
-	{"id": "profundidad", "name": "Cambiar la ayuda de profundidad", "group": "Cámara", "key": KEY_V, "pad": []},
+	{"id": "vista_torre", "name": "Vista de toda la torre", "group": "Cámara", "key": KEY_V, "pad": []},
+	{"id": "panel_info", "name": "Paneles de información y de ítems (mantener o alternar, ver Opciones)", "group": "Interfaz", "key": KEY_TAB, "pad": [{"button": JOY_BUTTON_BACK}]},
 	{"id": "pausa", "name": "Pausa", "group": "Interfaz", "key": KEY_ESCAPE, "pad": [{"button": JOY_BUTTON_START}]},
 ]
 

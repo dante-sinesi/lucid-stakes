@@ -128,8 +128,7 @@ func test_torre() -> void:
 	check(main._contratos_cola.is_empty(), "en las pruebas la cola se vacía sin pantalla")
 	var tj = main.torre
 	check(tj.contrato_evento.get_connections().size() >= 1, "la torre le avisa al juego lo que pasa")
-	main.pause_menu.set_contratos(Contratos.para_pausa(run))
-	check(main.pause_menu.contratos.visible and main.pause_menu.contratos.contratos.size() == 3, "el menú de pausa muestra los 3 contratos activos como íconos")
+	check(main._panel_datos().get("contratos", []).size() == 3, "el panel de información lista los 3 contratos activos")
 	# se juega la torre por su camino mínimo: la racha se cumple en el camino y los demás al terminar
 	var cobrados: Array = []
 	var n_acciones := 0
