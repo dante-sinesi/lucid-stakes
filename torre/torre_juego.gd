@@ -391,7 +391,7 @@ func _limitar_sombras() -> void:
 				g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if n.position.y + g.position.y <= tope else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
-## La llegada al portal: el personaje se mete en el cubo girando y achicándose hasta desaparecer, y el cubo late y suelta el destello dorado. Dura unos 0,8 s (el juego espera antes de seguir).
+## La llegada al portal: el personaje salta de la losa del cubo al frente del costado que mira la cámara, camina hacia las ondas y las atraviesa achicándose hasta desaparecer; el cubo late y suelta el destello dorado. Dura casi un segundo (el juego espera antes de seguir).
 func _entrar_portal() -> void:
 	if portal == null or not is_instance_valid(portal) or gato_nodo == null:
 		return
@@ -399,16 +399,27 @@ func _entrar_portal() -> void:
 	await get_tree().create_timer(STEP_TIME + 0.05).timeout   # (primero termina el último paso hasta el bloque de salida)
 	if not _entrando_portal or not is_inside_tree():
 		return
-	var centro := portal.position + Vector3(0, 0.1, 0)
-	var giro := gato_nodo.rotation.y + TAU * 1.5
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(gato_nodo, "position", centro, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tw.tween_property(gato_nodo, "scale", Vector3.ONE * 0.03, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.tween_property(gato_nodo, "rotation:y", giro, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	# el costado por el que entra: el que mira hacia la cámara (las ondas están en los cuatro)
+	var yaw := deg_to_rad(pivot.rotation_degrees.y)
+	var hacia := Vector3(signf(sin(yaw)), 0, 0) if absf(sin(yaw)) > absf(cos(yaw)) else Vector3(0, 0, signf(cos(yaw)))
+	var arriba := gato_nodo.position
+	var delante := portal.position + hacia * 0.8 + Vector3(0, -0.5, 0)   # (frente a la cara, a la altura del piso del cubo)
+	var adentro := portal.position - hacia * 0.05 + Vector3(0, -0.4, 0)
+	var mirando := atan2(-hacia.x, -hacia.z)
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void:   # el salto: de la losa al frente del costado, ya mirando al portal
+		gato_nodo.position = arriba.lerp(delante, k) + Vector3(0, sin(PI * k) * 0.55, 0)
+		gato_nodo.rotation.y = lerp_angle(gato_nodo.rotation.y, mirando, 0.35), 0.0, 1.0, 0.4)
+	tw.tween_property(gato_nodo, "rotation:y", mirando, 0.05)
+	tw.tween_callback(func(): animador.reproducir(_tipo_anim, 0.45))
+	tw.set_parallel(true)
+	tw.tween_property(gato_nodo, "position", adentro, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)   # (camina hacia las ondas y las atraviesa)
+	tw.tween_property(gato_nodo, "scale", Vector3.ONE * 0.03, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN).set_delay(0.12)
+	tw.set_parallel(false)
 	var latido := create_tween()   # (el cubo-portal late al recibirlo)
 	latido.tween_property(portal, "scale", Vector3.ONE * 1.3, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	latido.tween_property(portal, "scale", Vector3.ONE, 0.3)
-	tw.chain().tween_callback(func():
+	tw.tween_callback(func():
 		gato_nodo.visible = false
 		efectos.juice.gold_burst(portal.position)
 		efectos.juice.zoom_punch(0.06))

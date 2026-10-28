@@ -23,10 +23,10 @@ func _init() -> void:
 	tj.t.indice = tj.t.salas.size() - 1   # (la última sala: el portal a la vista)
 	tj._refrescar(true)
 	await _frames(20)
-	tj.gato_nodo.position = tj.portal.position - Vector3(0, 0.5, 0)
+	tj.gato_nodo.position = tj.portal.position + Vector3(0, 0.5, 0)   # (parado sobre la losa del cubo)
 	tj.panorama = false
 	tj._entrar_portal()
-	for i in 5:
-		await create_timer(0.25).timeout
+	for i in 6:
+		await create_timer(0.2).timeout
 		root.get_viewport().get_texture().get_image().save_png("%s_%d.png" % [args[0], i])
 	quit()
