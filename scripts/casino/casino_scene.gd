@@ -50,7 +50,9 @@ const PITCH_MAX := 80.0   # (positivo = mirando desde abajo del horizonte, como 
 const MOUSE_SENS := 0.28       # grados por píxel (igual que en la torre)
 const ARROW_SPEED := 110.0     # grados por segundo al girar con las flechas
 const ZOOM_FACTOR := 1.1
+const Settings := preload("res://scripts/datos/settings.gd")
 const PLAYER_SCALE := 1.5  # el personaje se agranda un poco: la sala está hecha de minibloques y el crupier es alto
+const SEGUIR_ZOOM := 0.6   # con la cámara en el personaje se ve más cerca que con todo el salón
 
 var run
 var rng: RandomNumberGenerator
@@ -66,6 +68,7 @@ var busy := false             # caminando o con una pantalla abierta
 var leaving := false
 var player_node: Node3D
 var pivot: Node3D
+var _modo_seguir := false   # la cámara sigue al personaje (la opción de Opciones, ya aplicada)
 var cam: Camera3D
 var walls := {}               # "west"/"north" -> [sólido, luces]
 var hud: Control
@@ -304,6 +307,15 @@ func _build_player() -> void:
 	add_child(player_node)
 
 
+## ¿La cámara sigue al personaje? (Opciones > General > Cámara del casino) Si no, mira el centro del casino, entero.
+func _seguir() -> bool:
+	return str(Settings.get_value("casino_camara")) == "personaje"
+
+
+func _foco_camara() -> Vector3:
+	return player_node.position + Vector3(0, 0.6, 0) if _seguir() and player_node != null else _room_center()
+
+
 func _room_center() -> Vector3:
 	return Vector3(lay.cells.x * 0.5, 1.0, lay.cells.y * 0.5) * (Room.CELL_VOX * Room.VOXEL)
 
@@ -319,7 +331,8 @@ func _build_camera() -> void:
 	pivot.add_child(pitch)
 	cam = Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	cam.size = lay.cam_size
+	cam.size = lay.cam_size * (SEGUIR_ZOOM if _seguir() else 1.0)
+	_modo_seguir = _seguir()
 	cam.far = 200.0
 	cam.position = Vector3(0, 0, 40)
 	pitch.add_child(cam)
@@ -765,6 +778,11 @@ func _process(delta: float) -> void:
 		_arrow.rotation.y += delta * 2.0
 	if pivot == null:
 		return
+	if _seguir() != _modo_seguir:   # (se cambió en Opciones: el zoom pasa al de la otra cámara)
+		_modo_seguir = _seguir()
+		cam.size = lay.cam_size * (SEGUIR_ZOOM if _modo_seguir else 1.0)
+	var foco := _foco_camara()
+	pivot.position = foco if quick else pivot.position.lerp(foco, 1.0 - exp(-8.0 * delta))
 	var hide := hidden_walls(pivot.rotation_degrees.y)
 	for side in walls:
 		for mi in walls[side]:
