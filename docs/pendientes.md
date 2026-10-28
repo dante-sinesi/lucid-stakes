@@ -34,7 +34,7 @@ Decisiones abiertas: cuántos entran en la primera tanda y si van al casino como
 - Los bloques ya no se aclaran con la etapa (solo el fondo y la luz): decidir si se retoma. Revisar también la ayuda de profundidad con la cámara de la torre.
 - Música: decidir tempo, volumen y si se agrega percusión (se probaron variantes al 90, 80 y 70 % sin preferencia clara: `herramientas/musica/render_estaciones.py --tempo=0.8 --solo-previa`).
 - Calibrar la economía con partidas reales (`economia.md`).
-- La exportación excluye `tools/*`: el solucionador nativo (`tools/salas.exe`), que usa El camino corto, no viaja con el juego exportado; hay que empaquetarlo o tener respaldo.
+- **El solucionador en el juego exportado:** ya viaja como extensión de Godot para Windows (`solver_extension.md`; hay que armar la biblioteca release con `native\construir_extension.bat` antes de exportar). Falta armarla para Linux, macOS y Android (y bajar los topes de estados en celulares) cuando se quiera portar.
 
 ## Ideas anotadas
 

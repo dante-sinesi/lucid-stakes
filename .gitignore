@@ -18,3 +18,13 @@ build/
 /capturas/
 
 tests/resultados.txt
+
+# La extensión de Godot del solucionador (native/construir_extension.bat): godot-cpp se baja aparte y lo que se arma no se versiona
+/native/godot-cpp/
+/native/extension/.sconsign.dblite
+/native/extension/.scons_cache/
+/extension/bin/
+*.obj
+*.o
+*.a
+*.exp
