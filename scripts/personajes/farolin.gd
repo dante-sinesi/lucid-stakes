@@ -39,7 +39,7 @@ const GIVE_UP := "abandonar"
 
 ## El peaje de práctica del final del tutorial: una sola salida (pagar), con la claridad que presta el tabernero.
 static func practice_dialog(price: int) -> Dictionary:
-	return {"text": Loc.f("Son %d de claridad para seguir. Como es tu primera vez, hoy te la presta el tabernero.", [price]), "options": [{"id": PAY, "text": Loc.f("Pagar %d", [price]), "enabled": true}]}
+	return {"text": Loc.f("Son %d de claridad. Hoy te la presta el tabernero.", [price]), "options": [{"id": PAY, "text": Loc.f("Pagar %d", [price]), "enabled": true}]}
 
 
 ## Lo que dice Farolín después de cada decisión (antes de que pase lo que se eligió).
@@ -86,12 +86,12 @@ static func toll_dialog(price: int, have: int, can_redo: bool, redo_costs_life :
 		if can_pay:
 			text = Loc.f("Son %d de claridad para seguir. ¿Pagas, o vuelves a subir esta torre?", [price])
 		else:
-			text = Loc.f("Son %d de claridad y te faltan %d. Sin luz no hay camino: ¿vuelves a subir la torre?", [price, short])
+			text = Loc.f("Son %d de claridad y te faltan %d. ¿Vuelves a subir la torre?", [price, short])
 	else:
 		if can_pay:
-			text = Loc.f("Son %d de claridad, y ya no te queda ninguna vida. ¿Pagas, o dejas que todo se apague?", [price])
+			text = Loc.f("Son %d de claridad y no te quedan vidas. ¿Pagas, o todo se apaga?", [price])
 		else:
-			text = Loc.f("Son %d de claridad, te faltan %d y ya no te queda ninguna vida. ¿Dejas que todo se apague?", [price, short])
+			text = Loc.f("Te faltan %d de claridad y no te quedan vidas. ¿Dejas que todo se apague?", [price, short])
 	var second := {"id": REDO, "text": Loc.t("Rehacer la torre (−1 vida)") if redo_costs_life else Loc.t("Rehacer la torre"), "enabled": true} if can_redo \
 			else {"id": GIVE_UP, "text": Loc.t("Abandonar"), "enabled": true}
 	return {"text": text, "options": [{"id": PAY, "text": Loc.f("Pagar %d", [price]), "enabled": can_pay}, second]}
