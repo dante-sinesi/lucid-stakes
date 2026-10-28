@@ -6,7 +6,7 @@ const Torre := preload("res://torre/torre.gd")
 
 func _init() -> void:
 	var paquete: Array = Torre.cargar_paquete_del_juego()
-	for nombre in [["quebradizo", {"quebradizo": true}]]:
+	for nombre in [["quebradizo", {"quebradizo": true}], ["solo_tres", {"solo_bloques": 3}], ["espalda_mala", {"espalda_mala": true}], ["presupuesto", {"presupuesto": true}], ["a_oscuras", {"a_oscuras": true}]]:
 		for etapa in [3, 6, 9, 12, 15]:
 			var faltan := 0
 			var t0 := Time.get_ticks_msec()

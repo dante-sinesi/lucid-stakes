@@ -78,7 +78,7 @@ const TABLE := {
 	"Ventisca": "Blizzard",
 	"Cada nueve movimientos el viento te empuja una celda; un silbido avisa un movimiento antes.": "Every nine moves the wind pushes you one cell; a whistle warns you one move earlier.",
 	"Quebradizo": "Brittle",
-	"Cada bloque se rompe en cuanto te bajas de él: solo se pisa una vez.": "Every block breaks as soon as you step off it: you can only step on it once.",
+	"Casi todos los bloques son agrietados: se rompen en cuanto te bajas de ellos y solo se pisan una vez.": "Almost every block is cracked: it breaks as soon as you step off it, so you can only step on it once.",
 	"A oscuras": "In the dark",
 	"Muchos bloques son negros y no sabes qué son hasta que los pisas.": "Many blocks are black and you can't tell what they are until you step on them.",
 	"La Pesadilla despierta": "The Nightmare awakens",

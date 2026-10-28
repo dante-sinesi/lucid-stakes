@@ -29,7 +29,7 @@ const CATALOG := {
 	"solo_tres": {"name": "Solo tres bloques", "desc": "En cada sala solo puedes mover tres bloques distintos.", "reglas": {"solo_bloques": 3}, "desde": 6},
 	"espalda_mala": {"name": "Espalda mala", "desc": "Empujar o tirar de un bloque cuesta dos movimientos.", "reglas": {"espalda_mala": true}, "desde": 9},
 	"ventisca": {"name": "Ventisca", "desc": "Cada nueve movimientos el viento te empuja una celda; un silbido avisa un movimiento antes.", "reglas": {"ventisca": true}, "desde": 9},
-	"quebradizo": {"name": "Quebradizo", "desc": "Cada bloque se rompe en cuanto te bajas de él: solo se pisa una vez.", "reglas": {"quebradizo": true}, "desde": 9},
+	"quebradizo": {"name": "Quebradizo", "desc": "Casi todos los bloques son agrietados: se rompen en cuanto te bajas de ellos y solo se pisan una vez.", "reglas": {"quebradizo": true}, "desde": 9},
 	"a_oscuras": {"name": "A oscuras", "desc": "Muchos bloques son negros y no sabes qué son hasta que los pisas.", "reglas": {"a_oscuras": true}, "desde": 9},
 	"pesadilla_despierta": {"name": "La Pesadilla despierta", "desc": "La última torre combina dos pruebas.", "final": true, "desde": 15},
 }

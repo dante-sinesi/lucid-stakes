@@ -125,9 +125,30 @@ Hay una forma barata para varias de las pruebas con cuidado, y es **usar lo que 
 - **Terremoto y gatito:** los cambios se calculan **antes** con el solucionador y se guardan ya comprobados (variantes seguras por sala, con su mínimo y su camino), así el juego no necesita el solucionador mientras se juega. Las variantes sirven para las dos pruebas.
 - **Mareo, Presupuesto compartido, Memoria de pez, A oscuras y Corrupción que vuelve** no cambian el puzzle, solo cómo se juega: son resolubles siempre.
 
-## Cómo seguir
+## Lo que ya está hecho
 
-1. **Empezar por El gatito travieso** (primero la mecánica; el gato con su arte y sus animaciones, después).
-2. Cerrar las dudas de las fichas que quedan: Memoria de pez, A oscuras, Ventisca y Sombra.
-3. Los eventos del casino (casino torcido y peaje por adelantado) se hacen aparte, como parte de los casinos.
-4. Ordenar las pruebas por etapa: cuáles pueden caer en la 3 y en la 6, cuáles solo de la 9 en adelante y cuáles son del final.
+Todas las pruebas aprobadas están en el juego (`scripts/datos/trials.gd`; las reglas, en `torre/torre.gd`, `torre/motor.gd` y `torre/torre_juego.gd`) y se sortean entre las que admite cada escenario. **Cuándo caen:** las suaves desde la etapa 3, las del medio desde la 6 y las serias desde la 9 (`desde` en el catálogo); el jefe final solo cae en la 15. Pruebas: `tests/unitarios/test_pruebas_nuevas.gd`; para armar torres con las reglas y ver cuánto tardan: `tests/sondas/probe_reglas_pruebas.gd`; capturas: `tests/capturas/shot_prueba.gd`. Cómo quedó cada una (y las decisiones que se tomaron al programarlas, para revisar):
+
+| Prueba | Desde | Cómo funciona |
+|---|---|---|
+| **Mareo** | 3 | Cada 5 movimientos de la sala la cámara gira un cuarto de vuelta (para un lado o el otro, al azar). |
+| **Corrupción que vuelve** | 3 | Cada 10 movimientos los bloques purificados se corrompen otra vez (menos el que pisas) y se corta la racha; volver a pisarlos los purifica y suma de nuevo. |
+| **Memoria de pez** | 6 | La torre se ve entera 2,5 s después de cada movimiento; pasado ese rato desaparecen **de golpe** los bloques que no están al lado (los checkpoint se ven siempre). No se puede usar la vista de toda la torre. |
+| **Terremoto** | 6 | Cada 8 movimientos un bloque común suelto (sin nada encima, que no sea el que pisas) se corre una celda; un movimiento antes tiembla y avisa. **El bloque se elige al azar al momento** (no con variantes calculadas antes): no se garantiza que la sala siga teniendo solución, es parte del riesgo de la prueba. |
+| **Presupuesto compartido** | 6 | Un solo fondo de movimientos para toda la torre: la suma de los límites de las salas recortada un 15 % (nunca menos que los mínimos más 12 % y 2 por sala). Las salas superadas descuentan lo que gastaron; perder un intento no gasta fondo. Al continuar una partida guardada el fondo se estima. |
+| **Solo tres bloques** | 6 | En cada sala se pueden mover (empujar o tirar) tres bloques distintos; el cuarto se rechaza. La torre solo usa salas cuya solución conocida mueve tres o menos (998 de 2855), así siempre se puede resolver. El panel de información cuenta los movidos. |
+| **Espalda mala** | 9 | Empujar o tirar cuesta dos movimientos; el límite de cada sala se calcula con sus pasos más sus agarres. |
+| **Ventisca** | 9 | Cada 9 movimientos el viento te empuja una celda; en el movimiento 8 una flecha sobre el personaje y un silbido avisan hacia dónde. Con piso caminas, un escalón más abajo bajas y si no hay piso quedas colgado del borde (o caes sobre hielo). Un bloque en el camino lo frena. |
+| **Quebradizo** | 9 | **Cambia respecto de la ficha:** la regla "cada bloque se pisa una sola vez" no se puede cumplir con casi ninguna sala (la solución conocida pisa dos veces algún bloque en 2759 de 2855). Los bloques comunes que la solución pisa una sola vez (y nunca mueve después) se vuelven **agrietados** (los que se rompen al bajarte, ya existentes); los que hace falta pisar más de una vez siguen siendo piedra. Así siempre hay solución y se ve cuáles se rompen. |
+| **A oscuras** | 9 | **Sin tipo de bloque nuevo en el generador:** cerca del 38 % de los bloques de cada sala (incluidas las salas de arriba) se dibujan como un bloque oscuro y liso que esconde lo que es (común, pesado, hielo, agrietado...) hasta que lo pisas; nunca los checkpoint, la salida ni las bombas. Mover un pesado oscuro no lo revela. |
+| **La Pesadilla despierta** | 15 | Jefe final (solo cae en la etapa 15, en todos los escenarios): combina dos reglas, una combinación por partida según su sorteo: Mareo + Terremoto, Memoria de pez + Ventisca, Presupuesto compartido + Espalda mala, o A oscuras + Corrupción que vuelve. Paga como la última (×2,7 y un boost épico). |
+| **Travesuras** | 3 | Ama (ya estaba). |
+
+**Eventos aleatorios del casino** (`scripts/casino/casino_eventos.gd`): el **casino torcido** y el **peaje por adelantado** salen en el casino y el gran casino, en cerca de 3 de cada 10 visitas, siempre anunciados con un diálogo (el tabernero o Farolín). El evento de cada etapa se sortea una sola vez y se guarda con la partida. Torcido: solo una mesa abierta (se sortea cuál) y un cartel "CERRADO" sobre las demás; el tabernero lo recuerda si le hablas. Peaje por adelantado (solo si la claridad alcanza): Farolín cobra el peaje al entrar; al salir lo salda, devuelve lo que sobre y el 10 % del adelanto por la confianza. Pruebas: `tests/unitarios/test_casino_eventos.gd`.
+
+## Lo que queda
+
+- **Sombra:** sigue pendiente (hay que decidir si vale la pena).
+- **Para más adelante:** Plomo, Hielo total y Pegamento.
+- **Revisar jugando:** cuán duras son, sobre todo las serias (Quebradizo, A oscuras, Presupuesto compartido); los límites (cada cuántos movimientos, 2,5 s de memoria, 38 % de oscuros, 10 % de devolución) están en constantes fáciles de cambiar.
+- Más eventos del casino (el Taller cerrado, el tablón con otros papeles...).

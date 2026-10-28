@@ -147,6 +147,17 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Todo o nada | No hay reintentos: si caes, se termina el run. |
 | Sin racha | La racha no sube el multiplicador de claridad. |
 | Travesuras | Ama, una gata traviesa, mueve de lugar unos bloques al entrar a cada sala. |
+| Mareo | Cada cinco movimientos la cámara gira sola. |
+| Corrupción que vuelve | Cada diez movimientos los bloques que purificaste se corrompen otra vez y se corta la racha. |
+| Memoria de pez | La torre se ve entera solo un momento después de cada movimiento; después, solo los bloques de al lado. |
+| Terremoto | Cada ocho movimientos tiembla la torre y un bloque suelto se corre una celda. |
+| Presupuesto compartido | Los movimientos de toda la torre son un solo fondo: lo que ahorras en una sala te sirve en las siguientes. |
+| Solo tres bloques | En cada sala solo puedes mover tres bloques distintos. |
+| Espalda mala | Empujar o tirar de un bloque cuesta dos movimientos. |
+| Ventisca | Cada nueve movimientos el viento te empuja una celda; un silbido avisa un movimiento antes. |
+| Quebradizo | Casi todos los bloques son agrietados: se rompen en cuanto te bajas de ellos y solo se pisan una vez. |
+| A oscuras | Muchos bloques son negros y no sabes qué son hasta que los pisas. |
+| La Pesadilla despierta | La última torre combina dos pruebas. |
 
 ## Servicios del casino
 
