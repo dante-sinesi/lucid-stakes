@@ -15,6 +15,10 @@ const ANCHO_TEXTO := 380    # el ancho al que se parte el texto
 const SEGUNDOS := 0.16      # lo que tarda en entrar y salir
 const CHAPA := 11           # el ícono de un contrato mide 11 x 11 cubitos
 const CUBO_ICONO := 3.0
+const BOTON_ANCHO := 210.0  # los botones del menú de una fila
+const BOTON_ALTO := 64.0
+const BOTON_SEP := 12.0
+const VoxelLabel := preload("res://scripts/ui/voxel_label.gd")
 const COLOR_TEXTO := Color(0.97, 0.95, 0.9)
 const COLOR_SUAVE := Color(0.72, 0.68, 0.82)
 const ROJO := Color(1.0, 0.55, 0.45)
@@ -29,6 +33,7 @@ var _filas: Array = []      # las filas que se pueden elegir (contratos, boosts,
 var _sel := -1              # la fila elegida de este panel (-1: el cursor está en el otro)
 var _opciones: Array = []   # el menú de la fila elegida (textos), con la opción marcada en `_op_i`
 var _op_i := 0
+var _botones: Control       # los botones del menú, fuera del panel, hacia el centro
 
 
 ## El ícono de un contrato (el del objetivo y su sello de rareza), de cubitos.
@@ -130,6 +135,7 @@ func cerrar(rapido := false) -> void:
 	if not abierto and not visible:
 		return
 	abierto = false
+	poner_opciones([])
 	if _tween != null:
 		_tween.kill()
 	if rapido:
@@ -186,30 +192,56 @@ func _ver_seleccion() -> void:
 		_scroll.scroll_vertical = 0
 	else:
 		_scroll.ensure_control_visible(_filas[_sel])
-		var menu := _caja.get_node_or_null("opciones")
-		if menu != null:
-			_scroll.ensure_control_visible(menu)   # (el menú de la fila también tiene que verse entero)
 
 
 ## Muestra bajo la fila elegida el menú de lo que se puede hacer (vacío lo saca); `marcada` es la opción en la que está el cursor.
 func poner_opciones(textos: Array, marcada := 0) -> void:
 	_opciones = textos
 	_op_i = marcada
-	if abierto or visible:
-		_armar()
+	_armar_opciones()
 
 
-## Agrega bajo la fila elegida su menú, si hay. Lo llama `_armar` al final.
+## Pone los botones del menú hacia el centro de la pantalla, a la altura de la fila elegida (si hay menú). Lo llama `_armar` al final.
 func _armar_opciones() -> void:
+	if _botones != null:
+		remove_child(_botones)
+		_botones.queue_free()
+		_botones = null
 	if _sel < 0 or _sel >= _filas.size() or _opciones.is_empty():
 		return
-	var caja := VBoxContainer.new()
-	caja.name = "opciones"
-	caja.add_theme_constant_override("separation", 4)
+	_botones = Control.new()
+	_botones.name = "botones"
+	_botones.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_botones)
 	for i in _opciones.size():
-		UI.label(caja, ("> " if i == _op_i else "   ") + str(_opciones[i]), 2.4, UI.GOLD if i == _op_i else COLOR_TEXTO, false, ANCHO_TEXTO)
-	_caja.add_child(caja)
-	_caja.move_child(caja, _filas[_sel].get_index() + 1)
+		var b := Control.new()
+		b.name = "boton_%d" % i
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.size = Vector2(BOTON_ANCHO, BOTON_ALTO)
+		b.position = Vector2(0, i * (BOTON_ALTO + BOTON_SEP))
+		var marcado: bool = i == _op_i
+		b.draw.connect(func(): Draw.card(b, Rect2(Vector2.ZERO, b.size), 4.0, 1 if marcado else 0, 0.0, 31 + i, marcado, -1.0))
+		var l := UI.label(b, str(_opciones[i]), 2.8, Color(1, 1, 1) if marcado else COLOR_TEXTO, true, int(BOTON_ANCHO) - 20)
+		l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		if l is VoxelLabel:
+			l.vcenter = true
+		_botones.add_child(b)
+	_colocar_botones()
+
+
+## Los botones van pegados al panel, del lado del centro, a la altura de la fila elegida.
+func _colocar_botones() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().process_frame
+	if _botones == null or _sel < 0 or _sel >= _filas.size() or not is_instance_valid(_filas[_sel]):
+		return
+	var fila := _filas[_sel] as Control
+	var alto := _opciones.size() * (BOTON_ALTO + BOTON_SEP) - BOTON_SEP
+	var vs := get_viewport_rect().size
+	var x := panel.get_global_rect().position.x - BOTON_ANCHO - 16.0 if _derecha() else panel.get_global_rect().end.x + 16.0
+	var y := clampf(fila.get_global_rect().get_center().y - alto * 0.5, 8.0, maxf(vs.y - alto - 8.0, 8.0))
+	_botones.position = Vector2(x, y)
 
 
 ## Antes de rearmar: guarda dónde estaba el scroll; después lo repone (y deja a la vista la fila elegida).
