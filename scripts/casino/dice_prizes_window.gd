@@ -99,7 +99,7 @@ func _make_row(r: Dictionary) -> Control:
 	texts.add_theme_constant_override("separation", 4)
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	texts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	UI.label(texts, Loc.f("%d %% de tu claridad (+%d ahora)", [int(r.pct), int(r.ahora)]), 3, UI.GOLD, false)
+	UI.label(texts, Loc.f("%d %% de tu claridad (+%d)", [int(r.pct), int(r.ahora)]), 3, UI.GOLD, false)
 	if str(r.cosmetico) != "":
 		UI.label(texts, str(r.cosmetico), 2, Color(0.78, 0.72, 0.9), false)
 	row.add_child(texts)

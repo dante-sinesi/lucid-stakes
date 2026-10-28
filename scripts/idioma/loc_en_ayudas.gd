@@ -48,7 +48,7 @@ const TABLE := {
 	"Con fianza pagas ahora y, si cumples, cobras más y la recuperas (solo en el casino y el gran casino).": "With a deposit you pay now and, if you complete it, you earn more and get it back (only at the casino and the grand casino).",
 	"Tres premios (épico, raro y común) a precio fijo, sin tirar la ruleta. Cambian en cada visita.": "Three prizes (epic, rare and common) at a fixed price, no roulette spin needed. They change on each visit.",
 	"%d aciertos": "%d hits",
-	"%d %% de tu claridad (+%d ahora)": "%d %% of your clarity (+%d now)",
+	"%d %% de tu claridad (+%d)": "%d %% of your clarity (+%d)",
 	"Cosmético común o raro, a veces": "Common or rare cosmetic, sometimes",
 	"Cosmético raro o épico": "Rare or epic cosmetic",
 }
