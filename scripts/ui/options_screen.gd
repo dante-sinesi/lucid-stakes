@@ -66,6 +66,7 @@ var _tip_para: Control = null   # el botón al que se le va a mostrar
 var _tip_t := 0.0
 var _tip_mouse := false     # la ayuda viene del mouse (aparece junto a él) y no del foco
 const TIP_ESPERA := 0.55
+const BARRA_TECLAS := 64   # el alto que se reserva abajo para la ayuda de controles
 var _page: Control          # donde se agregan las filas de la pestaña que se está armando
 
 
@@ -82,7 +83,7 @@ func _init() -> void:
 	for side in ["left", "right"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
 	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_bottom", 14)
+	margin.add_theme_constant_override("margin_bottom", BARRA_TECLAS)   # (abajo se guarda lugar para la barra de teclas: nada de las opciones queda debajo de ella)
 	add_child(margin)
 	_col = VBoxContainer.new()
 	_col.add_theme_constant_override("separation", 4)
@@ -381,7 +382,7 @@ func _process(delta: float) -> void:
 	var tam: Vector2 = _tip.get_combined_minimum_size()
 	var vs := get_viewport_rect().size
 	var pos: Vector2 = get_global_mouse_position() + Vector2(16, 22) if _tip_mouse else Vector2(_tip_para.get_global_rect().position.x, _tip_para.get_global_rect().end.y + 10.0)
-	_tip.position = Vector2(clampf(pos.x, 8.0, maxf(vs.x - tam.x - 8.0, 8.0)), clampf(pos.y, 8.0, maxf(vs.y - tam.y - 8.0, 8.0)))
+	_tip.position = Vector2(clampf(pos.x, 8.0, maxf(vs.x - tam.x - 8.0, 8.0)), clampf(pos.y, 8.0, maxf(vs.y - BARRA_TECLAS - tam.y, 8.0)))
 
 
 ## Una fila: el nombre de la opción a la izquierda y sus controles a la derecha.
