@@ -31,6 +31,8 @@ func _init() -> void:
 
 
 func _armar() -> void:
+	var scroll_anterior := _scroll.scroll_vertical
+	_filas.clear()
 	for c in _caja.get_children():
 		_caja.remove_child(c)
 		c.queue_free()
@@ -38,6 +40,7 @@ func _armar() -> void:
 	_linea(Loc.t("Boosts y consumibles"), 2.8, UI.GOLD, "titulo")
 	_seccion(Loc.f("Boosts %d/%d", [d.get("boosts", []).size(), int(d.get("max_boosts", 0))]), d.get("boosts", []), "boost", Loc.t("Ninguno todavía"))
 	_seccion(Loc.f("Consumibles %d/%d", [d.get("consumibles", []).size(), int(d.get("max_consumibles", 0))]), d.get("consumibles", []), "consumible", Loc.t("Ninguno todavía"))
+	_despues_de_armar(scroll_anterior)
 
 
 func _seccion(titulo: String, items: Array, prefijo: String, vacio: String) -> void:
@@ -51,8 +54,9 @@ func _seccion(titulo: String, items: Array, prefijo: String, vacio: String) -> v
 		var fila := Fila.new(str(it.get("id", "")))
 		fila.name = "%s_%d" % [prefijo, i]
 		_caja.add_child(fila)
+		_registrar_fila(fila)
 		var texto := VBoxContainer.new()
 		texto.add_theme_constant_override("separation", 4)
 		fila.add_child(texto)
-		UI.label(texto, str(it.get("nombre", "")), 2.6, UI.GOLD, false, ANCHO_TEXTO - 50)
-		UI.label(texto, str(it.get("desc", "")), 2.2, COLOR_TEXTO, false, ANCHO_TEXTO - 50)
+		UI.label(texto, str(it.get("nombre", "")), 2.6, UI.GOLD, false, ANCHO_TEXTO - 40)
+		UI.label(texto, str(it.get("desc", "")), 2.2, COLOR_TEXTO, false, ANCHO_TEXTO - 40)

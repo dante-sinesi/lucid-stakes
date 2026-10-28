@@ -230,6 +230,16 @@ static func cancelar(run, indice: int) -> Dictionary:
 	return {"ok": true, "error": "", "devuelto": f}
 
 
+## Abandona el contrato activo del lugar `indice` con la torre en marcha: cuenta como fallido (se pierde la fianza). Devuelve {papel, cumplido, monto} como `registrar`, o {} si no hay nada ahí.
+static func abandonar(run, indice: int) -> Dictionary:
+	var estado := _estado(run)
+	if indice < 0 or indice >= estado.activos.size():
+		return {}
+	var papel: Dictionary = estado.activos[indice]
+	estado.activos.remove_at(indice)
+	return _resolver(run, papel, false)
+
+
 ## Vuelve a sortear todos los papeles colgados (los activos no se tocan). {ok, error, costo}.
 static func rotar(run, rng: RandomNumberGenerator, tier: int) -> Dictionary:
 	var estado := _estado(run)

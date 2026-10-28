@@ -11,7 +11,7 @@ const NumberFormat := preload("res://scripts/datos/number_format.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 
 const ANCHO := 460.0        # lo que mide de ancho
-const ANCHO_TEXTO := 400    # el ancho al que se parte el texto
+const ANCHO_TEXTO := 380    # el ancho al que se parte el texto
 const SEGUNDOS := 0.16      # lo que tarda en entrar y salir
 const CHAPA := 11           # el ícono de un contrato mide 11 x 11 cubitos
 const CUBO_ICONO := 3.0
@@ -24,6 +24,11 @@ var abierto := false
 var _caja: VBoxContainer
 var _tween: Tween
 var _datos := {}
+var _scroll: ScrollContainer
+var _filas: Array = []      # las filas que se pueden elegir (contratos, boosts, consumibles), de arriba abajo
+var _sel := -1              # la fila elegida de este panel (-1: el cursor está en el otro)
+var _opciones: Array = []   # el menú de la fila elegida (textos), con la opción marcada en `_op_i`
+var _op_i := 0
 
 
 ## El ícono de un contrato (el del objetivo y su sello de rareza), de cubitos.
@@ -61,15 +66,21 @@ func _init() -> void:
 	margen.add_theme_constant_override("margin_top", 24)
 	margen.add_theme_constant_override("margin_bottom", 20)
 	panel.add_child(margen)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margen.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margen.add_child(_scroll)
+	var interno := MarginContainer.new()   # (deja lugar para el borde de la fila elegida)
+	interno.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	interno.add_theme_constant_override("margin_left", 8)
+	interno.add_theme_constant_override("margin_right", 8)
+	interno.add_theme_constant_override("margin_top", 4)
+	_scroll.add_child(interno)
 	_caja = VBoxContainer.new()
 	_caja.add_theme_constant_override("separation", 10)
 	_caja.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_caja)
+	interno.add_child(_caja)
 	_poner_avance(0.0)
 
 
@@ -137,6 +148,82 @@ func _linea(texto: String, cubo := 3.0, color := COLOR_TEXTO, nombre := "") -> C
 	return l
 
 
+## Una fila elegible: se dibuja con un marco dorado cuando es la elegida.
+func _registrar_fila(fila: Control) -> void:
+	var i := _filas.size()
+	_filas.append(fila)
+	fila.draw.connect(func():
+		if i == _sel:
+			var r := Rect2(Vector2(-6, -4), Vector2(fila.size.x + 12.0, fila.size.y + 8.0))
+			fila.draw_rect(r, Color(0.85, 0.62, 0.15, 0.22))
+			fila.draw_rect(r, Color(1.0, 0.82, 0.3), false, 2.0))
+
+
+## Cuántas filas se pueden elegir.
+func filas() -> int:
+	return _filas.size()
+
+
+## Elige la fila `i` (-1: ninguna) y la deja a la vista.
+func poner_seleccion(i: int) -> void:
+	_sel = i if i < _filas.size() else -1
+	for f in _filas:
+		f.queue_redraw()
+	_ver_seleccion_luego()
+
+
+func _ver_seleccion_luego() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().process_frame
+	_ver_seleccion()
+
+
+func _ver_seleccion() -> void:
+	if _sel < 0 or _sel >= _filas.size() or not is_instance_valid(_filas[_sel]):
+		return
+	if _sel == 0:
+		_scroll.scroll_vertical = 0
+	else:
+		_scroll.ensure_control_visible(_filas[_sel])
+		var menu := _caja.get_node_or_null("opciones")
+		if menu != null:
+			_scroll.ensure_control_visible(menu)   # (el menú de la fila también tiene que verse entero)
+
+
+## Muestra bajo la fila elegida el menú de lo que se puede hacer (vacío lo saca); `marcada` es la opción en la que está el cursor.
+func poner_opciones(textos: Array, marcada := 0) -> void:
+	_opciones = textos
+	_op_i = marcada
+	if abierto or visible:
+		_armar()
+
+
+## Agrega bajo la fila elegida su menú, si hay. Lo llama `_armar` al final.
+func _armar_opciones() -> void:
+	if _sel < 0 or _sel >= _filas.size() or _opciones.is_empty():
+		return
+	var caja := VBoxContainer.new()
+	caja.name = "opciones"
+	caja.add_theme_constant_override("separation", 4)
+	for i in _opciones.size():
+		UI.label(caja, ("> " if i == _op_i else "   ") + str(_opciones[i]), 2.4, UI.GOLD if i == _op_i else COLOR_TEXTO, false, ANCHO_TEXTO)
+	_caja.add_child(caja)
+	_caja.move_child(caja, _filas[_sel].get_index() + 1)
+
+
+## Antes de rearmar: guarda dónde estaba el scroll; después lo repone (y deja a la vista la fila elegida).
+func _despues_de_armar(scroll_anterior: int) -> void:
+	_armar_opciones()
+	_reponer_scroll.call_deferred(scroll_anterior)
+
+
+func _reponer_scroll(v: int) -> void:
+	await get_tree().process_frame   # (el contenedor acomoda las filas nuevas antes de medir)
+	_scroll.scroll_vertical = v
+	_ver_seleccion()
+
+
 func _separador() -> void:
 	var r := ColorRect.new()
 	r.color = Color(0.45, 0.38, 0.65, 0.7)
@@ -146,6 +233,8 @@ func _separador() -> void:
 
 ## Arma el contenido con los datos de ahora.
 func _armar() -> void:
+	var scroll_anterior := _scroll.scroll_vertical
+	_filas.clear()
 	for c in _caja.get_children():
 		_caja.remove_child(c)
 		c.queue_free()
@@ -189,6 +278,7 @@ func _armar() -> void:
 			fila.name = "contrato_%d" % i
 			fila.add_theme_constant_override("separation", 14)
 			_caja.add_child(fila)
+			_registrar_fila(fila)
 			var icono := Icono.new()
 			icono.objetivo = str(c.get("objetivo", ""))
 			icono.rareza = int(c.get("rareza", 0))
@@ -199,3 +289,4 @@ func _armar() -> void:
 			UI.label(texto, str(c.get("titulo", "")), 2.6, UI.GOLD, false, ANCHO_TEXTO - 70)
 			for cond in c.get("condiciones", []):
 				UI.label(texto, str(cond), 2.2, COLOR_TEXTO, false, ANCHO_TEXTO - 70)
+	_despues_de_armar(scroll_anterior)

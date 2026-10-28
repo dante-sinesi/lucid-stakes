@@ -965,17 +965,22 @@ func _bank_claridad() -> void:
 func _input(event: InputEvent) -> void:
 	if panel_info == null or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
+	if _panel_abierto() and _panel_tecla(event):
+		get_viewport().set_input_as_handled()
+		return
 	if Controls.action_of(event) != "panel_info":
 		return
 	if not _panel_permitido():
 		return
 	get_viewport().set_input_as_handled()   # (Tab no mueve el foco de nadie)
 	if panel_info.abierto and str(Settings.get_value("panel_modo")) == "alternar":
+		_menu = []
 		panel_info.cerrar()
 		panel_items.cerrar()
 	else:
 		panel_info.abrir(_panel_datos())   # (Tab abre los dos: el de la partida por la izquierda y el de boosts y consumibles por la derecha)
 		panel_items.abrir(_panel_items_datos())
+		_foco_iniciar()
 
 
 ## ¿Se puede ver el panel ahora? En la torre y en el sala del casino, sin menús, pausa, diálogos ni pantallas de juego encima.
@@ -1025,6 +1030,149 @@ func _panel_datos() -> Dictionary:
 	return d
 
 
+## El cursor de los paneles: `_foco` es el panel (0 contratos, a la izquierda; 1 boosts y consumibles, a la derecha) y `_foco_i` la fila. Con Espacio se abre el menú de la fila (`_menu`: lo que se puede
+## hacer con ella) y se elige con W y S; se confirma con Espacio y se vuelve con Shift.
+var _foco := 1
+var _foco_i := 0
+var _menu: Array = []     # ids de las opciones del menú abierto: "usar", "tirar", "abandonar", "volver"
+var _menu_i := 0
+
+
+func _foco_panel(z: int) -> Control:
+	return panel_info if z == 0 else panel_items
+
+
+func _foco_iniciar() -> void:
+	_menu = []
+	_foco = 1 if panel_items.filas() > 0 else 0
+	_foco_i = 0
+	_foco_pintar()
+
+
+## Pone el marco en la fila elegida (y el menú, si está abierto); el otro panel queda sin cursor.
+func _foco_pintar() -> void:
+	var n: int = _foco_panel(_foco).filas()
+	_foco_i = clampi(_foco_i, 0, maxi(n - 1, 0))
+	_foco_panel(1 - _foco).poner_opciones([])
+	_foco_panel(1 - _foco).poner_seleccion(-1)
+	_foco_panel(_foco).poner_seleccion(_foco_i if n > 0 else -1)
+	_foco_panel(_foco).poner_opciones(_menu_textos() if not _menu.is_empty() else [], _menu_i)
+
+
+func _menu_textos() -> Array:
+	var out: Array = []
+	for id in _menu:
+		match id:
+			"usar": out.append(Loc.t("Usar"))
+			"tirar": out.append(Loc.t("Tirar"))
+			"volver": out.append(Loc.t("Volver"))
+			"abandonar":
+				var p: Dictionary = Contratos.activos(run)[_foco_i]
+				if casino != null:
+					out.append(Loc.t("Cancelar (se devuelve la fianza)") if int(p.fianza) > 0 else Loc.t("Cancelar"))
+				else:
+					out.append(Loc.t("Abandonar (pierdes la fianza)") if int(p.fianza) > 0 else Loc.t("Abandonar"))
+	return out
+
+
+## Una tecla con un panel abierto: navegar (W y S suben y bajan, A y D pasan de un panel al otro), Espacio abre el menú o elige, Shift lo cierra. Devuelve true si la atendió.
+func _panel_tecla(event: InputEvent) -> bool:
+	var accion: String = Controls.action_of(event)
+	var k: int = (event as InputEventKey).keycode
+	var enter: bool = k == KEY_SPACE or k == KEY_ENTER or k == KEY_KP_ENTER
+	if not _menu.is_empty():
+		if accion == "mover_adelante":
+			_menu_i = maxi(_menu_i - 1, 0)
+		elif accion == "mover_atras":
+			_menu_i = mini(_menu_i + 1, _menu.size() - 1)
+		elif enter:
+			_menu_elegir(str(_menu[_menu_i]))
+			return true
+		elif k == KEY_SHIFT or k == KEY_ESCAPE:
+			_menu = []
+		else:
+			return k != KEY_TAB
+		_foco_pintar()
+		return true
+	if accion == "mover_adelante" or accion == "mover_atras":
+		_foco_i += -1 if accion == "mover_adelante" else 1
+		_foco_pintar()
+		return true
+	if accion == "mover_izquierda" or accion == "mover_derecha":
+		var z := 1 if accion == "mover_derecha" else 0
+		if z != _foco and _foco_panel(z).filas() > 0:
+			_foco = z
+			_foco_i = 0
+			_foco_pintar()
+		return true
+	if enter:
+		_menu_abrir()
+		return true
+	return false
+
+
+## Abre el menú de la fila elegida: un consumible se usa o se tira; un boost se tira; un contrato se abandona.
+func _menu_abrir() -> void:
+	if _foco_panel(_foco).filas() == 0:
+		return
+	if _foco == 0:
+		_menu = ["abandonar", "volver"]
+	elif _foco_i < run.boosts.size():
+		_menu = ["tirar", "volver"]
+	else:
+		_menu = ["usar", "tirar", "volver"]
+	_menu_i = 0
+	_foco_pintar()
+
+
+func _menu_elegir(id: String) -> void:
+	_menu = []
+	var en_items := _foco == 1
+	var es_boost: bool = en_items and _foco_i < run.boosts.size()
+	var idx: int = _foco_i if _foco == 0 or es_boost else _foco_i - run.boosts.size()
+	match id:
+		"tirar":
+			var tipo := "boost" if es_boost else "consumable"
+			var err: String = run.discard_error(tipo, idx)
+			if err != "":
+				_flash(Loc.t(err))
+			else:
+				var tirado: String = run.discard(tipo, idx)
+				if casino != null:
+					casino._on_item_discarded(ItemBar.Kind.BOOST if es_boost else ItemBar.Kind.CONSUMABLE, tirado)
+					save_game()
+				else:
+					_on_item_discarded(ItemBar.Kind.BOOST if es_boost else ItemBar.Kind.CONSUMABLE, tirado)
+		"usar":
+			_panel_cerrar_todo()
+			if casino != null:
+				casino.use_consumable_slot(idx)
+			else:
+				use_consumable_slot(idx)
+			return
+		"abandonar":
+			_panel_cerrar_todo()
+			if casino != null:
+				var r: Dictionary = Contratos.cancelar(run, idx)
+				_flash(Loc.t("Contrato cancelado") if bool(r.ok) else Loc.t(str(r.error)))
+				save_game()
+			else:
+				var res: Dictionary = Contratos.abandonar(run, idx)
+				if not res.is_empty():
+					_contratos_cola.append(res)
+					_contratos_mostrar()
+			return
+	panel_info.actualizar(_panel_datos())
+	panel_items.actualizar(_panel_items_datos())
+	_foco_pintar()
+
+
+func _panel_cerrar_todo() -> void:
+	_menu = []
+	panel_info.cerrar()
+	panel_items.cerrar()
+
+
 ## Lo que cuenta el panel de boosts y consumibles ahora (ver `PanelItems`).
 func _panel_items_datos() -> Dictionary:
 	var d := {"boosts": [], "consumibles": [], "max_boosts": 0, "max_consumibles": 0}
@@ -1055,7 +1203,7 @@ func _panel_vigilar() -> void:
 	if not _panel_permitido():
 		panel_info.cerrar(true)
 		panel_items.cerrar(true)
-	elif str(Settings.get_value("panel_modo")) == "mantener" and not Controls.held("panel_info"):
+	elif str(Settings.get_value("panel_modo")) == "mantener" and not Controls.held("panel_info") and _menu.is_empty():
 		panel_info.cerrar()
 		panel_items.cerrar()
 

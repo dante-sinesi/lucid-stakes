@@ -27,9 +27,14 @@ func _init() -> void:
 	main.run.boosts.append("segundo_aliento")
 	main.run.boosts.append("madrugada")
 	main.run.consumables.append("totem")
+	main.run.contratos = {"cartelera": [], "activos": [{"id": 1, "obj": "racha", "r": 1, "n": 2, "pct": 0.1, "monto": 120, "fianza": 40}], "iniciada": true, "rotaciones": 0, "torre": {}, "siguiente_id": 10}
 	main.panel_info.abrir(main._panel_datos())
 	main.panel_items.abrir(main._panel_items_datos())
 	await _frames(40)
+	main._foco_iniciar()
+	main._foco_i = 2
+	main._menu_abrir()
+	await _frames(20)
 	root.get_viewport().get_texture().get_image().save_png("%s_panel.png" % prefijo)
 	main.panel_info.cerrar(true)
 	main.panel_items.cerrar(true)

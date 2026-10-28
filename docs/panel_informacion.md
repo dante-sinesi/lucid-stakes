@@ -86,3 +86,7 @@ Cada paso se puede probar por separado, y la pausa se puede arreglar antes de sa
 ## Panel de boosts y consumibles
 
 Se abre junto con el de información con la misma tecla (Tab, o Select en el mando), por la derecha: lista cada boost y consumible con su ícono y su descripción. Con cualquiera de los dos abiertos la torre no se juega (sólo se mueve la cámara). El HUD de la torre queda con vidas, consumibles y boosts.
+
+## El cursor de los paneles
+
+Con los paneles abiertos, **W y S** (o el stick) suben y bajan por las filas (los boosts y consumibles de la derecha y los contratos de la izquierda; el panel se desplaza solo) y **A y D** pasan de un panel al otro. La fila elegida lleva un marco dorado. **Espacio o Enter** abre su menú: un consumible se **usa** o se **tira**, un boost se **tira**, un contrato se **abandona** (en la torre cuenta como fallido y pierde la fianza; en el casino se cancela y la devuelve). Shift cierra el menú. En modo "mantener", el menú abierto mantiene los paneles aunque se suelte Tab.
