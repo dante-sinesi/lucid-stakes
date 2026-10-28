@@ -25,7 +25,6 @@ var grid: GridContainer
 var tiles := {}          # id -> casillero
 var tab_buttons := {}
 var preview            # el animalito grande
-var name_label: Control
 var count_label: Control
 var info_label: Control
 var back_button
@@ -60,7 +59,6 @@ func _init() -> void:
 	preview.custom_minimum_size = Vector2(330, 360)
 	preview.spin = true
 	left.add_child(preview)
-	name_label = UI.label(left, "", 3, Draw.MARBLE)
 	# Derecha: solapas y casilleros
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
@@ -134,15 +132,6 @@ func refresh() -> void:
 		total += pool.size()
 		by_rarity[r] = Loc.f("%s %d/%d", [Loc.t(str(Cosmetics.RARITIES[r].name)), have, pool.size()])
 	count_label.text = Loc.f("Conseguidos: %d de %d     %s     %s     %s", [owned, total, by_rarity.comun, by_rarity.raro, by_rarity.epico])
-	var ch_info := Characters.get_character(cur_char)
-	name_label.text = Loc.t(str(ch_info.name))
-	var worn: Array[String] = []
-	if hat != "":
-		worn.append(Loc.t(str(Cosmetics.get_cosmetic(hat).name)))
-	if outfit != "":
-		worn.append(Loc.t(str(Cosmetics.get_cosmetic(outfit).name)))
-	if not worn.is_empty():
-		name_label.text = Loc.f("%s: %s", [Loc.t(str(ch_info.name)), ", ".join(worn)])
 	info_label.text = ""
 	_link_focus()
 
