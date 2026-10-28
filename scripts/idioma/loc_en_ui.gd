@@ -24,7 +24,7 @@ const TABLE := {
 	"Bloques movidos: %d de %d": "Blocks moved: %d of %d",
 	"¡Qué mareo!": "So dizzy!",
 	"La corrupción vuelve: los bloques se corrompen otra vez.": "Corruption returns: the blocks are corrupted again.",
-	"Se oye silbar el viento: el próximo movimiento te empuja en la dirección de la flecha.": "You hear the wind whistling: your next move pushes you in the direction of the arrow.",
+	"Silba el viento: la flecha marca hacia dónde te empuja.": "The wind whistles: the arrow shows where it pushes you.",
 	"Retumba la torre... el próximo movimiento se corre un bloque.": "The tower rumbles... a block will slide on the next move.",
 	"Ya moviste todos los bloques que se pueden mover": "You have already moved all the blocks you can",
 	"Movimientos en falso: quedan %d de %d": "False moves: %d of %d left",

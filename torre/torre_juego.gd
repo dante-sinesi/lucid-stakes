@@ -862,7 +862,7 @@ func _ventisca_avisar() -> void:
 	var dirs: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 	_viento = dirs[_rng_reglas.randi() % 4]
 	_poner_flecha_viento(_viento)
-	_aviso("Se oye silbar el viento: el próximo movimiento te empuja en la dirección de la flecha.", 2.2)
+	_aviso("Silba el viento: la flecha marca hacia dónde te empuja.", 2.2)
 	Sfx.play("hover", 0.5, -4.0)
 
 
@@ -877,18 +877,18 @@ func _poner_flecha_viento(d: Vector3i) -> void:
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		var caña := MeshInstance3D.new()
 		var bm := BoxMesh.new()
-		bm.size = Vector3(0.09, 0.05, 0.42)
+		bm.size = Vector3(0.16, 0.08, 0.7)
 		caña.mesh = bm
 		caña.material_override = mat
-		caña.position = Vector3(0, 0, -0.1)
+		caña.position = Vector3(0, 0, -0.17)
 		_flecha_viento.add_child(caña)
 		var punta := MeshInstance3D.new()
 		var pm := PrismMesh.new()
-		pm.size = Vector3(0.26, 0.4, 0.05)
+		pm.size = Vector3(0.46, 0.6, 0.08)
 		punta.mesh = pm
 		punta.material_override = mat
 		punta.rotation_degrees = Vector3(-90, 0, 0)   # (el prisma de pie pasa a acostado, con la punta hacia adelante)
-		punta.position = Vector3(0, 0, 0.26)
+		punta.position = Vector3(0, 0, 0.4)
 		_flecha_viento.add_child(punta)
 		add_child(_flecha_viento)
 	_flecha_viento.visible = true

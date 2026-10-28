@@ -41,6 +41,10 @@ func _init() -> void:
 		var a: Array = torre.t.sala_actual().d.camino[i]
 		torre.accion(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
 		await create_timer(0.5).timeout
+	if prueba == "ventisca":   # (la flecha del aviso, sin esperar a los ocho movimientos)
+		torre._ventisca_avisar()
+	if prueba == "memoria_pez":   # (ya pasaron los segundos de memoria)
+		torre._memoria_t = 5.0
 	await create_timer(0.8).timeout
 	root.get_viewport().get_texture().get_image().save_png(args[0])
 	quit()
