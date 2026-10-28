@@ -24,6 +24,7 @@ const Animacion := preload("res://scripts/personajes/animacion.gd")
 const GatitoTravieso := preload("res://scripts/personajes/gatito_travieso.gd")
 const GatitoAnim := preload("res://scripts/personajes/gatito_anim.gd")
 const Sfx := preload("res://scripts/sonido/sfx.gd")
+const AmaFarolin := preload("res://scripts/personajes/ama_farolin.gd")
 const Efectos := preload("res://torre/efectos.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const Profile := preload("res://scripts/datos/profile.gd")     # (el personaje y los cosméticos que eligió el jugador)
@@ -949,6 +950,7 @@ func _gatito_revisar() -> void:
 	if not gatito_actuando and _gatito_sala != t.indice:
 		gatito_nodo.visible = false
 		_gatito_pose = ""
+		AmaFarolin.limpiar(self)   # (si Ama se había llevado el sombrero o Farolín dormía, vuelve todo a su lugar)
 	if gatito_actuando:
 		return
 	var g: Dictionary = t.gato_pendiente()
@@ -1047,24 +1049,50 @@ func _gatito_actuar(g: Dictionary) -> void:
 
 ## En el checkpoint, junto a Farolín, el gato espera: empieza sentado y atento y, cuanto más tarda el jugador, más se va durmiendo (esfinge, estirado y hecho un bollito: las poses de las fotos de Ama).
 func _gatito_esperar_junto_a_farolin(sala_i: int, torre_ref) -> void:
-	var secuencia: Array = [["sentada", 6.0], ["esfinge", 9.0], ["estirada", 9.0], ["bollito", 0.0]]
+	var vivo := func() -> bool: return is_inside_tree() and t == torre_ref and t.indice == sala_i
+	var travesuras: Array = AmaFarolin.TRAVESURAS.duplicate()
+	travesuras.shuffle()   # (dos de las tres, al azar: mira la llama, se frota contra Farolín o le roba el sombrero; al final se duerme apoyada en él)
+	var secuencia: Array = [["sentada", 2.0, travesuras[0]], ["sentada", 3.0, travesuras[1]], ["esfinge", 7.0, ""], ["estirada", 8.0, "acurrucarse"], ["bollito", 0.0, ""]]
 	var anterior := "reposo"
 	for paso in secuencia:
 		var nombre: String = paso[0]
-		if not is_inside_tree() or t != torre_ref or t.indice != sala_i:
+		if not vivo.call():
 			return
 		_gatito_pose = ""
-		var desde := GatitoAnim.pose(anterior)
-		var hasta := GatitoAnim.pose(nombre)
-		var tw := create_tween()
-		tw.tween_method(func(k: float) -> void: GatitoAnim.aplicar(gatito_modelo, GatitoAnim.mezclar(desde, hasta, k)), 0.0, 1.0, 0.9)
-		await tw.finished
+		await _gatito_mezclar(anterior, nombre, 0.9)
 		_gatito_t = 0.0
 		_gatito_pose = nombre
 		anterior = nombre
 		if float(paso[1]) <= 0.0:
 			return
 		await _gatito_esperar(float(paso[1]))
+		if not vivo.call():
+			return
+		var que: String = paso[2]
+		if que == "":
+			continue
+		_gatito_pose = ""
+		if que == "acurrucarse":   # (se levanta, se pega a Farolín y se duerme apoyada en él)
+			await _gatito_mezclar(anterior, "sentada", 0.6)
+			if not vivo.call() or not await AmaFarolin.acurrucarse(self, vivo):
+				AmaFarolin.limpiar(self)
+				return
+			anterior = "reposo"
+		else:
+			if not await AmaFarolin.hacer(que, self, vivo):
+				return
+			anterior = "sentada"   # (las travesuras terminan sentada en su sitio)
+			_gatito_t = 0.0
+			_gatito_pose = "sentada"
+
+
+## Un cambio suave del modelo de la gata de una pose a otra.
+func _gatito_mezclar(desde_pose: String, hasta_pose: String, seg: float) -> void:
+	var desde := GatitoAnim.pose(desde_pose)
+	var hasta := GatitoAnim.pose(hasta_pose)
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void: GatitoAnim.aplicar(gatito_modelo, GatitoAnim.mezclar(desde, hasta, k)), 0.0, 1.0, seg)
+	await tw.finished
 
 
 ## Cada cuadro, el gato que espera mueve la cola, las orejas y parpadea según su pose.

@@ -37,9 +37,21 @@ Lo "travieso" que se agregó: un **collar azul con cascabel** que suena cuando s
 
 En todas mueve la cola despacio, las orejas de vez en cuando y parpadea (dormida, casi no se mueve). Los cambios de pose son suaves.
 
-## Lo que viene (segunda etapa)
+## Con Farolín (la espera)
 
-Las animaciones con Farolín: se frota contra él y ronronea, persigue la llama con la mirada, le roba el sombrero mientras se hace el distraído, y se duerme apoyado en él. También reacciones en la torre (se eriza si hay una bomba cerca, se tapa los ojos con la pata si el jugador pierde la sala).
+Mientras espera en el checkpoint (`scripts/personajes/ama_farolin.gd`, que usa `torre_juego.gd`), después de un momento sentada y atenta, Ama hace **dos de estas tres travesuras, al azar**, y después se va quedando dormida:
+
+- **Mirar la llama:** la cabeza sigue el titilar del farol, con los ojos bien abiertos y la colita inquieta; Farolín la mira de vuelta.
+- **Frotarse:** trota hasta él y se frota yendo y viniendo, con la cola en alto y los ojitos cerrados; el cuerpo vibra (el ronroneo) y la llama de Farolín brilla más.
+- **Robarle el sombrero:** el "sombrero" de Farolín es la tapa del farol. Ama se hace la distraída, se acerca, se para en dos patas y se lo saca de un manotazo (Farolín se sorprende y se pone triste); se lo lleva puesto, orgullosa, y después se lo devuelve (Farolín se rasca la cabeza, contento).
+
+Después viene la espera de siempre (esfinge y estirada) y al final **se acurruca**: se pega a Farolín y se duerme hecha un bollito apoyada en él; Farolín baja la llama. Si el jugador llega al checkpoint a la mitad de una travesura, se corta y todo vuelve a su lugar (el sombrero, el ánimo y la llama de Farolín).
+
+Pruebas: `tests/unitarios/test_gatito.gd` (la espera completa, cada travesura y el corte a la mitad); captura de cada una: `tests/capturas/shot_ama_farolin.gd`.
+
+## Lo que falta
+
+Las reacciones en la torre: se eriza si hay una bomba cerca y se tapa los ojos con la pata si el jugador pierde la sala.
 
 ## Cómo está hecho
 

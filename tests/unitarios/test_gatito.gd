@@ -165,6 +165,29 @@ func test_juego() -> void:
 			OS.delay_msec(8)
 			vuelta += 1
 		check(not torre._gatito_vuelve and absf(torre.cam.size - torre.zoom) < 0.1 and torre.pivot.position.distance_to(torre.gato_nodo.position + Vector3(0, 0.5, 0)) < 0.2, "cuando Ama llega al checkpoint la cámara vuelve al personaje y al zoom de siempre (zoom %.2f)" % torre.cam.size)
+		# la espera junto a Farolín: dos travesuras con él, y al final se duerme apoyada en él (todo acelerado)
+		Engine.time_scale = 8.0
+		var espera := 0
+		while torre._gatito_pose != "bollito" and espera < 3000:
+			await process_frame
+			OS.delay_msec(4)
+			espera += 1
+		check(torre._gatito_pose == "bollito", "Ama termina la espera hecha un bollito (%d cuadros)" % espera)
+		check(torre.faro_modelo._dormido, "Farolín se duerme con ella: la llama baja")
+		check(torre.faro_modelo.sombrero.get_parent() == torre.faro_modelo, "el sombrero termina donde empezó: en Farolín")
+		check(torre.gatito_nodo.position.distance_to(torre.farolin.position + 0.27 * Vector3(torre._faro_esquina.x, 0, torre._faro_esquina.y)) < 0.45, "se duerme pegada a Farolín")
+		# cada travesura por separado, y cortada a la mitad
+		var AF = load("res://scripts/personajes/ama_farolin.gd")
+		torre.faro_modelo.dormir(false)
+		for nombre in AF.TRAVESURAS:
+			var fin: bool = await AF.hacer(nombre, torre, func(): return true)
+			check(fin and torre.faro_modelo.sombrero.get_parent() == torre.faro_modelo, "la travesura %s termina y deja el sombrero en Farolín" % nombre)
+		var cuenta := [0]
+		var corta: bool = await AF.hacer("sombrero", torre, func():
+			cuenta[0] += 1
+			return cuenta[0] < 140)   # (se corta a la mitad del robo)
+		check(not corta and torre.faro_modelo.sombrero.get_parent() == torre.faro_modelo, "si se cambia de sala a la mitad del robo, el sombrero vuelve a Farolín")
+		Engine.time_scale = 1.0
 	else:
 		check(true, "(la primera sala de esta torre no tiene variante)")
 	# el comando de desarrollo "prueba": esa prueba en esa etapa
