@@ -51,7 +51,7 @@ func test_items() -> void:
 		ids[it.id] = true
 		ok = ok and (it.type == Items.Type.CLARITY and it.has("mult") or it.has("value"))
 	check(ok, "cada premio tiene id unico, nombre, descripcion, peso y valor (o multiplicador)")
-	check(Items.by_tier(Items.Tier.EPICO).size() == 12 and Items.by_tier(Items.Tier.RARO).size() == 24, "12 premios epicos y 24 raros (el catálogo sin los premios que ya no existen)")
+	check(Items.by_tier(Items.Tier.EPICO).size() == 13 and Items.by_tier(Items.Tier.RARO).size() == 26, "13 premios epicos y 26 raros (el catálogo sin los premios que ya no existen)")
 	var epic_boosts := true
 	for it in Items.by_tier(Items.Tier.EPICO):
 		epic_boosts = epic_boosts and (it.type == Items.Type.BOOST or it.type == Items.Type.CLARITY)
