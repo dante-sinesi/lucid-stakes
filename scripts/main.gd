@@ -1031,7 +1031,7 @@ func _panel_datos() -> Dictionary:
 
 
 ## El cursor de los paneles: `_foco` es el panel (0 contratos, a la izquierda; 1 boosts y consumibles, a la derecha) y `_foco_i` la fila. Con Espacio se abre el menú de la fila (`_menu`: lo que se puede
-## hacer con ella) como botones junto al panel; se elige con W y S, se confirma con Espacio y se vuelve con Esc (o Shift).
+## hacer con ella) como botones junto al panel; se elige con W y S, se confirma con Espacio y se vuelve con "Volver", Esc o Shift.
 var _foco := 1
 var _foco_i := 0
 var _menu: Array = []     # ids de las opciones del menú abierto: "usar", "tirar", "abandonar", "volver"
@@ -1065,6 +1065,7 @@ func _menu_textos() -> Array:
 		match id:
 			"usar": out.append(Loc.t("Usar"))
 			"tirar": out.append(Loc.t("Tirar"))
+			"volver": out.append(Loc.t("Volver"))
 			"abandonar":
 				var p: Dictionary = Contratos.activos(run)[_foco_i]
 				if casino != null:
@@ -1115,11 +1116,11 @@ func _menu_abrir() -> void:
 	if _foco_panel(_foco).filas() == 0:
 		return
 	if _foco == 0:
-		_menu = ["abandonar"]
+		_menu = ["abandonar", "volver"]
 	elif _foco_i < run.boosts.size():
-		_menu = ["tirar"]
+		_menu = ["tirar", "volver"]
 	else:
-		_menu = ["usar", "tirar"]
+		_menu = ["usar", "tirar", "volver"]
 	_menu_i = 0
 	_foco_pintar()
 
