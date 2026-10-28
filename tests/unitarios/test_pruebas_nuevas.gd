@@ -89,6 +89,11 @@ func test_sorteo() -> void:
 
 
 func test_espalda_mala() -> void:
+	var con_agarres = _torre({"espalda_mala": true}, 12, 91)
+	var todas := true
+	for e in con_agarres.salas:
+		todas = todas and int(e.d.get("agarres", 0)) >= 4
+	check(con_agarres.salas.size() == Torre.salas_de_etapa(12) and todas, "Espalda mala: la torre sólo lleva salas en las que la solución empuja o tira cuatro veces o más")
 	var t = _torre({"espalda_mala": true})
 	var d: Dictionary = t.sala_actual().d
 	var minimo := int(d.pasos) + int(d.agarres)
@@ -136,8 +141,8 @@ func test_solo_tres() -> void:
 	var t = _torre({"solo_bloques": 3}, 12, 77)
 	var todas := true
 	for e in t.salas:
-		todas = todas and int(e.d.get("distintos", 99)) <= 3
-	check(t.salas.size() == Torre.salas_de_etapa(12) and todas, "Solo tres bloques: la torre sólo lleva salas que mueven tres bloques distintos o menos")
+		todas = todas and int(e.d.get("distintos", 99)) <= 3 and int(e.d.get("distintos", 0)) >= 2
+	check(t.salas.size() == Torre.salas_de_etapa(12) and todas, "Solo tres bloques: la torre sólo lleva salas que mueven dos o tres bloques distintos (con uno solo la regla no se notaría)")
 	# la regla en el motor
 	var m = Motor.crear(6, Vector3i(5, 2, 5))
 	m.limite_movibles = 3
@@ -188,6 +193,29 @@ func test_quebradizo() -> void:
 				fijos_despues += 1
 		intactos = intactos and fijos_antes == fijos_despues
 	check(intactos, "Quebradizo: los checkpoint y la salida no cambian")
+	# todas las salas de la biblioteca: con los bloques quebradizos, la solución conocida anda
+	var paquete: Array = Torre.cargar_paquete_del_juego()
+	var rotas := 0
+	var con_cambios := 0
+	for d in paquete:
+		var q: Dictionary = Torre.quebrar(d)
+		if not Torre.camino_ok(q):
+			rotas += 1
+		if q != d:
+			con_cambios += 1
+	check(rotas == 0, "Quebradizo: la solución conocida anda en las %d salas de la biblioteca con los bloques quebradizos (fallan %d; %d salas tienen bloques agrietados)" % [paquete.size(), rotas, con_cambios])
+	# y en las torres armadas (cada sala con los bloques de la de arriba al alcance)
+	var mal := 0
+	var torres := 0
+	for etapa in [3, 6, 9, 12, 15]:
+		for semilla in 6:
+			var tq = _torre({"quebradizo": true}, etapa, 600 + semilla * 13 + etapa)
+			torres += 1
+			for i in tq.salas.size():
+				var obst: Array = Torre.obstaculos_de(tq.salas[i + 1].d, int(tq.salas[i].d.meta)) if i + 1 < tq.salas.size() else []
+				if not Torre.camino_ok(tq.salas[i].d, obst):
+					mal += 1
+	check(mal == 0, "Quebradizo: en %d torres de todas las etapas ninguna sala queda sin solución conocida (%d malas)" % [torres, mal])
 	var normal = _torre({}, 9, 31)
 	var no_hay := true
 	for e in normal.salas:
@@ -204,7 +232,8 @@ func test_presupuesto() -> void:
 	for e in t.salas:
 		suma_pasos += int(e.d.pasos)
 		suma_max += int(e.max_mov)
-	check(t.presupuesto_total > 0 and t.presupuesto_total >= int(ceil(suma_pasos * 1.12)), "Presupuesto compartido: el fondo (%d) cubre los mínimos con margen (%d)" % [t.presupuesto_total, suma_pasos])
+	check(t.presupuesto_total >= suma_pasos, "Presupuesto compartido: el fondo (%d) alcanza para los mínimos de todas las salas (%d)" % [t.presupuesto_total, suma_pasos])
+	check(float(t.presupuesto_total) <= float(suma_pasos) * 1.25 + float(t.salas.size()) + 1.0, "Presupuesto compartido: el fondo es justo, sólo un 25 %% más que los mínimos y un movimiento por sala (%d de %d)" % [t.presupuesto_total, suma_pasos])
 	check(t.presupuesto_total <= suma_max, "Presupuesto compartido: el fondo no es más grande que la suma de los límites de las salas")
 	check(t.max_mov() == t.presupuesto_total, "Presupuesto compartido: al empezar la sala puede gastar todo el fondo")
 	_jugar_camino(t)
@@ -247,12 +276,24 @@ func test_terremoto_y_corrupcion() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var cuenta_antes: int = t.motor.bloques.size()
-	var r: Dictionary = t.terremoto(rng)
+	var r: Dictionary = t.terremoto(rng, 3)
 	if bool(r.ok):
-		check(t.motor.bloques.size() <= cuenta_antes and r.de != r.a and not t.motor.bloques.has(r.de) or t.motor.bloques.has(r.de), "Terremoto: un bloque se corrió una celda (%s -> %s)" % [str(r.de), str(r.a)])
-		check((r.de - r.a).length() == 1.0, "Terremoto: se corre una sola celda")
+		var una_celda := true
+		for par in r.movidos:
+			una_celda = una_celda and (par.de - par.a).length() == 1.0 and par.de != par.a
+		check(una_celda and r.movidos.size() <= 3, "Terremoto: se corren hasta tres bloques, una celda cada uno (%d)" % r.movidos.size())
+		check(t.motor.bloques.size() <= cuenta_antes, "Terremoto: no aparecen bloques")
 	else:
 		check(true, "(Terremoto: la primera sala no tiene un bloque que se pueda correr)")
+	var varios := 0
+	var rng3 := RandomNumberGenerator.new()
+	rng3.seed = 3
+	for k in 8:
+		var tq = _torre({"terremoto": true}, 9, 400 + k)
+		var rq: Dictionary = tq.terremoto(rng3, 3)
+		if bool(rq.ok) and rq.movidos.size() >= 2:
+			varios += 1
+	check(varios >= 4, "Terremoto: casi siempre se corren varios bloques a la vez (%d de 8 torres)" % varios)
 	var corridos := 0
 	for k in 12:
 		var rr: Dictionary = t.terremoto(rng)
@@ -286,12 +327,23 @@ func test_terremoto_y_corrupcion() -> void:
 	check(seguro and temblores > 0, "Terremoto: siguiendo la solución conocida los temblores (%d) no hacen perder ninguna sala" % temblores)
 	# corrupción
 	var t2 = _torre({"corrupcion": true}, 6, 41)
-	t2.actuar(Vector3i(int(t2.sala_actual().d.camino[0][0]), 0, int(t2.sala_actual().d.camino[0][1])), int(t2.sala_actual().d.camino[0][2]))
-	for c in t2.motor.ids:
-		t2.motor.purificados[t2.motor.ids[c]] = true
-	t2.cosecha.streak = 4
-	t2.corromper()
-	check(t2.motor.purificados.size() <= 1 and t2.cosecha.streak == 0, "Corrupción que vuelve: los bloques se corrompen otra vez (queda el que pisas) y se corta la racha")
+	for k in 3:   # (los primeros tres pasos de la solución: purifican bloques)
+		var a: Array = t2.sala_actual().d.camino[k]
+		t2.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
+	var purificados_antes: int = t2.motor.purificados.size()
+	var viejo: int = int(t2.motor.purificados.keys()[0])
+	var sala_antes: int = t2.cosecha.sala
+	var rc: Dictionary = t2.corromper()
+	check(bool(rc.ok) and t2.motor.purificados.size() == purificados_antes - 1 and not t2.motor.purificados.has(viejo), "Corrupción que vuelve: se corrompe el bloque purificado más viejo, uno solo (%d -> %d)" % [purificados_antes, t2.motor.purificados.size()])
+	check(int(rc.perdida) > 0 and t2.cosecha.sala == sala_antes - int(rc.perdida), "Corrupción que vuelve: se pierde la claridad que daba (%d)" % int(rc.perdida))
+	var pisado: int = int(t2.motor.ids[t2.motor.jugador + Vector3i(0, -1, 0)])
+	var sigue := true
+	for k in 6:
+		t2.corromper()
+		sigue = sigue and (t2.motor.purificados.has(pisado) or not t2.motor.ids.has(t2.motor.jugador + Vector3i(0, -1, 0)))
+	check(sigue, "Corrupción que vuelve: el bloque que pisas no se corrompe")
+	var t3 = _torre({}, 6, 41)
+	check(not bool(t3.corromper().ok), "Corrupción que vuelve: sin bloques purificados no hay nada que corromper")
 
 
 ## Torres enteras con cada regla (y con las combinaciones del jefe final): jugando la solución conocida de cada sala se llega al portal sin perder ninguna.
@@ -324,6 +376,18 @@ func test_oscuros() -> void:
 		if primera.oscuros.has(primera.ids[c]):
 			oscuros += 1
 	check(oscuros > 0 and oscuros < total, "A oscuras: algunos bloques de la sala se ven negros, no todos (%d de %d)" % [oscuros, total])
+	var oscuros_torre := 0
+	var bloques_torre := 0
+	for e in t.salas:
+		var mo = Vista.motor_de(e.d)
+		var os: Dictionary = Torre.oscuros_de(mo, int(e.id))
+		for c in mo.bloques:
+			var letra := str(mo.bloques[c])
+			if letra == "f" or letra == "p" or letra == "d" or (letra.length() >= 2 and letra[0] == "b"):
+				continue
+			bloques_torre += 1
+			oscuros_torre += 1 if os.has(mo.ids[c]) else 0
+	check(float(oscuros_torre) / float(maxi(bloques_torre, 1)) >= 0.5, "A oscuras: más de la mitad de los bloques de la torre son negros (%d de %d)" % [oscuros_torre, bloques_torre])
 	var sin_f := true
 	for c in primera.bloques:
 		var letra := str(primera.bloques[c])
@@ -366,43 +430,70 @@ func _main_con(prueba_id: String):
 	return main
 
 
-func _paso_con_movs(main, movs_antes: int) -> void:
+func _paso_con_movs(main, movs_antes: int, idx := 0) -> void:
 	var torre = main.torre
 	torre.t.movs = movs_antes
-	var a: Array = torre.t.sala_actual().d.camino[0]
+	var a: Array = torre.t.sala_actual().d.camino[idx]
 	torre.accion(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
 	await create_timer(0.8).timeout
 
 
 func test_en_el_juego() -> void:
-	# Mareo: al quinto movimiento la cámara gira
+	# Mareo: cada dos movimientos la cámara gira (45 grados) y no hay cartel
 	var main = await _main_con("mareo")
 	check(main.trial.get("reglas", {}).get("mareo", false) and main.torre.reglas.get("mareo", false), "Mareo: la torre de la prueba lleva la regla")
 	var yaw0: float = main.torre.yaw_target
-	await _paso_con_movs(main, 4)
-	check(absf(main.torre.yaw_target - yaw0) > 80.0 and not main.torre._efecto_en_curso, "Mareo: al quinto movimiento la cámara gira un cuarto de vuelta")
+	await _paso_con_movs(main, 1)
+	check(absf(absf(main.torre.yaw_target - yaw0) - 45.0) < 0.01 and not main.torre._efecto_en_curso, "Mareo: al segundo movimiento la cámara gira 45 grados")
+	var yaw1: float = main.torre.yaw_target
+	await _paso_con_movs(main, 2, 1)   # (el tercer movimiento no gira)
+	check(is_equal_approx(main.torre.yaw_target, yaw1), "Mareo: el tercer movimiento no la gira")
 	main.queue_free()
 	await process_frame
-	# Corrupción que vuelve: al décimo movimiento los purificados vuelven a corromperse
+	# Corrupción que vuelve: de a poco un bloque purificado se corrompe otra vez
 	main = await _main_con("corrupcion")
-	main.torre.t.cosecha.streak = 3
-	await _paso_con_movs(main, 9)
-	check(main.torre.t.motor.purificados.size() <= 1 and main.torre.t.cosecha.streak == 0, "Corrupción que vuelve: al décimo movimiento se corrompen otra vez y se corta la racha")
+	var tj = main.torre
+	var camino0: Array = tj.t.sala_actual().d.camino
+	for k in 3:
+		tj.accion(Vector3i(int(camino0[k][0]), 0, int(camino0[k][1])), int(camino0[k][2]))
+		await create_timer(0.35).timeout
+	var antes_p: int = tj.t.motor.purificados.size()
+	tj._corrupcion()
+	check(tj.t.motor.purificados.size() == antes_p - 1, "Corrupción que vuelve: en el juego se corrompe un bloque purificado (%d -> %d)" % [antes_p, tj.t.motor.purificados.size()])
 	main.queue_free()
 	await process_frame
-	# Ventisca: se avisa en el movimiento 8 y sopla en el 9
+	# Ventisca: se avisa un movimiento antes (líneas de minicubos) y sopla en el siguiente; los momentos son al azar
 	main = await _main_con("ventisca")
-	await _paso_con_movs(main, 7)
-	check(main.torre._viento != Vector3i.ZERO and main.torre._flecha_viento != null and main.torre._flecha_viento.visible, "Ventisca: en el movimiento 8 aparece la flecha del viento")
+	var sala_v: int = main.torre.t.indice
+	main.torre._sala_reglas = sala_v
+	main.torre._movs_reglas = 3
+	main.torre._sig_viento = 5   # (un movimiento antes: se avisa)
+	await _paso_con_movs(main, 3)
+	check(main.torre._viento != Vector3i.ZERO and main.torre._viento_chorro != null and main.torre._viento_chorro.emitting, "Ventisca: un movimiento antes aparecen las líneas de minicubos del viento")
+	check(main.torre._viento_chorro.mesh != null and main.torre._viento_chorro.direction == Vector3(main.torre._viento), "Ventisca: las líneas corren hacia donde va a soplar")
 	var siguiente: Array = main.torre.t.sala_actual().d.camino[1] if main.torre.t.sala_actual().d.camino.size() > 1 else main.torre.t.sala_actual().d.camino[0]
 	main.torre.accion(Vector3i(int(siguiente[0]), 0, int(siguiente[1])), int(siguiente[2]))
 	await create_timer(0.8).timeout
-	check(main.torre._viento == Vector3i.ZERO and not main.torre._flecha_viento.visible, "Ventisca: en el movimiento 9 sopla y la flecha se va")
+	check(main.torre._viento == Vector3i.ZERO, "Ventisca: en el movimiento siguiente sopla y se limpia el aviso")
+	var intervalos := {}
+	for k in 30:
+		main.torre._sortear_momentos(0)
+		intervalos[main.torre._sig_viento] = true
+	check(intervalos.size() >= 4 and intervalos.keys().min() >= 5 and intervalos.keys().max() <= 11, "Ventisca: el momento del viento se sortea entre 5 y 11 movimientos (%s)" % str(intervalos.keys()))
 	main.queue_free()
 	await process_frame
-	# Terremoto: en el movimiento 8 se corre un bloque
+	# Terremoto: tiembla la torre (los bloques se sacuden) y se corren varios bloques
 	main = await _main_con("terremoto")
-	await _paso_con_movs(main, 7)
+	main.torre._sala_reglas = main.torre.t.indice
+	main.torre._movs_reglas = 3
+	main.torre._sig_temblor = 5
+	await _paso_con_movs(main, 3)   # (un movimiento antes: el aviso)
+	check(main.torre._temblor > 0.0 and not main.torre._efecto_en_curso, "Terremoto: un movimiento antes empieza a temblar")
+	var sig2: Array = main.torre.t.sala_actual().d.camino[1] if main.torre.t.sala_actual().d.camino.size() > 1 else main.torre.t.sala_actual().d.camino[0]
+	main.torre.accion(Vector3i(int(sig2[0]), 0, int(sig2[1])), int(sig2[2]))
+	await create_timer(0.45).timeout
+	check(main.torre._temblor > 1.0, "Terremoto: al llegar el temblor la sacudida es fuerte (%.2f s)" % main.torre._temblor)
+	await create_timer(0.8).timeout
 	check(not main.torre._efecto_en_curso, "Terremoto: el temblor termina y se puede seguir jugando")
 	main.queue_free()
 	await process_frame

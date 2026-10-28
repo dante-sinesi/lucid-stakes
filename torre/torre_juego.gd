@@ -77,6 +77,7 @@ var _lento_mov := 1.0
 var mancha: MeshInstance3D   # la sombra de contacto del personaje: una mancha oscura en la cara de arriba del bloque que pisa (con vista isométrica sin perspectiva, es lo que dice en qué celda está)
 var mira := Vector3i(0, 0, 1)
 var _camara_tween: Tween
+var _camara_dur := 0.25   # lo que tarda la cámara en girar (el mareo la hace más lenta)
 var _paso_tween: Tween
 var estaticas: Array = []   # una por sala: la sala dibujada tal como empieza (decorado; la actual se dibuja viva aparte)
 var vivo: Node3D            # la sala actual, dibujada con su estado
@@ -478,8 +479,8 @@ func _poner_camara(animar: bool) -> void:
 		if not libre:
 			_camara_tween.tween_property(pivot, "position", foco, 0.25).set_trans(Tween.TRANS_SINE)
 			_camara_tween.tween_property(cam, "size", tam, 0.25).set_trans(Tween.TRANS_SINE)
-		_camara_tween.tween_property(pivot, "rotation_degrees:y", yaw_target, 0.25).set_trans(Tween.TRANS_SINE)
-		_camara_tween.tween_property(pitch_node, "rotation_degrees:x", cam_pitch, 0.25).set_trans(Tween.TRANS_SINE)
+		_camara_tween.tween_property(pivot, "rotation_degrees:y", yaw_target, _camara_dur).set_trans(Tween.TRANS_SINE)
+		_camara_tween.tween_property(pitch_node, "rotation_degrees:x", cam_pitch, _camara_dur).set_trans(Tween.TRANS_SINE)
 	else:
 		if not libre:
 			pivot.position = foco
@@ -566,8 +567,9 @@ var solo_camara := false   # un panel de información está abierto: no se juega
 func _process(delta: float) -> void:
 	_gatito_procesar(delta)
 	_memoria_proceso(delta)
-	if _flecha_viento != null and is_instance_valid(_flecha_viento) and _flecha_viento.visible:   # (la flecha del viento flota sobre la cabeza del personaje, mecida)
-		_flecha_viento.position = gato_nodo.position + Vector3(0, 1.45 + 0.05 * sin(Time.get_ticks_msec() / 150.0), 0)
+	if _viento_chorro != null and is_instance_valid(_viento_chorro) and _viento_chorro.emitting:   # (las líneas de viento salen de contra el viento del personaje y lo cruzan)
+		_viento_chorro.position = gato_nodo.position - Vector3(_viento_dir) * 2.2 + Vector3(0, 0.9, 0)
+	_temblor = maxf(_temblor - delta, 0.0)
 	if t == null or pivot == null:
 		return
 	if silueta != null and en_juego:   # (Opciones > Gráficos > Transparencia del personaje: vale en cuanto se cambia)
@@ -611,6 +613,8 @@ func _temblar() -> void:
 		var k := clampf((f - 0.5) / 0.5, 0.0, 1.0)
 		if k > 0.0:
 			amp = lerpf(0.004, 0.045, pow(k, 1.5))
+	if _temblor > 0.0:   # (Terremoto: todos los bloques de la sala se sacuden, más fuerte al principio y de a poco menos)
+		amp = maxf(amp, 0.085 * minf(_temblor, 1.0))
 	if amp <= 0.0 and not _temblando:
 		return
 	_temblando = amp > 0.0
@@ -792,39 +796,73 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 
 # --- las pruebas con reglas en marcha (docs/pruebas.md): Mareo, Corrupción que vuelve, Ventisca, Terremoto y Memoria de pez ---
 
-var _efecto_en_curso := false   # una regla de la prueba está haciendo lo suyo (avisos, viento, temblor): hasta que termina no se juega
+var _efecto_en_curso := false   # una regla de la prueba está haciendo lo suyo (viento, temblor, corrupción): hasta que termina no se juega
 var _viento := Vector3i.ZERO    # Ventisca: hacia dónde va a soplar (ZERO = nada anunciado)
-var _flecha_viento: Node3D      # la flecha que avisa de la ventisca
+var _viento_chorro: CPUParticles3D   # las líneas de minicubos que corren en la dirección del viento
+var _viento_dir := Vector3i.ZERO
 var _memoria_t := 0.0           # Memoria de pez: segundos desde el último movimiento
 var _memoria_oculta := false
 var _rng_reglas := RandomNumberGenerator.new()
-const MEMORIA_SEG := 2.5
+var _sala_reglas := -1          # la sala y el movimiento para los que están sorteados los momentos de abajo
+var _movs_reglas := 0
+var _sig_corrupcion := 0        # en qué movimiento de la sala vuelve a corromperse el próximo bloque
+var _sig_viento := 0            # ... sopla el próximo viento (se avisa un movimiento antes)
+var _sig_temblor := 0           # ... tiembla la torre (se avisa un movimiento antes)
+var _temblor := 0.0             # segundos que le quedan a la sacudida de los bloques
+const MEMORIA_SEG := 1.8
 
 
-## Después de cada acción, cuenta los movimientos de la sala y dispara lo que toque: cada 5 el mareo (gira la cámara), cada 10 la corrupción, cada 9 el viento (se avisa en el 8) y cada 8 el terremoto (se avisa en el 7).
+## Sortea en qué movimientos de la sala pasa cada cosa: nunca a intervalos fijos (la corrupción cada 3 a 5 movimientos, el viento cada 5 a 11 y el temblor cada 6 a 10).
+func _sortear_momentos(m: int) -> void:
+	_sala_reglas = t.indice
+	_sig_corrupcion = m + _rng_reglas.randi_range(3, 5)
+	_sig_viento = m + _rng_reglas.randi_range(5, 11)
+	_sig_temblor = m + _rng_reglas.randi_range(6, 10)
+
+
+## Después de cada acción: el mareo gira la cámara cada dos movimientos y, cuando toca, vuelve a corromperse un bloque, sopla el viento (avisado un movimiento antes) o tiembla la torre (también avisado).
 func _reglas_despues(r: Dictionary) -> void:
-	if not en_juego or t == null or t.muerta or t.terminada or t.perdida or str(r.evento) != "" or t.movs <= 0:
+	if not en_juego or t == null or t.muerta or t.terminada or t.perdida or str(r.evento) != "":
 		return
 	var m: int = t.movs
-	var hay_mareo := bool(reglas.get("mareo", false)) and m % 5 == 0
-	var hay_corrupcion := bool(reglas.get("corrupcion", false)) and m % 10 == 0
-	var hay_viento := bool(reglas.get("ventisca", false)) and m % 9 == 0
-	var aviso_viento := bool(reglas.get("ventisca", false)) and m % 9 == 8
-	var hay_temblor := bool(reglas.get("terremoto", false)) and m % 8 == 0
-	var aviso_temblor := bool(reglas.get("terremoto", false)) and m % 8 == 7
-	if not (hay_mareo or hay_corrupcion or hay_viento or aviso_viento or hay_temblor or aviso_temblor):
+	if m <= 0:
+		_sala_reglas = -1
 		return
-	if _rng_reglas.seed == 0 or _rng_reglas.state == 0:
-		_rng_reglas.seed = semilla * 13 + 5
+	if _sala_reglas != t.indice or m < _movs_reglas:   # (otra sala, o se rehízo o deshizo algo: se sortea de nuevo)
+		_sortear_momentos(m)
+	_movs_reglas = m
+	if bool(reglas.get("mareo", false)) and m % 2 == 0:
+		_mareo()
+	var corrupcion := bool(reglas.get("corrupcion", false)) and m >= _sig_corrupcion
+	if corrupcion:
+		_sig_corrupcion = m + _rng_reglas.randi_range(3, 5)
+	var aviso_viento := false
+	var hay_viento := false
+	if bool(reglas.get("ventisca", false)):
+		if _viento == Vector3i.ZERO and m >= _sig_viento - 1:
+			aviso_viento = true
+			_sig_viento = maxi(_sig_viento, m + 1)
+		elif _viento != Vector3i.ZERO and m >= _sig_viento:
+			hay_viento = true
+			_sig_viento = m + _rng_reglas.randi_range(5, 11)
+	var aviso_temblor := false
+	var hay_temblor := false
+	if bool(reglas.get("terremoto", false)):
+		if _temblor_anunciado_en != t.indice * 100000 + _sig_temblor and m >= _sig_temblor - 1 and m < _sig_temblor:
+			aviso_temblor = true
+			_temblor_anunciado_en = t.indice * 100000 + _sig_temblor
+		elif m >= _sig_temblor:
+			hay_temblor = true
+			_sig_temblor = m + _rng_reglas.randi_range(6, 10)
+	if not (corrupcion or aviso_viento or hay_viento or aviso_temblor or hay_temblor):
+		return
 	_efecto_en_curso = true
 	var torre_ref = t
 	var sala_i: int = t.indice
 	await get_tree().create_timer(0.3).timeout   # (primero termina de verse el movimiento)
 	var vivo_aun := func() -> bool: return is_inside_tree() and t == torre_ref and t.indice == sala_i and not t.muerta and not t.terminada
 	if vivo_aun.call():
-		if hay_mareo:
-			_mareo()
-		if hay_corrupcion:
+		if corrupcion:
 			_corrupcion()
 		if aviso_viento:
 			_ventisca_avisar()
@@ -837,73 +875,96 @@ func _reglas_despues(r: Dictionary) -> void:
 	_efecto_en_curso = false
 
 
-## Mareo: la cámara gira un cuarto de vuelta, para un lado o para el otro.
+var _temblor_anunciado_en := -1   # (qué temblor ya se avisó: sala y movimiento)
+
+
+## Mareo: la cámara gira un poco, para un lado o para el otro, despacio (molesta, pero no marea de golpe).
 func _mareo() -> void:
-	yaw_target += 90.0 * (1.0 if _rng_reglas.randf() < 0.5 else -1.0)
-	cam_pitch = PITCH
+	yaw_target += 45.0 * (1.0 if _rng_reglas.randf() < 0.5 else -1.0)
+	_camara_dur = 0.8
 	_poner_camara(true)
+	_camara_dur = 0.25
 	_ocultar_arriba()
-	_aviso("¡Qué mareo!", 1.0)
-	Sfx.play("ding", 0.6, -10.0)
 
 
-## Corrupción que vuelve: los bloques purificados se corrompen otra vez y se corta la racha.
+## Corrupción que vuelve: el bloque purificado más viejo (que no sea el que pisas) se corrompe otra vez y se pierde la claridad que dio; pisarlo de nuevo la vuelve a dar.
 func _corrupcion() -> void:
-	t.corromper()
-	_refrescar(false)
-	efectos.juice.flash(Color(0.6, 0.1, 0.8), 0.25, 0.5)
-	_aviso("La corrupción vuelve: los bloques se corrompen otra vez.", 1.8)
+	var r: Dictionary = t.corromper()
+	if not bool(r.ok):
+		return
+	var c: Vector3i = r.celda
+	efectos.juice.dust(Vector3(c.x + 0.5, c.y + 0.5 + float(int(t.sala_actual().off)), c.z + 0.5), 10, 1.0)
+	efectos.juice.flash(Color(0.55, 0.1, 0.75), 0.2, 0.4)
 	Sfx.play("miss", 0.7, -8.0)
+	if int(r.perdida) > 0:
+		ganancia.emit(Loc.f("−%d claridad", [int(r.perdida)]), 0)
+	_refrescar(false)
 	accion_hecha.emit()
 
 
-## Ventisca, el aviso: un silbido y una flecha sobre el personaje dicen hacia dónde va a soplar el viento en el próximo movimiento.
+## Ventisca, el aviso: un silbido y líneas de minicubos que corren hacia donde va a soplar el viento en el próximo movimiento.
 func _ventisca_avisar() -> void:
 	var dirs: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 	_viento = dirs[_rng_reglas.randi() % 4]
-	_poner_flecha_viento(_viento)
-	_aviso("Silba el viento: la flecha marca hacia dónde te empuja.", 2.2)
+	_poner_corriente(_viento, true)
 	Sfx.play("hover", 0.5, -4.0)
 
 
-func _poner_flecha_viento(d: Vector3i) -> void:
-	if _flecha_viento == null or not is_instance_valid(_flecha_viento):
-		_flecha_viento = Node3D.new()
+## Las líneas de minicubos del viento: cuatro cubitos en fila que cruzan el aire en la dirección del viento, alrededor del personaje.
+func _poner_corriente(d: Vector3i, encendida: bool) -> void:
+	if _viento_chorro == null or not is_instance_valid(_viento_chorro):
+		_viento_chorro = CPUParticles3D.new()
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.75, 0.92, 1.0)
+		mat.albedo_color = Color(0.8, 0.95, 1.0)
 		mat.emission_enabled = true
-		mat.emission = Color(0.6, 0.85, 1.0)
-		mat.emission_energy_multiplier = 1.4
+		mat.emission = Color(0.65, 0.88, 1.0)
+		mat.emission_energy_multiplier = 1.6
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		var caña := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = Vector3(0.16, 0.08, 0.7)
-		caña.mesh = bm
-		caña.material_override = mat
-		caña.position = Vector3(0, 0, -0.17)
-		_flecha_viento.add_child(caña)
-		var punta := MeshInstance3D.new()
-		var pm := PrismMesh.new()
-		pm.size = Vector3(0.46, 0.6, 0.08)
-		punta.mesh = pm
-		punta.material_override = mat
-		punta.rotation_degrees = Vector3(-90, 0, 0)   # (el prisma de pie pasa a acostado, con la punta hacia adelante)
-		punta.position = Vector3(0, 0, 0.4)
-		_flecha_viento.add_child(punta)
-		add_child(_flecha_viento)
-	_flecha_viento.visible = true
-	_flecha_viento.rotation.y = atan2(float(d.x), float(d.z))
+		_viento_chorro.material_override = mat
+		_viento_chorro.local_coords = false
+		_viento_chorro.amount = 34
+		_viento_chorro.lifetime = 1.1
+		_viento_chorro.lifetime_randomness = 0.4
+		_viento_chorro.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		_viento_chorro.emission_box_extents = Vector3(0.2, 1.3, 1.3)
+		_viento_chorro.spread = 3.0
+		_viento_chorro.gravity = Vector3.ZERO
+		_viento_chorro.initial_velocity_min = 3.4
+		_viento_chorro.initial_velocity_max = 4.6
+		add_child(_viento_chorro)
+	if d != Vector3i.ZERO and d != _viento_dir:
+		_viento_dir = d
+		_viento_chorro.mesh = _linea_de_cubitos(d)
+		_viento_chorro.direction = Vector3(d)
+		_viento_chorro.emission_box_extents = Vector3(0.2, 1.3, 1.3) if d.x != 0 else Vector3(1.3, 1.3, 0.2)
+	_viento_chorro.emitting = encendida
 
 
-## Ventisca: sopla. El personaje se corre una celda (queda colgado del borde si se queda sin piso) y la flecha se va.
+## Cuatro cubitos en fila a lo largo de la dirección del viento (una "línea" de minicubos).
+func _linea_de_cubitos(d: Vector3i) -> Mesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cubo := BoxMesh.new()
+	cubo.size = Vector3.ONE * 0.075
+	for k in 4:
+		var desp := Vector3(d) * (float(k) - 1.5) * 0.13
+		st.append_from(cubo, 0, Transform3D(Basis.IDENTITY, desp))
+	return st.commit()
+
+
+## Ventisca: sopla. El personaje se corre una celda (queda colgado del borde si se queda sin piso) y las líneas de viento pasan más rápido un momento.
 func _ventisca_soplar() -> void:
 	var d := _viento
 	_viento = Vector3i.ZERO
-	if _flecha_viento != null and is_instance_valid(_flecha_viento):
-		_flecha_viento.visible = false
 	if d == Vector3i.ZERO:
 		var dirs: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 		d = dirs[_rng_reglas.randi() % 4]   # (si no hubo aviso, por ejemplo al volver sobre un movimiento deshecho)
+		_poner_corriente(d, true)
+	_viento_chorro.speed_scale = 1.8
+	get_tree().create_timer(0.8).timeout.connect(func():
+		if _viento_chorro != null and is_instance_valid(_viento_chorro):
+			_viento_chorro.emitting = false
+			_viento_chorro.speed_scale = 1.0)
 	_pos_previa = gato_nodo.position
 	var motor_antes = t.motor
 	var r: Dictionary = t.viento(d)
@@ -917,20 +978,25 @@ func _ventisca_soplar() -> void:
 		falsos.medir(t.motor)
 
 
-## Terremoto, el aviso: tiembla un poco antes del movimiento en el que se corre un bloque.
+## Terremoto, el aviso: la torre empieza a temblar un poco, un movimiento antes de que se corran los bloques.
 func _terremoto_avisar() -> void:
-	efectos.juice.add_shake(0.35)
-	_aviso("Retumba la torre... el próximo movimiento se corre un bloque.", 2.0)
+	_temblor = 0.9
+	efectos.juice.add_shake(0.4)
 	Sfx.play("miss", 0.5, -6.0)
 
 
-## Terremoto: un bloque suelto se corre una celda.
+## Terremoto: la torre entera se sacude (los bloques tiemblan, la cámara también) y se corren varios bloques sueltos, los más cercanos al personaje, una celda cada uno.
 func _terremoto() -> void:
-	var r: Dictionary = t.terremoto(_rng_reglas)
+	_temblor = 1.5
+	efectos.juice.add_shake(0.9)
+	Sfx.play("miss", 0.8, -2.0)
+	var r: Dictionary = t.terremoto(_rng_reglas, 3 if etapa < 9 else 4)
 	if not bool(r.ok):
 		return
-	efectos.juice.add_shake(0.7)
-	Sfx.play("miss", 0.8, -4.0)
+	var off := float(int(t.sala_actual().off))
+	for par in r.movidos:
+		for c in [par.de, par.a]:
+			efectos.juice.dust(Vector3(c.x + 0.5, c.y + 0.5 + off, c.z + 0.5), 8, 1.2)
 	_procesar(r)
 	if falsos != null and falsos.activo and str(r.evento) == "":
 		falsos.medir(t.motor)

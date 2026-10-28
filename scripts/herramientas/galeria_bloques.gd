@@ -16,7 +16,7 @@ const GatitoTravieso := preload("res://scripts/personajes/gatito_travieso.gd")
 const GatitoAnim := preload("res://scripts/personajes/gatito_anim.gd")
 
 ## Los tipos que ya tienen arte nuevo (se suman acá a medida que se hacen).
-const TIPOS := {"piedra": "Piedra común", "hierro": "Pesado", "hielo": "Hielo", "arenisca": "Agrietado", "trampa": "Trampa", "pinchos": "Pinchos", "bomba": "Bomba", "catapulta": "Catapulta", "checkpoint": "Checkpoint", "portal": "Portal"}
+const TIPOS := {"piedra": "Piedra común", "hierro": "Pesado", "hielo": "Hielo", "arenisca": "Agrietado", "trampa": "Trampa", "pinchos": "Pinchos", "bomba": "Bomba", "catapulta": "Catapulta", "checkpoint": "Checkpoint", "portal": "Portal", "oscuro": "Oscuro (A oscuras)"}
 const ETAPAS := [1, 4, 7, 10, 13]   # (la primera etapa de cada nivel)
 
 var env: Environment
@@ -87,6 +87,8 @@ func _ready() -> void:
 	var fila := 0
 	for tipo in TIPOS:
 		for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+			if tipo == "oscuro" and estado == Art.Estado.PURIFICADO:
+				continue   # (el bloque oscuro de la prueba A oscuras es uno solo: al pisarlo se ve el que era)
 			for nivel in Art.NIVELES:
 				if tipo == "portal":   # (con las ondas animadas arriba)
 					var cubo := Escena.cubo_portal(nivel)
@@ -108,7 +110,7 @@ func _ready() -> void:
 					atras.material_override = Escena.material_translucido(tipo, true)
 					atras.position = m.position
 					add_child(atras)
-			_rotulo("%s · %s" % [TIPOS[tipo], "corrupto" if estado == Art.Estado.CORRUPTO else "purificado"], _celda(-0.55, fila) + Vector3(-0.6, 0.0, 0.6))
+			_rotulo(TIPOS[tipo] if tipo == "oscuro" else "%s · %s" % [TIPOS[tipo], "corrupto" if estado == Art.Estado.CORRUPTO else "purificado"], _celda(-0.55, fila) + Vector3(-0.6, 0.0, 0.6))
 			fila += 1
 	# la última fila: el checkpoint con Farolín y Ama esperando, de la más despierta a la más dormida (las cuatro poses de las fotos); la última, con el sombrero de Farolín puesto
 	var poses := GatitoAnim.ESPERAS.duplicate()

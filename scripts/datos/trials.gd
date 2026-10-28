@@ -21,25 +21,25 @@ const CATALOG := {
 	"todo_o_nada": {"name": "Todo o nada", "desc": "No hay reintentos: si caes, se termina el run.", "no_retry": true},
 	"sin_racha": {"name": "Sin racha", "desc": "La racha no sube el multiplicador de claridad.", "no_streak": true},
 	"travesuras": {"name": "Travesuras", "desc": "Ama, una gata traviesa, mueve de lugar unos bloques al entrar a cada sala.", "travesuras": true},
-	"mareo": {"name": "Mareo", "desc": "Cada cinco movimientos la cámara gira sola.", "reglas": {"mareo": true}},
-	"corrupcion": {"name": "Corrupción que vuelve", "desc": "Cada diez movimientos los bloques que purificaste se corrompen otra vez y se corta la racha.", "reglas": {"corrupcion": true}},
+	"mareo": {"name": "Mareo", "desc": "Cada dos movimientos la cámara gira sola, despacio.", "reglas": {"mareo": true}},
+	"corrupcion": {"name": "Corrupción que vuelve", "desc": "Cada pocos movimientos un bloque purificado se corrompe otra vez y pierdes la claridad que dio.", "reglas": {"corrupcion": true}},
 	"memoria_pez": {"name": "Memoria de pez", "desc": "La torre se ve entera solo un momento después de cada movimiento; después, solo los bloques de al lado.", "reglas": {"memoria_pez": true}, "desde": 6},
-	"terremoto": {"name": "Terremoto", "desc": "Cada ocho movimientos tiembla la torre y un bloque suelto se corre una celda.", "reglas": {"terremoto": true}, "desde": 6},
-	"presupuesto": {"name": "Presupuesto compartido", "desc": "Los movimientos de toda la torre son un solo fondo: lo que ahorras en una sala te sirve en las siguientes.", "reglas": {"presupuesto": true}, "desde": 6},
-	"solo_tres": {"name": "Solo tres bloques", "desc": "En cada sala solo puedes mover tres bloques distintos.", "reglas": {"solo_bloques": 3}, "desde": 6},
-	"espalda_mala": {"name": "Espalda mala", "desc": "Empujar o tirar de un bloque cuesta dos movimientos.", "reglas": {"espalda_mala": true}, "desde": 9},
-	"ventisca": {"name": "Ventisca", "desc": "Cada nueve movimientos el viento te empuja una celda; un silbido avisa un movimiento antes.", "reglas": {"ventisca": true}, "desde": 9},
-	"quebradizo": {"name": "Quebradizo", "desc": "Casi todos los bloques son agrietados: se rompen en cuanto te bajas de ellos y solo se pisan una vez.", "reglas": {"quebradizo": true}, "desde": 9},
-	"a_oscuras": {"name": "A oscuras", "desc": "Muchos bloques son negros y no sabes qué son hasta que los pisas.", "reglas": {"a_oscuras": true}, "desde": 9},
+	"terremoto": {"name": "Terremoto", "desc": "De a ratos tiembla la torre y se corren varios bloques sueltos, los más cercanos a ti.", "reglas": {"terremoto": true}, "desde": 6},
+	"presupuesto": {"name": "Presupuesto compartido", "desc": "Los movimientos de toda la torre son un solo fondo, justo para resolverla: lo que ahorras en una sala te sirve en las siguientes.", "reglas": {"presupuesto": true}, "desde": 6},
+	"solo_tres": {"name": "Solo tres bloques", "desc": "En cada sala solo puedes mover tres bloques distintos; las salas piden dos o tres.", "reglas": {"solo_bloques": 3}, "desde": 6},
+	"espalda_mala": {"name": "Espalda mala", "desc": "Empujar o tirar de un bloque cuesta dos movimientos; las salas piden empujar o tirar muchas veces.", "reglas": {"espalda_mala": true}, "desde": 9},
+	"ventisca": {"name": "Ventisca", "desc": "De a ratos sopla un viento que te empuja una celda; las líneas de viento avisan un movimiento antes hacia dónde.", "reglas": {"ventisca": true}, "desde": 9},
+	"quebradizo": {"name": "Quebradizo", "desc": "Muchos bloques son agrietados: se rompen en cuanto te bajas de ellos y solo se pisan una vez.", "reglas": {"quebradizo": true}, "desde": 9},
+	"a_oscuras": {"name": "A oscuras", "desc": "Al menos la mitad de los bloques son negros y no sabes qué son hasta que los pisas.", "reglas": {"a_oscuras": true}, "desde": 9},
 	"pesadilla_despierta": {"name": "La Pesadilla despierta", "desc": "La última torre combina dos pruebas.", "final": true, "desde": 15},
 }
 
 ## Las dos reglas que combina La Pesadilla despierta (una combinación por partida, según su sorteo): {ids: [prueba, prueba], desc}.
 const COMBOS := [
-	{"ids": ["mareo", "terremoto"], "desc": "El mundo entero se mueve: la cámara gira cada cinco movimientos y cada ocho tiembla la torre."},
+	{"ids": ["mareo", "terremoto"], "desc": "El mundo entero se mueve: la cámara gira cada dos movimientos y la torre tiembla de a ratos."},
 	{"ids": ["memoria_pez", "ventisca"], "desc": "No ves y te empujan: la torre se esconde después de cada movimiento y el viento te corre de lugar."},
 	{"ids": ["presupuesto", "espalda_mala"], "desc": "Cada movimiento cuenta: un solo fondo para toda la torre y empujar o tirar cuesta el doble."},
-	{"ids": ["a_oscuras", "corrupcion"], "desc": "Nada es lo que parece: los bloques negros esconden lo que son y la corrupción vuelve cada diez movimientos."},
+	{"ids": ["a_oscuras", "corrupcion"], "desc": "Nada es lo que parece: los bloques negros esconden lo que son y la corrupción vuelve de a poco."},
 ]
 
 
