@@ -127,7 +127,7 @@ Hay una forma barata para varias de las pruebas con cuidado, y es **usar lo que 
 
 ## Lo que ya está hecho
 
-Todas las pruebas aprobadas están en el juego (`scripts/datos/trials.gd`; las reglas, en `torre/torre.gd`, `torre/motor.gd` y `torre/torre_juego.gd`) y se sortean entre las que admite cada escenario. **Cuándo caen:** las suaves desde la etapa 3, las del medio desde la 6 y las serias desde la 9 (`desde` en el catálogo); el jefe final solo cae en la 15. Pruebas: `tests/unitarios/test_pruebas_nuevas.gd`; para armar torres con las reglas y ver cuánto tardan: `tests/sondas/probe_reglas_pruebas.gd`; capturas: `tests/capturas/shot_prueba.gd`. Cómo quedó cada una (y las decisiones que se tomaron al programarlas, para revisar):
+Todas las pruebas aprobadas están en el juego (`scripts/datos/trials.gd`; las reglas, en `torre/torre.gd`, `torre/motor.gd` y `torre/torre_juego.gd`) y se sortean entre las que admite cada escenario. **Cuándo caen:** las suaves desde la etapa 3, las del medio desde la 6 y las serias desde la 9 (`desde` en el catálogo); el jefe final solo cae en la 15. Pruebas: `tests/unitarios/test_pruebas_nuevas.gd`; para armar torres con las reglas y ver cuánto tardan: `tests/sondas/probe_reglas_pruebas.gd`; para jugar torres enteras en el juego de verdad, con los avisos y efectos en marcha: `tests/sondas/soak_pruebas.gd`; capturas: `tests/capturas/shot_prueba.gd`. Cómo quedó cada una (y las decisiones que se tomaron al programarlas, para revisar):
 
 | Prueba | Desde | Cómo funciona |
 |---|---|---|
