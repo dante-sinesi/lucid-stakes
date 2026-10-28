@@ -113,8 +113,8 @@ static func pick_face(cam: Camera3D, pos: Vector2, st) -> Dictionary:
 	return {"hit": Vector3i(-1000, 0, 0), "prev": Vector3i(-1000, 0, 0)}
 
 
-## El cubo-portal del final de la torre en un nivel de arte (0 a 4): el cubo de minibloques con las ondas animadas en los cuatro costados (el personaje entra por un lado; arriba hay una losa
-## donde se paran él, Farolín y Ama) y una luz suave. Devuelve el nodo; las cuatro losas de ondas comparten un material, el del nodo "ondas" (ver `main.gd`).
+## El cubo-portal del final de la torre en un nivel de arte (0 a 4): el cubo de minibloques con las ondas animadas en los cuatro costados (el personaje entra por un lado, en un solo desplazamiento
+## horizontal; arriba hay una losa llena) y una luz suave. Devuelve el nodo; las cuatro losas de ondas comparten un material, el del nodo "ondas" (ver `main.gd`).
 static func cubo_portal(nivel: int) -> Node3D:
 	var col := BlockArt.colores_portal(nivel)
 	var g := Node3D.new()
