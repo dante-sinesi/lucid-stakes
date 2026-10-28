@@ -508,6 +508,12 @@ static func build_voxels(stage := 8, tier_override := -1, muebles := true, pared
 		if outer:
 			_box(solid, c.x * CELL_VOX, 2 + h - 1, c.y * CELL_VOX, c.x * CELL_VOX + CELL_VOX, 2 + h, c.y * CELL_VOX + CELL_VOX, L.gold)
 
+	# La tarima sigue por debajo de la mesa (si no, la mesa queda suspendida en el aire sobre el piso).
+	if int(lay.table_h) > 0:
+		var lado := Vector3i((lay.table.position.x - 1) * CELL_VOX + 1, 1 + int(lay.table_h), lay.table.position.y * CELL_VOX + 1)   # (el color del escalón de al lado: la tarima se ve igual bajo la mesa)
+		var base_col: Color = solid.get(lado, (L.pillar as Color).lerp(L.gold, 0.05))
+		_box(solid, lay.table.position.x * CELL_VOX, 2, lay.table.position.y * CELL_VOX, lay.table.end.x * CELL_VOX, 2 + int(lay.table_h), lay.table.end.y * CELL_VOX, base_col)
+
 	# Alfombra roja frente a la mesa (y, en el gran casino, un camino hasta la puerta de salida).
 	var dy: int = lay.table_h
 	for cx in range(lay.table.position.x, lay.table.end.x):
