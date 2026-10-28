@@ -230,7 +230,6 @@ func _nueva_torre() -> void:
 	_entrando_portal = false
 	if gato_nodo != null:   # (por si la torre anterior terminó con el personaje metiéndose en el portal)
 		gato_nodo.scale = Vector3.ONE
-		gato_nodo.rotation = Vector3.ZERO
 		gato_nodo.visible = true
 	for n in estaticas:
 		if n != null and is_instance_valid(n):
@@ -392,7 +391,7 @@ func _limitar_sombras() -> void:
 				g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if n.position.y + g.position.y <= tope else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
-## La llegada al portal: el personaje hace un clavado: salta un poco y cae de cabeza a las ondas de la cara de arriba del cubo, achicándose a medida que se acerca a entrar hasta desaparecer; el cubo late y suelta el destello dorado. Dura casi un segundo (el juego espera antes de seguir).
+## La llegada al portal: el personaje camina hasta el borde de la losa del cubo, se deja caer al frente de un costado (el que sigue su dirección y mira la cámara) y atraviesa las ondas achicándose hasta desaparecer; el cubo late y suelta el destello dorado. Dura casi un segundo (el juego espera antes de seguir).
 func _entrar_portal() -> void:
 	if portal == null or not is_instance_valid(portal) or gato_nodo == null:
 		return
@@ -400,17 +399,38 @@ func _entrar_portal() -> void:
 	await get_tree().create_timer(STEP_TIME + 0.05).timeout   # (primero termina el último paso hasta el bloque de salida)
 	if not _entrando_portal or not is_inside_tree():
 		return
-	# el clavado: un saltito hacia arriba y de cabeza hacia las ondas de la cara de arriba del cubo; cuanto más cerca de entrar, más chico
+	# el costado por el que entra: de los dos que mira la cámara (las ondas están en los cuatro), el que sigue la dirección en la que venía caminando
+	var yaw := deg_to_rad(pivot.rotation_degrees.y)
+	var visibles: Array[Vector3] = []
+	if absf(sin(yaw)) > 0.01:
+		visibles.append(Vector3(signf(sin(yaw)), 0, 0))
+	if absf(cos(yaw)) > 0.01:
+		visibles.append(Vector3(0, 0, signf(cos(yaw))))
+	var venia := Vector3(mira.x, 0, mira.z)
+	var hacia: Vector3 = visibles[0]
+	for v in visibles:
+		if v.dot(venia) > hacia.dot(venia):
+			hacia = v
 	var base := portal.position
-	var y0 := gato_nodo.position.y - base.y   # (parado sobre el cubo)
+	var y0 := gato_nodo.position.y - base.y   # (parado sobre la losa)
 	var inicio := gato_nodo.rotation.y
-	animador.reproducir(_tipo_anim, 0.75)
+	var afuera := atan2(hacia.x, hacia.z)
+	var adentro := atan2(-hacia.x, -hacia.z)
+	# el camino (h: hacia afuera del costado, y: altura sobre el centro del cubo): camina hasta el borde de la losa, se deja caer al frente de la cara y la atraviesa
+	var pts: Array[Vector2] = [Vector2(0.0, y0), Vector2(0.40, y0), Vector2(0.64, 0.14), Vector2(-0.08, -0.05)]
+	var ks: Array[float] = [0.0, 0.28, 0.55, 1.0]
+	animador.reproducir(_tipo_anim, 0.8)
 	var tw := create_tween()
 	tw.tween_method(func(k: float) -> void:
-		var alto := y0 + 0.5 * sin(PI * minf(k / 0.45, 1.0)) if k < 0.45 else y0 + lerpf(0.0, -y0 - 0.35, smoothstep(0.0, 1.0, (k - 0.45) / 0.55))   # (sube un poco y cae hasta pasar las ondas)
-		gato_nodo.position = Vector3(base.x, base.y + alto, base.z)
-		gato_nodo.rotation = Vector3(deg_to_rad(165.0) * smoothstep(0.1, 0.7, k), inicio, 0.0)   # (da una media vuelta hacia adelante: queda de cabeza)
-		gato_nodo.scale = Vector3.ONE * lerpf(1.0, 0.03, smoothstep(0.35, 1.0, k)), 0.0, 1.0, 0.75)
+		var n := 0
+		while n < 2 and k > ks[n + 1]:
+			n += 1
+		var u := smoothstep(0.0, 1.0, (k - ks[n]) / (ks[n + 1] - ks[n]))
+		var q := pts[n].lerp(pts[n + 1], u)
+		gato_nodo.position = base + hacia * q.x + Vector3(0, q.y, 0)
+		var giro := lerp_angle(inicio, afuera, clampf(k / 0.1, 0.0, 1.0))
+		gato_nodo.rotation.y = lerp_angle(giro, adentro, smoothstep(0.35, 0.6, k))
+		gato_nodo.scale = Vector3.ONE * lerpf(1.0, 0.03, smoothstep(0.62, 1.0, k)), 0.0, 1.0, 0.8)
 	var latido := create_tween()   # (el cubo-portal late al recibirlo)
 	latido.tween_interval(0.45)
 	latido.tween_property(portal, "scale", Vector3.ONE * 1.3, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

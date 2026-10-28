@@ -113,8 +113,8 @@ static func pick_face(cam: Camera3D, pos: Vector2, st) -> Dictionary:
 	return {"hit": Vector3i(-1000, 0, 0), "prev": Vector3i(-1000, 0, 0)}
 
 
-## El cubo-portal del final de la torre en un nivel de arte (0 a 4): el cubo de minibloques con la losa de ondas animada en la cara de arriba y una luz suave. Devuelve el nodo y
-## deja el material de las ondas en `material_ondas` de la escena que lo pide (ver `main.gd`).
+## El cubo-portal del final de la torre en un nivel de arte (0 a 4): el cubo de minibloques con las ondas animadas en los cuatro costados (el personaje entra por un lado; arriba hay una losa
+## donde se paran él, Farolín y Ama) y una luz suave. Devuelve el nodo; las cuatro losas de ondas comparten un material, el del nodo "ondas" (ver `main.gd`).
 static func cubo_portal(nivel: int) -> Node3D:
 	var col := BlockArt.colores_portal(nivel)
 	var g := Node3D.new()
@@ -132,17 +132,18 @@ static func cubo_portal(nivel: int) -> Node3D:
 	ondas.set_shader_parameter("lit", 1.0)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(0.8, 0.8)
-	var losa := MeshInstance3D.new()
-	losa.mesh = quad
-	losa.material_override = ondas
-	losa.rotation_degrees.x = -90.0
-	losa.position = Vector3(0, 0.45, 0)
-	losa.name = "ondas"
-	g.add_child(losa)
+	for i in 4:   # (una por cada costado, apenas por fuera de la cara: si no, la capa de luz de los minibloques las tapa; el QuadMesh mira a +z)
+		var losa := MeshInstance3D.new()
+		losa.mesh = quad
+		losa.material_override = ondas
+		losa.rotation_degrees.y = 90.0 * i
+		losa.position = Vector3(0, 0, 0.506).rotated(Vector3.UP, deg_to_rad(90.0 * i))
+		losa.name = "ondas" if i == 0 else "ondas_%d" % i
+		g.add_child(losa)
 	var luz := OmniLight3D.new()
 	luz.light_color = (col.luz as Color).lerp(Color.WHITE, 0.3)
 	luz.omni_range = 3.2
 	luz.light_energy = 0.6
-	luz.position = Vector3(0, 0.9, 0)
+	luz.position = Vector3(0, 0.3, 0)
 	g.add_child(luz)
 	return g
