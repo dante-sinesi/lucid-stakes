@@ -132,12 +132,12 @@ static func cubo_portal(nivel: int) -> Node3D:
 	ondas.set_shader_parameter("lit", 1.0)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(0.8, 0.8)
-	for i in 4:   # (una por cada costado, apenas adentro de la cara; el QuadMesh mira a +z)
+	for i in 4:   # (una por cada costado, apenas por fuera de la cara: si no, la capa de luz de los minibloques las tapa; el QuadMesh mira a +z)
 		var losa := MeshInstance3D.new()
 		losa.mesh = quad
 		losa.material_override = ondas
 		losa.rotation_degrees.y = 90.0 * i
-		losa.position = Vector3(0, 0, 0.44).rotated(Vector3.UP, deg_to_rad(90.0 * i))
+		losa.position = Vector3(0, 0, 0.506).rotated(Vector3.UP, deg_to_rad(90.0 * i))
 		losa.name = "ondas" if i == 0 else "ondas_%d" % i
 		g.add_child(losa)
 	var luz := OmniLight3D.new()
