@@ -5,7 +5,8 @@ extends RefCounted
 ## vez, da un regalo (ver `reward`). Las habilidades persistentes no salen de acá: se ganan por escenario (ver scenarios.gd).
 ##
 ## Una prueba es un diccionario: {id, name, desc, no_items (sin consumibles), no_retry (sin reintentos: si caes se termina el run), no_streak (la racha no sube el multiplicador), travesuras (al entrar a cada sala Ama, una gata, mueve unos bloques: ver `Torre.armar` y docs/gatito_travieso.md),
-## reglas (las reglas de la torre que pone: se suman a las del escenario; ver docs/pruebas.md), desde (la primera etapa en la que puede caer: las serias no salen en la 3), final (sólo cae en la etapa 15)}.
+## reglas (las reglas de la torre que pone: se suman a las del escenario; ver docs/pruebas.md), desde (la primera etapa en la que puede caer: las serias no salen en la 3), final (sólo cae en la etapa 15),
+## limite (la prueba se trata de los movimientos de cada sala: en Fácil, que no los limita, no tendría ningún efecto y no sale)}.
 ## `mult` (multiplicador de la claridad juntada) y `index` (0..4) se completan al sortear: las últimas pagan más.
 
 const Items := preload("res://scripts/datos/items.gd")
@@ -25,9 +26,9 @@ const CATALOG := {
 	"corrupcion": {"name": "Corrupción que vuelve", "desc": "Cada pocos movimientos un bloque purificado se corrompe otra vez y pierdes la claridad que dio.", "reglas": {"corrupcion": true}},
 	"memoria_pez": {"name": "Memoria de pez", "desc": "La torre se ve entera solo un momento después de cada movimiento; después, solo los bloques de al lado.", "reglas": {"memoria_pez": true}, "desde": 6},
 	"terremoto": {"name": "Terremoto", "desc": "De a ratos tiembla la torre y se corren varios bloques sueltos, los más cercanos a ti.", "reglas": {"terremoto": true}, "desde": 6},
-	"presupuesto": {"name": "Presupuesto compartido", "desc": "Los movimientos de toda la torre son un solo fondo, justo para resolverla: lo que ahorras en una sala te sirve en las siguientes.", "reglas": {"presupuesto": true}, "desde": 6},
+	"presupuesto": {"name": "Presupuesto compartido", "desc": "Los movimientos de toda la torre son un solo fondo, justo para resolverla: lo que ahorras en una sala te sirve en las siguientes.", "reglas": {"presupuesto": true}, "desde": 6, "limite": true},
 	"solo_tres": {"name": "Solo tres bloques", "desc": "En cada sala solo puedes mover tres bloques distintos; las salas piden dos o tres.", "reglas": {"solo_bloques": 3}, "desde": 6},
-	"espalda_mala": {"name": "Espalda mala", "desc": "Empujar o tirar de un bloque cuesta dos movimientos; las salas piden empujar o tirar muchas veces.", "reglas": {"espalda_mala": true}, "desde": 9},
+	"espalda_mala": {"name": "Espalda mala", "desc": "Empujar o tirar de un bloque cuesta dos movimientos; las salas piden empujar o tirar muchas veces.", "reglas": {"espalda_mala": true}, "desde": 9, "limite": true},
 	"ventisca": {"name": "Ventisca", "desc": "De a ratos sopla un viento que te empuja una celda; las líneas de viento avisan unos movimientos antes hacia dónde.", "reglas": {"ventisca": true}, "desde": 9},
 	"quebradizo": {"name": "Quebradizo", "desc": "Muchos bloques son agrietados: se rompen en cuanto te bajas de ellos y solo se pisan una vez.", "reglas": {"quebradizo": true}, "desde": 9},
 	"a_oscuras": {"name": "A oscuras", "desc": "Muchos bloques son negros, sobre todo los especiales, y no sabes qué son hasta que los pisas.", "reglas": {"a_oscuras": true}, "desde": 9},
@@ -53,12 +54,21 @@ static func stages() -> Array[int]:
 
 
 ## Sortea las pruebas de una partida: {etapa: id}. Nunca repite la misma prueba dos veces seguidas; las serias no caen en las primeras etapas (`desde`) y el jefe final (si el escenario lo admite) cae siempre en la última.
-static func draw_schedule(pool: Array, rng: RandomNumberGenerator) -> Dictionary:
+static func draw_schedule(pool: Array, rng: RandomNumberGenerator, sin_limite := false) -> Dictionary:
 	var out := {}
 	var prev := ""
+	if sin_limite:   # (Fácil no limita los movimientos: las pruebas que tratan de ellos no tendrían ningún efecto)
+		pool = pool.filter(func(id): return not bool((CATALOG.get(id, {}) as Dictionary).get("limite", false)))
 	for st in stages():
 		if st == Stages.FINAL and pool.has(FINAL_TRIAL):
-			out[st] = FINAL_TRIAL
+			var combos: Array = []
+			for n in COMBOS.size():
+				var con_limite := false
+				for sub in COMBOS[n].ids:
+					con_limite = con_limite or bool((CATALOG[sub] as Dictionary).get("limite", false))
+				if not (sin_limite and con_limite):
+					combos.append(n + 1)
+			out[st] = "%s_%d" % [FINAL_TRIAL, combos[rng.randi() % combos.size()]]   # (el jefe final con su combinación sorteada: queda en la partida)
 			continue
 		var options: Array = pool.filter(func(id): return id != prev and id != FINAL_TRIAL and int((CATALOG.get(id, {}) as Dictionary).get("desde", FIRST_STAGE)) <= st)
 		if options.is_empty():

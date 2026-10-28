@@ -62,15 +62,15 @@ func test_sorteo() -> void:
 	for semilla in 120:
 		rng.seed = semilla
 		var sch := Trials.draw_schedule(pool, rng)
-		final_siempre = final_siempre and sch[15] == Trials.FINAL_TRIAL
+		final_siempre = final_siempre and str(sch[15]).begins_with(Trials.FINAL_TRIAL)
 		var prev := ""
 		for st in Trials.stages():
 			var id := str(sch[st])
-			if st != 15 and id == Trials.FINAL_TRIAL:
+			if st != 15 and id.begins_with(Trials.FINAL_TRIAL):
 				bien = false
 			if id == prev:
 				seguidas = true
-			if int((Trials.CATALOG[id] as Dictionary).get("desde", 3)) > st:
+			if int((Trials.CATALOG[Trials.for_stage(sch, st).id] as Dictionary).get("desde", 3)) > st:
 				antes_de_tiempo = true
 			prev = id
 	check(bien and final_siempre, "el jefe final cae siempre en la etapa 15 y en ninguna otra")
@@ -88,7 +88,27 @@ func test_sorteo() -> void:
 		var forzado := Trials.for_stage({15: "pesadilla_despierta_%d" % n}, 15)
 		check(forzado.id == Trials.FINAL_TRIAL and forzado.combo == Trials.COMBOS[n - 1].ids, "pesadilla_despierta_%d es el jefe final con la combinación %d" % [n, n])
 	var sin_final := Trials.draw_schedule(["sin_ayudas", "sin_racha"], rng)
-	check(sin_final[15] != Trials.FINAL_TRIAL, "un escenario sin el jefe en su lista no lo tiene")
+	check(not str(sin_final[15]).begins_with(Trials.FINAL_TRIAL), "un escenario sin el jefe en su lista no lo tiene")
+	# Fácil no limita los movimientos: no salen Presupuesto compartido ni Espalda mala, y el jefe no lleva ninguna de las dos
+	var sin_nada := true
+	var jefe_bien := true
+	for semilla in 150:
+		rng.seed = 1000 + semilla
+		var sf := Trials.draw_schedule(pool, rng, true)
+		for st in Trials.stages():
+			var pf := Trials.for_stage(sf, st)
+			sin_nada = sin_nada and pf.id != "presupuesto" and pf.id != "espalda_mala"
+		var jf := Trials.for_stage(sf, 15)
+		jefe_bien = jefe_bien and jf.id == Trials.FINAL_TRIAL and not jf.reglas.has("presupuesto") and not jf.reglas.has("espalda_mala")
+	check(sin_nada and jefe_bien, "en Fácil no salen las pruebas que tratan de los movimientos (ni en el jefe final)")
+	var con_todo := false
+	for semilla in 150:
+		rng.seed = 2000 + semilla
+		var sn := Trials.draw_schedule(pool, rng, false)
+		for st in Trials.stages():
+			var pn := Trials.for_stage(sn, st)
+			con_todo = con_todo or pn.id == "presupuesto" or pn.id == "espalda_mala" or (pn.has("combo") and pn.combo.has("presupuesto"))
+	check(con_todo, "en las otras dificultades sí salen")
 
 
 func test_espalda_mala() -> void:

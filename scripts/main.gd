@@ -1676,7 +1676,7 @@ func start_game(scenario_id := Scenarios.FREE, dificultad := "media") -> void:
 	run.dificultad = dificultad if ["facil", "media", "dificil", "pesadilla"].has(dificultad) else "media"
 	var draw_rng := RandomNumberGenerator.new()
 	draw_rng.randomize()
-	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng)   # qué prueba toca en cada etapa 3, 6, 9...
+	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng, run.dificultad == "facil")   # qué prueba toca en cada etapa 3, 6, 9... (en Fácil no salen las que tratan de los movimientos)
 	run_new_abilities.clear()
 	Profile.apply_to_run(run)   # habilidades persistentes y reglas del escenario
 	_bind_bars()
@@ -2065,7 +2065,7 @@ func dev_tower(stage: int, scenario_id := "", seed := -1, prueba := "") -> Strin
 	run.scenario_id = sc
 	var draw_rng := RandomNumberGenerator.new()
 	draw_rng.randomize()
-	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng)
+	run.trial_schedule = Trials.draw_schedule(run.scenario().pool, draw_rng, run.dificultad == "facil")
 	if prueba != "":   # (el comando prueba: esa prueba en esa etapa)
 		run.trial_schedule[stage] = prueba
 	run_new_abilities.clear()
