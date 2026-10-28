@@ -22,10 +22,10 @@ const CATALOG := {
 	"todo_o_nada": {"name": "Todo o nada", "desc": "Sin reintentos: si caes, termina el run.", "no_retry": true},
 	"sin_racha": {"name": "Sin racha", "desc": "La racha no multiplica la claridad.", "no_streak": true},
 	"travesuras": {"name": "Travesuras", "desc": "Ama mueve unos bloques al entrar a cada sala.", "travesuras": true},
-	"mareo": {"name": "Mareo", "desc": "La cámara gira sola cada dos movimientos.", "reglas": {"mareo": true}},
+	"mareo": {"name": "Mareo", "desc": "La cámara se mueve sola.", "reglas": {"mareo": true}},
 	"corrupcion": {"name": "Corrupción que vuelve", "desc": "Los bloques purificados se corrompen de nuevo.", "reglas": {"corrupcion": true}},
-	"memoria_pez": {"name": "Memoria de pez", "desc": "La torre se esconde poco después de cada movimiento.", "reglas": {"memoria_pez": true}, "desde": 6},
-	"terremoto": {"name": "Terremoto", "desc": "La torre tiembla y corre bloques sueltos.", "reglas": {"terremoto": true}, "desde": 6},
+	"memoria_pez": {"name": "Memoria de pez", "desc": "La torre se esconde enseguida.", "reglas": {"memoria_pez": true}, "desde": 6},
+	"terremoto": {"name": "Terremoto", "desc": "La torre tiembla y mueve bloques.", "reglas": {"terremoto": true}, "desde": 6},
 	"presupuesto": {"name": "Presupuesto compartido", "desc": "Un solo fondo de movimientos para toda la torre.", "reglas": {"presupuesto": true}, "desde": 6, "limite": true},
 	"solo_tres": {"name": "Solo tres bloques", "desc": "Solo puedes mover tres bloques distintos por sala.", "reglas": {"solo_bloques": 3}, "desde": 6},
 	"espalda_mala": {"name": "Espalda mala", "desc": "Empujar o tirar cuesta dos movimientos.", "reglas": {"espalda_mala": true}, "desde": 9, "limite": true},
@@ -37,7 +37,7 @@ const CATALOG := {
 
 ## Las dos reglas que combina La Pesadilla despierta (una combinación por partida, según su sorteo): {ids: [prueba, prueba], desc}.
 const COMBOS := [
-	{"ids": ["mareo", "terremoto"], "desc": "La cámara gira y la torre tiembla."},
+	{"ids": ["mareo", "terremoto"], "desc": "La cámara se mueve y la torre tiembla."},
 	{"ids": ["memoria_pez", "ventisca"], "desc": "La torre se esconde y el viento te empuja."},
 	{"ids": ["presupuesto", "espalda_mala"], "desc": "Un solo fondo de movimientos y empujar cuesta el doble."},
 	{"ids": ["a_oscuras", "corrupcion"], "desc": "Bloques negros y corrupción que vuelve."},

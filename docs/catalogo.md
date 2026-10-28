@@ -147,10 +147,10 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Todo o nada | Sin reintentos: si caes, termina el run. |
 | Sin racha | La racha no multiplica la claridad. |
 | Travesuras | Ama mueve unos bloques al entrar a cada sala. |
-| Mareo | La cámara gira sola cada dos movimientos. |
+| Mareo | La cámara se mueve sola. |
 | Corrupción que vuelve | Los bloques purificados se corrompen de nuevo. |
-| Memoria de pez | La torre se esconde poco después de cada movimiento. |
-| Terremoto | La torre tiembla y corre bloques sueltos. |
+| Memoria de pez | La torre se esconde enseguida. |
+| Terremoto | La torre tiembla y mueve bloques. |
 | Presupuesto compartido | Un solo fondo de movimientos para toda la torre. |
 | Solo tres bloques | Solo puedes mover tres bloques distintos por sala. |
 | Espalda mala | Empujar o tirar cuesta dos movimientos. |
