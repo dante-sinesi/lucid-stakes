@@ -277,14 +277,16 @@ func pay_toll() -> bool:
 	var price := toll_now()
 	if run.claridad < price:
 		return false
-	if run.toll_adelanto > 0:   # (el peaje por adelantado: se salda la cuenta y Farolín devuelve lo que sobró y una parte por la confianza)
+	var con_adelanto: bool = run.toll_adelanto > 0
+	if con_adelanto:   # (el peaje por adelantado: se salda la cuenta y Farolín devuelve lo que sobró y una parte por la confianza)
 		var devuelto := Eventos.devolucion(run.toll_adelanto, run.toll_after_discounts(toll_base))
 		run.toll_adelanto = 0
 		if devuelto > 0:
 			run.gain(devuelto)
 			_flash(Loc.f("Farolín te devuelve %d de claridad.", [devuelto]))
-	if price > 0:
-		run.spend(price)
+	if price > 0 or con_adelanto:   # (con el adelanto también vale el soborno y rinde el interés: el peaje se pagó igual, sólo que antes)
+		if price > 0:
+			run.spend(price)
 		run.toll_bribe = false   # (el soborno vale para una sola vez)
 		var interest: int = run.apply_interest()
 		if interest > 0:
