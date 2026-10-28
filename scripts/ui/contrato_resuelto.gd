@@ -28,10 +28,12 @@ const T_LISTO := T_CONTEO + DUR_CONTEO + 0.3   # todo a la vista: se puede conti
 
 const TINTA_CUMPLIDO := Color(0.15, 0.62, 0.30)
 const TINTA_FALLIDO := Color(0.80, 0.12, 0.14)
+const TINTA_CANCELADO := Color(0.78, 0.52, 0.10)
 const ORO := Color(1.0, 0.85, 0.30)
 
 var contrato := {}
 var cumplido := true
+var cancelado := false   # lo cancelaste vos (en el casino, antes de la torre): el sello dice CANCELADO y se devuelve la fianza
 var monto := 0
 var t := 0.0
 var listo := false
@@ -49,9 +51,10 @@ func _init() -> void:
 	_pad.visible = false
 
 
-func mostrar(c: Dictionary, se_cumplio: bool, cobrado: int) -> void:
+func mostrar(c: Dictionary, se_cumplio: bool, cobrado: int, se_cancelo := false) -> void:
 	contrato = c
 	cumplido = se_cumplio
+	cancelado = se_cancelo
 	monto = cobrado
 	t = 0.0
 	listo = false
@@ -80,7 +83,7 @@ func _process(delta: float) -> void:
 func _actualizar() -> void:
 	if t >= T_IMPACTO and not _sono_impacto:
 		_sono_impacto = true
-		Sfx.play("item" if cumplido else "miss")
+		Sfx.play("item" if cumplido or cancelado else "miss")
 	if t >= T_LISTO and not listo:
 		listo = true
 		_pad.visible = true
@@ -123,7 +126,7 @@ func _draw() -> void:
 	var h := size.y
 	var oscuro := _suave(t / 0.35) * 0.80
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.03, 0.02, 0.07, oscuro))
-	var tinta := TINTA_CUMPLIDO if cumplido else TINTA_FALLIDO
+	var tinta := TINTA_CANCELADO if cancelado else (TINTA_CUMPLIDO if cumplido else TINTA_FALLIDO)
 	# el temblor del impacto
 	var desde := t - T_IMPACTO
 	var temblor := Vector2.ZERO
@@ -146,7 +149,7 @@ func _draw() -> void:
 	if desde >= 0.0:
 		var s_palabra := pw * 1.02 / 54.0
 		var fuerza := minf(0.55 + desde * 4.0, 1.0)
-		var texto := Loc.t("CUMPLIDO") if cumplido else Loc.t("FALLIDO")
+		var texto := Loc.t("CANCELADO") if cancelado else (Loc.t("CUMPLIDO") if cumplido else Loc.t("FALLIDO"))
 		Arte.dibujar_sello_texto(self, punto, s_palabra, texto, tinta, fuerza, -9.0)
 		_tinta_salpicada(punto, s, tinta, desde)
 	# el sello de mano: entra por la derecha, baja, se apoya, sube y se va
@@ -225,7 +228,11 @@ func _contador(centro: Vector2, ancho: float) -> void:
 	var rotulo: String
 	var color: Color
 	var texto: String
-	if cumplido:
+	if cancelado:
+		rotulo = Loc.t("Fianza devuelta") if monto > 0 else Loc.t("Sin costo")
+		color = ORO if monto > 0 else Color(0.70, 0.68, 0.78)
+		texto = "+%d" % valor if monto > 0 else "0"
+	elif cumplido:
 		rotulo = Loc.t("Cobrado")
 		color = ORO
 		texto = "+%d" % valor

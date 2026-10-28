@@ -291,6 +291,7 @@ func _build_hud() -> void:
 	lost_layer.add_child(lost_screen)
 	contrato_pantalla = ContratoResuelto.new()
 	contrato_pantalla.terminado.connect(_contrato_siguiente)
+	contrato_pantalla.terminado.connect(func(): if casino != null: casino.input_locked = false)
 	lost_layer.add_child(contrato_pantalla)
 	juice = Juice.new(self)
 	juice.attach_flash(layer)
@@ -616,10 +617,12 @@ func _contratos_mostrar() -> void:
 		return
 	var res: Dictionary = _contratos_cola.pop_front()
 	var p: Dictionary = res.papel
+	if casino != null:
+		casino.input_locked = true   # (en el casino no se camina ni se interactúa mientras se ve el sello)
 	var condiciones: Array = [Contratos.condicion(p)]
 	if int(p.fianza) > 0:
 		condiciones.append(Loc.f("Con fianza de %d", [int(p.fianza)]))
-	contrato_pantalla.mostrar({"objetivo": str(Contratos.OBJETIVOS[p.obj].icono), "rareza": int(p.r), "titulo": Contratos.titulo(p), "condiciones": condiciones}, bool(res.cumplido), int(res.monto))
+	contrato_pantalla.mostrar({"objetivo": str(Contratos.OBJETIVOS[p.obj].icono), "rareza": int(p.r), "titulo": Contratos.titulo(p), "condiciones": condiciones}, bool(res.cumplido), int(res.monto), bool(res.get("cancelado", false)))
 	_refresh()
 	save_game()
 
@@ -1153,8 +1156,13 @@ func _menu_elegir(id: String) -> void:
 		"abandonar":
 			_panel_cerrar_todo()
 			if casino != null:
+				var papel: Dictionary = Contratos.activos(run)[idx]
 				var r: Dictionary = Contratos.cancelar(run, idx)
-				_flash(Loc.t("Contrato cancelado") if bool(r.ok) else Loc.t(str(r.error)))
+				if bool(r.ok):
+					_contratos_cola.append({"papel": papel, "cumplido": false, "monto": int(r.devuelto), "cancelado": true})   # (el sello de CANCELADO, como el de los contratos resueltos)
+					_contratos_mostrar()
+				else:
+					_flash(Loc.t(str(r.error)))
 				save_game()
 			else:
 				var res: Dictionary = Contratos.abandonar(run, idx)

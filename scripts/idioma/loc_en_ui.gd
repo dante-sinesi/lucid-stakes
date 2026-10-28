@@ -18,7 +18,6 @@ const TABLE := {
 	"Usar": "Use",
 	"Cancelar (se devuelve la fianza)": "Cancel (the deposit is returned)",
 	"Abandonar (pierdes la fianza)": "Abandon (you lose the deposit)",
-	"Contrato cancelado": "Contract cancelled",
 	"Movimientos %d (sin límite)": "Moves %d (no limit)",
 	"Movimientos %d/%d": "Moves %d/%d",
 	"Movimientos en falso: quedan %d de %d": "False moves: %d of %d left",
