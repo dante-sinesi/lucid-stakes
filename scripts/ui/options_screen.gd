@@ -61,7 +61,11 @@ var bind_message: Control
 var capturing := ""         # acción que espera una tecla o botón nuevo ("" = ninguna)
 var capture_kind := ""      # "key" o "pad"
 var _col: VBoxContainer
-var _desc: Control          # la descripción del ajuste que tiene el foco (o el mouse encima)
+var _tip: Control           # la ayuda de un ajuste: aparece junto al mouse (o al botón con el foco) si se queda un momento sobre él
+var _tip_para: Control = null   # el botón al que se le va a mostrar
+var _tip_t := 0.0
+var _tip_mouse := false     # la ayuda viene del mouse (aparece junto a él) y no del foco
+const TIP_ESPERA := 0.55
 var _page: Control          # donde se agregan las filas de la pestaña que se está armando
 
 
@@ -78,7 +82,7 @@ func _init() -> void:
 	for side in ["left", "right"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
 	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_bottom", 64)   # (abajo queda la barra de teclas)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	add_child(margin)
 	_col = VBoxContainer.new()
 	_col.add_theme_constant_override("separation", 4)
@@ -101,10 +105,6 @@ func _init() -> void:
 	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_col.add_child(holder)
-	_desc = UI.label(_col, "", 2.0, Draw.MARBLE, true, NOTE_WRAP)
-	_desc.name = "descripcion"
-	_desc.localize = false   # (llega ya traducida)
-	_desc.custom_minimum_size = Vector2(0, 44)
 	var inner := {}
 	for t in TABS:
 		var page := VBoxContainer.new()
@@ -129,6 +129,12 @@ func _init() -> void:
 	_build_sound(inner.sonido)
 	_build_controls(inner.controles)
 	_conectar_descripciones()
+	_tip = UI.label(self, "", 2.2, Color(0.95, 0.93, 0.88), false, 480)   # (va al final: por encima de todo)
+	_tip.name = "ayuda"
+	_tip.localize = false   # (llega ya traducida)
+	_tip.plate_alpha = 1.0
+	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tip.visible = false
 	var bottom := HBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 16)
 	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -339,12 +345,43 @@ func _nota(row: Control, texto: String) -> void:
 func _conectar_descripciones() -> void:
 	for page in pages.values():
 		for b in page.find_children("*", "BaseButton", true, false):
-			b.focus_entered.connect(_describir.bind(b))
-			b.mouse_entered.connect(_describir.bind(b))
+			b.focus_entered.connect(_describir.bind(b, false))
+			b.mouse_entered.connect(_describir.bind(b, true))
+			b.focus_exited.connect(_soltar.bind(b, false))
+			b.mouse_exited.connect(_soltar.bind(b, true))
 
 
-func _describir(b: Control) -> void:
-	_desc.text = str(b.get_meta("desc", ""))
+## El mouse o el foco llegó a `b`: si tiene ayuda, aparece después de un momento.
+func _describir(b: Control, por_mouse: bool) -> void:
+	_ocultar_tip()
+	_tip_mouse = por_mouse
+	_tip_t = 0.0
+	_tip_para = b if str(b.get_meta("desc", "")) != "" else null
+
+
+func _soltar(b: Control, por_mouse: bool) -> void:
+	if _tip_para == b and _tip_mouse == por_mouse:
+		_ocultar_tip()
+
+
+func _ocultar_tip() -> void:
+	_tip_para = null
+	if _tip != null:
+		_tip.visible = false
+
+
+func _process(delta: float) -> void:
+	if _tip_para == null or _tip.visible or not is_visible_in_tree():
+		return
+	_tip_t += delta
+	if _tip_t < TIP_ESPERA:
+		return
+	_tip.text = str(_tip_para.get_meta("desc", ""))
+	_tip.visible = true
+	var tam: Vector2 = _tip.get_combined_minimum_size()
+	var vs := get_viewport_rect().size
+	var pos: Vector2 = get_global_mouse_position() + Vector2(16, 22) if _tip_mouse else Vector2(_tip_para.get_global_rect().position.x, _tip_para.get_global_rect().end.y + 10.0)
+	_tip.position = Vector2(clampf(pos.x, 8.0, maxf(vs.x - tam.x - 8.0, 8.0)), clampf(pos.y, 8.0, maxf(vs.y - tam.y - 8.0, 8.0)))
 
 
 ## Una fila: el nombre de la opción a la izquierda y sus controles a la derecha.
@@ -383,7 +420,7 @@ func show_tab(t: String) -> void:
 	if not pages.has(t):
 		return
 	cancel_capture()
-	_desc.text = ""
+	_ocultar_tip()
 	tab = t
 	for k in pages:
 		pages[k].visible = k == t

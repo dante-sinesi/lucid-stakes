@@ -18,11 +18,11 @@ func _init() -> void:
 	o.visible = true
 	await _frames(10)
 	o.contrast_buttons.box.grab_focus()
-	await _frames(20)
+	await _frames(70)
 	root.get_viewport().get_texture().get_image().save_png("%s_general.png" % args[0])
 	o.show_tab("graficos")
 	await _frames(10)
 	o.vsync_buttons.box.grab_focus()
-	await _frames(20)
+	await _frames(70)
 	root.get_viewport().get_texture().get_image().save_png("%s_graficos.png" % args[0])
 	quit()
