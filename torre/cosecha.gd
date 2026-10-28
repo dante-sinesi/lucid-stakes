@@ -106,6 +106,13 @@ func despues_de_accion(nuevos: Array, agarro: bool, piso: int) -> int:
 	return ganado
 
 
+## Un bloque purificado vuelve a corromperse (la prueba Corrupción que vuelve): se pierde lo que había dado en esta sala (nunca más de lo que hay). Devuelve lo que se perdió.
+func perder_bloque(letra: String) -> int:
+	var v := mini(int(round(float(claridad_de(letra)) * harvest_mult() * mult_global)), sala)
+	sala -= v
+	return v
+
+
 ## Un consumible que purifica de golpe (Imán de luz, Lluvia de luz): da la claridad con la racha (no la corta si no purifica nada).
 func extra(letras: Array) -> int:
 	if letras.is_empty():

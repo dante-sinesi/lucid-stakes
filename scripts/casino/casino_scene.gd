@@ -51,6 +51,8 @@ const MOUSE_SENS := 0.28       # grados por píxel (igual que en la torre)
 const ARROW_SPEED := 110.0     # grados por segundo al girar con las flechas
 const ZOOM_FACTOR := 1.1
 const Settings := preload("res://scripts/datos/settings.gd")
+const Eventos := preload("res://scripts/casino/casino_eventos.gd")
+const RotuloPixel := preload("res://scripts/ui/rotulo_pixel.gd")
 const PLAYER_SCALE := 1.5  # el personaje se agranda un poco: la sala está hecha de minibloques y el crupier es alto
 const SEGUIR_ZOOM := 0.6   # con la cámara en el personaje se ve más cerca que con todo el salón
 
@@ -100,6 +102,8 @@ var _t := 0.0
 var quick := false            # pruebas: sin animaciones
 var _ahorro_cobrado := 0      # lo que cobraron la Caja fuerte y la Alcancía al entrar (lo comenta el tabernero)
 var _greeting := -1           # qué saludo toca ahora (el tabernero va variando)
+var evento := {}              # el evento aleatorio de esta visita (casino_eventos.gd): {} si no hay
+var _carteles_cerrado: Array = []   # los "CERRADO" de un casino torcido
 var _tablon_nodos: Array = []   # las mallas del tablón de contratos (se rehacen cuando cambian sus papeles)
 
 
@@ -229,7 +233,7 @@ func _build_portals() -> void:
 
 ## Farolín, junto a la puerta de salida (en su celda, libre de muebles y mirando a la cámara): cobra el precio de la torre que sigue. El portal queda apagado hasta que se le paga.
 func toll_now() -> int:
-	return run.toll_after_discounts(toll_base)
+	return maxi(run.toll_after_discounts(toll_base) - run.toll_adelanto, 0)   # (el peaje por adelantado ya pagó una parte)
 
 
 func _build_farolin() -> void:
@@ -244,6 +248,9 @@ func _build_farolin() -> void:
 
 ## Lo que dice Farolín al llegar a la puerta y las salidas que ofrece (ver Farolin.toll_dialog).
 func toll_dialog() -> Dictionary:
+	if toll_now() == 0 and run.toll_adelanto > 0:   # el peaje por adelantado: ya está pagado, sólo queda saldar la cuenta
+		var devuelto := Eventos.devolucion(run.toll_adelanto, run.toll_after_discounts(toll_base))
+		return {"text": Loc.f("Ya me pagaste por adelantado, gracias. Te devuelvo %d por la confianza.", [devuelto]), "options": [{"id": Farolin.PAY, "text": Loc.t("Salir"), "enabled": true}]}
 	return Farolin.toll_dialog(toll_now(), run.claridad, run.can_revive(), run.lives > 0)
 
 
@@ -271,8 +278,16 @@ func pay_toll() -> bool:
 	var price := toll_now()
 	if run.claridad < price:
 		return false
-	if price > 0:
-		run.spend(price)
+	var con_adelanto: bool = run.toll_adelanto > 0
+	if con_adelanto:   # (el peaje por adelantado: se salda la cuenta y Farolín devuelve lo que sobró y una parte por la confianza)
+		var devuelto := Eventos.devolucion(run.toll_adelanto, run.toll_after_discounts(toll_base))
+		run.toll_adelanto = 0
+		if devuelto > 0:
+			run.gain(devuelto)
+			_flash(Loc.f("Farolín te devuelve %d de claridad.", [devuelto]))
+	if price > 0 or con_adelanto:   # (con el adelanto también vale el soborno y rinde el interés: el peaje se pagó igual, sólo que antes)
+		if price > 0:
+			run.spend(price)
 		run.toll_bribe = false   # (el soborno vale para una sola vez)
 		var interest: int = run.apply_interest()
 		if interest > 0:
@@ -512,7 +527,7 @@ func step(dir: Vector2i) -> String:
 	var n := cell + dir
 	if not Room.in_room(n, lay):
 		if cell == lay.exit and dir == Vector2i(0, -1):  # la puerta de salida: Farolín cobra (si no cobra, se pasa directo)
-			if toll_now() > 0:
+			if toll_now() > 0 or run.toll_adelanto > 0:   # (con un adelanto pagado Farolín también habla: salda la cuenta)
 				ask_toll()
 				return "blocked"
 			leaving = true
@@ -567,11 +582,15 @@ func _bump(n: Vector2i) -> String:
 		if story:   # en el tutorial no se apuesta todavía
 			story_message.emit(preload("res://scripts/datos/story.gd").BLOCKED_TABLE)
 			return "blocked"
+		if _mesa_cerrada("ruleta"):
+			return "blocked"
 		open_roulette()
 		return "roulette"
 	if lay.machines.has(n):
 		if story:
 			story_message.emit(preload("res://scripts/datos/story.gd").BLOCKED_TABLE)
+			return "blocked"
+		if _mesa_cerrada("tragamonedas"):
 			return "blocked"
 		open_slots()
 		return "slots"
@@ -592,9 +611,45 @@ func _bump(n: Vector2i) -> String:
 			if story:
 				story_message.emit(preload("res://scripts/datos/story.gd").BLOCKED_TABLE)
 				return "blocked"
+			if _mesa_cerrada("blackjack"):
+				return "blocked"
 			open_blackjack()
 			return "blackjack"
 	return "blocked"
+
+
+## Casino torcido: ¿esa mesa está cerrada esta noche? Si lo está, avisa.
+func _mesa_cerrada(juego: String) -> bool:
+	if evento.is_empty() or not Eventos.cerrada(run, juego):
+		return false
+	_flash(Loc.t("Esta mesa está cerrada esta noche."))
+	return true
+
+
+## Pone el evento de esta visita: con un casino torcido, un cartel de "CERRADO" sobre cada mesa que no se puede usar.
+func poner_evento(ev: Dictionary) -> void:
+	evento = ev
+	for n in _carteles_cerrado:
+		n.queue_free()
+	_carteles_cerrado.clear()
+	if str(ev.get("id", "")) != Eventos.TORCIDO:
+		return
+	var solo := str(ev.get("solo", ""))
+	var mesas: Array[Vector2] = []
+	if solo != "ruleta":
+		mesas.append(Vector2(lay.table.position.x + lay.table.size.x * 0.5 - 0.5, lay.table.position.y + lay.table.size.y * 0.5 - 0.5))
+	if solo != "tragamonedas":
+		for m in lay.machines:
+			mesas.append(Vector2(m.x, m.y))
+	if solo != "blackjack":
+		for ct in lay.card_tables:
+			mesas.append(Vector2(ct.position.x + ct.size.x * 0.5 - 0.5, ct.position.y + ct.size.y * 0.5 - 0.5))
+	for p in mesas:
+		var l := RotuloPixel.crear(Loc.t("CERRADO"), RotuloPixel.ROJO, true)   # (con la fuente de cubitos del juego, como la cuenta de las bombas)
+		var celda := Vector2i(roundi(p.x), roundi(p.y))
+		l.position = Room.world_of_cell(celda, lay) + Vector3((p.x - float(celda.x)) * Room.CELL_VOX * Room.VOXEL, 2.1, (p.y - float(celda.y)) * Room.CELL_VOX * Room.VOXEL)
+		add_child(l)
+		_carteles_cerrado.append(l)
 
 
 ## Espacio / Enter: jugar a la ruleta si se está al lado de la mesa y mirándola.
@@ -618,6 +673,7 @@ func talk_to_keeper() -> Array:
 	else:
 		_greeting = (_greeting + 1) % Story.GREETINGS.size()
 	var lines := Story.keeper(run.next_trial_info(run.stage + 1), _greeting, _ahorro_cobrado)
+	lines.append_array(Eventos.recordatorio(run))   # (con un casino torcido, el tabernero recuerda qué mesa se puede usar)
 	keeper_talk.emit(lines)
 	return lines
 

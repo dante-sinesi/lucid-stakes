@@ -34,10 +34,7 @@ func _init() -> void:
 				lugar.rotation_degrees.y = giro + 180.0 * v
 				mundo.add_child(lugar)
 				lugar.add_child(m)
-			var l := Label3D.new()
-			l.text = str(c.name)
-			l.font_size = 40
-			l.pixel_size = 0.004
+			var l := preload("res://scripts/ui/rotulo_pixel.gd").crear(str(c.name), Color.WHITE, false, 0.011)   # (con la fuente del juego)
 			l.position = Vector3(i * 1.0 - 3.0, -f * 2.9 + 0.95, 0.5)
 			mundo.add_child(l)
 	var cam := Camera3D.new()

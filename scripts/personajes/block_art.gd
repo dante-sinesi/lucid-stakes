@@ -152,6 +152,8 @@ static func pinchos(estado: int, nivel := 0, semilla := 0) -> Dictionary:
 
 ## Los minibloques de un tipo de bloque ("piedra", "hierro", "hielo", "arenisca", "trampa" o "pinchos") en un estado y nivel.
 static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dictionary:
+	if tipo == "oscuro":
+		return oscuro(semilla)
 	if tipo == "portal":
 		return portal(nivel, semilla)
 	if tipo == "catapulta":
@@ -159,6 +161,26 @@ static func bloque(tipo: String, estado: int, nivel := 0, semilla := 0) -> Dicti
 	if tipo == "bomba":
 		return bomba(corrupcion(estado, nivel), semilla, estado == Estado.PURIFICADO)
 	return piedra_con(corrupcion(estado, nivel), semilla, tipo)
+
+
+## El bloque oscuro de la prueba "A oscuras" (docs/pruebas.md): una cáscara negra y lisa, con el canto apenas más claro y un destello violeta muy tenue en la cara de arriba. No dice qué es: sea común, pesado, hielo, agrietado, trampa o pinchos, se ve igual hasta que se pisa.
+static func oscuro(semilla: int) -> Dictionary:
+	var sd := semilla * 31 + 7
+	var vox := {}
+	for x in N:
+		for y in N:
+			for z in N:
+				var p := Vector3i(x, y, z)
+				if _bordes(p) == 0 and not (x == 0 or x == N - 1 or y == 0 or y == N - 1 or z == 0 or z == N - 1):
+					continue
+				var h := _h(x, y, z, sd + 3)
+				var col := Color(0.045, 0.04, 0.07).lightened(h * 0.025)
+				if _bordes(p) >= 2:
+					col = Color(0.11, 0.10, 0.16).lightened(h * 0.03)   # (el canto)
+				elif y == N - 1 and x >= 2 and x <= N - 3 and z >= 2 and z <= N - 3 and h > 0.9:
+					col = Color(0.20, 0.12, 0.32)   # (un destello violeta que dice "se puede pisar")
+				vox[p] = col
+	return vox
 
 
 ## La catapulta: una placa de abajo, un plato de arriba (que se pisa: la cara de arriba queda entera) y cuatro resortes en las esquinas con uno más fino en el medio. Limpia: placas

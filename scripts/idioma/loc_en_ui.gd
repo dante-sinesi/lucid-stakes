@@ -20,6 +20,10 @@ const TABLE := {
 	"Abandonar (pierdes la fianza)": "Abandon (you lose the deposit)",
 	"Movimientos %d (sin límite)": "Moves %d (no limit)",
 	"Movimientos %d/%d": "Moves %d/%d",
+	"Fondo de movimientos %d/%d": "Move pool %d/%d",
+	"Bloques movidos: %d de %d": "Blocks moved: %d of %d",
+	"−%d claridad": "−%d clarity",
+	"Ya moviste todos los bloques que se pueden mover": "You have already moved all the blocks you can",
 	"Movimientos en falso: quedan %d de %d": "False moves: %d of %d left",
 	"Claridad %s": "Clarity %s",
 	"(%s de esta torre)": "(%s from this tower)",
@@ -58,6 +62,7 @@ const TABLE := {
 	"No hay espacio para trepar": "No room to climb",
 	"No se puede avanzar por el borde": "Can't move along the edge",
 	"Caíste al vacío": "You fell into the void",
+	"Te tiró la ventisca": "The blizzard knocked you down",
 	"No hay bombas para desarmar": "No bombs to defuse",
 	"Bomba desarmada": "Bomb defused",
 	# --- casino ---

@@ -11,11 +11,12 @@ const Art := preload("res://scripts/personajes/block_art.gd")
 const Farolin := preload("res://scripts/personajes/farolin.gd")
 const Main := preload("res://scripts/main.gd")
 const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
+const RotuloPixel := preload("res://scripts/ui/rotulo_pixel.gd")
 const GatitoTravieso := preload("res://scripts/personajes/gatito_travieso.gd")
 const GatitoAnim := preload("res://scripts/personajes/gatito_anim.gd")
 
 ## Los tipos que ya tienen arte nuevo (se suman acá a medida que se hacen).
-const TIPOS := {"piedra": "Piedra común", "hierro": "Pesado", "hielo": "Hielo", "arenisca": "Agrietado", "trampa": "Trampa", "pinchos": "Pinchos", "bomba": "Bomba", "catapulta": "Catapulta", "checkpoint": "Checkpoint", "portal": "Portal"}
+const TIPOS := {"piedra": "Piedra común", "hierro": "Pesado", "hielo": "Hielo", "arenisca": "Agrietado", "trampa": "Trampa", "pinchos": "Pinchos", "bomba": "Bomba", "catapulta": "Catapulta", "checkpoint": "Checkpoint", "portal": "Portal", "oscuro": "Oscuro (A oscuras)"}
 const ETAPAS := [1, 4, 7, 10, 13]   # (la primera etapa de cada nivel)
 
 var env: Environment
@@ -86,6 +87,8 @@ func _ready() -> void:
 	var fila := 0
 	for tipo in TIPOS:
 		for estado in [Art.Estado.CORRUPTO, Art.Estado.PURIFICADO]:
+			if tipo == "oscuro" and estado == Art.Estado.PURIFICADO:
+				continue   # (el bloque oscuro de la prueba A oscuras es uno solo: al pisarlo se ve el que era)
 			for nivel in Art.NIVELES:
 				if tipo == "portal":   # (con las ondas animadas arriba)
 					var cubo := Escena.cubo_portal(nivel)
@@ -107,7 +110,7 @@ func _ready() -> void:
 					atras.material_override = Escena.material_translucido(tipo, true)
 					atras.position = m.position
 					add_child(atras)
-			_rotulo("%s · %s" % [TIPOS[tipo], "corrupto" if estado == Art.Estado.CORRUPTO else "purificado"], _celda(-0.55, fila) + Vector3(-0.6, 0.0, 0.6))
+			_rotulo(TIPOS[tipo] if tipo == "oscuro" else "%s · %s" % [TIPOS[tipo], "corrupto" if estado == Art.Estado.CORRUPTO else "purificado"], _celda(-0.55, fila) + Vector3(-0.6, 0.0, 0.6))
 			fila += 1
 	# la última fila: el checkpoint con Farolín y Ama esperando, de la más despierta a la más dormida (las cuatro poses de las fotos); la última, con el sombrero de Farolín puesto
 	var poses := GatitoAnim.ESPERAS.duplicate()
@@ -147,14 +150,8 @@ func _celda(col: float, fila: float) -> Vector3:
 
 
 func _rotulo(texto: String, pos: Vector3) -> void:
-	var l := Label3D.new()
-	l.text = texto
-	l.pixel_size = 0.0035
-	l.font_size = 48
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	var l := RotuloPixel.crear(texto, Color(1, 1, 1, 0.9), false, 0.014)   # (con la fuente de cubitos del juego)
 	l.no_depth_test = true
-	l.modulate = Color(1, 1, 1, 0.9)
-	l.outline_size = 8
 	l.position = pos
 	add_child(l)
 
