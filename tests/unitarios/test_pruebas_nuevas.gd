@@ -261,6 +261,29 @@ func test_terremoto_y_corrupcion() -> void:
 		if str(rr.get("evento", "")) == "muerte" or t.muerta:
 			t.reintentar_sala()
 	check(corridos > 0, "Terremoto: en 12 temblores se corrieron bloques (%d)" % corridos)
+	# siguiendo la solución conocida, el temblor no la rompe: se juegan salas enteras con un temblor después de cada 3 acciones
+	var seguro := true
+	var temblores := 0
+	for semilla in 6:
+		var tt = _torre({"terremoto": true}, 9, 300 + semilla)
+		var rng2 := RandomNumberGenerator.new()
+		rng2.seed = semilla
+		for k in tt.salas.size():
+			if tt.terminada:
+				break
+			var camino: Array = tt.sala_actual().d.camino
+			var sala_antes: int = tt.indice
+			for i in camino.size():
+				if tt.indice != sala_antes:
+					break
+				tt.actuar(Vector3i(int(camino[i][0]), 0, int(camino[i][1])), int(camino[i][2]))
+				if tt.indice == sala_antes and i % 3 == 2:
+					var rt: Dictionary = tt.terremoto(rng2)
+					if bool(rt.ok):
+						temblores += 1
+			seguro = seguro and tt.indice != sala_antes or tt.terminada
+		seguro = seguro and tt.muertes == 0
+	check(seguro and temblores > 0, "Terremoto: siguiendo la solución conocida los temblores (%d) no hacen perder ninguna sala" % temblores)
 	# corrupción
 	var t2 = _torre({"corrupcion": true}, 6, 41)
 	t2.actuar(Vector3i(int(t2.sala_actual().d.camino[0][0]), 0, int(t2.sala_actual().d.camino[0][1])), int(t2.sala_actual().d.camino[0][2]))

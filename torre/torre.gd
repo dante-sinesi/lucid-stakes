@@ -43,6 +43,7 @@ var perks := {}               # boosts del run
 var reglas := {}              # las reglas de la torre (las del escenario y las de la prueba): Solo tres bloques, Quebradizo, Espalda mala, Presupuesto compartido... (ver trials.gd)
 var presupuesto_total := 0    # Presupuesto compartido: los movimientos de toda la torre son un solo fondo (0: cada sala tiene los suyos)
 var gastado_antes := 0        # Presupuesto compartido: lo que gastaron las salas que ya se superaron
+var _temblores: Array = []    # Terremoto: los corrimientos de la sala actual ({en: acciones que llevaba, id: del bloque, delta}), para comprobar que la solución conocida siga andando
 var mov_run := 0              # movimientos de más en cada sala por mejoras permanentes del run (Aire de más, Pies ligeros)
 var mov_extra := 0            # movimientos de más para la sala actual (Freno, Reloj de arena)
 var aliento_usado := false    # Segundo aliento: una vez por torre
@@ -697,6 +698,7 @@ func _entrar(i: int) -> void:
 		motor.oscuros = oscuros_de(motor, int(salas[i].id))
 	movs = 0
 	mov_extra = 0
+	_temblores.clear()
 	t0_sala = Time.get_ticks_msec()
 	deshacer_pila.clear()
 	encendidos = {}
@@ -781,14 +783,50 @@ func terremoto(rng: RandomNumberGenerator) -> Dictionary:
 			if motor.bloques.has(a) or not es_anillo(a.x, a.z) or a == motor.jugador:
 				continue
 			candidatos.append([c, a])
-	if candidatos.is_empty():
-		return {"ok": false, "msg": "", "evento": ""}
-	var e: Array = candidatos[rng.randi() % candidatos.size()]
-	motor.desplazar(e[0], e[1])
-	var r := _tras_efecto({"ok": true, "msg": ""}, false)
-	r["de"] = e[0]
-	r["a"] = e[1]
-	return r
+	for k in range(candidatos.size() - 1, 0, -1):
+		var j := rng.randi_range(0, k)
+		var tmp = candidatos[k]
+		candidatos[k] = candidatos[j]
+		candidatos[j] = tmp
+	for e in candidatos.slice(0, 14):   # (el primero que no rompa la solución conocida de la sala)
+		if not _terremoto_seguro(e[0], e[1]):
+			continue
+		_temblores.append({"en": deshacer_pila.size(), "id": int(motor.ids.get(e[0], -1)), "delta": e[1] - e[0]})
+		motor.desplazar(e[0], e[1])
+		var r := _tras_efecto({"ok": true, "msg": ""}, false)
+		r["de"] = e[0]
+		r["a"] = e[1]
+		return r
+	return {"ok": false, "msg": "", "evento": ""}
+
+
+## ¿La solución conocida de la sala sigue andando si ese bloque se corre en este momento? Se repite desde el principio con el corrimiento hecho después de las acciones que lleva el jugador: si se juega siguiendo la
+## solución, el temblor no la rompe (el bloque que se corre es en la práctica uno de los que sobran). Si el jugador ya se pasó de la solución conocida, no hay nada que comprobar.
+func _terremoto_seguro(de: Vector3i, a: Vector3i) -> bool:
+	var s: Dictionary = salas[indice]
+	var camino: Array = s.d.get("camino", [])
+	var hechas := deshacer_pila.size()
+	if hechas >= camino.size():
+		return true
+	var m = Vista.motor_de(s.d)
+	if indice + 1 < salas.size():
+		m.agregar_obstaculos(obstaculos_de(salas[indice + 1].d, int(s.d.meta)))
+	var corrimientos: Array = _temblores.duplicate()
+	corrimientos.append({"en": hechas, "id": int(motor.ids.get(de, -1)), "delta": a - de})
+	for i in camino.size():
+		for c in corrimientos:   # (los temblores de antes y éste, cada uno después de las acciones que llevaba el jugador)
+			if int(c.en) != i:
+				continue
+			var celda := Vector3i(-999, -999, -999)
+			for k in m.ids:
+				if int(m.ids[k]) == int(c.id):
+					celda = k
+			if celda.x == -999 or m.bloques.has(celda + c.delta) or m.jugador == celda + c.delta:
+				return false
+			m.desplazar(celda, celda + c.delta)
+		if not m.actuar(Vector3i(int(camino[i][0]), 0, int(camino[i][1])), int(camino[i][2])).ok:
+			return false
+	return m.ganado
 
 
 ## Corrupción que vuelve: los bloques purificados se corrompen otra vez (menos el que pisas) y se corta la racha.
@@ -863,6 +901,8 @@ func deshacer() -> bool:
 	if deshacer_pila.is_empty() or terminada or perdida or muerta:
 		return false
 	var f: Dictionary = deshacer_pila.pop_back()
+	while not _temblores.is_empty() and int(_temblores[_temblores.size() - 1].en) > deshacer_pila.size():
+		_temblores.pop_back()   # (los temblores que vinieron después de la acción deshecha también se deshacen)
 	motor = f.motor
 	movs = int(f.movs)
 	cosecha.restaurar(f.cosecha)
