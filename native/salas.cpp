@@ -1281,14 +1281,15 @@ static bool generar_una(const Param& P, mt19937_64& rng, string& salida) {
 	return true;
 }
 
-static int resolver_main() {
+// El modo de siempre del ejecutable: lee una sala (el texto de nativo.gd) y resuelve; devuelve las líneas RESULT y PATH. Lo usan el `main` de abajo y la extensión de Godot (native/extension).
+static string resolver_texto(istream& entrada) {
 	Sim base;
 	base.limpiar();
 	int alto = 8, tope = 1500000;
 	int jx = 0, jy = 2, jz = 0, cx = 0, cz = 0;
 	vector<array<int, 4>> bl;
 	string linea;
-	while (getline(cin, linea)) {
+	while (getline(entrada, linea)) {
 		istringstream ss(linea);
 		string w;
 		ss >> w;
@@ -1303,14 +1304,26 @@ static int resolver_main() {
 	base.px = jx; base.py = jy; base.pz = jz; base.hx = cx; base.hz = cz;
 	Estado e0; guardar(base, e0);
 	Resolucion r = getenv("SALAS_LONJAS") ? resolver_lonjas(e0, alto, tope, atoi(getenv("SALAS_LONJAS"))) : resolver(e0, alto, tope);
+	string salida;
+	char buf[128];
 	if (r.ok) {
-		printf("RESULT ok %d %ld %zu %d %d\n", r.moves, r.expandidos, r.nodos, r.agarres, r.distintos);
-		printf("PATH");
-		for (int a : r.acc) printf(" %d %d %d", DIRS[a % 4].x, DIRS[a % 4].z, a / 4);
-		printf("\n");
+		snprintf(buf, sizeof buf, "RESULT ok %d %ld %zu %d %d\n", r.moves, r.expandidos, r.nodos, r.agarres, r.distintos);
+		salida += buf;
+		salida += "PATH";
+		for (int a : r.acc) {
+			snprintf(buf, sizeof buf, " %d %d %d", DIRS[a % 4].x, DIRS[a % 4].z, a / 4);
+			salida += buf;
+		}
+		salida += "\n";
 	} else {
-		printf("RESULT %s %ld %zu\n", r.tope ? "budget" : "fail", r.expandidos, r.nodos);
+		snprintf(buf, sizeof buf, "RESULT %s %ld %zu\n", r.tope ? "budget" : "fail", r.expandidos, r.nodos);
+		salida += buf;
 	}
+	return salida;
+}
+
+static int resolver_main() {
+	fputs(resolver_texto(cin).c_str(), stdout);
 	return 0;
 }
 
@@ -2051,6 +2064,7 @@ static int variantes_main(int argc, char** argv) {
 	return 0;
 }
 
+#ifndef SALAS_BIBLIOTECA   // (la extensión de Godot incluye este archivo sin el `main`)
 int main(int argc, char** argv) {
 	init_tablas();
 	if (argc > 1 && string(argv[1]) == "--gen") return generar_main(argc, argv);
@@ -2062,3 +2076,4 @@ int main(int argc, char** argv) {
 	if (argc > 1 && string(argv[1]) == "--variantes") return variantes_main(argc, argv);
 	return resolver_main();
 }
+#endif
