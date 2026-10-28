@@ -26,6 +26,7 @@ var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox
 var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
 var contrast_buttons := {}  # "on" / "off"
+var casino_cam_buttons := {}  # "sala" / "personaje"
 var panel_buttons := {}  # "mantener" / "alternar"
 var profundidad_buttons := {}  # 0 / 1 / 2
 var reading_buttons := {}   # "on" / "off"
@@ -172,6 +173,11 @@ func _build_general(page: Control) -> void:
 	contrast_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "contraste_si", _on_contrast.bind(true))
 	contrast_buttons["off"] = _toggle(row, Loc.t("No"), group, "contraste_no", _on_contrast.bind(false))
 	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	row = _row(Loc.t("Cámara del casino"))
+	group = ButtonGroup.new()
+	casino_cam_buttons["sala"] = _toggle(row, Loc.t("El casino"), group, "casino_cam_sala", _on_casino_cam.bind("sala"))
+	casino_cam_buttons["personaje"] = _toggle(row, Loc.t("El personaje"), group, "casino_cam_personaje", _on_casino_cam.bind("personaje"))
+	UI.label(_page, Loc.t("A qué mira la cámara en el casino: a todo el salón o a tu personaje, que te sigue."), 2, Draw.MARBLE, false, NOTE_WRAP)
 	row = _row(Loc.t("Panel de información"))
 	group = ButtonGroup.new()
 	panel_buttons["mantener"] = _toggle(row, Loc.t("Mantener"), group, "panel_mantener", _on_panel_modo.bind("mantener"))
@@ -452,6 +458,8 @@ func refresh() -> void:
 	var cp: bool = Settings.get_value("compass")
 	compass_buttons.on.selected = cp
 	compass_buttons.off.selected = not cp
+	for k in casino_cam_buttons:
+		casino_cam_buttons[k].selected = k == str(Settings.get_value("casino_camara"))
 	for k in panel_buttons:
 		panel_buttons[k].selected = k == str(Settings.get_value("panel_modo"))
 	for k in profundidad_buttons:
@@ -594,6 +602,11 @@ func _on_ui_scale(dir: int) -> void:
 
 func _on_contrast(on: bool) -> void:
 	Settings.set_value("high_contrast", on)
+	refresh()
+
+
+func _on_casino_cam(modo: String) -> void:
+	Settings.set_value("casino_camara", modo)
 	refresh()
 
 
