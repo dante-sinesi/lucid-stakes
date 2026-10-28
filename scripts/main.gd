@@ -668,7 +668,7 @@ func _torre_ganada() -> void:
 	_bank_claridad()
 	banner.text = "¡Portal alcanzado!" + ("\n" + _trial_msg if _trial_msg != "" else "")
 	if not quick_portal:
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(1.5).timeout   # (el personaje se mete en el portal)
 	if torre == null or in_menu:
 		return
 	_torre_cerrar(true)

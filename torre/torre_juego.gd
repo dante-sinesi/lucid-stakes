@@ -103,6 +103,7 @@ var _sala_dibujada := -1
 var ultimo_agarre := ""          # "push" o "pull" si la última acción movió un bloque
 var _rastro_muerte: Array = []   # el camino de la última acción (si ésta termina en derrota se anima antes de caer)
 var _tweens_derrota: Array = []   # las animaciones de la derrota en marcha (al reintentar se cortan)
+var _entrando_portal := false   # el personaje se mete en el cubo-portal (la animación de llegada): nadie lo acomoda en su sitio mientras tanto
 var _cayendo := false   # la animación de la derrota está en marcha: la cámara no sigue al personaje que cae
 var _pos_previa := Vector3.ZERO   # dónde estaba el personaje antes de la última acción (la caída de la derrota arranca de ahí)
 var efectos                    # sonidos y efectos visuales de las acciones (efectos.gd)
@@ -226,6 +227,10 @@ func _ready() -> void:
 
 
 func _nueva_torre() -> void:
+	_entrando_portal = false
+	if gato_nodo != null:   # (por si la torre anterior terminó con el personaje metiéndose en el portal)
+		gato_nodo.scale = Vector3.ONE
+		gato_nodo.visible = true
 	for n in estaticas:
 		if n != null and is_instance_valid(n):
 			n.queue_free()
@@ -369,7 +374,7 @@ func _poner_mancha() -> void:
 			if t.motor.bloques.has(Vector3i(j.x, y - 1, j.z)):
 				tope = y
 				break
-	mancha.visible = tope > -1000
+	mancha.visible = tope > -1000 and not _entrando_portal
 	if mancha.visible:
 		mancha.position = Vector3(gato_nodo.position.x, float(tope) + float(int(t.sala_actual().off)) + 0.02, gato_nodo.position.z)
 
@@ -386,7 +391,32 @@ func _limitar_sombras() -> void:
 				g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if n.position.y + g.position.y <= tope else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
+## La llegada al portal: el personaje se mete en el cubo girando y achicándose hasta desaparecer, y el cubo late y suelta el destello dorado. Dura unos 0,8 s (el juego espera antes de seguir).
+func _entrar_portal() -> void:
+	if portal == null or not is_instance_valid(portal) or gato_nodo == null:
+		return
+	_entrando_portal = true
+	await get_tree().create_timer(STEP_TIME + 0.05).timeout   # (primero termina el último paso hasta el bloque de salida)
+	if not _entrando_portal or not is_inside_tree():
+		return
+	var centro := portal.position + Vector3(0, 0.1, 0)
+	var giro := gato_nodo.rotation.y + TAU * 1.5
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(gato_nodo, "position", centro, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(gato_nodo, "scale", Vector3.ONE * 0.03, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_property(gato_nodo, "rotation:y", giro, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	var latido := create_tween()   # (el cubo-portal late al recibirlo)
+	latido.tween_property(portal, "scale", Vector3.ONE * 1.3, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	latido.tween_property(portal, "scale", Vector3.ONE, 0.3)
+	tw.chain().tween_callback(func():
+		gato_nodo.visible = false
+		efectos.juice.gold_burst(portal.position)
+		efectos.juice.zoom_punch(0.06))
+
+
 func _poner_gato(animar: bool) -> void:
+	if _entrando_portal:
+		return
 	if en_juego and t.muerta:   # (perdió la sala: la animación de la derrota lleva al personaje; no se lo acomoda en su sitio)
 		return
 	var destino := _pos_gato()
@@ -789,6 +819,7 @@ func _procesar(r: Dictionary) -> void:
 			checkpoint_alcanzado.emit(t.salas.size() - t.indice, t.salas.size())
 		"torre":
 			if en_juego:
+				_entrar_portal()
 				torre_completa.emit()
 			else:
 				_aviso("¡Llegaste al portal! Pulsa R para otra torre.", 0.0)
