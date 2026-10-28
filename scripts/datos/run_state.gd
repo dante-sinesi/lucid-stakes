@@ -36,7 +36,6 @@ var scenario_id := "pesadilla"      # escenario del run (ver scenarios.gd)
 var trial_schedule := {}          # etapa -> id de la prueba que toca (se sortea al empezar el run; ver trials.gd)
 var price_mult := 1.0             # multiplicador del precio de la ficha (lo fija el escenario)
 var dice_pending := {"luz": 0, "cosmetics": []}   # la Luz y los cosméticos que dieron los dados: pasan al perfil recién al superar una torre (así no se pueden sacar empezando y cerrando)
-var dice_claridad := 0          # claridad ganada con los dados de la pantalla de carga (tiene tope por partida)
 var meta_consumable_slots := 0   # mejoras permanentes del Despertar (ver profile.gd)
 var restart_discount := 0.0
 var movs_extra := 0               # movimientos de más en cada sala (Pies ligeros y la mejora Aire de más)
@@ -56,7 +55,6 @@ var sello_oro := false   # Sello de oro usado: el próximo contrato que se cobre
 ## que ya hiciste en esta misma torre (el primero cuesta 1 vez, el segundo 2 veces, etc.).
 const MAX_LIVES := 3
 const RESTART_BASE := 25
-const DICE_CAP := 150   # tope de claridad que se puede ganar con los dados en una partida
 
 
 func scenario() -> Dictionary:
@@ -361,7 +359,7 @@ func to_dict() -> Dictionary:
 			"casino_spent": casino_spent, "casino_won": casino_won, "retries": retries, "tower_retries": tower_retries,
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "movs_extra": movs_extra,
-			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_claridad": dice_claridad, "dice_pending": dice_pending.duplicate(true),
+			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_pending": dice_pending.duplicate(true),
 			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "buena_letra": buena_letra, "buena_letra_usada": buena_letra_usada, "toll_meta_discount": toll_meta_discount, "toll_bribe": toll_bribe, "toll_adelanto": toll_adelanto, "casino_evento": casino_evento.duplicate(), "showcase": showcase.duplicate(true)}
 
 
@@ -399,7 +397,6 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.scenario_id = str(d.get("scenario_id", "pesadilla"))
 	r.dificultad = str(d.get("dificultad", "media"))
 	r.price_mult = float(d.get("price_mult", 1.0))
-	r.dice_claridad = int(d.get("dice_claridad", 0))
 	var dp = d.get("dice_pending", {})
 	if dp is Dictionary:
 		r.dice_pending = {"luz": int(dp.get("luz", 0)), "cosmetics": []}

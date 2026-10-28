@@ -410,6 +410,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	if con_dados and dice_always and not _loading_dice_done and not in_menu:
 		var mi_epoca := epoch
 		generating = true   # (así un guardado en este momento es el de "cargando la torre": no se repiten el casino ni los dados)
+		dice.claridad_actual = run.claridad if run != null else 0
 		dice.open()
 		_maybe_dice_intro()
 		dice.set_ready(true)
@@ -721,15 +722,14 @@ func _torre_murio(motivo: String) -> void:
 	save_game()
 
 
-## Premio de un tiro de los dados de la pantalla de carga: claridad (con tope por partida), Luz y, a veces, un cosmético (con la rareza que permite la dificultad).
+## Premio de un tiro de los dados de la pantalla de carga: claridad (un porcentaje de la que tienes, con un mínimo), Luz y, a veces, un cosmético (con la rareza que permite la dificultad).
 ## Completa `info` con lo que de verdad se dio (`granted`, `cosmetic_name`) para que el minijuego lo muestre.
 func _on_dice_prize(info: Dictionary) -> void:
 	_loading_dice_done = true   # el premio ya está dado (la Luz y el cosmético quedan pendientes en el run hasta superar una torre): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
 	var granted := 0
-	var want := int(info.get("claridad", 0))
+	var want := DiceGame.claridad_para(int(info.get("hits", 0)), run.claridad if run != null else 0)
 	if want > 0 and run != null:
-		granted = mini(want, maxi(RunState.DICE_CAP - run.dice_claridad, 0))
-		run.dice_claridad += granted
+		granted = want
 		run.gain(granted)
 	info["granted"] = granted
 	if int(info.get("luz", 0)) > 0 and run != null:
