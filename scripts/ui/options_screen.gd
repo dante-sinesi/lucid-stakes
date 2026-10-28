@@ -13,6 +13,7 @@ const Settings := preload("res://scripts/datos/settings.gd")
 const Graphics := preload("res://scripts/ui/graphics.gd")
 const Controls := preload("res://scripts/entrada/controls.gd")
 const Telemetry := preload("res://scripts/datos/telemetry.gd")
+const Casilla := preload("res://scripts/ui/casilla.gd")
 
 signal back
 signal language_changed
@@ -20,19 +21,19 @@ signal language_changed
 const TABS := ["general", "graficos", "sonido", "controles"]
 const TAB_NAMES := {"general": "General", "graficos": "Gráficos", "sonido": "Sonido", "controles": "Controles"}
 
-var focus_buttons := {}    # Marco del foco: sí o no
+var focus_buttons := {}  # "box": la casilla
 var device_buttons := {}   # Ayudas de: automático, teclado o mando
 var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox o PlayStation
 var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
-var contrast_buttons := {}  # "on" / "off"
+var contrast_buttons := {}  # "box": la casilla
 var casino_cam_buttons := {}  # "sala" / "personaje"
 var panel_buttons := {}  # "mantener" / "alternar"
 var profundidad_buttons := {}  # 0 / 1 / 2
-var reading_buttons := {}   # "on" / "off"
-var compass_buttons := {}   # "on" / "off"
-var fondo_buttons := {}   # "on" / "off"
-var vsync_buttons := {}     # "on" / "off"
+var reading_buttons := {}  # "box": la casilla
+var compass_buttons := {}  # "box": la casilla
+var fondo_buttons := {}  # "box": la casilla
+var vsync_buttons := {}  # "box": la casilla
 var res_prev: Button
 var ui_prev: Button
 var ui_next: Button
@@ -51,6 +52,7 @@ var tab := "general"
 var pages := {}             # pestaña -> contenedor
 var preset_buttons := {}    # "alta" / "media" / "baja" / "custom"
 var gfx_buttons := {}       # ajuste -> {valor: botón}
+var gfx_checks := {}        # ajuste (sí o no) -> casilla
 var scale_prev: Button
 var scale_next: Button
 var scale_label: Control
@@ -59,6 +61,7 @@ var bind_message: Control
 var capturing := ""         # acción que espera una tecla o botón nuevo ("" = ninguna)
 var capture_kind := ""      # "key" o "pad"
 var _col: VBoxContainer
+var _desc: Control          # la descripción del ajuste que tiene el foco (o el mouse encima)
 var _page: Control          # donde se agregan las filas de la pestaña que se está armando
 
 
@@ -75,7 +78,7 @@ func _init() -> void:
 	for side in ["left", "right"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
 	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_bottom", 14)
+	margin.add_theme_constant_override("margin_bottom", 64)   # (abajo queda la barra de teclas)
 	add_child(margin)
 	_col = VBoxContainer.new()
 	_col.add_theme_constant_override("separation", 4)
@@ -98,6 +101,10 @@ func _init() -> void:
 	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_col.add_child(holder)
+	_desc = UI.label(_col, "", 2.0, Draw.MARBLE, true, NOTE_WRAP)
+	_desc.name = "descripcion"
+	_desc.localize = false   # (llega ya traducida)
+	_desc.custom_minimum_size = Vector2(0, 44)
 	var inner := {}
 	for t in TABS:
 		var page := VBoxContainer.new()
@@ -121,6 +128,7 @@ func _init() -> void:
 	_build_graphics(inner.graficos)
 	_build_sound(inner.sonido)
 	_build_controls(inner.controles)
+	_conectar_descripciones()
 	var bottom := HBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 16)
 	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -149,51 +157,41 @@ func _build_general(page: Control) -> void:
 		lang_buttons[code] = _toggle(row, Loc.LANGS[code], group, "idioma_" + code, _on_lang.bind(code))
 	_build_interface()
 	row = _row(Loc.t("Modo de lectura"))
-	group = ButtonGroup.new()
-	reading_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "lectura_si", _on_reading.bind(true))
-	reading_buttons["off"] = _toggle(row, Loc.t("No"), group, "lectura_no", _on_reading.bind(false))
-	UI.label(_page, Loc.t("Letras más claras y con contorno."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	reading_buttons["box"] = _casilla(row, "lectura", func(): _on_reading(not bool(Settings.get_value("reading_mode"))))
+	_nota(row, Loc.t("Letras más claras y con contorno."))
 	row = _row(Loc.t("Rosa de los vientos"))
-	group = ButtonGroup.new()
-	compass_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "rosa_si", _on_compass.bind(true))
-	compass_buttons["off"] = _toggle(row, Loc.t("No"), group, "rosa_no", _on_compass.bind(false))
-	UI.label(_page, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	compass_buttons["box"] = _casilla(row, "rosa", func(): _on_compass(not bool(Settings.get_value("compass"))))
+	_nota(row, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."))
 	row = _row(Loc.t("Fondo animado"))
-	group = ButtonGroup.new()
-	fondo_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "fondo_si", _on_fondo.bind(true))
-	fondo_buttons["off"] = _toggle(row, Loc.t("No"), group, "fondo_no", _on_fondo.bind(false))
-	UI.label(_page, Loc.t("El remolino que se mueve despacio detrás de la torre. Apagado, el fondo es un color liso."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	fondo_buttons["box"] = _casilla(row, "fondo", func(): _on_fondo(not bool(Settings.get_value("fondo_animado"))))
+	_nota(row, Loc.t("El remolino que se mueve despacio detrás de la torre. Apagado, el fondo es un color liso."))
 	row = _row(Loc.t("Marco del foco"))
-	group = ButtonGroup.new()
-	focus_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "marco_si", _on_focus_frame.bind(true))
-	focus_buttons["off"] = _toggle(row, Loc.t("No"), group, "marco_no", _on_focus_frame.bind(false))
-	UI.label(_page, Loc.t("Un marco blanco que titila alrededor del botón elegido, para verlo mejor con el mando."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	focus_buttons["box"] = _casilla(row, "marco", func(): _on_focus_frame(not bool(Settings.get_value("focus_frame"))))
+	_nota(row, Loc.t("Un marco blanco que titila alrededor del botón elegido, para verlo mejor con el mando."))
 	row = _row(Loc.t("Alto contraste"))
-	group = ButtonGroup.new()
-	contrast_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "contraste_si", _on_contrast.bind(true))
-	contrast_buttons["off"] = _toggle(row, Loc.t("No"), group, "contraste_no", _on_contrast.bind(false))
-	UI.label(_page, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	contrast_buttons["box"] = _casilla(row, "contraste", func(): _on_contrast(not bool(Settings.get_value("high_contrast"))))
+	_nota(row, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."))
 	row = _row(Loc.t("Cámara del casino"))
 	group = ButtonGroup.new()
 	casino_cam_buttons["sala"] = _toggle(row, Loc.t("El casino"), group, "casino_cam_sala", _on_casino_cam.bind("sala"))
 	casino_cam_buttons["personaje"] = _toggle(row, Loc.t("El personaje"), group, "casino_cam_personaje", _on_casino_cam.bind("personaje"))
-	UI.label(_page, Loc.t("A qué mira la cámara en el casino: a todo el salón o a tu personaje, que te sigue."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	_nota(row, Loc.t("A qué mira la cámara en el casino: a todo el salón o a tu personaje, que te sigue."))
 	row = _row(Loc.t("Panel de información"))
 	group = ButtonGroup.new()
 	panel_buttons["mantener"] = _toggle(row, Loc.t("Mantener"), group, "panel_mantener", _on_panel_modo.bind("mantener"))
 	panel_buttons["alternar"] = _toggle(row, Loc.t("Alternar"), group, "panel_alternar", _on_panel_modo.bind("alternar"))
-	UI.label(_page, Loc.t("Mantener: se ve mientras sostienes la tecla. Alternar: un toque lo abre y otro lo cierra."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	_nota(row, Loc.t("Mantener: se ve mientras sostienes la tecla. Alternar: un toque lo abre y otro lo cierra."))
 	row = _row(Loc.t("Ayuda de profundidad"))
 	group = ButtonGroup.new()
 	for o in [[0, "Ninguna"], [1, "Atenuar"], [2, "Atenuar y transparentar"]]:
 		profundidad_buttons[o[0]] = _toggle(row, Loc.t(o[1]), group, "profundidad_%d" % o[0], _on_profundidad.bind(o[0]))
-	UI.label(_page, Loc.t("Atenuar: lo cercano se ve más claro. Transparentar: además, lo que tapa al personaje se vuelve transparente."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	_nota(row, Loc.t("Atenuar: lo cercano se ve más claro. Transparentar: además, lo que tapa al personaje se vuelve transparente."))
 	row = _row(Loc.t("Datos de juego"))
 	var data_button := UI.button(Loc.t("Abrir la carpeta"), false, 2.4, 0, false)
 	data_button.name = "abrir_carpeta"
 	data_button.pressed.connect(Telemetry.open_folder)
 	row.add_child(data_button)
-	UI.label(_page, Loc.t("Tus datos quedan sólo en tu compu. Para ayudar, mandanos telemetria.jsonl."), 2, Draw.MARBLE, false, NOTE_WRAP)
+	_nota(row, Loc.t("Tus datos quedan sólo en tu compu. Para ayudar, mandanos telemetria.jsonl."))
 
 
 func _build_interface() -> void:
@@ -222,9 +220,7 @@ func _build_display() -> void:
 	row.add_child(res_label)
 	res_next = _small(row, ">", "res_siguiente", _on_res.bind(1))
 	row = _row(Loc.t("Sincronía vertical"))
-	group = ButtonGroup.new()
-	vsync_buttons["on"] = _toggle(row, Loc.t("Sí"), group, "vsync_si", _on_vsync.bind(true))
-	vsync_buttons["off"] = _toggle(row, Loc.t("No"), group, "vsync_no", _on_vsync.bind(false))
+	vsync_buttons["box"] = _casilla(row, "vsync", func(): _on_vsync(not bool(Settings.get_value("vsync"))))
 
 
 func _build_sound(page: Control) -> void:
@@ -261,9 +257,24 @@ func _build_graphics(page: Control) -> void:
 	row.add_child(scale_label)
 	scale_next = _small(row, ">", "escala_mas", func(): Graphics.cycle("scale", 1); refresh())
 	_choice("aa", Loc.t("Suavizado de bordes"), [[0, Loc.t("No")], [2, "2x"], [4, "4x"]])
-	_choice("silhouette", Loc.t("Transparencia del personaje"), [[true, Loc.t("Sí")], [false, Loc.t("No")]])
-	_choice("effects", Loc.t("Destellos y temblores"), [[true, Loc.t("Sí")], [false, Loc.t("No")]])
+	_check("silhouette", Loc.t("Transparencia del personaje"))
+	_check("effects", Loc.t("Destellos y temblores"))
 	_choice("fps_cap", Loc.t("Límite de FPS"), [[30, "30"], [60, "60"], [144, "144"], [0, Loc.t("Sin límite")]])
+
+
+## Una fila de sí o no de Gráficos: una casilla ("<ajuste>_casilla").
+func _check(key: String, title: String) -> void:
+	var row := _row(title)
+	gfx_checks[key] = _casilla(row, key, func(): _on_gfx(key, not bool(Graphics.current()[key])))
+
+
+## Una casilla de verificación en la fila (se llama "<nombre>_casilla"): `action` cambia el ajuste y `refresh` la deja marcada.
+func _casilla(row: Control, node_name: String, action: Callable) -> Button:
+	var c := Casilla.new()
+	c.name = node_name + "_casilla"
+	c.pressed.connect(action)
+	row.add_child(c)
+	return c
 
 
 ## Una fila de opciones excluyentes: `options` = [[valor, texto], ...]; los botones se llaman "<ajuste>_<valor>".
@@ -318,6 +329,24 @@ func _build_controls(page: Control) -> void:
 	bind_message.custom_minimum_size = Vector2(0, 26)
 
 
+## La descripción de una fila: aparece abajo cuando el foco (o el mouse) pasa por alguno de sus botones, en vez de ir escrita en la pantalla.
+func _nota(row: Control, texto: String) -> void:
+	for b in row.get_children():
+		if b is BaseButton:
+			b.set_meta("desc", texto)
+
+
+func _conectar_descripciones() -> void:
+	for page in pages.values():
+		for b in page.find_children("*", "BaseButton", true, false):
+			b.focus_entered.connect(_describir.bind(b))
+			b.mouse_entered.connect(_describir.bind(b))
+
+
+func _describir(b: Control) -> void:
+	_desc.text = str(b.get_meta("desc", ""))
+
+
 ## Una fila: el nombre de la opción a la izquierda y sus controles a la derecha.
 func _row(text: String) -> HBoxContainer:
 	return _row_in(_page, text)
@@ -354,6 +383,7 @@ func show_tab(t: String) -> void:
 	if not pages.has(t):
 		return
 	cancel_capture()
+	_desc.text = ""
 	tab = t
 	for k in pages:
 		pages[k].visible = k == t
@@ -450,14 +480,11 @@ func refresh() -> void:
 	for k in style_buttons:
 		style_buttons[k].selected = k == str(Settings.get_value("pad_style"))
 	var ff: bool = Settings.get_value("focus_frame")
-	focus_buttons.on.selected = ff
-	focus_buttons.off.selected = not ff
+	focus_buttons.box.checked = ff
 	var rm: bool = Settings.get_value("reading_mode")
-	reading_buttons.on.selected = rm
-	reading_buttons.off.selected = not rm
+	reading_buttons.box.checked = rm
 	var cp: bool = Settings.get_value("compass")
-	compass_buttons.on.selected = cp
-	compass_buttons.off.selected = not cp
+	compass_buttons.box.checked = cp
 	for k in casino_cam_buttons:
 		casino_cam_buttons[k].selected = k == str(Settings.get_value("casino_camara"))
 	for k in panel_buttons:
@@ -465,14 +492,11 @@ func refresh() -> void:
 	for k in profundidad_buttons:
 		profundidad_buttons[k].selected = k == int(Settings.get_value("ayuda_profundidad"))
 	var fa: bool = Settings.get_value("fondo_animado")
-	fondo_buttons.on.selected = fa
-	fondo_buttons.off.selected = not fa
+	fondo_buttons.box.checked = fa
 	var hc: bool = Settings.get_value("high_contrast")
-	contrast_buttons.on.selected = hc
-	contrast_buttons.off.selected = not hc
+	contrast_buttons.box.checked = hc
 	var vs: bool = Settings.get_value("vsync")
-	vsync_buttons.on.selected = vs
-	vsync_buttons.off.selected = not vs
+	vsync_buttons.box.checked = vs
 	var steps: int = Settings.get_value("volume")
 	vol_bar.steps = steps
 	vol_label.text = "%d%%" % (steps * 100 / Settings.VOLUME_STEPS)
@@ -495,6 +519,8 @@ func _refresh_graphics() -> void:
 	for key in gfx_buttons:
 		for v in gfx_buttons[key]:
 			gfx_buttons[key][v].selected = v == cur[key]
+	for key in gfx_checks:
+		gfx_checks[key].checked = bool(cur[key])
 	scale_label.text = "%d%%" % int(cur.scale)
 	var scales: Array = Graphics.CHOICES.scale
 	scale_prev.disabled = int(cur.scale) <= int(scales[0])
