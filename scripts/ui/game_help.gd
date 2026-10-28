@@ -24,39 +24,39 @@ signal closed
 ## dibujan como la tecla (con teclado) o el botón (con mando) que corresponde, con el mismo diseño de las botoneras.
 const PAGES := {
 	"ruleta": [
-		{"title": "La ruleta", "art": "ruleta_rueda", "text": "Hay 13 casillas: la 0 es de la casa y la 1 a la 12 son tuyas. Con {arrows} mueves la marca y con {space} eliges las casillas que cubres (el tipo de apuesta fija cuántas). Gira con {enter}."},
-		{"title": "Tipos de apuesta", "art": "ruleta_apuestas", "text": "Pleno cubre 1 casilla y da premios épicos. Terna cubre 3 (raros), Mitad cubre 6 (comunes) y Rango cubre 9 (consumibles). Cuantas menos casillas cubres, mejor es el premio. Cambias de tipo con {qe}."},
-		{"title": "Si pierdes", "art": "ruleta_perder", "text": "Si la bola cae en una casilla que no cubriste, o en el 0, pierdes la ficha. La ficha cuesta lo mismo en los cuatro tipos y sube con cada etapa. Con {c} ves qué premios puede dar cada tipo."},
-		{"title": "La vitrina", "art": "ruleta_vitrina", "text": "Los premios de cada visita salen de una vitrina. Si no te gustan, puedes rotarla con {shift} pagando una ficha, y cada rotación cuesta una más. Los premios nuevos aparecen en la ventana de premios."},
+		{"title": "La ruleta", "art": "ruleta_rueda", "text": "Cubres casillas del 1 al 12; la 0 es de la casa."},
+		{"title": "Tipos de apuesta", "art": "ruleta_apuestas", "text": "Pleno cubre 1 casilla (épicos), Terna 3 (raros), Mitad 6 (comunes) y Rango 9 (consumibles). Menos casillas, mejor premio."},
+		{"title": "Si pierdes", "art": "ruleta_perder", "text": "Si la bola cae fuera de lo que cubriste, o en el 0, pierdes la ficha. La ficha sube con cada etapa."},
+		{"title": "La vitrina", "art": "ruleta_vitrina", "text": "Rotar la vitrina cuesta una ficha, y una más cada vez."},
 	],
 	"tragamonedas": [
-		{"title": "Los rodillos", "art": "slots_rodillos", "text": "Pagas una ficha y giran tres rodillos con cinco símbolos: cubo, hielo, bomba, sol y corona. Los comunes salen más seguido y la corona es la más rara. Gira con {enter}."},
-		{"title": "Qué paga", "art": "slots_pagos", "text": "Dos símbolos iguales pagan un poco; tres iguales pagan bastante más. Tres coronas son el premio gordo y además te dan un boost épico. Los pagos son claridad, en múltiplos de la ficha."},
-		{"title": "Retener", "art": "slots_retener", "text": "Cuando los rodillos frenan puedes retener los que te gustan (con {hold}) y volver a girar los demás por media ficha. Se puede una sola vez por jugada: lo mejor es retener las parejas."},
-		{"title": "Cobrar", "art": "slots_cobrar", "text": "En cualquier momento puedes cobrar lo que tengas con {space}, sin volver a girar. Elegir bien qué retener es lo que hace que la máquina rinda: sin pensarlo, cada ficha devuelve algo menos de lo que cuesta."},
+		{"title": "Los rodillos", "art": "slots_rodillos", "text": "Cinco símbolos: cubo, hielo, bomba, sol y corona. La corona es la más rara."},
+		{"title": "Qué paga", "art": "slots_pagos", "text": "Una pareja paga poco, un trío mucho. Tres coronas: premio gordo y un boost épico."},
+		{"title": "Retener", "art": "slots_retener", "text": "Puedes retener rodillos (con {hold}) y girar el resto por media ficha, una vez por jugada. Conviene retener las parejas."},
+		{"title": "Cobrar", "art": "slots_cobrar", "text": "Cobra cuando quieras, sin volver a girar. Sin retener bien, cada ficha devuelve algo menos de lo que cuesta."},
 	],
 	"blackjack": [
-		{"title": "Llegar a 21", "art": "bj_objetivo", "text": "Acércate a 21 sin pasarte. Las figuras valen 10, el As vale 1 u 11 y los palos son los símbolos del juego. Empiezas apostando una ficha con {enter}."},
-		{"title": "Tu turno", "art": "bj_acciones", "text": "Pedir ({enter}) te da otra carta. Plantarte ({space}) te deja como estás. Doblar ({c}), solo con tus dos primeras cartas, apuesta otra ficha, te da una única carta y te planta."},
-		{"title": "El crupier", "art": "bj_crupier", "text": "Una de sus cartas está tapada. Pide hasta tener 17 y se planta con cualquier 17. Si tú te pasas de 21 pierdes en el acto, aunque el crupier también se pase."},
-		{"title": "Pagos", "art": "bj_pagos", "text": "Ganar paga 1 a 1. Un blackjack (21 con las dos primeras cartas) paga 3 a 2. Si empatas, te devuelven la apuesta."},
+		{"title": "Llegar a 21", "art": "bj_objetivo", "text": "Acércate a 21 sin pasarte. Las figuras valen 10 y el As, 1 u 11."},
+		{"title": "Tu turno", "art": "bj_acciones", "text": "Doblar ({c}) solo con las dos primeras cartas: otra ficha, una carta y te plantas."},
+		{"title": "El crupier", "art": "bj_crupier", "text": "El crupier pide hasta 17. Si te pasas de 21 pierdes en el acto."},
+		{"title": "Pagos", "art": "bj_pagos", "text": "Ganar paga 1 a 1; blackjack, 3 a 2. Si empatas, te devuelven la apuesta."},
 	],
 	"dados": [
-		{"title": "Los dados del tabernero", "art": "dados_elegir", "text": "Mientras se genera la torre puedes jugar. Elige con {lr} qué cara crees que saldrá en cada uno de los 5 dados (con {ud} cambias el número) y tira con {enter}."},
-		{"title": "Tres tiradas", "art": "dados_tiradas", "text": "Tienes 3 tiradas para cumplir tu predicción. Los dados que aciertan quedan retenidos, en verde y con candado, y solo se vuelven a tirar los que fallaron."},
-		{"title": "Premios", "art": "dados_premios", "text": "Con 2 aciertos ganas 8 de claridad, con 3 ganas 25, con 4 ganas 80 y con 5 ganas 150. Con 4 o 5 aciertos también puede salir un cosmético. Los premios son tuyos cuando superes la torre."},
+		{"title": "Los dados del tabernero", "art": "dados_elegir", "text": "Elige qué cara saldrá en cada uno de los 5 dados. Juegas mientras se genera la torre."},
+		{"title": "Tres tiradas", "art": "dados_tiradas", "text": "Tienes 3 tiradas: los dados que aciertan quedan retenidos y solo se vuelven a tirar los que fallan."},
+		{"title": "Premios", "art": "dados_premios", "text": "2 aciertos: 8 de claridad · 3: 25 · 4: 80 · 5: 150. Con 4 o 5 puede salir un cosmético. Los premios son tuyos al superar la torre."},
 	],
 	"taller": [
-		{"title": "El taller", "art": "taller_yunque", "text": "Aquí vendes un boost o un consumible por el 40 % de su valor. También puedes cambiarlo por otro del mismo nivel pagando el 30 % de la ficha. Sirve para liberar lugar en tus barras."},
+		{"title": "El taller", "art": "taller_yunque", "text": "Vendes un boost o un consumible por el 40 % de su valor, o lo cambias por otro del mismo nivel por el 30 % de la ficha."},
 	],
 	"tablon": [
-		{"title": "El tablón de contratos", "art": "tablon_papeles", "text": "Cada papel pide algo para la próxima torre: llegar a una racha, no deshacer, purificar especiales... Acéptalo gratis y se cobra en cuanto lo cumples."},
-		{"title": "Los sellos", "art": "tablon_papeles", "text": "El sello dice qué tan difícil es: gris, azul, violeta, y negro el casi imposible. Los papeles que no aceptes siguen colgados en el próximo casino."},
-		{"title": "Aceptar, descolgar y rotar", "art": "tablon_acciones", "text": "Puedes tener pocos contratos activos a la vez. Descolgar un papel libera su lugar: solo llegan dos papeles nuevos por torre. Rotar cambia todos y cada vez cuesta más."},
-		{"title": "Fianza y tienda", "art": "tablon_acciones", "text": "En el casino y el gran casino puedes aceptar con fianza: pagas ahora y, si cumples, cobras más y la recuperas. La pestaña de arriba te lleva a la tienda."},
+		{"title": "El tablón de contratos", "art": "tablon_papeles", "text": "Cada papel pide algo para la próxima torre. Acéptalo gratis y se cobra al cumplirlo."},
+		{"title": "Los sellos", "art": "tablon_papeles", "text": "El sello marca la dificultad: gris, azul, violeta y negro (casi imposible). Los que no aceptes siguen en el próximo casino."},
+		{"title": "Aceptar, descolgar y rotar", "art": "tablon_acciones", "text": "Solo unos pocos contratos activos a la vez. Descolgar libera el lugar; llegan dos papeles nuevos por torre. Rotar cambia todos y cada vez cuesta más."},
+		{"title": "Fianza y tienda", "art": "tablon_acciones", "text": "Con fianza pagas ahora y, si cumples, cobras más y la recuperas (solo en el casino y el gran casino)."},
 	],
 	"tienda": [
-		{"title": "La tienda", "art": "tienda_vitrina", "text": "Tres premios de esta visita (uno épico, uno raro y uno común) a precio fijo. Es caro, pero seguro: no hay que tirar la ruleta. Los premios cambian en cada visita."},
+		{"title": "La tienda", "art": "tienda_vitrina", "text": "Tres premios (épico, raro y común) a precio fijo, sin tirar la ruleta. Cambian en cada visita."},
 	],
 }
 
