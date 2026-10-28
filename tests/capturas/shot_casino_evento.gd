@@ -1,6 +1,7 @@
 extends SceneTree
-## El casino torcido (los carteles de CERRADO sobre las mesas que no se pueden usar). Uso: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1280x720 -s tests/capturas/shot_casino_evento.gd -- ARCHIVO.png [ETAPA] [solo: ruleta|tragamonedas|blackjack]
+## El casino torcido (los carteles de CERRADO sobre las mesas que no se pueden usar) o el peaje por adelantado (solo: "adelanto"), con el diálogo del anuncio. Uso: GAME_SANDBOX=1 godot --path . --rendering-driver opengl3 --resolution 1280x720 -s tests/capturas/shot_casino_evento.gd -- ARCHIVO.png [ETAPA] [solo: ruleta|tragamonedas|blackjack]
 const Profile := preload("res://scripts/datos/profile.gd")
+const Eventos := preload("res://scripts/casino/casino_eventos.gd")
 
 
 func _frames(n: int) -> void:
@@ -23,8 +24,22 @@ func _init() -> void:
 	await _frames(20)
 	main.stage_number = etapa
 	main.run.stage = etapa
-	main.run.casino_evento = {"stage": etapa, "id": "torcido", "solo": solo}
+	main.run.casino_evento = {"stage": etapa, "id": "", "solo": ""}   # (sin evento sorteado: el que se ve es el que se pone abajo)
 	main.enter_casino()
+	await _frames(20)
+	var ev: Dictionary
+	var cobrado := 0
+	if solo == "adelanto":
+		main.run.claridad = 300
+		ev = {"stage": etapa, "id": "peaje_adelantado", "solo": "", "nuevo": true}
+		cobrado = Eventos.aplicar_entrada(main.run, ev, main.run.toll_after_discounts(main.casino.toll_base if main.casino.toll_base > 0 else 80))
+	else:
+		ev = {"stage": etapa, "id": "torcido", "solo": solo, "nuevo": true}
+	main.run.casino_evento = ev.duplicate()
+	main.casino.poner_evento(ev)
+	main.casino._refresh_hud()
+	var a := Eventos.anuncio(ev, cobrado, "Tabernero", "Farolín")
+	main.dialogue.show_lines(a.lines, str(a.speaker), true)
 	await _frames(60)
 	root.get_viewport().get_texture().get_image().save_png(args[0])
 	quit()
