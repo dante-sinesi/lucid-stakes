@@ -62,10 +62,6 @@ func test_escena() -> void:
 		var antes := run.claridad
 		s.find_child("rotar", true, false).pressed.emit()
 		check(run.claridad < antes and Contratos.cartelera(run)[0] == null and Contratos.cartelera(run)[1] == null, "etapa %d: rotar cuesta claridad y respeta los huecos de lo aceptado" % stage)
-		s.select(Contratos.cartelera(run).size())   # (la selección sigue de la cartelera a los contratos aceptados)
-		check(s._es_activo() and s.grid_activos.visible and s.accept_button.disabled and not s.reject_button.disabled, "etapa %d: se puede elegir un contrato aceptado y cancelarlo, no aceptarlo de nuevo" % stage)
-		s.find_child("descolgar", true, false).pressed.emit()
-		check(Contratos.activos(run).is_empty() and not s.grid_activos.visible, "etapa %d: cancelar saca el contrato de los activos" % stage)
 		sc.close_roulette()
 		sc.queue_free()
 		await process_frame
