@@ -503,7 +503,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	_descubrir_bloques()
 
 
-## El cubo-portal del final de la torre (de minibloques, con las ondas animadas arriba; sus colores combinan con la etapa), siempre encendido (Farolín cobra en el casino).
+## El cubo-portal del final de la torre (de minibloques, con las ondas animadas en los costados; sus colores combinan con la etapa), siempre encendido (Farolín cobra en el casino).
 func _cubo_portal() -> Node3D:
 	var g := Escena.cubo_portal(BlockArt.nivel_de_etapa(maxi(stage_number, 1)))
 	goal_mat = g.get_node("ondas").material_override
@@ -670,7 +670,7 @@ func _torre_ganada() -> void:
 	_bank_claridad()
 	banner.text = "¡Portal alcanzado!" + ("\n" + _trial_msg if _trial_msg != "" else "")
 	if not quick_portal:
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(1.5).timeout   # (el personaje se mete en el portal)
 	if torre == null or in_menu:
 		return
 	_torre_cerrar(true)
@@ -820,7 +820,7 @@ func _apply_casino_light() -> void:
 		_sun.light_energy = 1.0
 
 
-## El cubo de salida: un cubo claro y luminoso con bordes dorados y, en la cara de arriba, las ondas del portal (como las puertas del casino).
+## El cubo de salida: un cubo claro y luminoso con bordes dorados y, en los cuatro costados, las ondas del portal (como las puertas del casino).
 func _flash_gain(text: String, gain := 0) -> void:
 	var w := gain_weight(gain)
 	gain_label.cube = 3.0 + 3.0 * w   # (una ganancia grande se ve más grande, dura más y suena más fuerte)

@@ -589,7 +589,8 @@ static func colores_portal(nivel: int) -> Dictionary:
 	}
 
 
-## El cubo-portal del final de la torre: un marco en las doce aristas y caras de luz que brillan; la de arriba queda abierta (ahí van las ondas del portal, ver `Escena.cubo_portal`).
+## El cubo-portal del final de la torre: un marco en las doce aristas y caras de luz que brillan en los cuatro costados (ahí van las ondas del portal, ver `Escena.cubo_portal`); la cara de arriba es una losa llena
+## donde se para el personaje (y esperan Farolín y Ama).
 static func portal(nivel := 0, semilla := 0) -> Dictionary:
 	var col := colores_portal(nivel)
 	var sd := semilla * 31 + 7
@@ -612,7 +613,10 @@ static func portal(nivel := 0, semilla := 0) -> Dictionary:
 					if b == 2 and g > 1.0 - c * 0.16:
 						marco = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.5)   # (magma en el marco)
 					vox[p] = marco
-				elif y != N - 1:
+				elif y == N - 1:
+					var losa: Color = (col.marco as Color).lightened(0.12 + h * 0.08)   # (la losa de arriba: entera, se pisa)
+					vox[p] = losa.lerp(Color(0.12, 0.09, 0.14), clampf(g * c * 0.5, 0.0, 0.4))
+				else:
 					if h < c * 0.2:
 						continue   # (la luz de las caras se rompe y deja huecos)
 					var luz: Color = col.luz
