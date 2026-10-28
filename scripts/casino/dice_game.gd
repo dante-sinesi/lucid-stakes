@@ -3,8 +3,8 @@ extends Control
 ## va a salir en cada uno de los 5 dados (clic en un dado: sube; flechas ▲ ▼ o la rueda: cambian; con el teclado, izquierda y derecha eligen
 ## el dado, arriba y abajo cambian la cara, 1 a 6 la fijan y Enter tira; también se puede con WASD: A y D eligen el dado, W y S cambian la
 ## cara, y E empieza cuando la torre está lista) y se tiran: caen desde arriba, rebotan y se frenan, y se revelan de a uno.
-##   0 o 1 aciertos: nada, una frase del tabernero     2: 10 % de la claridad que tienes (mínimo 8)     3: 20 % (mínimo 25)
-##   4: 40 % (mínimo 80) y a veces un cosmético común o raro     5: 100 % (mínimo 150) y un cosmético raro o épico   (1 chance en 7.776 por tiro)
+##   0 o 1 aciertos: nada, una frase del tabernero     2: 5 % de la claridad que tienes (mínimo 8)     3: 10 % (mínimo 25)
+##   4: 20 % (mínimo 80) y a veces un cosmético común o raro     5: 50 % (mínimo 150) y un cosmético raro o épico   (1 chance en 7.776 por tiro)
 ## Con C se abre la ventana de premios (`dice_prizes_window.gd`).
 ## La trampa: con los dados ya revelados, los que fallaron se pueden amañar pagando Luz (2 el primero, 3 el segundo, 4 el tercero...: sube
 ## con cada uno y vuelve a empezar en cada tiro); con Luz de sobra se pueden comprar los cinco.
@@ -50,10 +50,10 @@ enum Phase { IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE }   # HOLD: los dad
 const PRIZES := {
 	0: {"claridad": 0, "pct": 0.0, "luz": 0, "cosmetic": {}},
 	1: {"claridad": 0, "pct": 0.0, "luz": 0, "cosmetic": {}},
-	2: {"claridad": 8, "pct": 0.10, "luz": 0, "cosmetic": {}},
-	3: {"claridad": 25, "pct": 0.20, "luz": 0, "cosmetic": {}},
-	4: {"claridad": 80, "pct": 0.40, "luz": 0, "cosmetic": {"comun": 0.85, "raro": 0.15}, "cosmetic_chance": 0.15},
-	5: {"claridad": 150, "pct": 1.0, "luz": 0, "cosmetic": {"raro": 0.7, "epico": 0.3}, "cosmetic_chance": 1.0},
+	2: {"claridad": 8, "pct": 0.05, "luz": 0, "cosmetic": {}},
+	3: {"claridad": 25, "pct": 0.10, "luz": 0, "cosmetic": {}},
+	4: {"claridad": 80, "pct": 0.20, "luz": 0, "cosmetic": {"comun": 0.85, "raro": 0.15}, "cosmetic_chance": 0.15},
+	5: {"claridad": 150, "pct": 0.50, "luz": 0, "cosmetic": {"raro": 0.7, "epico": 0.3}, "cosmetic_chance": 1.0},
 }
 
 ## Lo que dice el tabernero según los aciertos.
@@ -455,7 +455,7 @@ func _update_hints() -> void:
 		Phase.HOLD:
 			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Tirar de nuevo"), "dim": not can_throw(), "call": throw_dice}])
 		Phase.RESULT, Phase.DONE:
-			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Empezar") if tower_ready else Loc.t("Generando la torre..."), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Continuar") if tower_ready else Loc.t("Generando la torre..."), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
 		_:
 			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Saltear")}])
 

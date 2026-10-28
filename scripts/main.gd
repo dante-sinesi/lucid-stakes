@@ -138,7 +138,7 @@ var block_discovery := true   # al llegar a la fila de un bloque nuevo, el taber
 var _dice_intro_pending := false   # tutorial: al abrirse los dados, el tabernero explica el juego
 var _dice_talk := false
 var _leaving_casino := false   # se le pagó a Farolín y se está yendo del casino: si se cierra el juego ahora, se continúa en la pantalla de carga (no hay que volver a pagar)
-var _loading_dice_done := false   # ya se jugaron los dados de esta pantalla de carga (no se vuelven a ofrecer al continuar)
+var _dados_en_casino := false     # los dados del tabernero están en pantalla al entrar al casino (no se guarda ni se vuelve a entrar mientras tanto)
 var _toll_options: Array = []   # las salidas que ofrece Farolín en la puerta (ver Farolin.toll_dialog)
 var _keeper_talk := false   # el tabernero del casino está hablando (cuadro de diálogo)
 var key_hint                # las teclas de la lección arriba al centro: grises hasta que se aprietan (ver key_hint.gd)
@@ -406,10 +406,10 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 		lost_screen.hide_screen()
 	_torre_cerrar(false)
 	seed_value = s
-	# Los dados del tabernero de la pantalla de carga (son parte del juego): la torre se arma al instante, pero al empezar cada torre se ofrecen igual, con "Empezar" ya habilitado.
-	if con_dados and dice_always and not _loading_dice_done and not in_menu:
+	# Los dados del tabernero solo se juegan aquí en el tutorial (donde el tabernero los explica); en una partida salen al entrar al casino (`_dados_del_tabernero`).
+	if con_dados and dice_always and tutorial_index >= 0 and not in_menu:
 		var mi_epoca := epoch
-		generating = true   # (así un guardado en este momento es el de "cargando la torre": no se repiten el casino ni los dados)
+		generating = true
 		dice.claridad_actual = run.claridad if run != null else 0
 		dice.open()
 		_maybe_dice_intro()
@@ -498,7 +498,6 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	if permitidos == 0:
 		hud_panel.set_mistakes(0, 0)
 	_refresh()
-	_loading_dice_done = false
 	save_game()
 	_announce_trial()
 	_descubrir_bloques()
@@ -725,7 +724,6 @@ func _torre_murio(motivo: String) -> void:
 ## Premio de un tiro de los dados de la pantalla de carga: claridad (un porcentaje de la que tienes, con un mínimo), Luz y, a veces, un cosmético (con la rareza que permite la dificultad).
 ## Completa `info` con lo que de verdad se dio (`granted`, `cosmetic_name`) para que el minijuego lo muestre.
 func _on_dice_prize(info: Dictionary) -> void:
-	_loading_dice_done = true   # el premio ya está dado (la Luz y el cosmético quedan pendientes en el run hasta superar una torre): si se cierra el juego ahora, al continuar no se vuelven a ofrecer los dados
 	var granted := 0
 	var want := DiceGame.claridad_para(int(info.get("hits", 0)), run.claridad if run != null else 0)
 	if want > 0 and run != null:
@@ -1348,17 +1346,33 @@ func _character_msg(ids: Array) -> String:
 	return Loc.join(parts)
 
 
+## Los dados del tabernero: al entrar al casino, antes de verlo. Se juegan sobre la claridad que ya tienes (la de la torre cobrada); en el tutorial se juegan al empezar la torre.
+func _dados_del_tabernero() -> void:
+	if not dice_always or training or tutorial_index >= 0 or run == null:
+		return
+	_dados_en_casino = true   # (mientras tanto no se guarda: si se cierra el juego ahora, se vuelve a la torre y los dados no se cobraron)
+	dice.claridad_actual = run.claridad
+	dice.open()
+	dice.set_ready(true)
+	while dice.visible:
+		await get_tree().process_frame
+	_dados_en_casino = false
+
+
 ## El portal de la torre lleva al casino: se cambia de cámara y se esconde el HUD de la torre.
 func enter_casino(restoring := false) -> void:
-	if casino != null:
+	if casino != null or _dados_en_casino:
 		return
-	if not restoring:
-		_claim_dice_rewards()   # (superaste la torre: lo que dieron los dados es tuyo)
+	var mi_epoca := epoch
 	if trial_banner != null:
 		trial_banner.clear()
 	Music.play("casino")
 	if not restoring:
 		_bank_claridad()
+		await _dados_del_tabernero()   # (superaste la torre: antes del casino, el tabernero tira los dados sobre la claridad que acabas de cobrar)
+		if mi_epoca != epoch or in_menu or run_over or casino != null:
+			return
+		_claim_dice_rewards()   # (superaste la torre: lo que dieron los dados es tuyo)
 	if not training and tutorial_index < 0:
 		Telemetry.log_event("casino", {"stage": stage_number, "claridad_in": run.claridad, "lives": run.lives, "boosts": run.boosts.size()})
 	casino = CasinoScene.new()
@@ -1486,7 +1500,6 @@ func leave_casino() -> void:
 	if casino == null or balance_layer != null:
 		return
 	_leaving_casino = true   # (desde acá el guardado es el de la pantalla de carga de la torre que sigue)
-	_loading_dice_done = false
 	save_game()
 	if casino_balance and CasinoRules.active(run):
 		balance_layer = CanvasLayer.new()
@@ -2190,9 +2203,11 @@ func _loading_state() -> bool:
 
 
 func save_game() -> void:
+	if _dados_en_casino:
+		return
 	if _loading_state():   # pagado el peaje (o generando la torre): se guarda "cargando la torre" para no repetir el casino ni los dados
 		var next_stage := mini(stage_number + 1, FINAL_STAGE) if casino != null else stage_number
-		SaveGame.write({"run": run.to_dict(), "stage": next_stage, "seed": seed_value, "phase": "loading", "dice_done": _loading_dice_done})
+		SaveGame.write({"run": run.to_dict(), "stage": next_stage, "seed": seed_value, "phase": "loading"})
 		return
 	if not _run_active():
 		return
@@ -2232,7 +2247,6 @@ func continue_game() -> void:
 		return
 	if data.phase == "loading":   # había pagado el peaje: sigue la carga de la torre (y los dados sólo si no los había jugado)
 		run.stage = stage_number
-		_loading_dice_done = bool(data.get("dice_done", false))
 		Music.play(_tower_music(stage_number))
 		new_tower(seed_value)
 		return

@@ -42,9 +42,9 @@ const PAGES := {
 		{"title": "Pagos", "art": "bj_pagos", "text": "Ganar paga 1 a 1; blackjack, 3 a 2. Si empatas, te devuelven la apuesta."},
 	],
 	"dados": [
-		{"title": "Los dados del tabernero", "art": "dados_elegir", "text": "Elige qué cara saldrá en cada uno de los 5 dados. Juegas mientras se genera la torre."},
+		{"title": "Los dados del tabernero", "art": "dados_elegir", "text": "Elige qué cara saldrá en cada uno de los 5 dados. Juegan al entrar al casino."},
 		{"title": "Tres tiradas", "art": "dados_tiradas", "text": "Tienes 3 tiradas: los dados que aciertan quedan retenidos y solo se vuelven a tirar los que fallan."},
-		{"title": "Premios", "art": "dados_premios", "text": "2 aciertos: 10 % de tu claridad · 3: 20 % · 4: 40 % · 5: 100 %. Con 4 o 5 puede salir un cosmético. Los cosméticos son tuyos al superar la torre."},
+		{"title": "Premios", "art": "dados_premios", "text": "2 aciertos: 5 % de tu claridad · 3: 10 % · 4: 20 % · 5: 50 %. Con 4 o 5 puede salir un cosmético."},
 	],
 	"taller": [
 		{"title": "El taller", "art": "taller_yunque", "text": "Vendes un boost o un consumible por el 40 % de su valor, o lo cambias por otro del mismo nivel por el 30 % de la ficha."},
