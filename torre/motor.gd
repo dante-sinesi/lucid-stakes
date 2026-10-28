@@ -152,10 +152,33 @@ func actuar(d: Vector3i, modo: Modo = Modo.MOVER) -> Dictionary:
 
 
 ## Ventisca: el viento te empuja una celda hacia `d` sin gastar un movimiento. Un bloque en el camino lo frena (no pasa nada); con piso caminas, un escalón más abajo bajas y, si no hay piso, quedas colgado del
-## borde del bloque en el que estabas (o caes, si no hay de dónde colgarse, o si es hielo). Devuelve true si te movió.
+## borde del bloque en el que estabas (o caes, si no hay de dónde colgarse, o si es hielo). Si estás colgado, el viento te suelta y caes: si caes al vacío se pierde la sala ("Te tiró la ventisca"); si caes sobre
+## otro bloque, sigues ahí. Devuelve true si te movió.
 func viento(d: Vector3i) -> bool:
-	if ganado or perdido or colgado != Vector3i.ZERO:
+	if ganado or perdido:
 		return false
+	if colgado != Vector3i.ZERO:
+		ultimos_purificados = []
+		agarro = false
+		ultimos_movidos = []
+		ultimos_origenes = []
+		tipo_agarre = ""
+		trampa_rota = false
+		resbalo = false
+		salto = false
+		desarmo = false
+		exploto = false
+		caidos_fuera = []
+		ultimas_celdas_purificadas = []
+		rastro = [jugador]
+		colgado = Vector3i.ZERO
+		_asentar_jugador()   # (cae hasta el primer bloque que haya abajo; si no hay, al vacío)
+		if perdido:
+			motivo = "Te tiró la ventisca"
+		_despues(NINGUNA)
+		if perdido:
+			motivo = "Te tiró la ventisca"
+		return true
 	var t := jugador + d
 	if bloques.has(t) or not en_limites(t):
 		return false

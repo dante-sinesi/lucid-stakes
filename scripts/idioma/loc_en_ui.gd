@@ -62,6 +62,7 @@ const TABLE := {
 	"No hay espacio para trepar": "No room to climb",
 	"No se puede avanzar por el borde": "Can't move along the edge",
 	"Caíste al vacío": "You fell into the void",
+	"Te tiró la ventisca": "The blizzard knocked you down",
 	"No hay bombas para desarmar": "No bombs to defuse",
 	"Bomba desarmada": "Bomb defused",
 	# --- casino ---
