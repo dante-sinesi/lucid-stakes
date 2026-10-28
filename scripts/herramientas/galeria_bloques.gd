@@ -11,6 +11,7 @@ const Art := preload("res://scripts/personajes/block_art.gd")
 const Farolin := preload("res://scripts/personajes/farolin.gd")
 const Main := preload("res://scripts/main.gd")
 const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
+const RotuloPixel := preload("res://scripts/ui/rotulo_pixel.gd")
 const GatitoTravieso := preload("res://scripts/personajes/gatito_travieso.gd")
 const GatitoAnim := preload("res://scripts/personajes/gatito_anim.gd")
 
@@ -147,14 +148,8 @@ func _celda(col: float, fila: float) -> Vector3:
 
 
 func _rotulo(texto: String, pos: Vector3) -> void:
-	var l := Label3D.new()
-	l.text = texto
-	l.pixel_size = 0.0035
-	l.font_size = 48
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	var l := RotuloPixel.crear(texto, Color(1, 1, 1, 0.9), false, 0.014)   # (con la fuente de cubitos del juego)
 	l.no_depth_test = true
-	l.modulate = Color(1, 1, 1, 0.9)
-	l.outline_size = 8
 	l.position = pos
 	add_child(l)
 

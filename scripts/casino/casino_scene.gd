@@ -52,6 +52,7 @@ const ARROW_SPEED := 110.0     # grados por segundo al girar con las flechas
 const ZOOM_FACTOR := 1.1
 const Settings := preload("res://scripts/datos/settings.gd")
 const Eventos := preload("res://scripts/casino/casino_eventos.gd")
+const RotuloPixel := preload("res://scripts/ui/rotulo_pixel.gd")
 const PLAYER_SCALE := 1.5  # el personaje se agranda un poco: la sala está hecha de minibloques y el crupier es alto
 const SEGUIR_ZOOM := 0.6   # con la cámara en el personaje se ve más cerca que con todo el salón
 
@@ -644,17 +645,9 @@ func poner_evento(ev: Dictionary) -> void:
 		for ct in lay.card_tables:
 			mesas.append(Vector2(ct.position.x + ct.size.x * 0.5 - 0.5, ct.position.y + ct.size.y * 0.5 - 0.5))
 	for p in mesas:
-		var l := Label3D.new()
-		l.text = Loc.t("CERRADO")
-		l.font_size = 64
-		l.pixel_size = 0.009
-		l.modulate = Color(1.0, 0.35, 0.3)
-		l.outline_size = 16
-		l.outline_modulate = Color(0.1, 0.02, 0.02)
-		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		l.no_depth_test = true
+		var l := RotuloPixel.crear(Loc.t("CERRADO"), RotuloPixel.ROJO, true)   # (con la fuente de cubitos del juego, como la cuenta de las bombas)
 		var celda := Vector2i(roundi(p.x), roundi(p.y))
-		l.position = Room.world_of_cell(celda, lay) + Vector3((p.x - float(celda.x)) * Room.CELL_VOX * Room.VOXEL, 1.5, (p.y - float(celda.y)) * Room.CELL_VOX * Room.VOXEL)
+		l.position = Room.world_of_cell(celda, lay) + Vector3((p.x - float(celda.x)) * Room.CELL_VOX * Room.VOXEL, 2.1, (p.y - float(celda.y)) * Room.CELL_VOX * Room.VOXEL)
 		add_child(l)
 		_carteles_cerrado.append(l)
 
