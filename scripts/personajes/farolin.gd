@@ -91,7 +91,7 @@ static func toll_dialog(price: int, have: int, can_redo: bool, redo_costs_life :
 		if can_pay:
 			text = Loc.f("Son %d de claridad y no te quedan vidas. ¿Pagas, o todo se apaga?", [price])
 		else:
-			text = Loc.f("Te faltan %d de claridad y no te quedan vidas. ¿Dejas que todo se apague?", [price, short])
+			text = Loc.f("Te faltan %d de claridad y no te quedan vidas. ¿Dejas que todo se apague?", [short])
 	var second := {"id": REDO, "text": Loc.t("Rehacer la torre (−1 vida)") if redo_costs_life else Loc.t("Rehacer la torre"), "enabled": true} if can_redo \
 			else {"id": GIVE_UP, "text": Loc.t("Abandonar"), "enabled": true}
 	return {"text": text, "options": [{"id": PAY, "text": Loc.f("Pagar %d", [price]), "enabled": can_pay}, second]}
