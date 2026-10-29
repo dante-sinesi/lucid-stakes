@@ -14,7 +14,7 @@ func _init() -> void:
 	var Torre = load("res://torre/torre.gd")
 	var rng_banco := RandomNumberGenerator.new()
 	rng_banco.seed = int(_env("SEED", "1")) * 7919
-	var bank: Dictionary = Bot.arm_bank(Torre.cargar_paquete_del_juego(), rng_banco, int(_env("TOWERS", "10")))   # TOWERS: torres armadas por etapa
+	var bank: Dictionary = Bot.arm_bank(Torre.cargar_paquete_del_juego(), rng_banco, int(_env("TOWERS", "10")), _env("DIF", "media"))   # TOWERS: torres armadas por etapa; DIF: facil, media, dificil o pesadilla
 	var have := 0
 	for s in bank:
 		have += bank[s].size()

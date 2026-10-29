@@ -41,12 +41,12 @@ const BITS_DEL_NIVEL := {"facil": 31.0, "media": 83.0, "dificil": 136.0, "pesadi
 
 
 ## Un banco de torres (armarlas lleva unos 0,3 s cada una): {etapa: [Torre]}. Cada partida juega una copia (`Torre.copia`).
-static func arm_bank(paquete: Array, rng: RandomNumberGenerator, per_stage: int) -> Dictionary:
+static func arm_bank(paquete: Array, rng: RandomNumberGenerator, per_stage: int, dif := "media") -> Dictionary:
 	var bank := {}
 	for s in range(1, FINAL_STAGE + 1):
 		bank[s] = []
 		for _i in per_stage:
-			var t = Torre.armar(paquete, rng.randi(), Torre.salas_de_etapa(s), true, s)
+			var t = Torre.armar(paquete, rng.randi(), Torre.salas_de_etapa(s), true, s, dif)
 			if t.salas.size() >= 3:
 				bank[s].append(t)
 	return bank
