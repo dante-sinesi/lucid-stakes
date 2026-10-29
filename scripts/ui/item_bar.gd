@@ -82,6 +82,7 @@ func refresh() -> void:
 	for i in slots.size():
 		slots[i].item_id = list[i] if i < list.size() else ""
 		slots[i].key_label = str(i + 1) if kind == Kind.CONSUMABLE else ""
+	modulate.a = 1.0 if not list.is_empty() else 0.0   # (sin nada que mostrar, las casillas vacías no se dibujan: aparecen con el primer ítem)
 	reset_size()
 
 

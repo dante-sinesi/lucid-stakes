@@ -717,7 +717,7 @@ func _torre_murio(motivo: String) -> void:
 	juice.flash(Color(0.8, 0.1, 0.15), 0.4, 0.6)
 	Sfx.play("lose")
 	var libre: bool = run.consumables.has("totem") and not run.item_blocked("totem")   # (con un Tótem el reintento no cuesta la vida)
-	lost_screen.show_loss(Loc.t(motivo), run.restart_cost(true), run.can_afford(run.restart_cost(true)), libre, true)
+	lost_screen.show_loss(Loc.t(motivo), run.restart_cost(true), run.can_afford(run.restart_cost(true)), libre, true, maxi(run.lives - 1, 0))
 	save_game()
 
 

@@ -9,6 +9,7 @@ const HOLD := 4.0   # segundos que se queda entero
 const FADE := 3.0   # y lo que tarda en desvanecerse
 const MARGEN_ABAJO := 74.0   # lo que queda libre abajo (la guía de controles)
 
+var band: ColorRect   # la banda oscura detrás: el cartel se lee sobre cualquier bloque
 var title_label: Control
 var name_label: Control
 var desc_label: Control
@@ -22,6 +23,10 @@ func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS   # (sigue andando con el juego en pausa)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	band = ColorRect.new()
+	band.color = Color(0.02, 0.01, 0.05, 0.6)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(band)
 	title_label = _make(3.0, Color(0.85, 0.7, 0.3))
 	name_label = _make(8.0, Color(1.0, 0.85, 0.4))
 	name_label.dance = true
@@ -49,6 +54,9 @@ func _layout() -> void:
 	var alto_nombre: float = float(name_label.layout().size.y + 2) * float(name_label.cube)
 	name_label.y_offset = desc_label.y_offset - alto_nombre + 14.0
 	title_label.y_offset = name_label.y_offset - 32.0
+	var arriba: float = title_label.y_offset + 4.0
+	band.position = Vector2(0, arriba)
+	band.size = Vector2(size.x, maxf(abajo - arriba + 14.0, 0.0))
 
 
 ## Empieza la torre con una prueba: aparece, se queda y se desvanece lento.

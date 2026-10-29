@@ -10,6 +10,9 @@ const Scenarios := preload("res://scripts/datos/scenarios.gd")
 const ScenarioScreen := preload("res://scripts/ui/scenario_screen.gd")
 const CasinoScene := preload("res://scripts/casino/casino_scene.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
+const Items := preload("res://scripts/datos/items.gd")
+const Trials := preload("res://scripts/datos/trials.gd")
+const ItemBar := preload("res://scripts/ui/item_bar.gd")
 
 var fails := 0
 
@@ -25,6 +28,8 @@ func _init() -> void:
 	Profile.reset()
 	test_switch()
 	test_profile()
+	test_recortes_de_premios()
+	await test_barras_vacias()
 	await test_scenarios()
 	await test_menu()
 	await test_casino()
@@ -47,6 +52,45 @@ func test_switch() -> void:
 	check(Demo.save_dir() == "user://demo", "la demo guarda aparte")
 	Demo.forced = 0
 	check(Demo.save_dir() == "user://", "el juego completo guarda donde siempre")
+
+
+## En la demo no salen premios que no se pueden usar (blackjack, tragamonedas, bombas) y Todo o nada no cae antes del último casino; el juego completo sigue igual.
+func test_recortes_de_premios() -> void:
+	Demo.forced = 1
+	var visibles := 0
+	for tier in [Items.Tier.CONSUMIBLE, Items.Tier.COMUN, Items.Tier.RARO, Items.Tier.EPICO]:
+		for it in Items.by_tier(tier):
+			visibles += 1
+			check(not Items.DEMO_SIN_USO.has(it.id), "en la demo no sale %s" % it.id)
+	check(visibles > 10, "la demo conserva premios en todos los niveles (%d)" % visibles)
+	var pool: Array = Trials.CATALOG.keys()
+	for semilla in 40:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = semilla
+		var plan: Dictionary = Trials.draw_schedule(pool, rng)
+		for st in plan:
+			if int(st) < Demo.LAST_STAGE:
+				check(str(plan[st]) != "todo_o_nada", "en la demo Todo o nada no cae en la etapa %d (semilla %d)" % [int(st), semilla])
+	Demo.forced = 0
+	var todos := 0
+	for it in Items.ALL:
+		if Items.DEMO_SIN_USO.has(it.id) and Items.is_available(it):
+			todos += 1
+	check(todos == Items.DEMO_SIN_USO.size(), "con la demo apagada esos premios siguen saliendo")
+
+
+## Las casillas de ítems no se dibujan mientras no hay nada que mostrar.
+func test_barras_vacias() -> void:
+	var run := RunState.new()
+	var barra := ItemBar.new()
+	root.add_child(barra)
+	barra.setup(run, ItemBar.Kind.BOOST)
+	check(barra.modulate.a == 0.0 and barra.slots.size() > 0, "sin boosts la barra no se dibuja (pero conserva sus casillas)")
+	run.boosts.assign(["aire_extra"])
+	barra.refresh()
+	check(barra.modulate.a == 1.0, "con un boost la barra aparece")
+	barra.queue_free()
+	await process_frame
 
 
 func test_profile() -> void:

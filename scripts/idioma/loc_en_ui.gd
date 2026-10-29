@@ -33,6 +33,8 @@ const TABLE := {
 	"Vista de toda la torre": "View of the whole tower",
 	"Paneles de información y de ítems (mantener o alternar, ver Opciones)": "Information and items panels (hold or toggle, see Options)",
 	"Reintentar (−1 vida)": "Retry (−1 life)",
+	"Vuelves a empezar la sala; el Tótem te salva la vida.": "You start the room again; the Totem saves your life.",
+	"Vuelves a empezar la sala. Vidas que te quedan: %d.": "You start the room again. Lives left: %d.",
 	# --- HUD y mensajes de la torre (main.gd) ---
 	"Empezar": "Start",
 	"Ayuda de profundidad: ninguna": "Depth aid: none",
