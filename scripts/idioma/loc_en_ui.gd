@@ -80,7 +80,6 @@ const TABLE := {
 	"Bolsas": "Bags",
 	"No alcanza la claridad (el giro cuesta %d)": "Not enough clarity (the spin costs %d)",
 	"Giro": "Spin",
-	"Aprieta GIRAR": "Press SPIN",
 	"No alcanza la claridad para el giro": "Not enough clarity for the spin",
 	"¡Segunda vuelta!": "Second spin!",
 	"¡Cayó una casilla de %s! %s: +%d de claridad.": "It landed on a %s slot! %s: +%d clarity.",

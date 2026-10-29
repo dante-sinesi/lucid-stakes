@@ -42,7 +42,7 @@ func test_abrir_y_premios() -> void:
 	var m := make()
 	var s = m[0]
 	var run = m[1]
-	check(s.can_spin() and not s.spin_button.disabled and s.result_label.text.contains("GIRAR"), "al abrir se puede girar (no hay nada que elegir)")
+	check(s.can_spin() and not s.spin_button.disabled, "al abrir se puede girar (no hay nada que elegir)")
 	check(s.wheel.tiers == Roulette.wheel_tiers(run) and s.price_counter.value == Roulette.spin_price(run), "la rueda muestra las rarezas y la pantalla lo que cuesta el giro")
 	# Ventana de premios: ícono, descripción y probabilidad de cada premio posible, por rareza
 	s.open_prizes()

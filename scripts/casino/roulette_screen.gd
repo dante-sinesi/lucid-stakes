@@ -409,7 +409,7 @@ func _refresh() -> void:
 	elif not run.can_afford(price):
 		result_label.text = "No alcanza la claridad para el giro"
 	else:
-		result_label.text = "Aprieta GIRAR"
+		result_label.text = ""   # (la botonera de abajo ya dice "Espacio Girar")
 
 
 func _exit_tree() -> void:

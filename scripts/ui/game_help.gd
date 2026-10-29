@@ -24,9 +24,9 @@ signal closed
 ## dibujan como la tecla (con teclado) o el botón (con mando) que corresponde, con el mismo diseño de las botoneras.
 const PAGES := {
 	"ruleta": [
-		{"title": "La ruleta", "art": "ruleta_rueda", "text": "Cubres casillas del 1 al 12; la 0 es de la casa."},
-		{"title": "Tipos de apuesta", "art": "ruleta_apuestas", "text": "Pleno cubre 1 casilla (épicos), Terna 3 (raros), Mitad 6 (comunes) y Rango 9 (consumibles). Menos casillas, mejor premio."},
-		{"title": "Si pierdes", "art": "ruleta_perder", "text": "Si la bola cae fuera de lo que cubriste, o en el 0, pierdes la ficha. La ficha sube con cada etapa."},
+		{"title": "La ruleta", "art": "ruleta_rueda", "text": "Todas las casillas dan premio. Un giro cuesta 3 fichas, y la ficha sube con cada etapa."},
+		{"title": "Las casillas", "art": "ruleta_apuestas", "text": "Hay 1 casilla épica, 2 raras, 4 comunes y 6 de bolsas de claridad. Cada una da un premio de su rareza."},
+		{"title": "Sin perder", "art": "ruleta_perder", "text": "No se pierde: una bolsa devuelve claridad, aunque menos de lo que costó el giro. Lo bueno son los ítems."},
 		{"title": "La vitrina", "art": "ruleta_vitrina", "text": "Rotar la vitrina cuesta una ficha, y una más cada vez."},
 	],
 	"tragamonedas": [
@@ -486,18 +486,16 @@ class _Art extends Control:
 		match kind:
 			"ruleta_rueda":
 				var radius := 84.0
+				var tiers: Array = [EPIC, CONSUM, COMMON, CONSUM, RARE, CONSUM, COMMON, CONSUM, RARE, COMMON, CONSUM, COMMON, CONSUM]
 				for i in 13:
 					var a := float(i) / 13.0 * TAU - PI * 0.5
-					var col := REDC if i == 0 else (LILAC if i % 2 == 0 else GOLDC)
-					_cube(c + Vector2(cos(a), sin(a)) * radius, 28.0, col)
-				_txt("0", c + Vector2(0, -radius - 30.0), 3.0, REDC)
+					_cube(c + Vector2(cos(a), sin(a)) * radius, 28.0, tiers[i])
 				var ba := float(7) / 13.0 * TAU - PI * 0.5 + _t * 0.8
 				_cube(c + Vector2(cos(ba), sin(ba)) * (radius - 30.0), 14.0, Color.WHITE)
-				_txt("1-12", c, 3.0, GOLDC)
 			"ruleta_apuestas":
 				var cols := [EPIC, RARE, COMMON, CONSUM]
-				var counts := [1, 3, 6, 9]
-				var names := ["EPICO", "RARO", "COMUN", "CONSUMIBLE"]
+				var counts := [1, 2, 4, 6]
+				var names := ["EPICO", "RARO", "COMUN", "BOLSAS"]
 				for row in 4:
 					var y := 30.0 + row * 50.0
 					_txt(str(counts[row]), Vector2(c.x - 250.0, y), 4.0, GOLDC)
@@ -509,11 +507,10 @@ class _Art extends Control:
 				for i in 3:
 					_chip(Vector2(c.x - 200.0, c.y + 30.0 - i * 18.0))
 				_arrow(Vector2(c.x - 140.0, c.y), Vector2(c.x - 40.0, c.y), Color(0.7, 0.65, 0.85))
-				_cube(Vector2(c.x + 50.0, c.y), 64.0, REDC)
-				_txt("0", Vector2(c.x + 50.0, c.y), 5.0, Color.WHITE)
+				_cube(Vector2(c.x + 50.0, c.y), 64.0, CONSUM)
 				_cube(Vector2(c.x + 50.0, c.y - 50.0 - bob), 18.0, Color.WHITE)
-				for i in 3:
-					draw_rect(Rect2(Vector2(c.x + 160.0 + i * 36.0, c.y - 10.0 + i * 8.0), Vector2(26, 26)), Color(GOLDC, 0.55 - i * 0.16))
+				for i in 2:
+					_chip(Vector2(c.x + 170.0 + i * 36.0, c.y + 14.0 - i * 10.0))
 			"ruleta_vitrina":
 				var cols2 := [EPIC, RARE, COMMON]
 				for i in 3:

@@ -198,5 +198,4 @@ const TABLE := {
 	"Fianza devuelta": "Deposit returned",
 	"Sin costo": "No cost",
 	"Sin recompensa": "No reward",
-	"Presiona Espacio para continuar la torre": "Press Space to continue the tower",
 }
