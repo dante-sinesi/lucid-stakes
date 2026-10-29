@@ -261,7 +261,7 @@ func _nueva_torre() -> void:
 		var m_est = Vista.motor_de(t.salas[i].d)
 		if bool(reglas.get("a_oscuras", false)):   # (A oscuras: las salas de arriba también se ven con sus bloques negros)
 			m_est.oscuros = Torre.oscuros_de(m_est, int(t.salas[i].id))
-		Vista.poblar(nodo, m_est, {}, false, false, true, true, false)
+		Vista.poblar(nodo, m_est, {}, false, false, true, true, portal != null and i == t.salas.size() - 1)
 		estaticas.append(nodo)
 	_poner_portal()
 	_refrescar()
@@ -276,7 +276,7 @@ func _refrescar(animar := false) -> void:
 			continue
 		n.visible = i > t.indice   # la actual se dibuja viva; las de abajo ya cayeron
 	vivo.position = Vector3(0, int(t.sala_actual().off), 0)
-	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true, false)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
+	Vista.poblar(vivo, t.motor, t.encendidos, not en_juego, false, false, true, portal != null and t.indice == t.salas.size() - 1)   # (la grilla del anillo es del prototipo: dentro del juego no se dibuja)
 	_animar_bloques(animar or t.muerta)
 	_limitar_sombras()
 	_poner_gato(animar)
@@ -332,7 +332,7 @@ func _animar_bloques(animar: bool) -> void:
 	_sala_dibujada = t.indice
 
 
-## El cubo-portal sobre el bloque de salida de la última sala: ocupa la celda donde el personaje termina el último movimiento (el último paso lo mete en el portal, todo en horizontal).
+## El cubo-portal sobre el bloque de salida de la última sala.
 func _poner_portal() -> void:
 	if portal == null or t == null or t.salas.is_empty():
 		return
@@ -340,7 +340,7 @@ func _poner_portal() -> void:
 	var s: Vector2i = Torre.salida_xz(ultima.d)
 	if portal.get_parent() == null:
 		add_child(portal)
-	portal.position = Vector3(s.x + 0.5, int(ultima.off) + int(ultima.d.meta) + 1.5, s.y + 0.5)
+	portal.position = Vector3(s.x + 0.5, int(ultima.off) + int(ultima.d.meta) + 0.5, s.y + 0.5)
 
 
 ## Dónde están los pies del personaje (colgado, el cuerpo se arrima al bloque del que se agarra).
@@ -396,32 +396,33 @@ func _limitar_sombras() -> void:
 				g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if n.position.y + g.position.y <= tope else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
-## La llegada al portal: el último paso del personaje lo mete en la celda del cubo-portal (un solo desplazamiento, sin subir a nada), atraviesa la cara del cubo y adentro se achica hasta desaparecer; el cubo late y suelta el destello dorado. Dura menos de un segundo (el juego espera antes de seguir).
+## La llegada al portal: el último movimiento llevaría al personaje a subirse al cubo; eso se corta y entra en un solo desplazamiento horizontal desde donde estaba, atraviesa la cara del cubo y adentro se achica hasta desaparecer; el cubo late y suelta el destello dorado. Dura menos de un segundo (el juego espera antes de seguir).
 func _entrar_portal() -> void:
 	if portal == null or not is_instance_valid(portal) or gato_nodo == null:
 		return
 	_entrando_portal = true
+	var desde := gato_nodo.position   # (todavía donde estaba antes del movimiento: el paso hacia arriba no se anima)
 	if _paso_tween != null and _paso_tween.is_valid():
 		_paso_tween.kill()
 	await get_tree().process_frame
 	if not _entrando_portal or not is_inside_tree():
 		return
-	var desde := gato_nodo.position
+	if _paso_tween != null and _paso_tween.is_valid():   # (el refresco que sigue al movimiento lo arrancó: se corta)
+		_paso_tween.kill()
+	gato_nodo.position = desde
 	var centro := portal.position - Vector3(0, 0.5, 0)   # (los pies, en el centro de la celda del portal)
 	var aviso := centro - desde
 	aviso.y = 0.0
 	var inicio := gato_nodo.rotation.y
 	var adentro := atan2(aviso.x, aviso.z) if aviso.length() > 0.01 else inicio
 	animador.reproducir(_tipo_anim, 0.8)
-	var tw := create_tween()
+	var tw := create_tween()   # (un solo movimiento: se desliza hasta el centro de la celda y se achica al cruzar la cara)
 	tw.tween_method(func(k: float) -> void:
-		gato_nodo.position = desde.lerp(centro, smoothstep(0.0, 1.0, k))
-		gato_nodo.rotation.y = lerp_angle(inicio, adentro, clampf(k / 0.4, 0.0, 1.0)), 0.0, 1.0, STEP_TIME * 1.6)
-	tw.tween_method(func(k: float) -> void:
-		gato_nodo.position = centro + Vector3(0, 0.35 * k, 0)
-		gato_nodo.scale = Vector3.ONE * lerpf(1.0, 0.03, smoothstep(0.0, 1.0, k)), 0.0, 1.0, 0.4)
+		gato_nodo.position = desde.lerp(centro, smoothstep(0.0, 1.0, k)) + Vector3(0, 0.2 * sin(k * PI), 0)
+		gato_nodo.rotation.y = lerp_angle(inicio, adentro, clampf(k / 0.3, 0.0, 1.0))
+		gato_nodo.scale = Vector3.ONE * lerpf(1.0, 0.03, smoothstep(0.45, 1.0, k)), 0.0, 1.0, 0.5)
 	var latido := create_tween()   # (el cubo-portal late al recibirlo)
-	latido.tween_interval(STEP_TIME * 1.6 + 0.1)
+	latido.tween_interval(0.3)
 	latido.tween_property(portal, "scale", Vector3.ONE * 1.3, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	latido.tween_property(portal, "scale", Vector3.ONE, 0.25)
 	tw.tween_callback(func():
@@ -514,7 +515,7 @@ func _poner_camara(animar: bool) -> void:
 		tam = maxf(alto * 0.75, 24.0)
 	if _camara_tween != null and _camara_tween.is_valid():
 		_camara_tween.kill()
-	var libre := (gatito_actuando or _gatito_vuelve) and not panorama   # (mientras Ama mueve bloques la cámara está en la sala y vuelve sola: ver `_gatito_camara`)
+	var libre := (gatito_actuando or _gatito_vuelve or _entrando_portal) and not panorama   # (mientras Ama mueve bloques la cámara está en la sala y vuelve sola: ver `_gatito_camara`; al entrar al portal sigue sola al personaje, sin saltar al punto donde el movimiento lo habría subido)
 	if animar:
 		_camara_tween = create_tween().set_parallel(true)
 		if not libre:

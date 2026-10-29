@@ -3,9 +3,9 @@ extends Control
 ## va a salir en cada uno de los 5 dados (clic en un dado: sube; flechas ▲ ▼ o la rueda: cambian; con el teclado, izquierda y derecha eligen
 ## el dado, arriba y abajo cambian la cara, 1 a 6 la fijan y Enter tira; también se puede con WASD: A y D eligen el dado, W y S cambian la
 ## cara, y E empieza cuando la torre está lista) y se tiran: caen desde arriba, rebotan y se frenan, y se revelan de a uno.
-##   0 aciertos: nada, una frase del tabernero     1: +2 de claridad     2: +8
-##   3: +25 de claridad y 1 de Luz                 4: +80, 2 de Luz y un cosmético común (a veces raro)
-##   5: +150, 5 de Luz y un cosmético raro (a veces épico)   (1 chance en 7.776 por tiro)
+##   0 o 1 aciertos: nada, una frase del tabernero     2: 5 % de la claridad que tienes (mínimo 8)     3: 10 % (mínimo 25)
+##   4: 20 % (mínimo 80) y a veces un cosmético común o raro     5: 50 % (mínimo 150) y un cosmético raro o épico   (1 chance en 7.776 por tiro)
+## Con C se abre la ventana de premios (`dice_prizes_window.gd`).
 ## La trampa: con los dados ya revelados, los que fallaron se pueden amañar pagando Luz (2 el primero, 3 el segundo, 4 el tercero...: sube
 ## con cada uno y vuelve a empezar en cada tiro); con Luz de sobra se pueden comprar los cinco.
 ## No te saca del juego: jugarlo es obligatorio. Cuando se terminan las tiradas aparece a la derecha el botón "Empezar": gris y con una espiral
@@ -20,6 +20,7 @@ const VFont := preload("res://scripts/ui/voxel_font.gd")
 const UI := preload("res://scripts/ui/menu_ui.gd")
 const Dice3D := preload("res://scripts/casino/dice_3d.gd")
 const GameHelp := preload("res://scripts/ui/game_help.gd")
+const PrizesWindow := preload("res://scripts/casino/dice_prizes_window.gd")
 const PadHints := preload("res://scripts/ui/pad_hints.gd")
 const PadGlyph := preload("res://scripts/ui/pad_glyph.gd")
 const VoxelLabel := preload("res://scripts/ui/voxel_label.gd")
@@ -44,14 +45,15 @@ const SHIFT := 0.0           # (antes el juego se corría a la izquierda para de
 enum Phase { IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE }   # HOLD: los dados acertados quedan retenidos y se espera la próxima tirada de los que fallaron
 
 ## Premios por cantidad de aciertos al terminar las tiradas (una sola predicción y hasta THROWS tiradas para cumplirla).
+## `claridad`: el mínimo que se gana; `pct`: la parte de la claridad que tienes en ese momento (se gana lo que sea mayor, ver `claridad_para`).
 ## `cosmetic`: las probabilidades de cada rareza del cosmético que se da ({} = ninguno); `cosmetic_chance`: con qué probabilidad se da (1 = siempre).
 const PRIZES := {
-	0: {"claridad": 0, "luz": 0, "cosmetic": {}},
-	1: {"claridad": 0, "luz": 0, "cosmetic": {}},
-	2: {"claridad": 8, "luz": 0, "cosmetic": {}},
-	3: {"claridad": 25, "luz": 0, "cosmetic": {}},
-	4: {"claridad": 80, "luz": 0, "cosmetic": {"comun": 0.85, "raro": 0.15}, "cosmetic_chance": 0.15},
-	5: {"claridad": 150, "luz": 0, "cosmetic": {"raro": 0.7, "epico": 0.3}, "cosmetic_chance": 1.0},
+	0: {"claridad": 0, "pct": 0.0, "luz": 0, "cosmetic": {}},
+	1: {"claridad": 0, "pct": 0.0, "luz": 0, "cosmetic": {}},
+	2: {"claridad": 8, "pct": 0.05, "luz": 0, "cosmetic": {}},
+	3: {"claridad": 25, "pct": 0.10, "luz": 0, "cosmetic": {}},
+	4: {"claridad": 80, "pct": 0.20, "luz": 0, "cosmetic": {"comun": 0.85, "raro": 0.15}, "cosmetic_chance": 0.15},
+	5: {"claridad": 150, "pct": 0.50, "luz": 0, "cosmetic": {"raro": 0.7, "epico": 0.3}, "cosmetic_chance": 1.0},
 }
 
 ## Lo que dice el tabernero según los aciertos.
@@ -94,6 +96,8 @@ var _round_done := 0
 var _reveal_t := [-99.0, -99.0, -99.0, -99.0, -99.0]   # cuándo se reveló cada dado (para su saltito)
 var selected := 0              # dado elegido con el teclado
 var closing := false
+var claridad_actual := 0         # la claridad del run al abrir los dados (la ventana de premios muestra cuánto darían ahora)
+var prizes_window: Control
 var paused := false              # el tabernero está hablando encima: los dados no responden hasta que termine
 var tower_ready := false       # la torre ya se generó: se puede empezar
 var auto_start := false        # pruebas: apenas la torre está lista se cierra solo (sin esperar el botón)
@@ -201,6 +205,9 @@ func _init() -> void:
 	loading_spiral.owner_game = self
 	loading_spiral.only_at_end = true
 	add_child(loading_spiral)
+	prizes_window = PrizesWindow.new()
+	add_child(prizes_window)
+	hints.add_extra({"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Premios"), "call": open_prizes})
 	GameHelp.attach(self, "dados")   # la ayuda de los dados: se abre sola la primera vez que se juegan y con H o Select
 
 
@@ -357,7 +364,17 @@ func hits() -> int:
 
 ## El premio de un número de aciertos (una copia: se puede modificar).
 static func prize_for(n: int) -> Dictionary:
-	return (PRIZES[clampi(n, 0, DICE)] as Dictionary).duplicate(true)
+	var p: Dictionary = (PRIZES[clampi(n, 0, DICE)] as Dictionary).duplicate(true)
+	p["hits"] = clampi(n, 0, DICE)
+	return p
+
+
+## La claridad que dan `n` aciertos cuando se tiene `claridad_ahora`: su parte (`pct`) de ella, y nunca menos que el mínimo.
+static func claridad_para(n: int, claridad_ahora: int) -> int:
+	var p: Dictionary = PRIZES[clampi(n, 0, DICE)]
+	if int(p.claridad) == 0 and float(p.pct) == 0.0:
+		return 0
+	return maxi(int(p.claridad), int(round(float(p.pct) * float(maxi(claridad_ahora, 0)))))
 
 
 ## Los dados que fallaron (los que se vuelven a tirar).
@@ -438,7 +455,7 @@ func _update_hints() -> void:
 		Phase.HOLD:
 			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Tirar de nuevo"), "dim": not can_throw(), "call": throw_dice}])
 		Phase.RESULT, Phase.DONE:
-			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Empezar") if tower_ready else Loc.t("Generando la torre..."), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
+			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Continuar") if tower_ready else Loc.t("Generando la torre..."), "dim": not tower_ready, "call": func(): if tower_ready: request_close()}])
 		_:
 			hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Saltear")}])
 
@@ -541,8 +558,26 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 
 
+## La ventana con lo que da cada cantidad de aciertos (los dados no responden mientras está abierta).
+func open_prizes() -> void:
+	if not visible or paused or prizes_window.visible or phase == Phase.ROLLING or phase == Phase.REVEAL:
+		return
+	paused = true
+	prizes_window.open_window(claridad_actual)
+	if not prizes_window.closed.is_connected(_prizes_closed):
+		prizes_window.closed.connect(_prizes_closed)
+
+
+func _prizes_closed() -> void:
+	paused = false
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if paused or not visible or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	if event.keycode == KEY_C:
+		open_prizes()
+		get_viewport().set_input_as_handled()
 		return
 	var go: bool = event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
 	if go and (phase == Phase.ROLLING or phase == Phase.REVEAL):   # Espacio durante la animación: se saltea (se ven los resultados; para entrar a la torre hay que apretar otra vez)

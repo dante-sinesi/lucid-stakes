@@ -246,12 +246,14 @@ func test_main() -> void:
 	await wait_tower(main)
 	var info := DiceGame.prize_for(2)
 	main._on_dice_prize(info)
-	check(info.granted == 8 and main.run.claridad == 8 and main.run.dice_claridad == 8, "los dados dan claridad al run")
-	# tope por partida
-	main.run.dice_claridad = RunState.DICE_CAP - 5
+	check(info.granted == 8 and main.run.claridad == 8, "los dados dan claridad al run (el mínimo, con poca claridad)")
+	# un porcentaje de la claridad que se tiene, y nunca menos que el mínimo
+	main.run.claridad = 1000
 	var info2 := DiceGame.prize_for(3)
 	main._on_dice_prize(info2)
-	check(info2.granted == 5 and main.run.dice_claridad == RunState.DICE_CAP, "la claridad de los dados tiene tope por partida")
+	check(info2.granted == 100 and main.run.claridad == 1100, "con 1000 de claridad, 3 aciertos dan el 10 %% (%d)" % int(info2.granted))
+	check(DiceGame.claridad_para(2, 1000) == 50 and DiceGame.claridad_para(4, 1000) == 200 and DiceGame.claridad_para(5, 1000) == 500, "2, 4 y 5 aciertos dan el 5, 20 y 50 %")
+	check(DiceGame.claridad_para(5, 20) == 150 and DiceGame.claridad_para(2, 0) == 8 and DiceGame.claridad_para(1, 5000) == 0, "con poca claridad rige el mínimo y con 0 o 1 acierto no hay nada")
 	var info3 := DiceGame.prize_for(4)
 	info3["cosmetic_chance"] = 1.0   # (acá se prueba el cosmético: en el juego sale con 15 % de chance)
 	var before: int = main.run.claridad
@@ -259,9 +261,8 @@ func test_main() -> void:
 	check(Profile.luz() == 0 and Profile.owned_cosmetics().is_empty() and main.run.dice_pending.cosmetics.size() == 1, "los dados dejan el cosmético pendiente: no pasan al perfil hasta superar una torre")
 	main._claim_dice_rewards()
 	check(main.run.dice_pending.luz == 0 and main.run.dice_pending.cosmetics.is_empty(), "al reclamarlos el run queda sin pendientes")
-	check(info3.granted == 0 and main.run.claridad == before and Profile.luz() == 0, "con el tope lleno ya no da claridad (y los dados no dan Luz)")
+	check(info3.granted == DiceGame.claridad_para(4, before) and main.run.claridad == before + int(info3.granted) and Profile.luz() == 0, "4 aciertos dan su porcentaje (y los dados no dan Luz)")
 	check(str(info3.cosmetic_name) != "" and Cosmetics.get_cosmetic(Profile.owned_cosmetics()[0]).rarity in ["comun", "raro"], "4 aciertos dan un cosmetico comun o raro")
-	check(RunState.from_dict(JSON.parse_string(JSON.stringify(main.run.to_dict()))).dice_claridad == RunState.DICE_CAP, "el tope se guarda con el run")
 	# cosmetico
 	var info5 := DiceGame.prize_for(5)
 	main._on_dice_prize(info5)
@@ -273,7 +274,7 @@ func test_main() -> void:
 	var before6: int = main.run.claridad
 	main._on_dice_prize(info6)
 	main._claim_dice_rewards()
-	check(not info6.has("cosmetic_name") and info6.granted == 100 and main.run.claridad == before6 + 100, "si ya los tiene todos, da claridad en su lugar")
+	check(not info6.has("cosmetic_name") and info6.granted == DiceGame.claridad_para(5, before6) + 100 and main.run.claridad == before6 + int(info6.granted), "si ya los tiene todos, da 100 de claridad más en su lugar")
 	# el aspecto elegido se ve en el personaje de la torre
 	Profile.equip("copa")
 	main.restart()
@@ -310,7 +311,7 @@ func _play_out(d) -> void:
 		guard += 1
 
 
-## La pantalla de carga: al empezar cada torre aparecen los dados del tabernero (con Empezar habilitado al terminar las tiradas) y Empezar entra a la torre.
+## Los dados salen al entrar al casino (superada la torre), no al empezar la siguiente: al terminarlos se ve el casino.
 func test_loading_screen() -> void:
 	var main := make_main()
 	await wait_tower(main)
@@ -320,17 +321,20 @@ func test_loading_screen() -> void:
 	main.new_tower(4242)   # (sin esperar: se mira cuadro a cuadro)
 	for i in 6:
 		await process_frame
-	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.visible, "al empezar la torre se abren los dados y hay que jugarlos (todavía no hay botón Empezar)")
+	check(not main.dice.visible and main.torre != null and main.torre.semilla == 4242, "al empezar la torre no se abren los dados")
+	main.enter_casino()
+	for i in 6:
+		await process_frame
+	check(main.dice.visible and main.dice.tower_ready and not main.dice.start_button.visible and main.casino == null, "al entrar al casino se abren los dados antes que el casino (todavía no hay botón Empezar)")
 	check(main.banner.text == "" and main.dice.status_label.text == "", "sin ningún cartel de la torre: sólo los dados")
 	main.dice.request_close()
 	check(main.dice.visible and not main.dice.closing, "no se puede saltear el juego")
 	await _play_out(main.dice)
 	check(main.dice.start_button.visible and not main.dice.start_button.disabled and not main.dice.start_button.get_node("espiral").visible, "terminadas las tiradas: Empezar listo para apretar")
-	check(main.dice.start_button.text == "Empezar" and main.dice.start_button.position.x + main.dice.start_button.size.x > 0.0, "el botón dice Empezar")
 	main.dice.start_button.pressed.emit()
-	for i in 4:
+	for i in 8:
 		await process_frame
-	check(not main.dice.visible and main.torre != null and main.torre.semilla == 4242, "Empezar cierra los dados y se entra a la torre")
+	check(not main.dice.visible and main.casino != null, "al cerrar los dados se ve el casino")
 	main.dice_always = false
 	# Volver al menú con los dados abiertos los cierra
 	main.dice.open()

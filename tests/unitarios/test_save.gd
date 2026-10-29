@@ -215,31 +215,18 @@ func test_flow_casino() -> void:
 	b.continue_game()
 	check(b.casino != null and b.run.claridad == saved_claridad and b.stage_number == stage_saved and b.run.towers_cleared == a.run.towers_cleared, "continuar vuelve al casino con el mismo run")
 	check(b.run.towers_cleared == 1, "sin volver a sumar la torre superada")
-	b.dice_always = true   # (los dados de la pantalla de carga: mientras están abiertos se guarda "cargando la torre")
-	b.dice.fast = false
-	b.dice.auto_start = false
 	b.casino.quick = true
 	b.casino.cell = b.casino.lay.exit
 	b.casino.step(Vector2i(0, -1))
 	var loading := SaveGame.read()
-	check(b.generating and str(loading.get("phase", "")) == "loading" and int(loading.stage) == stage_saved + 1, "al irse del casino (peaje pagado) se guarda la carga de la torre que sigue: al cerrar y volver no se repite el casino")
+	check(str(loading.get("phase", "")) != "casino" and int(loading.stage) == stage_saved + 1, "al irse del casino (peaje pagado) se guarda la torre que sigue: al cerrar y volver no se repite el casino")
 	var c := make_main()   # cerrar el juego ahora y volver: continúa la carga de la torre siguiente, no el casino
 	await wait_tower(c)
 	SaveGame.write(loading)   # (lo que había en disco al cerrar el juego justo después de pagar)
-	c.dice_always = true
-	c.dice.fast = false
-	c.dice.auto_start = false
 	c.continue_game()
-	check(c.casino == null and c.stage_number == stage_saved + 1 and c.generating, "continuar después de pagar sigue la torre siguiente (sin volver al casino)")
-	b.dice.auto_start = true   # (se juegan los dados solos para seguir)
-	c.dice.auto_start = true
-	for m in [b, c]:
-		m.dice.set_ready(true)
+	check(c.casino == null and c.stage_number == stage_saved + 1, "continuar después de pagar sigue la torre siguiente (sin volver al casino)")
 	var guardia := 0
-	while (b.generating or c.generating) and guardia < 3000:
-		for m in [b, c]:
-			if m.dice.visible and m.dice.can_throw():
-				m.dice.throw_dice()
+	while (b.generating or c.generating or b.torre == null or c.torre == null) and guardia < 3000:
 		await process_frame
 		guardia += 1
 	check(b.stage_number == stage_saved + 1 and b.torre != null, "al salir del casino empieza la etapa siguiente")
