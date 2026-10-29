@@ -11,6 +11,7 @@ const ScenarioScreen := preload("res://scripts/ui/scenario_screen.gd")
 const CasinoScene := preload("res://scripts/casino/casino_scene.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
 const Items := preload("res://scripts/datos/items.gd")
+const DiceGame := preload("res://scripts/casino/dice_game.gd")
 const Trials := preload("res://scripts/datos/trials.gd")
 const ItemBar := preload("res://scripts/ui/item_bar.gd")
 
@@ -98,17 +99,27 @@ func test_profile() -> void:
 	Profile.reset()
 	check(Profile.owned_characters() == ["dante", "gaby", "gato", "perro"], "en la demo: Dante, Gaby, gatito y perrito (%s)" % str(Profile.owned_characters()))
 	check(not Profile.has_character("conejo") and not Profile.unlock_character("conejo"), "los demás personajes no se tienen ni se pueden ganar")
-	check(Profile.has_cosmetic("corona") and Profile.has_cosmetic("gorro_lana") and Profile.has_cosmetic("remera") and Profile.has_cosmetic("capa"), "vienen la corona, el gorro de lana, la remera y la capa")
+	check(not Profile.has_cosmetic("corona") and not Profile.has_cosmetic("gorro_lana") and not Profile.has_cosmetic("remera") and not Profile.has_cosmetic("capa"), "en la demo no se tiene ningún cosmético de entrada: se ganan con los dados")
 	check(not Profile.has_cosmetic("copa") and not Profile.has_cosmetic("armadura") and not Profile.has_cosmetic("halo"), "los demás cosméticos no se tienen")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
-	var got := 0
-	for i in 200:
+	var salieron := {}
+	for i in 300:
 		var c := Cosmetics.roll({"comun": 0.6, "raro": 0.3, "epico": 0.1}, Profile.owned_cosmetics(), rng)
 		if not c.is_empty():
-			got += 1
-	check(got == 0, "los dados no regalan lo que la demo no incluye (salieron %d)" % got)
-	check(Cosmetics.draw_unowned(Profile.owned_cosmetics(), rng).is_empty(), "ni draw_unowned")
+			salieron[str(c.id)] = true
+	var solo_demo := true
+	for id in salieron:
+		solo_demo = solo_demo and ["corona", "gorro_lana", "remera", "capa"].has(id)
+	check(salieron.size() == 4 and solo_demo, "los dados sólo regalan los 4 cosméticos de la demo (%s)" % str(salieron.keys()))
+	for id in ["corona", "gorro_lana", "remera", "capa"]:
+		Profile.data.cosmetics[id] = true
+	check(Cosmetics.draw_unowned(Profile.owned_cosmetics(), rng).is_empty(), "y cuando ya los tienes todos no sale nada más")
+	var tres := DiceGame.prize_for(3)
+	check(not (tres.cosmetic as Dictionary).is_empty() and float(tres.cosmetic_chance) > 0.0, "en la demo con 3 aciertos puede salir un cosmético")
+	Demo.forced = 0
+	check((DiceGame.prize_for(3).cosmetic as Dictionary).is_empty(), "en el juego completo con 3 aciertos no sale cosmético")
+	Demo.forced = 1
 	Demo.forced = 0
 	Profile.reset()
 	check(Profile.has_character("conejo") == false and Profile.owned_characters().size() == 4 and not Profile.has_cosmetic("corona"), "apagada la demo, el perfil es el de siempre")
@@ -172,16 +183,16 @@ func test_menu() -> void:
 	mm.buttons["cosmeticos"].pressed.emit()
 	var cs = mm.cosmetics
 	check(cs.tiles["gato"].owned and cs.tiles["perro"].owned and cs.tiles["dante"].owned and not cs.tiles["conejo"].owned, "los personajes de la demo están y los otros salen con ?")
-	check(str(cs.count_label.text).contains("4 de 4"), "los contadores de cosméticos cuentan sólo lo de la demo (%s)" % str(cs.count_label.text))
+	check(str(cs.count_label.text).contains("0 de 4"), "los contadores de cosméticos cuentan sólo lo de la demo (%s)" % str(cs.count_label.text))
 	cs.set_tab("gorros")
-	check(cs.tiles["corona"].owned and cs.tiles["gorro_lana"].owned and not cs.tiles["copa"].owned and not cs.tiles["halo"].owned, "gorros: corona y gorro de lana; el resto con ?")
+	check(not cs.tiles["corona"].owned and not cs.tiles["gorro_lana"].owned and not cs.tiles["copa"].owned and not cs.tiles["halo"].owned, "gorros: al empezar la demo no se tiene ninguno (corona y gorro de lana se ganan con los dados)")
 	cs.tiles["copa"].hovered.emit()
 	check(str(cs.info_label.text).contains("versión completa"), "pasar el mouse por uno bloqueado dice que es del juego completo")
 	cs.set_tab("personajes")
 	cs.tiles["conejo"].hovered.emit()
 	check(str(cs.info_label.text).contains("versión completa"), "idem con un personaje bloqueado")
 	cs.set_tab("ropa")
-	check(cs.tiles["remera"].owned and cs.tiles["capa"].owned and not cs.tiles["armadura"].owned, "prendas: remera y capa; el resto con ?")
+	check(not cs.tiles["remera"].owned and not cs.tiles["capa"].owned and not cs.tiles["armadura"].owned, "prendas: al empezar la demo no se tiene ninguna (remera y capa se ganan con los dados)")
 	main.queue_free()
 	await process_frame
 	Demo.forced = 0

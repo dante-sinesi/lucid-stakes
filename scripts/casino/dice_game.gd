@@ -35,6 +35,7 @@ signal prize(info: Dictionary)   ## el tiro terminó: {hits, claridad, luz, cosm
 signal closed
 
 const THROWS := 3            # tiradas para cumplir la predicción: los dados acertados quedan retenidos y sólo se vuelven a tirar los que fallaron
+const Demo := preload("res://scripts/datos/demo.gd")
 const DICE := 5
 const ROLL_TIME := 1.5       # segundos que ruedan los dados antes de empezar a mostrarse
 const REVEAL_STEP := 0.6     # segundos entre un dado y el siguiente
@@ -47,6 +48,11 @@ enum Phase { IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE }   # HOLD: los dad
 ## Premios por cantidad de aciertos al terminar las tiradas (una sola predicción y hasta THROWS tiradas para cumplirla).
 ## `claridad`: el mínimo que se gana; `pct`: la parte de la claridad que tienes en ese momento (se gana lo que sea mayor, ver `claridad_para`).
 ## `cosmetic`: las probabilidades de cada rareza del cosmético que se da ({} = ninguno); `cosmetic_chance`: con qué probabilidad se da (1 = siempre).
+## En la demo (los 4 cosméticos de la demo se ganan con los dados): con 3 aciertos, a veces uno común; con 4, casi siempre uno común o raro; con 5, igual que siempre.
+const DEMO_COSMETICOS := {
+	3: {"cosmetic": {"comun": 1.0}, "chance": 0.25},
+	4: {"cosmetic": {"comun": 0.6, "raro": 0.4}, "chance": 0.6},
+}
 const PRIZES := {
 	0: {"claridad": 0, "pct": 0.0, "luz": 0, "cosmetic": {}},
 	1: {"claridad": 0, "pct": 0.0, "luz": 0, "cosmetic": {}},
@@ -366,6 +372,10 @@ func hits() -> int:
 static func prize_for(n: int) -> Dictionary:
 	var p: Dictionary = (PRIZES[clampi(n, 0, DICE)] as Dictionary).duplicate(true)
 	p["hits"] = clampi(n, 0, DICE)
+	if Demo.on() and DEMO_COSMETICOS.has(p.hits):   # (en la demo los cosméticos no se tienen de entrada: se ganan con los dados, y salen más seguido porque hay pocos tiros)
+		var d: Dictionary = DEMO_COSMETICOS[p.hits]
+		p["cosmetic"] = (d.cosmetic as Dictionary).duplicate()
+		p["cosmetic_chance"] = d.chance
 	return p
 
 

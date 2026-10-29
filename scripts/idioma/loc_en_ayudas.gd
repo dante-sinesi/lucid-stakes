@@ -50,5 +50,6 @@ const TABLE := {
 	"%d aciertos": "%d hits",
 	"%d %% de tu claridad (+%d)": "%d %% of your clarity (+%d)",
 	"Cosmético común o raro, a veces": "Common or rare cosmetic, sometimes",
+	"Cosmético común, a veces": "Common cosmetic, sometimes",
 	"Cosmético raro o épico": "Rare or epic cosmetic",
 }

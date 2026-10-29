@@ -28,6 +28,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Midas | Purificar un bloque da +200 % de claridad (no se suma con Pies de luz ni Pies de oro). | Épico |
 | Mano de 23 | En el blackjack el tope es 23 en vez de 21. | Épico |
 | Mesa caliente | Todo lo que ganas en el casino paga un 25 % más. | Épico |
+| Casilla de regalo | En la ruleta, cada apuesta cubre una casilla más gratis. | Épico |
 | Pozo del jackpot | Parte de lo que pierdes en el casino va a un pozo; el premio mayor se lo lleva. | Épico |
 | Contratista | Cada contrato paga el doble. | Épico |
 | Pies de luz | Purificar un bloque da +50 % de claridad (no se suma con Pies de oro ni Midas). | Raro |
@@ -45,7 +46,6 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Descuento de Farolín | Farolín cobra un 15 % menos. Se acumula (hasta 2). | Raro (se acumula) |
 | Blackjack de oro | El blackjack natural paga 3 a 1 en vez de 3 a 2. | Raro |
 | Ficha barata | La ficha de todas las mesas cuesta un 20 % menos. Se acumula (hasta 2). | Raro (se acumula) |
-| Casilla de regalo | En la ruleta, cada apuesta cubre una casilla más gratis. | Raro |
 | Racha de la casa | En el casino, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). | Raro |
 | Caja fuerte | Al entrar al casino cobras el 15 % de la claridad con que empezaste la torre. | Raro |
 | Caza recompensas | Un contrato activo más. Se acumula (hasta 2). | Raro (se acumula) |

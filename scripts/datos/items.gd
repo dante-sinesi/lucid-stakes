@@ -101,7 +101,7 @@ const ALL: Array[Dictionary] = [
 		"desc": "El blackjack natural paga 3 a 1 en vez de 3 a 2."},
 	{"id": "ficha_barata", "name": "Ficha barata", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220, "stack": true, "max_stack": 2,
 		"desc": "La ficha de todas las mesas cuesta un 20 % menos. Se acumula (hasta 2)."},
-	{"id": "casilla_de_regalo", "name": "Casilla de regalo", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 210,
+	{"id": "casilla_de_regalo", "name": "Casilla de regalo", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 620,
 		"desc": "En la ruleta, cada apuesta cubre una casilla más gratis."},
 	{"id": "red_de_seguridad", "name": "Red de seguridad", "type": Type.BOOST, "tier": Tier.COMUN, "weight": 1, "value": 100,
 		"desc": "Recuperas el 10 % de cada apuesta perdida."},

@@ -47,7 +47,7 @@ static func load_profile() -> Dictionary:
 	return data
 
 
-## La demo: los 4 personajes, 2 gorros y 2 prendas; el resto no se tiene (ni se puede ganar).
+## La demo: los 4 personajes; de la ropa sólo se pueden ganar (con los dados) 2 gorros y 2 prendas, y no se tiene ninguna de entrada.
 static func _apply_demo() -> void:
 	if not Demo.on():
 		return
@@ -57,8 +57,6 @@ static func _apply_demo() -> void:
 	for id in data.cosmetics.keys():
 		if not Demo.cosmetic_allowed(str(id)):
 			data.cosmetics.erase(id)
-	for id in Demo.HATS + Demo.OUTFITS:
-		data.cosmetics[id] = true
 	if not Demo.character_allowed(str(data.character)):
 		data.character = Characters.DEFAULT
 	if not Demo.cosmetic_allowed(str(data.hat)):
