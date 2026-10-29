@@ -17,10 +17,14 @@ static var aceptados := 0
 const VIDAS := 3
 ## Niveles de dificultad que admite cada sala de la torre (la curva sube de a poco); las dos primeras son de bloques comunes (se aprende a jugar).
 const CURVA := [["facil"], ["facil", "media"], ["media"], ["media", "dificil"], ["dificil"], ["dificil", "pesadilla"]]
-## En qué etapa se habilita cada tipo de bloque especial (hielo 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, trampolín 8).
-const ETAPA_ESPECIAL := {"i": 2, "h": 3, "c": 4, "t": 5, "s": 6, "b": 7, "k": 8}
 const ETAPAS := 15
 ## Cómo corre la dificultad del run la curva de niveles de las salas: p' = p * a + b (p va de 0 a 1 a lo largo de las 15 etapas). Fácil no pasa de salas medias; Pesadilla arranca en medias y termina en pesadillas.
+## Cuántas salas tiene cada torre (todas igual: la dificultad la ponen las salas, no el largo).
+const SALAS_POR_TORRE := 7
+## La dificultad que busca una sala, en bits de complejidad (ver docs/generador.md), según su progreso `p` (0 a 1: etapa y lugar en la torre): [p, bits].
+const BITS_OBJETIVO := [[0.0, 12.0], [0.1, 20.0], [0.2, 32.0], [0.4, 58.0], [0.6, 85.0], [0.75, 110.0], [0.9, 150.0], [1.0, 190.0]]
+## Los bits típicos de cada nivel (para una sala del paquete que no trae su complejidad medida).
+const BITS_DEL_NIVEL := {"facil": 31.0, "media": 83.0, "dificil": 136.0, "pesadilla": 214.0}
 const PENDIENTE_DIFICULTAD := {"facil": [0.55, 0.0], "media": [1.0, 0.0], "dificil": [0.75, 0.25], "pesadilla": [0.5, 0.5]}
 ## Cuánto cambia el margen de movimientos de cada sala (el que pasa del mínimo).
 const MARGEN_DIFICULTAD := {"facil": 1.25, "media": 1.0, "dificil": 0.85, "pesadilla": 0.7}
@@ -36,7 +40,7 @@ var terminada := false   # llegó al portal
 var perdida := false     # se quedó sin vidas
 var muertes := 0
 var cosecha = Cosecha.new()   # la claridad de la torre (ver cosecha.gd)
-var dificultad := "media"     # la dificultad elegida para el run: fácil, media, difícil o pesadilla (ver niveles_para)
+var dificultad := "media"     # la dificultad elegida para el run: fácil, media, difícil o pesadilla (ver `progreso`)
 var etapa := 0                # 0: curva fija de prueba; si no, la etapa del run (sube la dificultad y se habilitan los especiales de a poco)
 var externo := false          # las vidas son las del run (las lleva el juego): morir reinicia la sala y avisa, pero no resta
 var perks := {}               # boosts del run
@@ -351,7 +355,7 @@ static func _rect_sim(r: Rect2i, s: int) -> Rect2i:
 ## Arma una torre de `n` salas con la curva de dificultad CURVA (si n es mayor se repite el último tramo). Cada sala se gira o espeja y se desliza por el anillo
 ## hasta que su entrada caiga en la salida de la anterior; con `espiral` la torre da vueltas siempre hacia el mismo lado (cada sala sigue por delante de la anterior).
 ## Si no se puede con espiral se arma sin esa condición. Devuelve un Torre; si no pudo encadenar una sala queda más corta.
-## `reglas`: las reglas del escenario que importan acá (`especiales_desde`: desde qué etapa se habilitan todos los especiales; `peso_especiales`: la fracción de las salas que tienen
+## `reglas`: las reglas del escenario que importan acá (`peso_especiales`: la fracción de las salas que tienen
 ## especiales, entre las que se puedan poner; `margen_mov`: lo que multiplica el margen de movimientos); {} = las de siempre.
 static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_run := 0, dificultad := "media", reglas := {}):
 	var rng := RandomNumberGenerator.new()
@@ -389,69 +393,39 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_r
 	return t
 
 
-## Cuántas salas tiene la torre de una etapa: de 5 en la primera a 14 en la última.
-static func salas_de_etapa(etapa_run: int) -> int:
-	return int(round(lerpf(5.0, 14.0, clampf(float(etapa_run - 1) / float(ETAPAS - 1), 0.0, 1.0))))
+## Cuántas salas tiene la torre de una etapa (las mismas en todas).
+static func salas_de_etapa(_etapa_run: int) -> int:
+	return SALAS_POR_TORRE
 
 
-## Niveles de dificultad que admite la sala `i` de `n` en la etapa dada: la etapa sube la dificultad de toda la torre y, dentro de ella, cada sala es más difícil que la anterior.
-static func niveles_para(i: int, n: int, etapa_run: int, dif := "media") -> Array:
-	var p := clampf(float(etapa_run - 1) / float(ETAPAS - 1), 0.0, 1.0) * 0.6 + (float(i) / float(maxi(n - 1, 1))) * 0.4
-	p = p * float(PENDIENTE_DIFICULTAD.get(dif, [1.0, 0.0])[0]) + float(PENDIENTE_DIFICULTAD.get(dif, [1.0, 0.0])[1])   # (la dificultad del run corre toda la curva)
-	if p < 0.2:
-		return ["facil"]
-	if p < 0.4:
-		return ["facil", "media"]
-	if p < 0.6:
-		return ["media"]
-	if p < 0.75:
-		return ["media", "dificil"]
-	if p < 0.9:
-		return ["dificil"]
-	return ["dificil", "pesadilla"]
+## El progreso de la sala `i` de `n` en la etapa dada, de 0 a 1: la etapa sube toda la torre y, dentro de ella, cada sala es más difícil que la anterior (más en las etapas altas:
+## las primeras torres casi no suben dentro de sí). La dificultad del run corre toda la curva.
+static func progreso(i: int, n: int, etapa_run: int, dif := "media") -> float:
+	var f := clampf(float(etapa_run - 1) / float(ETAPAS - 1), 0.0, 1.0)
+	var dentro := float(i) / float(maxi(n - 1, 1)) * 0.4 * (0.35 + 0.65 * f)
+	var pd: Array = PENDIENTE_DIFICULTAD.get(dif, [1.0, 0.0])
+	return (f * 0.6 + dentro) * float(pd[0]) + float(pd[1])
 
 
-## Las primeras torres enseñan: salas bajas, cortas y con un solo bloque que mover; después se suman pisos y bloques. Devuelve {pisos, pasos, distintos} máximos
-## (vacío = sin límite). La etapa 1 sube de a poco, y las etapas 2 a 4 son escalones más; desde la 5 manda sólo la curva de dificultad.
-static func limites_aprendizaje(etapa_run: int, i: int, n: int, dif := "media") -> Dictionary:
-	if dif == "pesadilla":
-		return {}   # (quien elige Pesadilla ya sabe jugar)
-	if dif == "dificil":
-		return {"pisos": 8, "pasos": 18, "distintos": 2} if etapa_run == 1 else {}
-	if etapa_run == 1:
-		if i < 2:
-			return {"pisos": 5, "pasos": 10, "distintos": 1}
-		if i < 4:
-			return {"pisos": 6, "pasos": 12, "distintos": 1}
-		return {"pisos": 7, "pasos": 15, "distintos": 2}
-	if etapa_run == 2:
-		return {"pisos": 8, "pasos": 16, "distintos": 2}
-	if etapa_run == 3:
-		return {"pisos": 11, "pasos": 20, "distintos": 3}
-	if etapa_run == 4:
-		return {"pisos": 15, "pasos": 28, "distintos": 4}
-	if etapa_run == 5 and dif == "facil":
-		return {"pisos": 18, "pasos": 34, "distintos": 4}
-	return {}
+## Los bits de complejidad que busca una sala con ese progreso (la curva BITS_OBJETIVO, continua).
+static func bits_objetivo(p: float) -> float:
+	var q := clampf(p, 0.0, 1.0)
+	for k in range(1, BITS_OBJETIVO.size()):
+		var a: Array = BITS_OBJETIVO[k - 1]
+		var b: Array = BITS_OBJETIVO[k]
+		if q <= float(b[0]):
+			return lerpf(float(a[1]), float(b[1]), (q - float(a[0])) / (float(b[0]) - float(a[0])))
+	return float(BITS_OBJETIVO[BITS_OBJETIVO.size() - 1][1])
 
 
-## ¿Entra la sala en los límites de aprendizaje?
-static func dentro_de_limites(d: Dictionary, lim: Dictionary) -> bool:
-	if lim.is_empty():
-		return true
-	return int(d.get("pisos", int(d.meta) - 1)) <= int(lim.pisos) and int(d.pasos) <= int(lim.pasos) and int(d.get("distintos", 1)) <= int(lim.distintos)
-
-
-## ¿Todos los especiales de la sala están habilitados en esa etapa?
-## `desde` > 0: todos se habilitan desde esa etapa (Mundo abierto).
-static func especiales_habilitados(d: Dictionary, etapa_run: int, desde := 0) -> bool:
-	for b in d.bloques:
-		var l := str(b[3]).substr(0, 1)
-		if l == "d":
-			l = "b"
-		if ETAPA_ESPECIAL.has(l) and etapa_run < (mini(int(ETAPA_ESPECIAL[l]), desde) if desde > 0 else int(ETAPA_ESPECIAL[l])):
-			return false
-	return true
+## Qué tan lejos está una sala de lo que se busca (0 = justo): la distancia en bits (relativa), más un castigo suave si mueve más bloques distintos o necesita más pasos de lo que
+## corresponde a ese progreso (las primeras torres enseñan: pocos bloques y salas cortas; después los topes se aflojan solos, sin saltos).
+static func distancia_a_objetivo(d: Dictionary, objetivo: float, p: float) -> float:
+	var bits := float(d.get("complejidad", BITS_DEL_NIVEL.get(str(d.get("nivel", "media")), 83.0)))
+	var s := absf(bits - objetivo) / maxf(objetivo, 25.0)
+	s += maxf(float(d.get("distintos", 1)) - (1.0 + 14.0 * p), 0.0) * 0.5
+	s += maxf(float(d.pasos) - (9.0 + 90.0 * p), 0.0) * 0.03
+	return s
 
 
 ## Las candidatas con las preferidas primero (con especiales o sin ellos), sin cambiar el orden entre las del mismo grupo.
@@ -469,8 +443,11 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 	if i >= ctx.n:
 		return true
 	var rng: RandomNumberGenerator = ctx.rng
-	var niveles: Array = CURVA[mini(i, CURVA.size() - 1)] if int(ctx.etapa) <= 0 else niveles_para(i, int(ctx.n), int(ctx.etapa), str(ctx.dif))
 	var info: Array = ctx.info
+	var con_etapa: bool = int(ctx.etapa) > 0
+	var niveles: Array = [] if con_etapa else CURVA[mini(i, CURVA.size() - 1)]
+	var p := progreso(i, int(ctx.n), int(ctx.etapa), str(ctx.dif)) if con_etapa else 0.0
+	var objetivo := bits_objetivo(p)
 	var orden: Array = []
 	for k in info.size():
 		var d: Dictionary = info[k].d
@@ -478,25 +455,28 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			continue
 		if i < 2 and str(d.get("categoria", "base")) != "base":
 			continue   # (las dos primeras salas son de bloques comunes)
-		if int(ctx.etapa) > 0 and not especiales_habilitados(d, int(ctx.etapa), int(ctx.reglas.get("especiales_desde", 0))):
-			continue
-		if not dentro_de_limites(d, limites_aprendizaje(int(ctx.etapa), i, int(ctx.n), str(ctx.dif))):
-			continue
 		if int(ctx.reglas.get("solo_bloques", -1)) >= 0 and (int(d.get("distintos", 99)) > int(ctx.reglas.solo_bloques) or int(d.get("distintos", 0)) < int(ctx.reglas.solo_bloques) - 1):
 			continue   # (Solo tres bloques: sólo salas cuya solución conocida mueve dos o tres bloques distintos: se pueden resolver con la regla y la regla se nota; con uno solo no cambiaría nada)
 		if bool(ctx.reglas.get("espalda_mala", false)) and int(d.get("agarres", 0)) < 4:
 			continue   # (Espalda mala: sólo salas en las que la solución empuja o tira al menos cuatro veces: si no, el doble costo casi no se nota)
 		orden.append(k)
-	# primero las del nivel que toca (mezcladas) y después las otras
-	for k in range(orden.size() - 1, 0, -1):
-		var j := rng.randi_range(0, k)
-		var tmp = orden[k]
-		orden[k] = orden[j]
-		orden[j] = tmp
 	var buenas: Array = []
 	var otras: Array = []
-	for k in orden:
-		(buenas if niveles.has(str(info[k].d.nivel)) else otras).append(k)
+	if con_etapa:   # primero las más cercanas a lo que busca esta sala (con un poco de azar para que no salgan siempre las mismas)
+		var puntuadas: Array = []
+		for k in orden:
+			puntuadas.append([distancia_a_objetivo(info[k].d, objetivo, p) + rng.randf() * 0.3, k])
+		puntuadas.sort_custom(func(x, y): return x[0] < y[0])
+		for x in puntuadas:
+			buenas.append(x[1])
+	else:   # (sin etapa: la curva por niveles de siempre; primero las del nivel que toca, mezcladas, y después las otras)
+		for k in range(orden.size() - 1, 0, -1):
+			var j := rng.randi_range(0, k)
+			var tmp = orden[k]
+			orden[k] = orden[j]
+			orden[j] = tmp
+		for k in orden:
+			(buenas if niveles.has(str(info[k].d.nivel)) else otras).append(k)
 	var peso := float(ctx.reglas.get("peso_especiales", 0.0))
 	if peso > 0.0 and i >= 2:   # Mundo abierto: se tira una moneda y esta sala sale, si se puede, con especiales o sin ellos (así la fracción de salas con especiales es `peso`)
 		var con_especiales := rng.randf() < peso

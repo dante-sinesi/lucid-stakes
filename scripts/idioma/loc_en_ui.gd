@@ -133,7 +133,6 @@ const TABLE := {
 	"Hasta %d contratos activos a la vez.": "Up to %d active contracts at a time.",
 	"Llegan más papeles nuevos al tablón en cada visita.": "More new papers reach the board on every visit.",
 	"Las recompensas y las fianzas de los contratos son %d %% mayores.": "Contract rewards and deposits are %d %% higher.",
-	"Todos los bloques especiales aparecen desde la primera etapa.": "All special blocks appear from the first stage.",
 	"Las salas con especiales salen mucho más seguido.": "Rooms with specials come up much more often.",
 	"Farolín cobra un %d %% más en cada peaje.": "Farolín charges %d %% more at every toll.",
 	"Los premios de las mesas valen un %d %% más.": "Table prizes are worth %d %% more.",

@@ -69,10 +69,10 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 
 ## 8. Etapas
 
-- **Largo:** 5 salas en la etapa 1 hasta 14 en la 15 (`Torre.salas_de_etapa`).
-- **Dificultad:** `p = 0,6 × (etapa − 1)/14 + 0,4 × (sala/(n − 1))`, corrida por la dificultad elegida (`PENDIENTE_DIFICULTAD`); <0,2 fácil · <0,4 fácil o media · <0,6 media · <0,75 media o difícil · <0,9 difícil · el resto difícil o pesadilla. Si no hay sala del nivel que toca se acepta de otro.
-- **Aprendizaje (`Torre.limites_aprendizaje`):** las primeras torres usan salas bajas, cortas y con pocos bloques que mover. Etapa 1: las dos primeras salas de hasta 5 pisos, 10 pasos mínimos y 1 bloque distinto movido; las dos siguientes hasta 6 pisos, 12 pasos y 1 bloque; la última hasta 7 pisos, 15 pasos y 2 bloques. Etapa 2: 8 pisos, 16 pasos, 2 bloques. Etapa 3: 11 pisos, 20 pasos, 3 bloques. Etapa 4: 15 pisos, 28 pasos, 4 bloques. Desde la 5 manda sólo la curva de dificultad.
-- **Especiales habilitados:** hielo en la etapa 2, pesado 3, agrietado 4, trampa 5, pinchos 6, bomba 7, trampolín 8. (Todavía no hay salas con trampa.)
+- **Largo:** 7 salas en todas las etapas (`Torre.SALAS_POR_TORRE`): la dificultad la ponen las salas, no el largo.
+- **Dificultad:** cada sala busca una complejidad en bits (`Torre.bits_objetivo`), una curva continua del progreso `p = f × 0,6 + (sala/(n − 1)) × 0,4 × (0,35 + 0,65 × f)`, con `f = (etapa − 1)/14` (dentro de la torre casi no se sube en las primeras etapas), corrido por la dificultad elegida (`PENDIENTE_DIFICULTAD`). Va de unos 12 bits en la primera sala de la etapa 1 a unos 190 en la última de la 15. De las salas que pueden entrar se prueban primero las más cercanas a ese objetivo, con un poco de azar (`Torre.distancia_a_objetivo`). Si no se puede encadenar una sala se pasa a la siguiente más cercana.
+- **Aprendizaje:** no hay topes duros: la misma distancia castiga con suavidad a las salas con más bloques distintos movidos que `1 + 14 p` o con más pasos mínimos que `9 + 90 p`, así que las primeras torres enseñan (pocos bloques, salas cortas) y los topes se aflojan solos, sin saltos.
+- **Especiales:** pueden salir en cualquier etapa (las dos primeras salas de cada torre son siempre comunes). El tabernero avisa la primera vez que se ve cada tipo. No hay salas con trampa: está descontinuada (ver `pendientes.md`).
 - Las salas salen del paquete `data/salas_torre.jsonl` (`herramientas/sumar_salas.py`): 2855 salas de 4 a 23 pisos. Las de más de 10 pisos se resolvieron por lonjas: su camino es válido pero puede no ser el más corto.
 
 ## 9. Escenarios y pruebas

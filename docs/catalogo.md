@@ -4,16 +4,16 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 
 ## Bloques
 
-| Nombre | Descripción | Más datos |
-|---|---|---|
-| Bloque corrupto | Se pisa, se empuja y se tira. Al pisarlo se purifica y da claridad; si encadenas pisadas nuevas, la racha la multiplica. | Desde la etapa 1 |
-| Hielo | Te hace resbalar hasta que algo te frene, y si no hay nada, hasta el vacío. No se puede agarrar de él para colgarse. | Desde la etapa 2 |
-| Bloque pesado | De hierro: no se empuja ni se tira, pero se trepa. | Desde la etapa 3 |
-| Bloque agrietado | De arenisca: se rompe apenas te bajas de él. No hay vuelta atrás. | Desde la etapa 4 |
-| Bomba | Cuenta hacia atrás con cada movimiento que haces cerca de ella (en una zona roja de 2 bloques a la redonda) y explota al llegar a cero. Subirte encima la desactiva. | Desde la etapa 7 |
-| Trampa | Lleva una cruz roja: se desarma apenas te paras encima y te caes con ella. | Desde la etapa 5 |
-| Pinchos | Púas plateadas, a ras del piso: pisarlos pierde. | Desde la etapa 6 |
-| Catapulta | Al pisarla te dispara hacia arriba y te agarras del borde de un bloque cercano. | Desde la etapa 8 |
+| Nombre | Descripción |
+|---|---|
+| Bloque corrupto | Se pisa, se empuja y se tira. Al pisarlo se purifica y da claridad; si encadenas pisadas nuevas, la racha la multiplica. |
+| Hielo | Te hace resbalar hasta que algo te frene, y si no hay nada, hasta el vacío. No se puede agarrar de él para colgarse. |
+| Bloque pesado | De hierro: no se empuja ni se tira, pero se trepa. |
+| Bloque agrietado | De arenisca: se rompe apenas te bajas de él. No hay vuelta atrás. |
+| Bomba | Cuenta hacia atrás con cada movimiento que haces cerca de ella (en una zona roja de 2 bloques a la redonda) y explota al llegar a cero. Subirte encima la desactiva. |
+| Trampa | Lleva una cruz roja: se desarma apenas te paras encima y te caes con ella. |
+| Pinchos | Púas plateadas, a ras del piso: pisarlos pierde. |
+| Catapulta | Al pisarla te dispara hacia arriba y te agarras del borde de un bloque cercano. |
 
 ## Boosts
 
@@ -110,7 +110,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Gran Casino | Casino de lujo desde el principio y ficha más barata, pero torres más difíciles. | Se puede jugar. Habilidades: Bolsillo de soñador, Segunda oportunidad |
 | Relojería | Cada sala da menos movimientos, pero la ficha es más barata. | Se puede jugar. Habilidades: Pies ligeros |
 | Contratista | Cuatro contratos activos a la vez, más papeles en cada visita y recompensas y fianzas un 50 % mayores. | Se puede jugar. Habilidades: Buena letra |
-| Mundo abierto | Todos los bloques especiales desde la primera etapa, y salas con especiales mucho más seguido. | Se puede jugar. Habilidades: Mecha larga |
+| Mundo abierto | Las salas con especiales salen mucho más seguido. | Se puede jugar. Habilidades: Mecha larga |
 | Usurero | Farolín cobra un 40 % más, pero el casino paga más: ficha un 30 % más barata y premios un 25 % mayores. | Se puede jugar. Habilidades: Buen regateo |
 
 ## Habilidades persistentes

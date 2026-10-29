@@ -101,7 +101,7 @@ const TABLE := {
 	"Contratista": "Contractor",
 	"Cuatro contratos activos a la vez, más papeles en cada visita y recompensas y fianzas un 50 % mayores.": "Four active contracts at once, more papers every visit, and rewards and deposits 50 % bigger.",
 	"Mundo abierto": "Open world",
-	"Todos los bloques especiales desde la primera etapa, y salas con especiales mucho más seguido.": "All special blocks from the first stage, and rooms with specials much more often.",
+	"Las salas con especiales salen mucho más seguido.": "Rooms with special blocks come up much more often.",
 	"Usurero": "Moneylender",
 	"Farolín cobra un 40 % más, pero el casino paga más: ficha un 30 % más barata y premios un 25 % mayores.": "Farolín charges 40 % more, but the casino pays more: chip 30 % cheaper and prizes 25 % bigger.",
 	# --- personajes y ropa ---

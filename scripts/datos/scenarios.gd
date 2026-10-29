@@ -5,7 +5,7 @@ extends RefCounted
 ## Un escenario es {id, name, desc, entry (Luz), luz_mult, pool (pruebas que pueden salir), abilities (las habilidades persistentes que se pueden ganar al escapar en este escenario),
 ## casino_tier (-1 = el de la etapa), price_mult (precio de la ficha), lives, permadeath, no_totem, no_extra_life, mistakes, no_undo,
 ## y las reglas propias: escalon (la dificultad de las torres sube tantos escalones), margen_mov (multiplica el margen de movimientos de cada sala), contratos {activos_extra, nuevos_extra, premio_mult},
-## especiales_desde (la etapa desde la que se habilitan todos los bloques especiales), peso_especiales (la fracción de las salas que tienen especiales), toll_mult (lo que cobra Farolín) y premio_mult (los premios de las mesas)}.
+## peso_especiales (la fracción de las salas que tienen especiales), toll_mult (lo que cobra Farolín) y premio_mult (los premios de las mesas)}.
 
 const Trials := preload("res://scripts/datos/trials.gd")
 
@@ -54,10 +54,10 @@ const ALL: Array[Dictionary] = [
 		"pool": ["sin_ayudas", "sin_racha", "travesuras", "mareo", "corrupcion", "memoria_pez", "terremoto", "presupuesto", "solo_tres", "espalda_mala", "ventisca", "quebradizo", "a_oscuras", "pesadilla_despierta"],
 		"contratos": {"activos_extra": 2, "nuevos_extra": 2, "premio_mult": 1.5}},
 	{"id": "mundo_abierto", "name": "Mundo abierto", "entry": 30, "luz_mult": 2.0,
-		"desc": "Todos los bloques especiales desde la primera etapa, y salas con especiales mucho más seguido.",
+		"desc": "Las salas con especiales salen mucho más seguido.",
 		"abilities": ["mecha_larga"],
 		"pool": ["sin_ayudas", "todo_o_nada", "travesuras", "mareo", "corrupcion", "memoria_pez", "terremoto", "presupuesto", "solo_tres", "espalda_mala", "ventisca", "quebradizo", "a_oscuras", "pesadilla_despierta"],
-		"especiales_desde": 1, "peso_especiales": 0.6},
+		"peso_especiales": 0.6},
 	{"id": "usurero", "name": "Usurero", "entry": 20, "luz_mult": 1.5,
 		"desc": "Farolín cobra un 40 % más, pero el casino paga más: ficha un 30 % más barata y premios un 25 % mayores.",
 		"abilities": ["buen_regateo"],
