@@ -28,6 +28,7 @@ func _init() -> void:
 	test_cosmetics()
 	await test_main()
 	await test_loading_screen()
+	await test_teclas_de_eleccion()
 	await test_cosmetics_screen()
 	Profile.reset()
 	print("tests de los dados terminados, fallos: ", fails)
@@ -344,6 +345,36 @@ func test_loading_screen() -> void:
 	await process_frame
 
 
+## En la elección, las flechas y A/D pasan de un dado al otro y W/S o arriba/abajo cambian el número del dado elegido.
+func test_teclas_de_eleccion() -> void:
+	var g = DiceGame.new()
+	root.add_child(g)
+	g.open()
+	g.set_ready(true)
+	check(g.phase == DiceGame.Phase.PICK and g.selected == 0, "(preparación: se está eligiendo, con el primer dado marcado)")
+	var tecla := func(kc: int) -> void:
+		var k := InputEventKey.new()
+		k.pressed = true
+		k.keycode = kc
+		g._input(k)
+	tecla.call(KEY_RIGHT)
+	check(g.selected == 1, "la flecha derecha pasa al dado de al lado")
+	tecla.call(KEY_D)
+	check(g.selected == 2, "D también")
+	tecla.call(KEY_LEFT)
+	tecla.call(KEY_A)
+	check(g.selected == 0, "la flecha izquierda y A vuelven")
+	tecla.call(KEY_LEFT)
+	check(g.selected == DiceGame.DICE - 1, "desde el primero, izquierda da la vuelta al último")
+	var antes: int = g.picks[g.selected]
+	tecla.call(KEY_UP)
+	check(g.picks[g.selected] == antes % 6 + 1, "arriba cambia el número del dado elegido")
+	tecla.call(KEY_S)
+	check(g.picks[g.selected] == antes, "S lo baja")
+	g.queue_free()
+	await process_frame
+
+
 func test_cosmetics_screen() -> void:
 	Profile.reset()
 	var main := make_main()
@@ -422,7 +453,7 @@ func test_hold() -> void:
 	var k := InputEventKey.new()
 	k.pressed = true
 	k.keycode = KEY_ENTER
-	g._unhandled_input(k)
+	g._input(k)
 	check(g.phase == DiceGame.Phase.ROLLING and g.throws_left == 0, "Enter tira de nuevo los que fallaron")
 	g.rolls = [1, 2, 3, 6, 6]   # no aciertan
 	g._phase_t = DiceGame.ROLL_TIME
@@ -474,14 +505,14 @@ func test_hold() -> void:
 	var sp := InputEventKey.new()
 	sp.pressed = true
 	sp.keycode = KEY_SPACE
-	g._unhandled_input(sp)   # (en la elección, Espacio tira)
+	g._input(sp)   # (en la elección, Espacio tira)
 	check(g.phase == DiceGame.Phase.ROLLING and g.throws_left == 2, "Espacio tira los dados")
 	g.rolls = [1, 2, 6, 6, 6]
-	g._unhandled_input(sp)   # (rodando: se saltea)
+	g._input(sp)   # (rodando: se saltea)
 	check(g.phase == DiceGame.Phase.HOLD and g.unrevealed.is_empty() and g.revealed == DiceGame.DICE and g.hits() == 2, "Espacio mientras ruedan saltea la animación y deja los resultados a la vista")
-	g._unhandled_input(sp)
+	g._input(sp)
 	check(g.phase == DiceGame.Phase.ROLLING and g.throws_left == 1, "Espacio tira de nuevo los que fallaron")
-	g._unhandled_input(sp)
+	g._input(sp)
 	check(g.phase == DiceGame.Phase.HOLD or g.phase == DiceGame.Phase.RESULT, "saltear también sirve en la segunda tirada")
 	# la última tirada: se saltea y, con la torre lista, se entra
 	g.open(rng)
@@ -492,9 +523,9 @@ func test_hold() -> void:
 	g.throw_dice()
 	g.rolls = [6, 6, 6, 6, 6]
 	g.set_ready(true)
-	g._unhandled_input(sp)
+	g._input(sp)
 	check(g.phase == DiceGame.Phase.RESULT and g.visible and shut.size() == 0, "Espacio en la animación de la última tirada la saltea y muestra los resultados (no entra a la torre)")
-	g._unhandled_input(sp)
+	g._input(sp)
 	check(shut.size() == 1 and not g.visible, "con los resultados a la vista, otro Espacio entra a la torre")
 	# la última tirada sin la torre lista: se saltea y se espera
 	g.open(rng)
@@ -502,10 +533,10 @@ func test_hold() -> void:
 	g.throws_left = 1
 	g.throw_dice()
 	g.rolls = [6, 6, 6, 6, 6]
-	g._unhandled_input(sp)
+	g._input(sp)
 	check(g.phase == DiceGame.Phase.RESULT and g.visible and shut.size() == 1, "sin la torre lista se saltea pero no se entra")
 	g.set_ready(true)
-	g._unhandled_input(sp)
+	g._input(sp)
 	check(shut.size() == 2 and not g.visible, "cuando la torre está lista, Espacio entra")
 	g.queue_free()
 	Profile.reset()
