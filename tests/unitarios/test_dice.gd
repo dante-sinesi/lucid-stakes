@@ -29,6 +29,7 @@ func _init() -> void:
 	await test_main()
 	await test_loading_screen()
 	await test_teclas_de_eleccion()
+	await test_salir_en_los_dados()
 	await test_cosmetics_screen()
 	Profile.reset()
 	print("tests de los dados terminados, fallos: ", fails)
@@ -372,6 +373,40 @@ func test_teclas_de_eleccion() -> void:
 	tecla.call(KEY_S)
 	check(g.picks[g.selected] == antes, "S lo baja")
 	g.queue_free()
+	await process_frame
+
+
+## Salir con los dados abiertos y volver: se retoman los dados (con la misma semilla) en vez de volver a la torre que ya se había superado (y que, al ser un intento empezado, costaría un reintento).
+func test_salir_en_los_dados() -> void:
+	var main := make_main()
+	await wait_tower(main)
+	main.dice.auto_start = false   # como en el juego de verdad: hay que apretar Empezar
+	main.dice_always = true
+	main.run.claridad = 500
+	main.enter_casino()
+	for i in 6:
+		await process_frame
+	check(main.dice.visible and main.run.dados_por_jugar and main.casino == null, "(preparación: los dados están abiertos y se anotó que faltan jugarlos)")
+	var save: Dictionary = main.SaveGame.read()
+	check(str(save.get("phase", "")) == "casino" and bool(save.run.get("dados_por_jugar", false)), "al abrirse los dados se guarda en el casino con los dados por jugar")
+	var semilla: int = main.run.dados_semilla
+	var picks: Array = main.dice.picks.duplicate()
+	main.open_main_menu()
+	check(not main.dice.visible and not main.run_over, "salir al menú con los dados abiertos no termina la partida")
+	for i in 3:
+		await process_frame   # (el menú tarda un rato en volver a abrirse: la espera de los dados anteriores termina)
+	main.continue_game()
+	for i in 8:
+		await process_frame
+	check(not main.run_over and main.dice.visible and main.casino == null and main.run.dados_por_jugar, "al continuar vuelven los dados (no el fin de la partida)")
+	check(main.run.dados_semilla == semilla and main.dice.picks == picks, "con la misma semilla: salir y volver no cambia lo que sale")
+	await _play_out(main.dice)
+	main.dice.start_button.pressed.emit()
+	for i in 8:
+		await process_frame
+	check(main.casino != null and not main.run.dados_por_jugar and str(main.SaveGame.read().get("phase", "")) == "casino" and not bool(main.SaveGame.read().run.get("dados_por_jugar", true)), "jugados los dados se entra al casino y ya no quedan pendientes")
+	main.dice_always = false
+	main.queue_free()
 	await process_frame
 
 

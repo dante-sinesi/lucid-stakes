@@ -1346,13 +1346,30 @@ func _character_msg(ids: Array) -> String:
 	return Loc.join(parts)
 
 
+## ¿Se juegan los dados del tabernero al entrar al casino? (no en el entrenamiento ni en el tutorial, donde se juegan al empezar la torre)
+func _hay_dados() -> bool:
+	return dice_always and not training and tutorial_index < 0 and run != null
+
+
+## Se superó la torre y todavía no se jugaron los dados: se anota en la partida (con la semilla de los dados) y se guarda ya, así salir con los dados abiertos y volver los retoma
+## en vez de volver a la torre que ya se había superado.
+func _preparar_dados() -> void:
+	if not _hay_dados():
+		return
+	run.dados_por_jugar = true
+	run.dados_semilla = randi()
+	SaveGame.write({"run": run.to_dict(), "stage": stage_number, "seed": seed_value, "phase": "casino"})
+
+
 ## Los dados del tabernero: al entrar al casino, antes de verlo. Se juegan sobre la claridad que ya tienes (la de la torre cobrada); en el tutorial se juegan al empezar la torre.
 func _dados_del_tabernero() -> void:
-	if not dice_always or training or tutorial_index >= 0 or run == null:
+	if not _hay_dados():
 		return
 	_dados_en_casino = true   # (mientras tanto no se guarda: si se cierra el juego ahora, se vuelve a la torre y los dados no se cobraron)
 	dice.claridad_actual = run.claridad
-	dice.open()
+	var rng_dados := RandomNumberGenerator.new()
+	rng_dados.seed = run.dados_semilla
+	dice.open(rng_dados)
 	dice.set_ready(true)
 	while dice.visible:
 		await get_tree().process_frame
@@ -1369,9 +1386,12 @@ func enter_casino(restoring := false) -> void:
 	Music.play("casino")
 	if not restoring:
 		_bank_claridad()
+		_preparar_dados()
+	if run.dados_por_jugar:
 		await _dados_del_tabernero()   # (superaste la torre: antes del casino, el tabernero tira los dados sobre la claridad que acabas de cobrar)
 		if mi_epoca != epoch or in_menu or run_over or casino != null:
 			return
+		run.dados_por_jugar = false
 		_claim_dice_rewards()   # (superaste la torre: lo que dieron los dados es tuyo)
 	if not training and tutorial_index < 0:
 		Telemetry.log_event("casino", {"stage": stage_number, "claridad_in": run.claridad, "lives": run.lives, "boosts": run.boosts.size()})
