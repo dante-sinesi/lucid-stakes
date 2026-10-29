@@ -457,6 +457,8 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			continue   # (las dos primeras salas son de bloques comunes)
 		if int(ctx.reglas.get("solo_bloques", -1)) >= 0 and (int(d.get("distintos", 99)) > int(ctx.reglas.solo_bloques) or int(d.get("distintos", 0)) < int(ctx.reglas.solo_bloques) - 1):
 			continue   # (Solo tres bloques: sólo salas cuya solución conocida mueve dos o tres bloques distintos: se pueden resolver con la regla y la regla se nota; con uno solo no cambiaría nada)
+		if bool(ctx.reglas.get("terremoto", false)) and int(d.get("distintos", 1)) < 3:
+			continue   # (Terremoto: sólo salas con al menos tres bloques que se mueven: con menos casi no hay nada que correr)
 		if bool(ctx.reglas.get("espalda_mala", false)) and int(d.get("agarres", 0)) < 4:
 			continue   # (Espalda mala: sólo salas en las que la solución empuja o tira al menos cuatro veces: si no, el doble costo casi no se nota)
 		orden.append(k)

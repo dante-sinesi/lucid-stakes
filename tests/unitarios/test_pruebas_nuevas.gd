@@ -35,8 +35,11 @@ func _init() -> void:
 	quit(1 if fails > 0 else 0)
 
 
-func _torre(reglas: Dictionary, etapa := 9, semilla := 31):
-	return Torre.armar(Torre.cargar_paquete_del_juego(), semilla, Torre.salas_de_etapa(etapa), true, etapa, "media", reglas)
+func _torre(reglas: Dictionary, etapa := 9, semilla := 31, sala := 0):
+	var t = Torre.armar(Torre.cargar_paquete_del_juego(), semilla, Torre.salas_de_etapa(etapa), true, etapa, "media", reglas)
+	if sala > 0 and t.salas.size() > sala:
+		t._entrar(sala)   # (una sala de más adelante: las primeras de cada torre son chicas y casi no tienen bloques que correr)
+	return t
 
 
 ## Juega el camino mínimo de la sala actual de la torre (con la regla puesta) y devuelve cuántas acciones hizo.
@@ -307,7 +310,7 @@ func test_viento() -> void:
 
 
 func test_terremoto_y_corrupcion() -> void:
-	var t = _torre({"terremoto": true}, 9, 33)
+	var t = _torre({"terremoto": true}, 9, 34, 3)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var cuenta_antes: int = t.motor.bloques.size()
@@ -326,7 +329,7 @@ func test_terremoto_y_corrupcion() -> void:
 	var rng4 := RandomNumberGenerator.new()
 	rng4.seed = 9
 	for k in 10:
-		var tt = _torre({"terremoto": true}, 12, 800 + k)
+		var tt = _torre({"terremoto": true}, 12, 800 + k, 3)
 		for q in 4:
 			var cuenta_q: int = tt.motor.bloques.size()
 			var rq2: Dictionary = tt.terremoto(rng4, 3)
@@ -339,7 +342,7 @@ func test_terremoto_y_corrupcion() -> void:
 	var rng3 := RandomNumberGenerator.new()
 	rng3.seed = 3
 	for k in 8:
-		var tq = _torre({"terremoto": true}, 9, 400 + k)
+		var tq = _torre({"terremoto": true}, 9, 400 + k, 3)
 		var rq: Dictionary = tq.terremoto(rng3, 3)
 		if bool(rq.ok) and rq.movidos.size() >= 2:
 			varios += 1
@@ -432,7 +435,7 @@ func test_oscuros() -> void:
 	var esp_oscuros := 0
 	var com_total := 0
 	var com_oscuros := 0
-	for etapa in [9, 12, 15]:
+	for etapa in [9, 10, 12, 13, 15]:
 		var tq = _torre({"a_oscuras": true}, etapa, 700 + etapa)
 		for e in tq.salas:
 			var mo = Vista.motor_de(e.d)
