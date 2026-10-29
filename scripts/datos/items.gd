@@ -6,6 +6,11 @@ extends RefCounted
 ## cada premio en "claridad equivalente" y sirve para balancear la ruleta (ver Roulette.expected_ratio); las bolsas de
 ## claridad valen `mult` veces el precio de la ficha.
 
+const Demo := preload("res://scripts/datos/demo.gd")
+
+## Premios que en la demo no sirven (el blackjack, las tragamonedas y las bombas son del juego completo): no salen en la ruleta, la vitrina ni los premios de las pruebas.
+const DEMO_SIN_USO: Array[String] = ["mano_23", "blackjack_de_oro", "rayos_x", "giro_de_cortesia", "reflejos", "desarmar"]
+
 enum Tier { CONSUMIBLE, COMUN, RARO, EPICO }
 enum Type { BOOST, CONSUMABLE, CLARITY }
 
@@ -157,6 +162,8 @@ static var unlocked := {}
 
 
 static func is_available(it: Dictionary) -> bool:
+	if Demo.on() and DEMO_SIN_USO.has(it.id):
+		return false
 	return not restrict or not it.get("locked", false) or unlocked.has(it.id)
 
 

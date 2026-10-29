@@ -21,6 +21,7 @@ var title: Control
 var message_label: Control
 var stats_box: VBoxContainer
 var items_row: HBoxContainer
+var cta_label: Control
 var wishlist_button: Button
 var new_button: Button
 var menu_button: Button
@@ -51,6 +52,8 @@ func _init() -> void:
 	items_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	items_row.add_theme_constant_override("separation", 6)
 	col.add_child(items_row)
+	cta_label = UI.label(col, "¿Quieres más? Agrégalo a tu lista de deseos", 4, UI.GOLD)   # (la botonera de abajo lleva la tecla; acá se ve el pedido)
+	cta_label.dance = true
 	wishlist_button = UI.button("Agrégalo a tu lista de deseos", true, 4.0, 50)
 	wishlist_button.name = "lista_de_deseos"
 	wishlist_button.pressed.connect(func(): OS.shell_open(Demo.WISHLIST_URL))
@@ -118,4 +121,4 @@ func show_summary(run, completed: bool) -> void:
 	MenuAnim.pop_in(title, 1.5, 0.4)
 	MenuAnim.stagger(stats_box.get_children(), 0.12, 0.3, 0.35)
 	MenuAnim.stagger(items_row.get_children(), 0.06, 0.25, 0.35 + 0.12 * rows.size())
-	MenuAnim.stagger([wishlist_button, new_button, menu_button], 0.1, 0.3, 0.45 + 0.12 * rows.size())
+	MenuAnim.stagger([cta_label, new_button, menu_button], 0.1, 0.3, 0.45 + 0.12 * rows.size())

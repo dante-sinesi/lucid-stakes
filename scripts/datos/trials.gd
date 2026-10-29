@@ -12,6 +12,7 @@ extends RefCounted
 const Items := preload("res://scripts/datos/items.gd")
 const Stages := preload("res://scripts/datos/stages.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
+const Demo := preload("res://scripts/datos/demo.gd")
 
 const FIRST_STAGE := 3
 const EVERY := 3
@@ -70,7 +71,7 @@ static func draw_schedule(pool: Array, rng: RandomNumberGenerator, sin_limite :=
 					combos.append(n + 1)
 			out[st] = "%s_%d" % [FINAL_TRIAL, combos[rng.randi() % combos.size()]]   # (el jefe final con su combinación sorteada: queda en la partida)
 			continue
-		var options: Array = pool.filter(func(id): return id != prev and id != FINAL_TRIAL and int((CATALOG.get(id, {}) as Dictionary).get("desde", FIRST_STAGE)) <= st)
+		var options: Array = pool.filter(func(id): return id != prev and id != FINAL_TRIAL and not (Demo.on() and id == "todo_o_nada" and st < Demo.LAST_STAGE) and int((CATALOG.get(id, {}) as Dictionary).get("desde", FIRST_STAGE)) <= st)
 		if options.is_empty():
 			options = pool.filter(func(id): return id != FINAL_TRIAL)
 		if options.is_empty():

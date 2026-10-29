@@ -70,6 +70,7 @@ It gives you exactly the moves you need: if you lose one or step back, it blows 
 	"Próximamente": "Coming soon",
 	"Disponible en la versión completa": "Available in the full version",
 	"Disponible en el juego completo": "Available in the full game",
+	"¿Quieres más? Agrégalo a tu lista de deseos": "Want more? Add it to your wishlist",
 	"Gracias por jugar. En el juego completo te esperan 15 etapas, más escenarios, habilidades que se quedan, el blackjack, las tragamonedas y muchos más boosts y cosméticos.": "Thanks for playing. The full game has 15 stages, more scenarios, abilities that stay with you, blackjack, slot machines and many more boosts and cosmetics.",
 	"Prueba": "Trial",
 	"¡Terminaste la demo!": "You finished the demo!",
