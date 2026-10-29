@@ -104,14 +104,14 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 
 | Nombre | Descripción | Más datos |
 |---|---|---|
-| La Pesadilla | El juego de siempre: torres de bloques corruptos que se aclaran etapa a etapa. Gratis. | Se puede jugar. Habilidades: Mente despejada, Ojos de gato, Racha firme |
-| El camino corto | Cada sala sólo permite 2 movimientos en falso: uno que te deja más lejos de la salida de la sala. Al tercero pierdes una vida. No se puede deshacer. | Se puede jugar. Habilidades: Margen de error |
-| Compromiso | Una sola vida, sin segundas oportunidades: morir es el final. Los Tótems y las Vidas extra no funcionan. Hay que pasarlo sin caer ni una vez. | Se puede jugar. Habilidades: Corazón extra |
-| Gran Casino | El casino es de lujo desde el principio y la ficha es más barata, pero las torres son un escalón más difíciles. | Se puede jugar. Habilidades: Bolsillo de soñador, Segunda oportunidad |
-| Relojería | Cada sala da menos movimientos, pero la ficha de la ruleta es más barata. | Se puede jugar. Habilidades: Pies ligeros |
-| Contratista | El tablón manda: cuatro contratos activos a la vez, más papeles nuevos en cada visita y recompensas y fianzas un 50 % mayores. | Se puede jugar. Habilidades: Buena letra |
-| Mundo abierto | Todos los bloques especiales aparecen desde la primera etapa y las salas con especiales salen mucho más seguido. | Se puede jugar. Habilidades: Mecha larga |
-| Usurero | Farolín cobra un 40 % más en cada peaje, pero el casino paga más: la ficha cuesta un 30 % menos y los premios valen un 25 % más. | Se puede jugar. Habilidades: Buen regateo |
+| La Pesadilla | El juego de siempre: torres de bloques corruptos que se aclaran etapa a etapa. | Se puede jugar. Habilidades: Mente despejada, Ojos de gato, Racha firme |
+| El camino corto | Cada sala permite 2 movimientos en falso (los que te alejan de la salida). Al tercero pierdes una vida. No se puede deshacer. | Se puede jugar. Habilidades: Margen de error |
+| Compromiso | Una sola vida: si mueres, se termina. Los Tótems y las Vidas extra no funcionan. | Se puede jugar. Habilidades: Corazón extra |
+| Gran Casino | Casino de lujo desde el principio y ficha más barata, pero torres un escalón más difíciles. | Se puede jugar. Habilidades: Bolsillo de soñador, Segunda oportunidad |
+| Relojería | Cada sala da menos movimientos, pero la ficha es más barata. | Se puede jugar. Habilidades: Pies ligeros |
+| Contratista | Cuatro contratos activos a la vez, más papeles en cada visita y recompensas y fianzas un 50 % mayores. | Se puede jugar. Habilidades: Buena letra |
+| Mundo abierto | Todos los bloques especiales desde la primera etapa, y salas con especiales mucho más seguido. | Se puede jugar. Habilidades: Mecha larga |
+| Usurero | Farolín cobra un 40 % más, pero el casino paga más: ficha un 30 % más barata y premios un 25 % mayores. | Se puede jugar. Habilidades: Buen regateo |
 
 ## Habilidades persistentes
 
@@ -120,12 +120,12 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Mente despejada | Empiezas cada run con +25 de claridad. | Se gana en: La Pesadilla |
 | Ojos de gato | Purificar un bloque da +1 de claridad. | Se gana en: La Pesadilla |
 | Racha firme | El tope de la racha sube de ×4 a ×6. | Se gana en: La Pesadilla |
-| Margen de error | En El camino corto, cada sala permite un movimiento en falso más (3 en lugar de 2). | Se gana en: El camino corto |
-| Corazón extra | Tienes una vida más en todas las partidas (4 corazones), salvo en Compromiso. | Se gana en: Compromiso |
+| Margen de error | En El camino corto, cada sala permite un movimiento en falso más (3). | Se gana en: El camino corto |
+| Corazón extra | Una vida más en todas las partidas (4 corazones), salvo en Compromiso. | Se gana en: Compromiso |
 | Bolsillo de soñador | Un lugar más para consumibles. | Se gana en: Gran Casino |
 | Segunda oportunidad | Reintentar la torre cuesta 15 % menos. | Se gana en: Gran Casino |
 | Pies ligeros | Cada sala tiene 1 movimiento más. | Se gana en: Relojería |
-| Buena letra | Un contrato con fianza que fallas en cada partida te devuelve la fianza. | Se gana en: Contratista |
+| Buena letra | Un contrato con fianza que falles por partida te devuelve la fianza. | Se gana en: Contratista |
 | Mecha larga | Las bombas empiezan con 3 movimientos más. | Se gana en: Mundo abierto |
 | Buen regateo | El peaje de Farolín cuesta 10 % menos. | Se gana en: Usurero |
 
