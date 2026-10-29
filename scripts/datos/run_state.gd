@@ -48,6 +48,8 @@ var lives := MAX_LIVES    # vidas: cuántas veces se puede reintentar después d
 var casino_visit := {}    # estado de la visita al casino actual (casino_visit.gd); no se guarda
 var claridad_inicio_torre := 0   # la claridad con la que se empezó la torre actual (la Caja fuerte y la Alcancía cobran un porcentaje de eso al entrar al casino)
 var alcancia := false    # Alcancía usada: al entrar al próximo casino se cobra
+var dados_por_jugar := false   # se superó la torre y todavía no se jugaron los dados del tabernero (si se sale y se vuelve, se retoman en vez de repetir la torre)
+var dados_semilla := 0         # la semilla de esos dados: salir y volver no sirve para tirarlos de nuevo y ver si sale algo mejor
 var contratos := {}      # el tablón de contratos y los activos (contratos.gd); se guarda
 var sello_oro := false   # Sello de oro usado: el próximo contrato que se cobre paga ×5
 
@@ -364,7 +366,7 @@ func to_dict() -> Dictionary:
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
 			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "movs_extra": movs_extra,
 			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_pending": dice_pending.duplicate(true),
-			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "buena_letra": buena_letra, "buena_letra_usada": buena_letra_usada, "toll_meta_discount": toll_meta_discount, "toll_bribe": toll_bribe, "toll_adelanto": toll_adelanto, "casino_evento": casino_evento.duplicate(), "showcase": showcase.duplicate(true)}
+			"claridad_inicio_torre": claridad_inicio_torre, "alcancia": alcancia, "dados_por_jugar": dados_por_jugar, "dados_semilla": dados_semilla, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "buena_letra": buena_letra, "buena_letra_usada": buena_letra_usada, "toll_meta_discount": toll_meta_discount, "toll_bribe": toll_bribe, "toll_adelanto": toll_adelanto, "casino_evento": casino_evento.duplicate(), "showcase": showcase.duplicate(true)}
 
 
 func _schedule_out() -> Dictionary:
@@ -408,6 +410,8 @@ static func from_dict(d: Dictionary) -> RefCounted:
 			r.dice_pending.cosmetics.append(str(id))
 	r.claridad_inicio_torre = int(d.get("claridad_inicio_torre", 0))
 	r.alcancia = bool(d.get("alcancia", false))
+	r.dados_por_jugar = bool(d.get("dados_por_jugar", false))
+	r.dados_semilla = int(d.get("dados_semilla", 0))
 	r.contratos = d.get("contratos", {}) if d.get("contratos", {}) is Dictionary else {}
 	r.sello_oro = bool(d.get("sello_oro", false))
 	r.toll_bribe = bool(d.get("toll_bribe", false))
