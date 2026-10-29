@@ -43,7 +43,7 @@ const ALL: Array[Dictionary] = [
 		"desc": "Desactiva una bomba a la vista."},
 	# ---- otros consumibles ----
 	{"id": "totem", "name": "Tótem", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 200, "passive": true,
-		"desc": "Si mueres, reintentas la torre gratis. Se gasta solo."},
+		"desc": "Si mueres, reintentas la torre sin gastar una vida. Se gasta solo."},
 	{"id": "vida_extra", "name": "Vida extra", "type": Type.CONSUMABLE, "tier": Tier.RARO, "weight": 1, "value": 220,
 		"desc": "+1 vida (solo si tienes menos de 3)."},
 	# ---- consumibles baratos y bolsas de claridad ----
