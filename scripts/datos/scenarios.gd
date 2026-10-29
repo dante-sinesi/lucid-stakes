@@ -25,7 +25,7 @@ const TUTORIAL := {"id": "tutorial", "name": "Tutorial", "entry": 0, "luz_mult":
 ## Los escenarios cambian las reglas del juego y no qué salas salen (la biblioteca no alcanza para torres de un solo tema sin que dejen de parecer aleatorias; docs/escenarios_propuestas.md).
 const ALL: Array[Dictionary] = [
 	{"id": "pesadilla", "name": "La Pesadilla", "entry": 0, "luz_mult": 1.0,
-		"desc": "El juego de siempre: torres de bloques corruptos que se aclaran etapa a etapa.",
+		"desc": "Torres de bloques corruptos que se aclaran etapa a etapa.",
 		"abilities": ["mente_despejada", "ojos_de_gato", "racha_firme"],
 		"pool": ["sin_ayudas", "todo_o_nada", "sin_racha", "travesuras", "mareo", "corrupcion", "memoria_pez", "terremoto", "presupuesto", "solo_tres", "espalda_mala", "ventisca", "quebradizo", "a_oscuras", "pesadilla_despierta"]},
 	{"id": "sin_piedad", "name": "El camino corto", "entry": 25, "luz_mult": 2.0,

@@ -104,7 +104,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 
 | Nombre | Descripción | Más datos |
 |---|---|---|
-| La Pesadilla | El juego de siempre: torres de bloques corruptos que se aclaran etapa a etapa. | Se puede jugar. Habilidades: Mente despejada, Ojos de gato, Racha firme |
+| La Pesadilla | Torres de bloques corruptos que se aclaran etapa a etapa. | Se puede jugar. Habilidades: Mente despejada, Ojos de gato, Racha firme |
 | El camino corto | Cada sala permite 2 movimientos en falso (los que te alejan de la salida). Al tercero pierdes una vida. No se puede deshacer. | Se puede jugar. Habilidades: Margen de error |
 | Compromiso | Una sola vida: si mueres, se termina. Los Tótems y las Vidas extra no funcionan. | Se puede jugar. Habilidades: Corazón extra |
 | Gran Casino | Casino de lujo desde el principio y ficha más barata, pero torres un escalón más difíciles. | Se puede jugar. Habilidades: Bolsillo de soñador, Segunda oportunidad |

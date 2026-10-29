@@ -93,7 +93,7 @@ const TABLE := {
 	"Tutorial": "Tutorial",
 	"Aprende a escapar con el tabernero: la historia de la pesadilla y todo lo que hace falta.": "Learn to escape with the tavern keeper: the story of the nightmare and everything you need.",
 	"La Pesadilla": "The Nightmare",
-	"El juego de siempre: torres de bloques corruptos que se aclaran etapa a etapa.": "The usual game: towers of corrupted blocks that clear up stage by stage.",
+	"Torres de bloques corruptos que se aclaran etapa a etapa.": "Towers of corrupted blocks that clear up stage by stage.",
 	"Relojería": "Clockwork",
 	"Cada sala da menos movimientos, pero la ficha es más barata.": "Each room gives fewer moves, but the chip is cheaper.",
 	"Gran Casino": "Grand Casino",
