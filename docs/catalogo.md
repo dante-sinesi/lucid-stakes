@@ -62,7 +62,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 |---|---|---|
 | Cofre de luz | Devuelve 15 veces la ficha, en claridad. | Épico |
 | Tesoro del soñador | Devuelve 40 veces la ficha, en claridad. | Épico |
-| Tótem | Si mueres, reintentas la torre gratis. Se gasta solo. | Raro |
+| Tótem | Si mueres, reintentas la torre sin gastar una vida. Se gasta solo. | Raro |
 | Vida extra | +1 vida (solo si tienes menos de 3). | Raro |
 | Lluvia de luz | Purifica todos los bloques de tu capa. | Raro |
 | Soborno | En el casino: Farolín cobra un 30 % menos esta vez. | Raro |

@@ -27,7 +27,7 @@ const TABLE := {
 	"Si lo tiras, lo demás no entraría en las barras": "If you throw it away, the rest would not fit in the bars",
 	# consumibles nuevos
 	"Tótem": "Totem",
-	"Si mueres, reintentas la torre gratis. Se gasta solo.": "If you die, you retry the tower for free. Used up on its own.",
+	"Si mueres, reintentas la torre sin gastar una vida. Se gasta solo.": "If you die, you retry the tower without losing a life. Used up on its own.",
 	"Reintento gratis: el Tótem te dio otra vida": "Free retry: the Totem gave you another life",
 	"Se usa solo cuando hace falta": "It is used on its own when needed",
 	# balance
