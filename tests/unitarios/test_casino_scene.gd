@@ -2,6 +2,7 @@ extends SceneTree
 ## Pruebas del casino jugable (headless): caminar, chocar con la mesa, portal, paredes y flujo con la torre.
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_casino_scene.gd
 
+const Roulette := preload("res://scripts/casino/roulette.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
 const Room := preload("res://scripts/casino/casino_room.gd")
 const CasinoScene := preload("res://scripts/casino/casino_scene.gd")
@@ -67,12 +68,11 @@ func test_table() -> void:
 	check(sc.screen == null and not sc.busy, "al cerrar la ruleta se vuelve a caminar")
 	check(sc.step(Vector2i(0, -1)) == "roulette", "chocar contra la mesa tambien la abre")
 	sc.close_roulette()
-	# La apuesta usa la claridad del run.
+	# El giro usa la claridad del run.
 	sc.open_roulette()
 	sc.screen.forced_pocket = 1
-	sc.screen.select_bet(0)
-	sc.screen.toggle_pocket(1)
-	check(sc.screen.can_spin(), "con claridad suficiente se puede girar")
+	sc.run.claridad = Roulette.spin_price(sc.run)
+	check(sc.screen.can_spin(), "con justo el precio del giro se puede girar")
 	sc.close_roulette()
 	sc.cell = Vector2i(1, 3)
 	check(sc.step(Vector2i(-1, 0)) == "slots" and sc.screen != null and sc.screen.has_method("toggle_hold"), "chocar contra una tragamonedas abre su pantalla")
@@ -192,20 +192,9 @@ func test_roulette_layout() -> void:
 	var wr: Rect2 = screen.wheel.get_global_rect()
 	check(wr.size.x >= 560.0 and wr.size.y >= 560.0, "la rueda es grande (%s)" % str(wr.size))
 	check(wr.position.x >= 0.0 and wr.end.x <= vp.x and wr.position.y >= 0.0 and wr.end.y <= vp.y, "la rueda entra entera en la pantalla")
-	var xs := []
-	var ys := []
-	for b in screen.bet_buttons:
-		xs.append(snappedf(screen.bet_buttons[b].global_position.x, 1.0))
-		ys.append(screen.bet_buttons[b].global_position.y)
-	var one_column := true
-	for x in xs:
-		one_column = one_column and x == xs[0]
-	for i in range(1, ys.size()):
-		one_column = one_column and ys[i] > ys[i - 1]
-	check(one_column and xs[0] >= wr.end.x, "las apuestas estan en una columna a la derecha de la rueda")
 	var bg = screen.get_child(0)
 	check(bg is ColorRect and bg.size.is_equal_approx(vp) and bg.color.a >= 0.85 and bg.color.v < 0.1, "el fondo es un oscurecido liso que cubre toda la pantalla (sin dibujos)")
-	check(not screen.spin_button.is_inside_tree() and screen.pad_hints != null and screen.pad_hints.items.size() >= 6, "GIRAR ya no es un botón en pantalla: está en la botonera de abajo (Enter o A)")
+	check(not screen.spin_button.is_inside_tree() and screen.pad_hints != null and screen.pad_hints.items.size() >= 4, "GIRAR ya no es un botón en pantalla: está en la botonera de abajo (Enter o A)")
 	check(not sc.hud_layer.visible, "con la ruleta abierta no se ve la interfaz del casino detras")
 	sc.close_roulette()
 	check(sc.hud_layer.visible, "al cerrar la ruleta vuelve la interfaz del casino")

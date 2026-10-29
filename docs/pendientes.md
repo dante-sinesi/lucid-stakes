@@ -8,7 +8,7 @@ Al retirar la torre vieja se borraron, en vez de dejarlos sin efecto, los premio
 
 - **Pruebas:** las de la torre vieja se retiraron (Niebla, Oscuridad, Prisa, Hielo total, Quebradizo, Polvorín y Lluvia de meteoritos); las nuevas, pensadas para la torre actual, están en `pruebas.md` (quedan pendientes Sombra, Plomo, Hielo total y Pegamento).
 - **Consumibles y boosts retirados:** Ojo de hielo, Escudo, Doble salto, Teletransporte, Ancla chica, los ocho conversores de bloque, Fuerza bruta y Aire de más. Los que dependían de elegir un bloque con el mouse necesitan un selector de bloques para la torre actual.
-- **Bot de balance:** funciona con la torre actual (`bot.md`) pero sólo juega por el camino mínimo y la ruleta (no tragamonedas ni blackjack).
+- **Bot de balance:** funciona con la torre actual (`bot.md`) pero sólo juega por el camino mínimo y la ruleta (no tragamonedas ni blackjack; con la ruleta de premios, el bot gira y rota la vitrina buscando lo que quiere).
 
 ## En pausa
 

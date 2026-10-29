@@ -4,9 +4,6 @@ extends RefCounted
 const TABLE := {
 	"Girar": "Spin",
 	"Saltear": "Skip",
-	"Poner ficha": "Place chip",
-	"Casilla": "Pocket",
-	"Tipo de apuesta": "Bet type",
 	"Ayudas de": "Show hints for",
 	"Automático": "Automatic",
 	"Botones del mando": "Gamepad buttons",

@@ -57,9 +57,9 @@ func test_sin_efectos() -> void:
 		rng.seed = 1
 		var price := Roulette.run_price(run)
 		var antes := run.claridad
-		var res := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)   # cae el 5: se pierde
-		check(not res.won and res.rules.total == 0 and res.rules.notes.is_empty(), "nivel %d: perder no devuelve nada" % tier)
-		check(run.claridad == antes - price, "nivel %d: la claridad refleja la pérdida entera" % tier)
+		var res := Roulette.resolve(run, rng, 4)   # una casilla rara: no da claridad
+		check(res.rules.total == 0 and res.rules.notes.is_empty(), "nivel %d: la ruleta no devuelve nada" % tier)
+		check(run.claridad == antes - Roulette.spin_price(run), "nivel %d: la claridad refleja el giro entero" % tier)
 		Visit.settle(run, price, price * 2, true, false)
 		Visit.settle(run, price, price * 2, true, false)
 		var out := Visit.settle(run, price, price * 2, true, false)
@@ -98,8 +98,8 @@ func test_racha() -> void:
 	Visit.settle(run, price, price, false, false)
 	check(run.casino_visit.streak == 1, "un empate no corta la racha")
 	Visit.enter(run, 1)
-	var res := Roulette.resolve(run, Roulette.Bet.RANGO, [1, 2, 3, 4, 5, 6, 7, 8, 9], rng, 3)
-	check(res.won and run.casino_visit.streak == 1, "ganar un premio en la ruleta suma a la racha")
+	Roulette.resolve(run, rng, 3)
+	check(run.casino_visit.streak == 0, "la ruleta no suma a la racha (todas sus casillas dan premio: no hay apuesta que ganar)")
 
 
 ## Racha de visita (consumible): lo mismo, pero sólo el resto de la visita.
@@ -126,32 +126,26 @@ func test_pozo() -> void:
 	rng.seed = 4
 	var price := Roulette.run_price(run)
 	check(Visit.pool(run) == 0, "el pozo empieza vacío")
-	Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)
+	Visit.settle(run, price, 0, false, false, "tragamonedas")
 	check(Visit.pool(run) == int(round(price * 0.5)), "una pérdida suma la mitad de lo perdido al pozo")
-	Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)
+	Visit.settle(run, price, 0, false, false, "tragamonedas")
 	check(Visit.pool(run) == int(round(price * 0.5)) * 2, "y otra más")
-	var pozo := Visit.pool(run)
-	var antes := run.claridad
-	var res := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 1)   # pleno: premio mayor
-	check(res.won and res.rules.jackpot == pozo and Visit.pool(run) == 0, "un pleno ganado se lleva el pozo")
-	check(res.claridad_delta >= pozo - price and run.claridad >= antes - price + pozo, "el pozo se suma a lo que ya paga el pleno")
-	Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)
 	var pozo2 := Visit.pool(run)
-	Roulette.resolve(run, Roulette.Bet.MITAD, [1, 2, 3, 4, 5, 6], rng, 2)
-	check(Visit.pool(run) == pozo2, "un acierto común no toca el pozo")
+	var giro := Roulette.resolve(run, rng, 0)   # la casilla épica de la ruleta: no toca el pozo
+	check(int(giro.rules.jackpot) == 0 and Visit.pool(run) == pozo2, "la ruleta no suma ni se lleva el pozo")
 	var s := Slots.new(run, rng)
 	s.start()
 	s.reels = [4, 4, 4]
 	var sr := s.collect()
 	check(sr.rules.jackpot == pozo2, "tres coronas se llevan el pozo")
-	Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)
+	Visit.settle(run, price, 0, false, false, "tragamonedas")
 	var pozo3 := Visit.pool(run)
 	var bj := Blackjack.new(run, rng)
 	bj.deal([Vector2i(5, 0), Vector2i(6, 1), Vector2i(1, 2), Vector2i(9, 3), Vector2i(13, 0)])   # se saca del final: jugador K y A... (blackjack)
 	if Blackjack.is_blackjack(bj.player) and not Blackjack.is_blackjack(bj.dealer):
 		check(bj.result.rules.jackpot == pozo3, "un blackjack se lleva el pozo")
 	var sin := make_run([], 3)
-	Roulette.resolve(sin, Roulette.Bet.PLENO, [1], rng, 5)
+	Visit.settle(sin, price, 0, false, false, "tragamonedas")
 	check(Visit.pool(sin) == 0, "sin el boost no hay pozo")
 
 
@@ -163,5 +157,5 @@ func test_sin_visita() -> void:
 	var rng := RandomNumberGenerator.new()
 	var out := Visit.settle(run, 50, 0, false, false)
 	check(out.total == 0 and not Visit.active(run) and not Visit.racha_activa(run), "sin visita no hay ningún efecto")
-	var res := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)
+	var res := Roulette.resolve(run, rng, 4)
 	check(res.claridad_delta == -res.price and res.rules.total == 0, "la ruleta paga como siempre")

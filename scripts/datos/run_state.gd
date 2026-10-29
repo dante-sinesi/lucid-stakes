@@ -111,11 +111,11 @@ const HILL_START := 3          # hasta esta etapa el precio es el de siempre; de
 static var hill_power := 1.25        # 1 = geométrico parejo; más: sube más tarde
 static var wall_growth := 1.15      # lo que crece el precio cada etapa después de la pared
 ## Cuánto cambia la dificultad elegida el peaje de Farolín (Medio es la referencia): las torres difíciles dan más claridad (salas más grandes, con más especiales), así que el peaje sube con ellas, y baja en Fácil. Se calibra con el bot (docs/economia.md).
-static var toll_dif := {"facil": 0.63, "media": 1.0, "dificil": 1.6, "pesadilla": 1.95}
+static var toll_dif := {"facil": 0.78, "media": 1.0, "dificil": 1.4, "pesadilla": 1.8}
 static var wall_margin := 50        # lo que se suma de más al precio de la pared
-static var wall_frac := 0.53        # la pared pide esta fracción de lo máximo que se puede juntar sin boosts (con 1,0 sería imposible de pagar sin boosts; más baja, el juego es más generoso: se calibra con el bot)
-static var pre_wall_from := 0.35    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
-static var pre_wall_to := 1.00      # ...y esta en la etapa anterior a la pared
+static var wall_frac := 0.405       # la pared pide esta fracción de lo máximo que se puede juntar sin boosts (con 1,0 sería imposible de pagar sin boosts; más baja, el juego es más generoso: se calibra con el bot)
+static var pre_wall_from := 0.267   # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
+static var pre_wall_to := 0.754     # ...y esta en la etapa anterior a la pared
 
 
 ## Lo que rinde una torre de esa etapa en promedio.

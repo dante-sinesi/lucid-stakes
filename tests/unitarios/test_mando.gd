@@ -58,20 +58,11 @@ func test_games() -> void:
 	r.setup(run, rng, true)
 	for i in 3:
 		await process_frame
-	check(r.pad_hints != null and r.pad_hints.visible and r.pad_hints.items.size() >= 6, "la ruleta muestra la barra de botones del mando")
+	check(r.pad_hints != null and r.pad_hints.visible and r.pad_hints.items.size() >= 4, "la ruleta muestra la barra de botones del mando")
 	check(r.spin_button.focus_mode == Control.FOCUS_NONE, "en la ruleta los botones no toman el foco (no se navega por la pantalla)")
-	await _key(KEY_RIGHT)
-	check(r.pad_cursor == 2, "la cruceta mueve la casilla marcada (%d)" % r.pad_cursor)
-	await _key(KEY_SHIFT)
-	check(r.selected == [2], "X pone la ficha en la casilla marcada (%s)" % str(r.selected))
-	var bet0: int = r.bet
-	await _key(KEY_E)
-	check(r.bet != bet0, "RB cambia el tipo de apuesta")
-	await _key(KEY_Q)
-	check(r.bet == bet0, "LB vuelve al tipo anterior")
 	await _key(KEY_SPACE)
 	await process_frame
-	check(r.state != r.State.IDLE, "A gira la ruleta con la apuesta puesta")
+	check(r.state != r.State.IDLE, "A gira la ruleta")
 	r.queue_free()
 	await process_frame
 	# tragamonedas

@@ -24,7 +24,8 @@ static func rows(claridad_ahora: int) -> Array:
 		var p: Dictionary = DiceGame.prize_for(n)
 		var cos := ""
 		if not (p.cosmetic as Dictionary).is_empty():
-			cos = Loc.t("Cosmético común o raro, a veces") if (p.cosmetic as Dictionary).has("comun") else Loc.t("Cosmético raro o épico")
+			var pesos: Dictionary = p.cosmetic
+			cos = Loc.t("Cosmético raro o épico") if pesos.has("epico") else (Loc.t("Cosmético común o raro, a veces") if pesos.has("raro") else Loc.t("Cosmético común, a veces"))
 		out.append({"hits": n, "pct": int(round(float(p.pct) * 100.0)), "ahora": DiceGame.claridad_para(n, claridad_ahora), "cosmetico": cos})
 	return out
 

@@ -199,7 +199,6 @@ func test_flow_casino() -> void:
 	a.casino.quick = true
 	a.casino.open_roulette()
 	a.casino.screen.fast = true
-	a.casino.screen.toggle_pocket(3)
 	var before := int(SaveGame.read().run.claridad)
 	a.casino.screen.spin()   # sin await: se cobra al instante
 	check(int(SaveGame.read().run.claridad) != before or a.run.claridad != before, "la tirada se guarda en cuanto se cobra")

@@ -100,6 +100,8 @@ const ICONS := {
 		"..ooooo..", ".oaaaaao.", "oaabbbaao", "oaabaaaao", "oaabbaaao", "oaaaabaao", "oaabbbaao", ".oaaaaao.", "..ooooo.."]},
 	"casilla_de_regalo": {"a": Color(0.70, 0.95, 0.75), "rows": [
 		"....o....", "...oao...", "...oao...", "ooooaoooo", "oaaaaaaao", ".oaaaaao.", ".oaaoaao.", "oaao.oaao", "oo.....oo"]},
+	"segunda_vuelta": {"a": Color(1.00, 0.85, 0.30), "b": Color(0.60, 0.35, 0.90), "rows": [
+		"..ooooo..", ".oaaaaao.", "oaabbbaao", "oab...bao", "oab.o.bao", "oab...bao", "oaabbbaao", ".oaaaaao.", "..ooooo.."]},
 	"red_de_seguridad": {"a": Color(0.50, 0.70, 1.00), "b": Color(0.20, 0.40, 0.80), "rows": [
 		"....o....", "...ooo...", "..oaaao..", ".oaaaaao.", "oaabbbaao", "oaabbbaao", "oaaaaaaao", ".oaaaaao.", "..ooooo.."]},
 	"giro_de_cortesia": {"a": Color(0.75, 0.55, 1.00), "b": Color(0.45, 0.30, 0.80), "rows": [

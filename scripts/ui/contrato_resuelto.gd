@@ -1,6 +1,6 @@
 extends Control
 ## La pantalla de un contrato resuelto (docs/plan_casinos.md): ocupa toda la pantalla; el papel del contrato queda en el medio con su ícono y su sello de rareza, a su izquierda el título y debajo las condiciones, por la derecha entra un
-## sello de mano hecho de minibloques que se apoya sobre el papel y deja "CUMPLIDO" o "FALLIDO", y en ese mismo lado sale un contador grande con lo cobrado y se pide Espacio para seguir con la torre.
+## sello de mano hecho de minibloques que se apoya sobre el papel y deja "CUMPLIDO" o "FALLIDO", y en ese mismo lado sale un contador grande con lo cobrado.
 ## `mostrar` recibe el contrato ({objetivo, rareza, titulo, condiciones: Array[String]}), si se cumplió y el monto (lo cobrado; negativo: la fianza que se perdió; 0: nada).
 ## Una primera pulsación durante la animación la salta; cuando ya está todo a la vista, la siguiente emite `terminado`.
 
@@ -179,9 +179,6 @@ func _draw() -> void:
 	# el contador, grande, del lado derecho
 	if t >= T_CONTEO:
 		_contador(Vector2(pos.x + pw + (w - pos.x - pw) * 0.5, centro.y), w - pos.x - pw - w * 0.06)
-	if listo:
-		var parpadeo := 0.55 + 0.45 * sin(t * 5.0)
-		_texto(Loc.t("Presiona Espacio para continuar la torre"), Vector2(w * 0.5, h * 0.92), maxf(3.0, floorf(h / 190.0)), Color(1.0, 0.97, 0.88, parpadeo), true)
 
 
 ## A la izquierda del papel: el título del contrato (grande, en dorado) y debajo las condiciones que había que cumplir, una por renglón con su guion.

@@ -15,10 +15,11 @@ func check(cond: bool, label: String) -> void:
 		print("FAIL: ", label)
 
 
-func rich_run(stage := 1, claridad := 1000) -> RefCounted:
+func rich_run(stage := 1, claridad := 1000, boosts: Array = []) -> RefCounted:
 	var r := RunState.new()
 	r.stage = stage
 	r.claridad = claridad
+	r.boosts.assign(boosts)
 	return r
 
 
@@ -51,7 +52,7 @@ func test_items() -> void:
 		ids[it.id] = true
 		ok = ok and (it.type == Items.Type.CLARITY and it.has("mult") or it.has("value"))
 	check(ok, "cada premio tiene id unico, nombre, descripcion, peso y valor (o multiplicador)")
-	check(Items.by_tier(Items.Tier.EPICO).size() == 13 and Items.by_tier(Items.Tier.RARO).size() == 26, "13 premios epicos y 26 raros (el catálogo sin los premios que ya no existen)")
+	check(Items.by_tier(Items.Tier.EPICO).size() == 14 and Items.by_tier(Items.Tier.RARO).size() == 25, "14 premios epicos y 25 raros (el catálogo sin los premios que ya no existen)")
 	var epic_boosts := true
 	for it in Items.by_tier(Items.Tier.EPICO):
 		epic_boosts = epic_boosts and (it.type == Items.Type.BOOST or it.type == Items.Type.CLARITY)
@@ -98,86 +99,78 @@ func test_run_state() -> void:
 
 
 func test_roulette_rules() -> void:
-	check(Roulette.POCKETS == 13 and Roulette.HOUSE == 0, "13 casillas, la 0 es la casa")
+	check(Roulette.POCKETS == 13 and Roulette.WHEEL.size() == 13, "la rueda tiene 13 casillas")
+	check(Roulette.count_of(Items.Tier.EPICO) == 1 and Roulette.count_of(Items.Tier.RARO) == 2 and Roulette.count_of(Items.Tier.COMUN) == 4 and Roulette.count_of(Items.Tier.CONSUMIBLE) == 6, "1 casilla épica, 2 raras, 4 comunes y 6 de bolsas")
 	var psum := 0.0
-	for b in Roulette.BETS:
-		psum += float(Roulette.BETS[b].count)
-	check(psum == 19.0, "las 4 apuestas cubren 1, 3, 6 y 9 casillas")
-	check(is_equal_approx(Roulette.probability(Roulette.Bet.PLENO), 1.0 / 13.0) and is_equal_approx(Roulette.probability(Roulette.Bet.RANGO), 9.0 / 13.0), "probabilidades: pleno 1/13, rango 9/13")
-	# cuanto menos cubre, mejor el nivel
-	check(Roulette.BETS[Roulette.Bet.PLENO].tier > Roulette.BETS[Roulette.Bet.TERNA].tier \
-			and Roulette.BETS[Roulette.Bet.TERNA].tier > Roulette.BETS[Roulette.Bet.MITAD].tier \
-			and Roulette.BETS[Roulette.Bet.MITAD].tier > Roulette.BETS[Roulette.Bet.RANGO].tier, "menos casillas cubiertas, mejor premio")
+	for tier in Roulette.TIER_ORDER:
+		psum += Roulette.probability(tier)
+	check(is_equal_approx(psum, 1.0) and is_equal_approx(Roulette.probability(Items.Tier.EPICO), 1.0 / 13.0), "las probabilidades suman 1 (épico 1/13)")
+	check(Roulette.count_of(Items.Tier.EPICO, rich_run(1, 1000, ["casilla_de_regalo"])) == 2 and Roulette.count_of(Items.Tier.COMUN, rich_run(1, 1000, ["casilla_de_regalo"])) == 3, "Casilla de regalo: una casilla común pasa a ser épica")
 	# precio por etapa
 	check(Roulette.price(1) == 50 and Roulette.price(2) == 54 and Roulette.price(3) == 58 and Roulette.price(11) == 90 and Roulette.price(15) == 106 and Roulette.price(0) == 50, "el precio de la ficha sube con la etapa (50 -> 106)")
-	# balance: las cuatro apuestas rinden casi igual y con una pequeña ventaja de la casa
-	var line := ""
-	for b in Roulette.BETS:
-		var ratio := Roulette.expected_ratio(b, 1)
-		line += "%s %.3f  " % [Roulette.BETS[b].name, ratio]
-		check(ratio >= 0.9 and ratio <= 1.0, "%s: rendimiento esperado %.3f entre 0.90 y 1.00 (ventaja chica de la casa)" % [Roulette.BETS[b].name, ratio])
-		for st in [8, 15]:  # los premios valen proporcionalmente a la ficha: el rendimiento no se desbalancea con las etapas
-			var r_st := Roulette.expected_ratio(b, st)
-			check(r_st >= 0.9 and r_st <= 1.0, "%s etapa %d: rendimiento esperado %.3f" % [Roulette.BETS[b].name, st, r_st])
-	print("rendimiento esperado por ficha, etapa 1: ", line)
-
+	check(Roulette.spin_price(rich_run(1, 1000)) == int(round(50.0 * Roulette.spin_mult)), "el giro cuesta %.1f fichas" % Roulette.spin_mult)
+	# balance: con todas las casillas premiadas el giro rinde casi lo que cuesta, con una pequeña ventaja de la casa
+	for st in [1, 8, 15]:   # los premios valen proporcionalmente a la ficha: el rendimiento no se desbalancea con las etapas
+		var ratio := Roulette.expected_ratio(st)
+		check(ratio >= 0.9 and ratio <= 1.0, "etapa %d: rendimiento esperado del giro %.3f entre 0.90 y 1.00 (ventaja chica de la casa)" % [st, ratio])
 	# validacion
-	var r := rich_run()
-	check(Roulette.validate(r, Roulette.Bet.PLENO, [5]) == "", "un pleno a la casilla 5 es valido")
-	check(Roulette.validate(r, Roulette.Bet.TERNA, [1, 2]) != "", "una terna necesita 3 casillas")
-	check(Roulette.validate(r, Roulette.Bet.PLENO, [0]).contains("casa"), "no se puede cubrir la casilla 0")
-	check(Roulette.validate(r, Roulette.Bet.PLENO, [13]) != "" and Roulette.validate(r, Roulette.Bet.PLENO, [-1]) != "", "casillas fuera de rango")
-	check(Roulette.validate(r, Roulette.Bet.TERNA, [4, 4, 5]).contains("dos veces"), "no se repite una casilla")
-	check(Roulette.validate(r, 99, [1]) != "", "apuesta desconocida")
-	var poor := rich_run(1, 49)
-	check(Roulette.validate(poor, Roulette.Bet.PLENO, [1]).contains("claridad"), "sin claridad suficiente no se puede apostar")
-	check(Roulette.validate(rich_run(1, 50), Roulette.Bet.PLENO, [1]) == "", "con justo el precio alcanza")
+	var cost := Roulette.spin_price(rich_run(1, 1000))
+	check(Roulette.validate(rich_run(1, cost - 1)).contains("claridad"), "sin claridad suficiente no se puede girar")
+	check(Roulette.validate(rich_run(1, cost)) == "", "con justo el precio del giro alcanza")
 
 
 func test_roulette_resolve() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
+	var cost := Roulette.spin_price(rich_run(1, 1000))
 
-	# apuesta invalida: no cobra nada
-	var r := rich_run()
-	var bad := Roulette.resolve(r, Roulette.Bet.TERNA, [1, 2], rng)
-	check(not bad.ok and r.claridad == 1000 and r.casino_spent == 0, "una apuesta invalida no cobra la ficha")
+	# sin claridad: no cobra nada
+	var r := rich_run(1, cost - 1)
+	var bad := Roulette.resolve(r, rng)
+	check(not bad.ok and r.claridad == cost - 1 and r.casino_spent == 0, "un giro que no se puede pagar no cobra nada")
 
-	# perder: cobra la ficha y no da nada
+	# la casilla fija la rareza del premio
+	for p in Roulette.POCKETS:
+		var rp := rich_run(1, 100000)
+		var res := Roulette.resolve(rp, rng, p)
+		check(res.ok and res.pocket == p and res.tier == Roulette.WHEEL[p] and res.prize.tier == Roulette.WHEEL[p], "la casilla %d da un premio de su rareza" % p)
+
+	# casilla épica: un boost épico, la claridad baja lo que cuesta el giro
 	r = rich_run()
-	var lose := Roulette.resolve(r, Roulette.Bet.PLENO, [3], rng, 7)
-	check(lose.ok and not lose.won and lose.pocket == 7 and r.claridad == 950 and lose.claridad_delta == -50 and lose.prize.is_empty(), "perder: se pierde la ficha y no hay premio")
-	check(r.boosts.is_empty() and r.consumables.is_empty() and r.casino_spent == 50 and r.casino_won == 0, "perder no deja nada en el inventario y se registra el gasto")
+	var win := Roulette.resolve(r, rng, 0)
+	check(win.prize.tier == Items.Tier.EPICO and win.prize.type == Items.Type.BOOST and r.boosts.size() == 1, "la casilla épica da un boost épico y lo guarda")
+	check(r.claridad == 1000 - cost and win.claridad_delta == -cost and r.casino_spent == cost, "ganar un boost no devuelve claridad: el giro igual se paga")
 
-	# la casa gana siempre que cae el 0
-	r = rich_run()
-	var house := Roulette.resolve(r, Roulette.Bet.RANGO, [1, 2, 3, 4, 5, 6, 7, 8, 9], rng, 0)
-	check(not house.won and r.claridad == 950, "si cae la casilla 0 siempre pierde, aun cubriendo 9")
-
-	# ganar un pleno: premio epico (un boost)
-	r = rich_run()
-	var win := Roulette.resolve(r, Roulette.Bet.PLENO, [12], rng, 12)
-	check(win.won and win.prize.tier == Items.Tier.EPICO and win.prize.type == Items.Type.BOOST and r.boosts.size() == 1, "ganar un pleno da un boost epico y lo guarda")
-	check(r.claridad == 950 and win.claridad_delta == -50, "ganar un boost no devuelve claridad: la ficha igual se paga")
-
-	# ganar un rango: puede ser bolsa de luz (paga 1,4 x la ficha) u otro consumible barato
+	# una casilla de bolsas: bolsa de luz (1,4 fichas) u otro premio barato; la ruleta nunca "pierde" (siempre da algo)
 	var paid_bag := false
 	for i in 40:
 		var rr := rich_run()
-		var w := Roulette.resolve(rr, Roulette.Bet.RANGO, [1, 2, 3, 4, 5, 6, 7, 8, 9], rng, 5)
-		check(w.won and w.prize.tier == Items.Tier.CONSUMIBLE, "un rango ganado da un premio del nivel CONSUMIBLE")
+		var w := Roulette.resolve(rr, rng, 1)
+		check(w.prize.tier == Items.Tier.CONSUMIBLE and not w.prize.is_empty(), "una casilla de bolsas da un premio del nivel CONSUMIBLE")
 		if w.prize.type == Items.Type.CLARITY:
 			paid_bag = true
-			check(rr.claridad == 1000 - 50 + 70 and w.claridad_delta == 20, "una bolsa de luz devuelve 70 por una ficha de 50 (+20 netos)")
-	check(paid_bag, "entre 40 rangos ganados sale alguna bolsa de luz")
+			check(rr.claridad == 1000 - cost + 70 and w.claridad_delta == 70 - cost, "una bolsa de luz devuelve 70 (1,4 fichas de 50)")
+	check(paid_bag, "entre 40 giros a una casilla de bolsas sale alguna bolsa de luz")
 
 	# premio que no entra: se convierte en claridad (la mitad de su valor)
 	r = rich_run()
 	for id in ["aire_extra", "madrugada", "ahorro", "pies_de_luz", "paso_firme"]:
 		r.take(Items.get_item(id))
-	var full := Roulette.resolve(r, Roulette.Bet.PLENO, [1], rng, 1)  # un boost epico sin lugar
-	check(full.won and full.converted and r.boosts.size() == r.boost_capacity(), "sin lugar para boosts el premio no se guarda")
-	check(r.claridad == 1000 - 50 + int(round(full.prize.value * 0.5)), "...y se convierte en la mitad de su valor en claridad")
+	var full := Roulette.resolve(r, rng, 0)   # un boost épico sin lugar
+	check(full.converted and r.boosts.size() == r.boost_capacity(), "sin lugar para boosts el premio no se guarda")
+	check(r.claridad == 1000 - cost + int(round(full.prize.value * 0.5)), "...y se convierte en la mitad de su valor en claridad")
+
+	# Segunda vuelta: sólo si cae en común y con una chance de 1 en 5
+	var segundas := 0
+	var n := 600
+	for i in n:
+		var rs := rich_run(1, 100000, ["segunda_vuelta"])
+		var rc := Roulette.resolve(rs, rng, 2)   # la casilla 2 es común
+		if rc.second_spin:
+			segundas += 1
+			check(rc.first_pocket == 2 and rc.pocket >= 0 and rc.pocket < Roulette.POCKETS, "con Segunda vuelta la casilla final es la de la segunda tirada")
+	check(absf(float(segundas) / n - Roulette.SECOND_SPIN) < 0.06, "Segunda vuelta: %.1f %% de las veces en común (esperado %.0f %%)" % [100.0 * segundas / n, 100.0 * Roulette.SECOND_SPIN])
+	check(not Roulette.resolve(rich_run(1, 100000, ["segunda_vuelta"]), rng, 0).second_spin and not Roulette.resolve(rich_run(), rng, 2).second_spin, "no gira de nuevo si no es común o si no se tiene el boost")
 
 	# determinismo: misma semilla, misma historia
 	var h1 := _history(123)
@@ -186,12 +179,12 @@ func test_roulette_resolve() -> void:
 	check(h1 == h2 and h1 != h3, "con la misma semilla la ruleta repite exactamente lo mismo")
 
 	# se puede jugar hasta quedarse sin claridad
-	r = rich_run(1, 120)
+	r = rich_run(1, cost * 2 + 20)
 	var spins := 0
-	while Roulette.validate(r, Roulette.Bet.PLENO, [2]) == "" and spins < 10:
-		Roulette.resolve(r, Roulette.Bet.PLENO, [2], rng, 9)
+	while Roulette.validate(r) == "" and spins < 10:
+		Roulette.resolve(r, rng, 4)   # (una casilla rara: no da claridad)
 		spins += 1
-	check(spins == 2 and r.claridad == 20, "con 120 de claridad se pueden hacer 2 apuestas de 50 y quedan 20")
+	check(spins == 2 and r.claridad == 20, "con %d de claridad se pueden hacer 2 giros de %d y quedan 20" % [cost * 2 + 20, cost])
 
 
 func _history(seed_value: int) -> Array:
@@ -200,10 +193,8 @@ func _history(seed_value: int) -> Array:
 	var r := rich_run(3, 100000)
 	var out: Array = []
 	for i in 30:
-		var bet: int = i % 4
-		var pockets: Array = range(1, 1 + Roulette.BETS[bet].count)
-		var res := Roulette.resolve(r, bet, pockets, rng)
-		out.append([res.pocket, res.won, res.prize.get("id", ""), r.claridad])
+		var res := Roulette.resolve(r, rng)
+		out.append([res.pocket, res.tier, res.prize.get("id", ""), r.claridad])
 	return out
 
 
@@ -215,40 +206,25 @@ func test_roulette_statistics() -> void:
 	var n := 13000
 	for i in n:
 		var r := rich_run()
-		var res := Roulette.resolve(r, Roulette.Bet.PLENO, [1], rng)
+		var res := Roulette.resolve(r, rng)
 		counts[res.pocket] = counts.get(res.pocket, 0) + 1
 	var uniform := true
 	for p in Roulette.POCKETS:
 		uniform = uniform and absf(counts.get(p, 0) / float(n) - 1.0 / 13.0) < 0.01
 	check(uniform, "las 13 casillas salen con la misma frecuencia (~7,7 %)")
 
-	# la frecuencia de ganar coincide con la probabilidad de cada apuesta
-	for b in Roulette.BETS:
-		var wins := 0
-		var trials := 6000
-		var pockets: Array = range(1, 1 + Roulette.BETS[b].count)
-		for i in trials:
-			var r := rich_run()
-			if Roulette.resolve(r, b, pockets, rng).won:
-				wins += 1
-		var expect := Roulette.probability(b)
-		check(absf(wins / float(trials) - expect) < 0.02, "%s gana el %.1f %% de las veces (esperado %.1f %%)" % [Roulette.BETS[b].name, 100.0 * wins / trials, 100.0 * expect])
-
 	# el rendimiento real a la larga se parece al esperado (valor de lo ganado / lo gastado)
-	for b in Roulette.BETS:
-		var trials := 8000
-		var pockets: Array = range(1, 1 + Roulette.BETS[b].count)
-		var spent := 0.0
-		var got := 0.0
-		for i in trials:
-			var r := rich_run()  # inventario vacio: todo entra
-			var res := Roulette.resolve(r, b, pockets, rng)
-			spent += res.price
-			if res.won:
-				got += Items.value_of(res.prize, res.price)
-		var real := got / spent
-		var expected := Roulette.expected_ratio(b, 1)
-		check(absf(real - expected) < 0.12, "%s: rendimiento medido %.2f cerca del esperado %.2f" % [Roulette.BETS[b].name, real, expected])
+	var trials := 8000
+	var spent := 0.0
+	var got := 0.0
+	for i in trials:
+		var r := rich_run()  # inventario vacio: todo entra
+		var res := Roulette.resolve(r, rng)
+		spent += res.price
+		got += Items.value_of(res.prize, Roulette.run_price(r))
+	var real := got / spent
+	var expected := Roulette.expected_ratio(1)
+	check(absf(real - expected) < 0.12, "rendimiento medido %.2f cerca del esperado %.2f" % [real, expected])
 
 
 ## La ficha de la taberna (etapas 1 a 3) es una fracción de la de la fórmula y desde la etapa 4 es la de siempre: sin saltos grandes.

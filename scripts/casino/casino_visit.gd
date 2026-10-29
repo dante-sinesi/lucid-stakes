@@ -2,7 +2,8 @@ extends RefCounted
 ## La visita a un casino: lo que pasa mientras estás en la sala (la racha, el pozo, "Doble o nada" y las estadísticas de cada mesa para el balance de la salida) y los efectos de los boosts y
 ## consumibles del casino sobre cada apuesta (`settle`). Ya no hay reglas de la casa por sala: la racha y el pozo del jackpot son premios (docs/plan_casinos.md).
 ## - Racha: cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %); perder la corta. Con el boost "Racha de la casa" o, esta visita, con el consumible "Racha de visita".
-## - Pozo del jackpot (boost): parte de lo que se pierde va a un pozo, y el premio mayor (tres coronas, blackjack, pleno) se lo lleva.
+## - Pozo del jackpot (boost): parte de lo que se pierde va a un pozo, y el premio mayor (tres coronas o blackjack) se lo lleva.
+## La ruleta no pierde nunca (todas sus casillas dan premio): no cuenta para la racha, el pozo ni la devolución (`con_apuesta` en `settle`), sólo para los extras de ganancia.
 ## El estado de la visita vive en `run.casino_visit` (se arma al entrar a la sala, `enter`); si está vacío (pruebas, entrenamiento) no hay efectos.
 
 const Loc := preload("res://scripts/idioma/loc.gd")
@@ -65,15 +66,15 @@ static func notes(res: Dictionary) -> String:
 
 
 ## Cierra una apuesta aplicando lo que hagan los boosts y consumibles del casino. `wager`: lo apostado; `reward`: la claridad que ya se pagó; `win`: se considera una
-## victoria (aunque el premio no sea claridad); `top`: salió el premio mayor del juego. Paga lo que corresponda (devolución, extra de racha o pozo)
+## victoria (aunque el premio no sea claridad); `top`: salió el premio mayor del juego; `con_apuesta`: falso en la ruleta (no hay apuesta que ganar o perder: ni racha, ni pozo, ni devolución). Paga lo que corresponda (devolución, extra de racha o pozo)
 ## y devuelve {refund, bonus, jackpot, total, notes}; `notes` son frases ya traducidas para mostrar.
-static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "") -> Dictionary:
+static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "", con_apuesta := true) -> Dictionary:
 	var out := {"refund": 0, "bonus": 0, "jackpot": 0, "total": 0, "notes": []}
 	var v := _visit(run)
 	if v.is_empty():
 		return out
 	var lost := (not win) and reward < wager
-	if racha_activa(run):
+	if con_apuesta and racha_activa(run):
 		if win:
 			v.streak = int(v.streak) + 1
 			v.max_streak = maxi(int(v.max_streak), int(v.streak))
@@ -83,7 +84,7 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 				out.notes.append(Loc.f("Racha de %d: +%d de claridad.", [v.streak, out.bonus]))
 		elif lost:
 			v.streak = 0
-	if run.boosts.has("pozo_del_jackpot"):
+	if con_apuesta and run.boosts.has("pozo_del_jackpot"):
 		if lost:
 			v.pool = int(v.pool) + int(round(float(wager - reward) * POOL_SHARE))
 		if top and int(v.pool) > 0:
@@ -91,7 +92,7 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 			v.pool = 0
 			out.notes.append(Loc.f("¡Jackpot! Te llevas el pozo: +%d de claridad.", [out.jackpot]))
 	# más boosts y consumibles del casino (docs/diseno.md §49)
-	if win and reward > 0:
+	if (win or not con_apuesta) and reward > 0:   # (la ruleta paga los extras a cualquier claridad que dé, aunque sea menos de lo que costó el giro)
 		var extra := 0
 		if run.boosts.has("mesa_caliente"):
 			extra += int(round(float(reward) * 0.25))
@@ -103,7 +104,7 @@ static func settle(run, wager: int, reward: int, win: bool, top: bool, game := "
 		if extra > 0:
 			out.bonus = int(out.bonus) + extra
 			out.notes.append(Loc.f("Casino: +%d de claridad.", [extra]))
-	if lost and run.boosts.has("red_de_seguridad"):
+	if con_apuesta and lost and run.boosts.has("red_de_seguridad"):
 		var back := int(round(float(wager - reward) * 0.10))
 		if back > 0:
 			out.refund = int(out.refund) + back

@@ -98,5 +98,15 @@ func _init() -> void:
 	_ok(evento == "fin" and t2.perdida, "tras la tercera muerte se acaba la partida")
 	var r4: Dictionary = t2.actuar(Vector3i(1, 0, 0), 0)
 	_ok(not r4.ok, "terminada la partida no se puede seguir")
+	# el trampolín que pisas se purifica (y da su claridad) aunque después te lance
+	var Motor = load("res://torre/motor.gd")
+	var m = Motor.crear(8, Vector3i(0, 1, 0))
+	m.poner(Vector3i(0, 0, 0), "n")
+	m.poner(Vector3i(1, 0, 0), "k")
+	var cel_k := Vector3i(1, 0, 0)
+	var id_k: int = m.ids[cel_k]
+	var r = m.actuar(Vector3i(1, 0, 0))
+	_ok(r.ok and m.salto and m.purificados.has(id_k), "pisar un trampolín lo purifica, aunque salte")
+	_ok(m.ultimos_purificados.has("k") and m.ultimas_celdas_purificadas.has(cel_k), "...y cuenta como bloque purificado de esa acción (para la claridad)")
 	print("fallos: ", fallos)
 	quit(1 if fallos > 0 else 0)
