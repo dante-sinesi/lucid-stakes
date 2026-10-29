@@ -515,7 +515,7 @@ func _poner_camara(animar: bool) -> void:
 		tam = maxf(alto * 0.75, 24.0)
 	if _camara_tween != null and _camara_tween.is_valid():
 		_camara_tween.kill()
-	var libre := (gatito_actuando or _gatito_vuelve) and not panorama   # (mientras Ama mueve bloques la cámara está en la sala y vuelve sola: ver `_gatito_camara`)
+	var libre := (gatito_actuando or _gatito_vuelve or _entrando_portal) and not panorama   # (mientras Ama mueve bloques la cámara está en la sala y vuelve sola: ver `_gatito_camara`; al entrar al portal sigue sola al personaje, sin saltar al punto donde el movimiento lo habría subido)
 	if animar:
 		_camara_tween = create_tween().set_parallel(true)
 		if not libre:
