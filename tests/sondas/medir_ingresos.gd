@@ -14,7 +14,7 @@ func _init() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
 	var cfg := Bot.default_config()
-	cfg.die_per_bit = 0.0
+	cfg.die_k = 0.0
 	cfg.hesitate = 0.0
 	var linea := []
 	for etapa in range(1, 16):

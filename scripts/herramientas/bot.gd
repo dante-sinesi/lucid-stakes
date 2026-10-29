@@ -22,7 +22,9 @@ static func default_config() -> Dictionary:
 	return {
 		"skill": 1.0,            # habilidad: 1,0 = el jugador medio; más: titubea y muere menos
 		"hesitate": 0.04,        # probabilidad de titubear (ir y volver) en cada paso, para un jugador de habilidad 1,0
-		"die_per_bit": 0.000226, # probabilidad de perder una sala por cada bit de complejidad que tiene (una sala de 100 bits se pierde el 2,3 % de las veces), para habilidad 1,0
+		"dif": "media",          # la dificultad del run (cambia el peaje: RunState.toll_dif)
+		"die_k": 0.0226,         # probabilidad de perder una sala de 100 bits de complejidad (2,3 %), para habilidad 1,0...
+		"die_exp": 2.0,          # ...y cómo crece con los bits: p = die_k × (bits / 100) ^ die_exp (con 1 es lineal; con más, las salas muy complejas se pierden mucho más)
 		"spend": 0.8,            # fracción de lo que sobra (después de apartar el precio de Farolín) que se juega en el casino
 		"max_rotations": 3,      # cuántas veces rota la vitrina buscando un premio de la lista
 		"play_blind": true,      # si no hay nada de la lista en la vitrina y no se puede rotar: juega igual una apuesta común
@@ -41,12 +43,12 @@ const BITS_DEL_NIVEL := {"facil": 31.0, "media": 83.0, "dificil": 136.0, "pesadi
 
 
 ## Un banco de torres (armarlas lleva unos 0,3 s cada una): {etapa: [Torre]}. Cada partida juega una copia (`Torre.copia`).
-static func arm_bank(paquete: Array, rng: RandomNumberGenerator, per_stage: int) -> Dictionary:
+static func arm_bank(paquete: Array, rng: RandomNumberGenerator, per_stage: int, dif := "media") -> Dictionary:
 	var bank := {}
 	for s in range(1, FINAL_STAGE + 1):
 		bank[s] = []
 		for _i in per_stage:
-			var t = Torre.armar(paquete, rng.randi(), Torre.salas_de_etapa(s), true, s)
+			var t = Torre.armar(paquete, rng.randi(), Torre.salas_de_etapa(s), true, s, dif)
 			if t.salas.size() >= 3:
 				bank[s].append(t)
 	return bank
@@ -120,7 +122,7 @@ static func play_tower(entry, run, rng: RandomNumberGenerator, cfg: Dictionary) 
 	while not t.terminada:
 		var sala: Dictionary = t.sala_actual()
 		var bits := float(sala.d.get("complejidad", BITS_DEL_NIVEL.get(str(sala.d.nivel), 83.0)))
-		var p_sala := clampf(float(cfg.die_per_bit) * bits / skill, 0.0, 0.95)
+		var p_sala := clampf(float(cfg.die_k) * pow(bits / 100.0, float(cfg.die_exp)) / skill, 0.0, 0.95)
 		var ok := _jugar_sala(t, run, rng, cfg, p_sala, hes_p, estado)
 		var info: Dictionary = t.ultima_sala
 		if ok:
@@ -141,6 +143,7 @@ static func play_tower(entry, run, rng: RandomNumberGenerator, cfg: Dictionary) 
 ## Un run entero (`bank`: {etapa: [Torre]}, ver arm_bank). Devuelve el resumen: etapa alcanzada, si ganó, vidas perdidas, lo que armó y, por etapa, lo que pasó (incluidas las salas).
 static func run_one(bank: Dictionary, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictionary:
 	var run = RunState.new()
+	run.dificultad = str(cfg.get("dif", "media"))
 	var per_stage: Array = []
 	var lives_lost := 0
 	var reached := 0
