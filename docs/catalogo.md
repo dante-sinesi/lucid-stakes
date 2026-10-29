@@ -28,8 +28,8 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Midas | Purificar un bloque da +200 % de claridad (no se suma con Pies de luz ni Pies de oro). | Épico |
 | Mano de 23 | En el blackjack el tope es 23 en vez de 21. | Épico |
 | Mesa caliente | Todo lo que ganas en el casino paga un 25 % más. | Épico |
-| Casilla de regalo | En la ruleta, cada apuesta cubre una casilla más gratis. | Épico |
-| Pozo del jackpot | Parte de lo que pierdes en el casino va a un pozo; el premio mayor se lo lleva. | Épico |
+| Casilla de regalo | Una casilla común de la ruleta pasa a ser épica. | Épico |
+| Pozo del jackpot | Parte de lo que pierdes en las tragamonedas y el blackjack va a un pozo; el premio mayor se lo lleva. | Épico |
 | Contratista | Cada contrato paga el doble. | Épico |
 | Pies de luz | Purificar un bloque da +50 % de claridad (no se suma con Pies de oro ni Midas). | Raro |
 | Paso firme | Subir y bajar un piso no cuenta como movimiento. | Raro |
@@ -46,13 +46,14 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Descuento de Farolín | Farolín cobra un 15 % menos. Se acumula (hasta 2). | Raro (se acumula) |
 | Blackjack de oro | El blackjack natural paga 3 a 1 en vez de 3 a 2. | Raro |
 | Ficha barata | La ficha de todas las mesas cuesta un 20 % menos. Se acumula (hasta 2). | Raro (se acumula) |
-| Racha de la casa | En el casino, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). | Raro |
+| Racha de la casa | En las tragamonedas y el blackjack, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). | Raro |
 | Caja fuerte | Al entrar al casino cobras el 15 % de la claridad con que empezaste la torre. | Raro |
 | Caza recompensas | Un contrato activo más. Se acumula (hasta 2). | Raro (se acumula) |
 | Aire extra | +4 movimientos en cada sala. | Común |
 | Ahorro | Cada etapa empiezas con 20 de claridad. | Común |
 | Bolsillo de luz | Empiezas cada torre con claridad de regalo. | Común |
-| Red de seguridad | Recuperas el 10 % de cada apuesta perdida. | Común |
+| Segunda vuelta | Si la ruleta cae en común, 1 de cada 5 veces gira de nuevo. | Común |
+| Red de seguridad | En las tragamonedas y el blackjack, recuperas el 10 % de cada apuesta perdida. | Común |
 | Giro de cortesía | En las tragamonedas, volver a girar es gratis. | Común |
 | Llave de la vitrina | La primera rotación de la vitrina es gratis en cada visita. | Común |
 
@@ -77,7 +78,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Reloj de arena | +10 movimientos en la sala actual. | Común |
 | Ficha gratis | En el casino: tu próxima apuesta es gratis. | Común |
 | Rayos X | En el casino: ves la carta tapada del crupier en tu próxima mano. | Común |
-| Racha de visita | En el casino: esta visita, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). | Común |
+| Racha de visita | En el casino: esta visita, en las tragamonedas y el blackjack, cada apuesta ganada seguida suma +10 % al pago de la siguiente (hasta +50 %). | Común |
 | Alcancía | En el casino: cobras el 30 % de la claridad con que empezaste la torre. | Común |
 | Bolsa pesada | Devuelve 3 veces la ficha, en claridad. | Común |
 | Bolsa de luz | Devuelve 1,4 veces la ficha, en claridad. | Barato |

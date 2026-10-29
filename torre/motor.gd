@@ -405,6 +405,7 @@ func _llegar(d: Vector3i) -> void:
 	if k == "i":
 		_resbalar(d)
 	elif k == "k":
+		_purificar_celda(jugador + DOWN)   # (el trampolín que pisaste también se purifica, aunque después te lance)
 		_lanzar(d)
 
 
@@ -549,10 +550,15 @@ func _purificar() -> void:
 		for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
 			celdas.append(c + d)
 	for k in celdas:
-		if bloques.has(k) and ids.has(k) and not purificados.has(ids[k]):
-			purificados[ids[k]] = true
-			ultimos_purificados.append(str(bloques[k]))
-			ultimas_celdas_purificadas.append(k)
+		_purificar_celda(k)
+
+
+## Purifica el bloque de esa celda si todavía no lo estaba (y anota su letra para la claridad).
+func _purificar_celda(k: Vector3i) -> void:
+	if bloques.has(k) and ids.has(k) and not purificados.has(ids[k]):
+		purificados[ids[k]] = true
+		ultimos_purificados.append(str(bloques[k]))
+		ultimas_celdas_purificadas.append(k)
 
 
 ## Trampa (se desarma al pisarla y cae con ella) y pinchos (se pierde).

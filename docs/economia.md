@@ -16,9 +16,12 @@ Todo el balance vive en variables (`static var`) para poder probarlo con el bot 
 - Espíritu de Balatro (decisión de Dante): después de la pared el juego puede romperse de forma absurda con los puntos, pero no al principio, y **superar el run completo no tiene que ser fácil**. Objetivo (decisión de Dante, 2026-10): que escape de la pesadilla el **15 % de los runs en Medio** de un jugador medio (bot de habilidad 1,0).
 - Descuentos: *Descuento de Farolín* 15 % (hasta 2), *Soborno* 30 %; *Interés* hace crecer 25 % la claridad que queda al salir (tope 150).
 
-## La ficha de la ruleta
+## La ficha y la ruleta de premios
 
-75 en la etapa 1 y +6 por etapa (`Roulette.base_price`, `price_step`), **menos en las tres primeras etapas** (la taberna): `Roulette.chica_mult` = ×0,45, ×0,70 y ×0,72 (34, 57 y 63), para que después del peaje alcance para jugar. Una torre rinde, por la ruta mínima y sin boosts (medido con el bot): 167, 283, 315, 439 y 463 en las etapas 1 a 5 y 927 en la 15; la ficha ronda un 20 % de eso. (La curva del peaje, `RunState.income_fit`, se ajustó con la torre vieja y está por recalibrarse: ver `plan_casinos.md`.) Subirla retrasa la bola de nieve del principio: con ficha 50 el ingreso con build ya era ×3 en la etapa 5; con ficha 100 + 8 el bot casi no gana (el casino se come las builds).
+- **La ficha** (`Roulette.base_price` 75, `price_step` +6 por etapa, y **menos en las tres primeras etapas**: `chica_mult` ×0,45, ×0,70 y ×0,72 → 34, 57 y 63) es la unidad de precio del casino: lo que valen los premios, la tienda, rotar la vitrina, las tragamonedas y el blackjack se calculan con ella. Una torre rinde unos 230 a 490 de claridad sin boosts (`INGRESO_MEDIDO`); la ficha ronda un 20 % de eso desde la etapa 4.
+- **La ruleta** (`scripts/casino/roulette.gd`, decisión de Dante, 2026-10) ya no tiene apuestas ni casilla de la casa: es una rueda de 13 casillas, cada una con la rareza de su premio (`Roulette.WHEEL`): **1 épica, 2 raras, 4 comunes y 6 de bolsas de claridad**. Todas dan premio: el que sale de la vitrina de la visita para esa rareza (que se puede rotar pagando). El giro cuesta **3 fichas** (`Roulette.spin_mult`) y su rendimiento esperado es ~0,96 (`expected_ratio`, `tests/sondas/probe_rtp.gd`): una bolsa devuelve 1,4 fichas, menos que el giro, y lo bueno son los ítems.
+- **Boosts de la ruleta:** *Casilla de regalo* (épico) convierte una casilla común en épica; *Segunda vuelta* (común): si cae en común, 1 de cada 5 veces gira de nuevo sin costo. La ruleta no cuenta para Racha de la casa, Pozo del jackpot ni Red de seguridad (no hay apuesta que ganar o perder: son de las tragamonedas y el blackjack); sí cuenta para Mesa caliente, Doble o nada y el Usurero (pagan más la claridad ganada).
+- Subir la ficha retrasa la bola de nieve del principio: con ficha 100 + 8 el bot casi no gana (el casino se come las builds).
 
 ## Boosts y consumibles
 
