@@ -1,60 +1,35 @@
 extends Control
-## Dibujo de la rueda de la ruleta hecha de cubitos: 13 casillas (la 0 es la Pesadilla), las casillas cubiertas con ficha y la
+## Dibujo de la rueda de la ruleta hecha de cubitos: 13 casillas, cada una con el ícono de su rareza (épica, rara, común o bolsa de claridad) y la
 ## bola fija arriba. La rueda gira (rotation_angle) y la casilla que queda bajo la bola es la que cae.
 ## La mugre (cubitos corrompidos y huecos) queda fija en pantalla mientras la rueda gira.
 
 const Roulette := preload("res://scripts/casino/roulette.gd")
-const VFont := preload("res://scripts/ui/voxel_font.gd")
+const Items := preload("res://scripts/datos/items.gd")
 const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
 
 const CUBE := 10.0   # lado de un cubito de la rueda, en píxeles
 
-## Se emite al tocar una casilla (la 0, de la casa, no se puede cubrir). Usa la rotación ACTUAL de la rueda: lo que ves es lo que tocás.
-signal pocket_clicked(pocket: int)
-
 var rotation_angle := 0.0:
 	set(v):
 		rotation_angle = v
 		queue_redraw()
-var covered: Array = []:
-	set(v):
-		for p in v:
-			if not covered.has(p):
-				chip_age[p] = 0.0   # ficha nueva: salta y cae sobre la casilla
-		covered = v
-		queue_redraw()
-var cursor_pocket := -1:   # la casilla que marca el mando (-1 = ninguna)
-	set(v):
-		if v != cursor_pocket:
-			cursor_pocket = v
-			queue_redraw()
+var tiers: Array[int] = Roulette.WHEEL.duplicate()   # la rareza de cada casilla (con Casilla de regalo, una de las comunes es épica)
 var result := -1:
 	set(v):
 		result = v
 		queue_redraw()
-var hover_pocket := -1:
-	set(v):
-		if v != hover_pocket:
-			hover_pocket = v
-			queue_redraw()
 
 
-## Animaciones: el marcador da un golpecito cada vez que pasa una casilla, la bola salta al caer, las fichas nuevas rebotan,
-## la casilla ganadora parpadea y la rueda tiembla cuando gana la casa.
+## Animaciones: el marcador da un golpecito cada vez que pasa una casilla, la bola salta al caer y la casilla ganadora parpadea.
 var th := CasinoTheme.for_tier(0)     # estética según el nivel del casino (casino_theme.gd): la rueda se purifica con las salas
 var _anim := 0.0
-var _blink := 0.0               # tiempo de titileo de la casilla marcada
-var _blink_was := true
 var _anim_frame := -1
 var spinning := false
 var kick := 0.0                 # golpe del marcador (1 = recién pasó una casilla)
 var ball_off := 0.0             # desplazamiento vertical de la bola, en cubitos (negativo = arriba)
-var shake_px := 0.0
-var chip_age := {}              # casilla -> segundos desde que se puso la ficha
 var win_t := -1.0               # segundos desde que se marcó la ganadora (-1 = no hay)
 var _last_under := -1
-const CHIP_TIME := 0.35
 const WIN_BLINK := 1.6
 
 
@@ -64,13 +39,6 @@ func _init() -> void:
 
 func _process(delta: float) -> void:
 	var dirty := false
-	if cursor_pocket >= 0:   # el titileo de la casilla marcada necesita redibujar varias veces por segundo aunque el casino no tenga destellos
-		_blink += delta
-		if _blink_on() != _blink_was:
-			_blink_was = _blink_on()
-			dirty = true
-	else:
-		_blink = 0.0
 	if int(th.shine) > 0:   # destellos: se redibuja unas 8 veces por segundo
 		_anim += delta
 		var fr := int(_anim * 8.0)
@@ -85,17 +53,6 @@ func _process(delta: float) -> void:
 	if kick > 0.0:
 		kick = maxf(0.0, kick - delta * 7.0)
 		dirty = true
-	if shake_px > 0.05:
-		shake_px *= pow(0.02, delta)
-		dirty = true
-	elif shake_px != 0.0:
-		shake_px = 0.0
-		dirty = true
-	for p in chip_age.keys():
-		chip_age[p] += delta
-		if chip_age[p] >= CHIP_TIME:
-			chip_age.erase(p)
-		dirty = true
 	if win_t >= 0.0:
 		win_t += delta
 		dirty = true
@@ -103,11 +60,6 @@ func _process(delta: float) -> void:
 			win_t = -1.0
 	if dirty:
 		queue_redraw()
-
-
-## ¿Está en la mitad "encendida" del titileo? (la casilla marcada se alterna entre muy clara y oscura)
-func _blink_on() -> bool:
-	return int(_blink * 4.0) % 2 == 0
 
 
 ## La bola rebota unas veces cada vez más bajo al caer en su casilla.
@@ -118,36 +70,6 @@ func ball_hop() -> void:
 		tw.tween_property(self, "ball_off", -h, 0.11 + 0.01 * i).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tw.tween_property(self, "ball_off", 0.0, 0.11 + 0.01 * i).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		h *= 0.45
-
-
-## Radio de la rueda en píxeles (la parte donde se eligen casillas: ni el aro ni el centro).
-func wheel_radius() -> float:
-	return (int(minf(size.x, size.y) / 2.0 / CUBE) - 2) * CUBE
-
-
-## Casilla bajo un punto local del control, o -1 si cae en el aro, en el centro o afuera.
-func pocket_at_point(p: Vector2) -> int:
-	var d := p - size / 2.0
-	var r := wheel_radius()
-	if d.length() > r - CUBE * 1.6 or d.length() < CUBE * 2.2:
-		return -1
-	return pocket_at(d.x, d.y)
-
-
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		var p := pocket_at_point(event.position)
-		hover_pocket = p if p > 0 else -1
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var p := pocket_at_point(event.position)
-		if p > 0:
-			pocket_clicked.emit(p)
-			accept_event()
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_MOUSE_EXIT:
-		hover_pocket = -1
 
 
 func sector() -> float:
@@ -172,20 +94,44 @@ func pocket_at(dx: float, dy: float) -> int:
 
 
 func pocket_color(i: int) -> Color:
-	if i == 0:
-		return th.zero   # la Pesadilla
 	return th.pocket_a if i % 2 == 1 else th.pocket_b
 
 
-## Color de los números de una casilla: oscuros sobre fondo claro y claros sobre fondo oscuro (las casillas rojas del gran casino).
-func number_color(i: int) -> Color:
-	var c := pocket_color(i)
-	return Color(0.22, 0.10, 0.04) if c.get_luminance() > 0.5 else Color(1.0, 0.95, 0.8)
+## Íconos de cubitos de cada rareza (7 x 7): a = color, b = brillo.
+const ICON_ROWS := {
+	Items.Tier.EPICO: ["...a...", "..aaa..", ".aabaa.", "aabbbaa", ".aabaa.", "..aaa..", "...a..."],
+	Items.Tier.RARO: ["...a...", "..aba..", ".aabaa.", "aaaaaaa", ".aabaa.", "..aba..", "...a..."],
+	Items.Tier.COMUN: [".aaaaa.", "aaaaaaa", "aabbbaa", "aabaaaa", "aabbaaa", "aaaaaaa", ".aaaaa."],
+	Items.Tier.CONSUMIBLE: ["..aaa..", "...b...", "..aaa..", ".aaaaa.", "aaabaaa", "aaaaaaa", ".aaaaa."],
+}
+const ICON_COLORS := {
+	Items.Tier.EPICO: [Color(0.78, 0.38, 1.0), Color(1.0, 0.9, 0.4)],
+	Items.Tier.RARO: [Color(0.35, 0.65, 1.0), Color(0.85, 0.95, 1.0)],
+	Items.Tier.COMUN: [Color(0.72, 0.72, 0.78), Color(0.95, 0.95, 1.0)],
+	Items.Tier.CONSUMIBLE: [Color(0.98, 0.82, 0.30), Color(0.55, 0.32, 0.10)],
+}
+
+
+## Dibuja el ícono de una rareza centrado en `center`, con una sombra dura y cubitos de `cell` píxeles.
+func _icon(tier: int, center: Vector2, cell: float) -> void:
+	var rows: Array = ICON_ROWS[tier]
+	var cols: Array = ICON_COLORS[tier]
+	var origin := center - Vector2(7, 7) * cell * 0.5
+	for y in 7:
+		for x in 7:
+			var ch: String = rows[y][x]
+			if ch == ".":
+				continue
+			draw_rect(Rect2(origin + Vector2(x, y) * cell + Vector2(2, 3), Vector2(cell, cell)), Color(0, 0, 0, 0.45))
+	for y in 7:
+		for x in 7:
+			var ch: String = rows[y][x]
+			if ch == ".":
+				continue
+			Draw.cube(self, origin + Vector2(x, y) * cell, cell, cols[0] if ch == "a" else cols[1], true)
 
 
 func _draw() -> void:
-	if shake_px > 0.05:
-		draw_set_transform(Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shake_px)
 	var g := CUBE
 	var c := size / 2.0
 	var radius := int(minf(size.x, size.y) / 2.0 / g) - 2     # radio de la rueda en cubitos
@@ -223,13 +169,7 @@ func _draw() -> void:
 				Draw.cube(self, pos, g, th.gold, true)
 				continue
 			var p := pocket_at(float(i), float(j))
-			var col := pocket_color(p)
-			if covered.has(p):   # las casillas elegidas se oscurecen: así las fichas doradas resaltan
-				col = col.darkened(0.55)
-			elif p == hover_pocket:
-				col = col.lightened(0.15)
-			if p == cursor_pocket:   # la marca del teclado o del mando: la casilla titila fuerte (casi blanca y oscura, cuatro veces por segundo)
-				col = col.lerp(Color(1.0, 1.0, 0.85), 0.8) if _blink_on() else col.darkened(0.45)
+			var col := pocket_color(p).darkened(0.25)   # (un poco más oscura: los íconos resaltan)
 			if n < k * 0.12 * (0.4 + d / radius):  # mugre que va creciendo hacia afuera
 				col = Draw.corrupt_color(n)
 			Draw.cube(self, pos, g, col, true)
@@ -247,28 +187,10 @@ func _draw() -> void:
 				if win_t >= 0.0 and int(win_t * 8.0) % 2 == 1:
 					lit = Color(1.0, 0.8, 0.2)   # parpadea unos instantes
 				Draw.cube(self, origin + cell * g, g, lit, true)
-	# números de cada casilla, siempre derechos (cubitos de 2 píxeles)
+	# el ícono de la rareza de cada casilla, siempre derecho
 	for p in Roulette.POCKETS:
 		var mid := rotation_angle + p * sector() - PI / 2.0
-		var lp := c + Vector2.from_angle(mid) * float(radius) * g * 0.74
-		var txt := str(p)
-		var l := VFont.layout([txt])
-		var tsize := Vector2(l.size) * 3.0
-		var col := Color(0.85, 0.65, 1.0) if p == 0 else (Color(1.0, 0.95, 0.8) if covered.has(p) else number_color(p))
-		Draw.text_cells(self, lp - tsize / 2.0, l.cells, l.size.y, 3.0, col, 0.0, p, true)
-		if covered.has(p):  # ficha: una pila de cubitos dorados y brillantes sobre la casilla oscurecida
-			var cp := c + Vector2.from_angle(mid) * float(radius) * g * 0.52
-			var cs := g * 2.0
-			var lift := 0.0
-			if chip_age.has(p):   # la ficha salta y cae
-				lift = sin(chip_age[p] / CHIP_TIME * PI) * cs * 1.6
-			for h in 3:
-				var base := cp - Vector2(cs * 0.5, cs * 0.5 + h * cs * 0.55 + lift)
-				draw_rect(Rect2(base + Vector2(2, 3), Vector2(cs, cs)), Color(0, 0, 0, 0.55))
-				Draw.cube(self, base, cs, (th.chip as Color).lightened(0.12 * h), true)
-				if shine >= 2 and h == 2 and int(_anim * 4.0 + float(p)) % 5 == 0:   # destello sobre la ficha
-					draw_rect(Rect2(base + Vector2(cs * 0.6, 1), Vector2(3, 3)), Color(1, 1, 0.9))
-			draw_rect(Rect2(cp - Vector2(cs * 0.5, cs * 0.5 + 2 * cs * 0.55), Vector2(cs, 2)), Color(1, 1, 0.85))
+		_icon(tiers[p], c + Vector2.from_angle(mid) * float(radius) * g * 0.68, 6.0)
 	# marcador (flecha de cubitos) y bola, fijos arriba
 	var top := c + Vector2(0, -(radius + 1) * g - kick * g * 0.9)
 	for step in 3:

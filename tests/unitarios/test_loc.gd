@@ -73,8 +73,8 @@ func test_catalog() -> void:
 		need(ch.how, "cómo se desbloquea " + ch.id)
 	for r in Cosmetics.RARITIES:
 		need(Cosmetics.RARITIES[r].name, "rareza")
-	for b in Roulette.BETS:
-		need(Roulette.BETS[b].name, "apuesta")
+	for t in Roulette.TIER_ORDER:
+		need(Roulette.TIER_NAMES[t], "rareza de la ruleta")
 	for l in Story.intro() + Story.outro():
 		need(l if typeof(l) == TYPE_STRING else l.text, "historia")
 	for id in Story.LESSONS:
@@ -163,7 +163,6 @@ func test_screens() -> void:
 	rs.setup(run2, rng, true)
 	await process_frame
 	rs.open_prizes()
-	rs.toggle_pocket(5)
 	rs.spin()
 	for i in 200:
 		await process_frame

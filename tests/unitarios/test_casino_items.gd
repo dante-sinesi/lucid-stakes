@@ -94,35 +94,46 @@ func test_prices() -> void:
 func test_roulette() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4
-	# Casilla de regalo: una casilla más que la que elegís (distinta de la 0 y de las tuyas)
+	# Casilla de regalo: una de las casillas comunes de la rueda pasa a ser épica
 	var run := make_run(["casilla_de_regalo"])
-	var res := Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 12)
-	check(res.ok and int(res.extra_pocket) > 0 and int(res.extra_pocket) != 1, "Casilla de regalo: se cubre una casilla más (%d)" % int(res.extra_pocket))
-	var wins := 0
+	var epicas := Roulette.wheel_tiers(run).count(Items.Tier.EPICO)
+	check(epicas == 2 and Roulette.wheel_tiers(run).count(Items.Tier.COMUN) == 3, "Casilla de regalo: la rueda tiene 2 casillas épicas y 3 comunes")
+	var nuevas := 0
 	for i in 400:
 		var r := make_run(["casilla_de_regalo"])
-		var rr := Roulette.resolve(r, Roulette.Bet.PLENO, [1], rng)
-		wins += 1 if rr.won else 0
-	check(wins > 400 * 2.0 / 13.0 * 0.6 and wins < 400 * 2.0 / 13.0 * 1.5, "con Casilla de regalo el pleno acierta ~2 de cada 13 (%d de 400)" % wins)
-	# Ficha gratis: la apuesta no cuesta (y se gasta)
+		nuevas += 1 if int(Roulette.resolve(r, rng).tier) == Items.Tier.EPICO else 0
+	check(nuevas > 400 * 2.0 / 13.0 * 0.6 and nuevas < 400 * 2.0 / 13.0 * 1.5, "con Casilla de regalo caen épicos ~2 de cada 13 giros (%d de 400)" % nuevas)
+	# Ficha gratis: el giro no cuesta (y se gasta)
 	var run2 := make_run()
 	run2.free_chip = true
 	var before := run2.claridad
-	var res2 := Roulette.resolve(run2, Roulette.Bet.PLENO, [1], rng, 5)   # pierde
-	check(res2.ok and not res2.won and run2.claridad == before and not run2.free_chip, "Ficha gratis: la apuesta perdida no cuesta claridad y se gasta")
-	var res3 := Roulette.resolve(run2, Roulette.Bet.PLENO, [1], rng, 5)
-	check(res3.ok and run2.claridad == before - Roulette.run_price(run2), "la siguiente apuesta sí cuesta")
+	var res2 := Roulette.resolve(run2, rng, 4)   # una casilla rara: no da claridad
+	check(res2.ok and run2.claridad == before and not run2.free_chip, "Ficha gratis: el giro no cuesta claridad y se gasta")
+	var res3 := Roulette.resolve(run2, rng, 4)
+	check(res3.ok and run2.claridad == before - Roulette.spin_price(run2), "el siguiente giro sí cuesta")
+	# la ruleta no pierde: no cuenta para la devolución, la racha ni el pozo (son de las mesas con apuestas)
+	var run3 := make_run(["red_de_seguridad", "racha_de_la_casa", "pozo_del_jackpot"])
+	Rules.enter(run3, 1)
+	var antes := run3.claridad
+	var res4 := Roulette.resolve(run3, rng, 4)
+	check(int(res4.rules.refund) == 0 and int(res4.rules.jackpot) == 0 and int(res4.rules.bonus) == 0 and run3.claridad == antes - Roulette.spin_price(run3) and int(run3.casino_visit.pool) == 0 and int(run3.casino_visit.streak) == 0, "la ruleta no cuenta para Red de seguridad, Racha de la casa ni Pozo del jackpot")
+	# Mesa caliente sí: paga más la claridad ganada (una bolsa)
+	var run4 := make_run(["mesa_caliente"])
+	Rules.enter(run4, 1)
+	var res5 := Roulette.resolve(run4, rng, 1)   # una casilla de bolsas
+	if res5.prize.type == Items.Type.CLARITY:
+		check(int(res5.rules.total) == int(round(float(round(res5.prize.mult * Roulette.run_price(run4))) * 0.25)), "Mesa caliente paga un 25 % más la claridad de una bolsa de la ruleta")
 
 
 func test_rules() -> void:
 	var run := make_run(["red_de_seguridad"])
 	Rules.enter(run, 1)
 	var before := run.claridad
-	var out := Rules.settle(run, 100, 0, false, false, "ruleta")
+	var out := Rules.settle(run, 100, 0, false, false, "tragamonedas")
 	check(int(out.total) == 10 and run.claridad == before + 10, "Red de seguridad: devuelve el 10 % de lo perdido")
 	var run2 := make_run(["mesa_caliente"])
 	Rules.enter(run2, 1)
-	var out2 := Rules.settle(run2, 100, 200, true, false, "ruleta")
+	var out2 := Rules.settle(run2, 100, 200, true, false, "tragamonedas")
 	check(int(out2.total) == 50, "Mesa caliente: lo ganado paga un 25 %% más (%d)" % int(out2.total))
 	var run3 := make_run()
 	Rules.enter(run3, 1)

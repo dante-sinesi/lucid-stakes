@@ -1,6 +1,6 @@
 extends Control
-## Ventana de premios de la ruleta: para cada tipo de apuesta muestra los premios posibles con su ícono, su descripción y la
-## probabilidad de ganarlos en una tirada (probabilidad de acertar la apuesta x peso del premio dentro de su nivel).
+## Ventana de premios de la ruleta: para cada rareza de la rueda muestra los premios posibles (los de la vitrina de la visita) con su ícono, su descripción y la
+## probabilidad de ganarlos en un giro (casillas de esa rareza ÷ 13 × peso del premio dentro de su rareza).
 ## Se cierra con el botón, con un clic fuera de la ventana o con Esc.
 
 const Roulette := preload("res://scripts/casino/roulette.gd")
@@ -18,7 +18,7 @@ const Loc := preload("res://scripts/idioma/loc.gd")
 
 signal closed
 
-var bet := Roulette.Bet.PLENO
+var tier := Items.Tier.EPICO
 var panel: Control
 var run   # (el run: con él la ventana muestra la vitrina de la visita y no todo el catálogo)
 var tabs := {}
@@ -28,15 +28,15 @@ var hints   # la botonera de la ventana
 var rotate_cb := Callable()   # rota la vitrina de la visita (lo pone la ruleta); la ventana sigue abierta y muestra lo nuevo
 
 
-## Filas de la ventana para una apuesta: [{id, name, desc, prob}] (prob en 0..1).
-static func rows_for(bet_kind: int, run = null) -> Array:
-	var pool: Array[Dictionary] = Showcase.pool(run, Roulette.BETS[bet_kind].tier) if run != null else Items.by_tier(Roulette.BETS[bet_kind].tier)   # (con vitrina: los premios de esta visita)
+## Filas de la ventana para una rareza: [{id, name, desc, prob}] (prob en 0..1).
+static func rows_for(tier_kind: int, run = null) -> Array:
+	var pool: Array[Dictionary] = Showcase.pool(run, tier_kind) if run != null else Items.by_tier(tier_kind)   # (con vitrina: los premios de esta visita)
 	var wsum := 0.0
 	for it in pool:
 		wsum += it.weight
 	var out: Array = []
 	for it in pool:
-		out.append({"id": it.id, "name": it.name, "desc": it.desc, "prob": Roulette.probability(bet_kind) * it.weight / wsum})
+		out.append({"id": it.id, "name": it.name, "desc": it.desc, "prob": Roulette.probability(tier_kind, run) * it.weight / wsum})
 	return out
 
 
@@ -74,10 +74,10 @@ func _init() -> void:
 	tab_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	tab_row.add_theme_constant_override("separation", 8)
 	col.add_child(tab_row)
-	for b in Roulette.BETS:
-		var t := UI.button(Loc.f("%s (%d)", [Loc.t(Roulette.BETS[b].name), Roulette.BETS[b].count]), false, 2.0, 22, false)
+	for b in Roulette.TIER_ORDER:
+		var t := UI.button(Loc.f("%s (%d)", [Loc.t(Roulette.TIER_NAMES[b]), Roulette.count_of(b)]), false, 2.0, 22, false)
 		t.toggle_mode = true
-		t.pressed.connect(show_bet.bind(b))
+		t.pressed.connect(show_tier.bind(b))
 		tab_row.add_child(t)
 		tabs[b] = t
 	list = VBoxContainer.new()
@@ -113,12 +113,12 @@ func rotate_here() -> void:
 	if not _can_rotate():
 		return
 	rotate_cb.call()
-	show_bet(bet)
+	show_tier(tier)
 
 
-func open_for(bet_kind: int) -> void:
+func open_for(tier_kind: int) -> void:
 	visible = true
-	show_bet(bet_kind)
+	show_tier(tier_kind)
 	MenuAnim.pop_in(panel, 0.92, 0.28)
 
 
@@ -128,17 +128,17 @@ func close_window() -> void:
 		closed.emit()
 
 
-func show_bet(bet_kind: int) -> void:
-	bet = bet_kind
+func show_tier(tier_kind: int) -> void:
+	tier = tier_kind
 	for b in tabs:
-		tabs[b].button_pressed = (b == bet_kind)
+		tabs[b].button_pressed = (b == tier_kind)
 	for ch in list.get_children():
 		ch.queue_free()
 		list.remove_child(ch)
-	for r in rows_for(bet_kind, run):
+	for r in rows_for(tier_kind, run):
 		list.add_child(_make_row(r))
 	_update_hints()
-	MenuAnim.stagger(list.get_children(), 0.04, 0.22, 0.05)   # al cambiar de apuesta, las filas entran una tras otra
+	MenuAnim.stagger(list.get_children(), 0.04, 0.22, 0.05)   # al cambiar de rareza, las filas entran una tras otra
 
 
 func _make_row(r: Dictionary) -> Control:
@@ -163,9 +163,9 @@ func _make_row(r: Dictionary) -> Control:
 
 # Esc cierra la ventana; un clic en el fondo oscuro también.
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E, KEY_LEFT, KEY_RIGHT, KEY_A, KEY_D]:   # las flechas, LB y RB cambian el tipo de apuesta
-		var ids: Array = Roulette.BETS.keys()
-		show_bet(ids[posmod(ids.find(bet) + (1 if event.keycode in [KEY_E, KEY_RIGHT, KEY_D] else -1), ids.size())])
+	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E, KEY_LEFT, KEY_RIGHT, KEY_A, KEY_D]:   # las flechas, LB y RB cambian la rareza
+		var ids: Array = Roulette.TIER_ORDER
+		show_tier(ids[posmod(ids.find(tier) + (1 if event.keycode in [KEY_E, KEY_RIGHT, KEY_D] else -1), ids.size())])
 		get_viewport().set_input_as_handled()
 		return
 	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:   # R (LT) rota la vitrina sin cerrar la ventana

@@ -14,7 +14,6 @@ const FINAL_STAGE := 15
 const WISHLIST: Array = ["cosecha_doble", "midas", "pies_de_oro", "cosecha", "racha_imparable", "pies_de_luz", "buen_ojo", "escalador", "descuento_duende",
 		"empuje_rentable", "interes", "bolsillo_de_luz", "mente_abierta", "pocion_de_cosecha", "lluvia_de_luz", "iman_de_luz", "baraja_de_racha", "soborno", "vida_extra",
 		"tesoro", "cofre_de_luz", "saquito_de_oro"]
-const BET_OF_TIER := {Items.Tier.EPICO: Roulette.Bet.PLENO, Items.Tier.RARO: Roulette.Bet.TERNA, Items.Tier.COMUN: Roulette.Bet.MITAD, Items.Tier.CONSUMIBLE: Roulette.Bet.RANGO}
 
 
 ## Parámetros por omisión de una partida del bot.
@@ -222,7 +221,7 @@ static func casino(run, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictiona
 	for _i in int(cfg.max_casino_actions):
 		var reserve: int = run.toll_after_discounts(base_toll)
 		var budget := int(float(run.claridad - reserve) * float(cfg.spend))
-		var ficha := Roulette.run_price(run)
+		var giro := Roulette.spin_price(run)
 		var want := _wanted(run)
 		if not want.is_empty() and want.where == "tienda":
 			var price := Showcase.shop_price(run, Items.get_item(str(want.id)))
@@ -235,32 +234,26 @@ static func casino(run, rng: RandomNumberGenerator, cfg: Dictionary) -> Dictiona
 			want = {}
 		if want.is_empty():
 			var rot_cost := Showcase.rotate_cost(run)
-			if stats.rotations < int(cfg.max_rotations) and budget >= rot_cost + ficha:
+			if stats.rotations < int(cfg.max_rotations) and budget >= rot_cost + giro:
 				Showcase.rotate(run, rng)
 				stats.rotations += 1
 				stats.spent += rot_cost
 				continue
 			if not bool(cfg.play_blind):
 				break
-		var bet: int = Roulette.Bet.TERNA
-		if not want.is_empty():
-			bet = int(BET_OF_TIER[want.tier])
-		elif run.showcase.is_empty():
-			bet = Roulette.Bet.MITAD
 		var free: bool = free_left > 0
-		if not free and budget < ficha:
+		if not free and budget < giro:
 			break
-		var pockets: Array = range(1, int(Roulette.BETS[bet].count) + 1)
 		var before: int = run.claridad
 		if free:
-			run.claridad += ficha   # (la jugada gratis: se paga con una moneda de la torre, no con claridad)
+			run.claridad += giro   # (la jugada gratis: se paga con una moneda de la torre, no con claridad)
 			free_left -= 1
-		var res2: Dictionary = Roulette.resolve(run, bet, pockets, rng)
+		var res2: Dictionary = Roulette.resolve(run, rng)
 		if not res2.ok:
 			break
 		stats.plays += 1
 		stats.spent += (0 if free else int(res2.price))
-		if res2.won and not res2.prize.is_empty():
+		if not res2.prize.is_empty() and res2.prize.type != Items.Type.CLARITY:
 			stats.won_items.append(str(res2.prize.id))
 	return stats
 

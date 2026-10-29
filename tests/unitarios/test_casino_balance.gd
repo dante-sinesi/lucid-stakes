@@ -41,8 +41,8 @@ func test_stats() -> void:
 	var price := Roulette.run_price(run)
 	var b := Rules.balance(run)
 	check(b.rows.size() == 3 and b.total.plays == 0 and b.claridad_in == 5000 and b.room == "Salón" and not b.racha and not b.pozo, "al entrar el balance está en cero y sabe la sala")
-	Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)   # pierde
-	Roulette.resolve(run, Roulette.Bet.MITAD, [1, 2, 3, 4, 5, 6], rng, 2)   # gana un premio
+	Roulette.resolve(run, rng, 1)   # una bolsa de luz: paga menos de lo que costó el giro
+	Roulette.resolve(run, rng, 0)   # la casilla épica: un boost
 	run.boosts.clear()   # (el premio es al azar: que no cambie lo que sigue)
 	run.consumables.clear()
 	var s := Slots.new(run, rng)
@@ -54,7 +54,7 @@ func test_stats() -> void:
 	bj.stand()
 	b = Rules.balance(run)
 	var roul: Dictionary = b.rows[0]
-	check(roul.game == "ruleta" and roul.plays == 2 and roul.wins == 1 and roul.losses == 1 and roul.spent == price * 2, "la ruleta cuenta 2 partidas, 1 ganada y 1 perdida")
+	check(roul.game == "ruleta" and roul.plays == 2 and roul.wins == 1 and roul.losses == 1 and roul.spent == Roulette.spin_price(run) * 2, "la ruleta cuenta 2 giros, 1 con premio mayor y 1 con una bolsa que paga menos que el giro")
 	var slot: Dictionary = b.rows[1]
 	check(slot.game == "tragamonedas" and slot.plays == 1 and slot.losses == 1 and slot.spent == price and slot.won == 0 and slot.net == -price, "las tragamonedas, una partida perdida")
 	var bjr: Dictionary = b.rows[2]
@@ -83,7 +83,7 @@ func test_screen() -> void:
 	var run := make_run(3)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 6
-	Roulette.resolve(run, Roulette.Bet.PLENO, [1], rng, 5)
+	Roulette.resolve(run, rng, 4)
 	Rules.settle(run, 100, 0, false, false, "tragamonedas")
 	var sc := BalanceScreen.new()
 	root.add_child(sc)

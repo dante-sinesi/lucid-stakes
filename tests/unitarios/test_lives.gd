@@ -174,8 +174,8 @@ func test_compromiso() -> void:
 	c.claridad = 100000
 	var blocked := 0
 	for i in 400:
-		var res := Roulette.resolve(c, Roulette.Bet.TERNA, [1, 2, 3], rng, 1)
-		if res.won and res.prize.has("id") and c.item_blocked(str(res.prize.id)):
+		var res := Roulette.resolve(c, rng, 4)   # una casilla rara (donde puede salir el Tótem)
+		if res.prize.has("id") and c.item_blocked(str(res.prize.id)):
 			blocked += 1
 	check(blocked == 0, "la ruleta nunca da un Tótem en Compromiso (%d)" % blocked)
 	# se guarda con el run
