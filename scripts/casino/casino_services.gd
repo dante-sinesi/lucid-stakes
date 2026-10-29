@@ -2,7 +2,7 @@ extends RefCounted
 ## Servicios del casino: cada nivel de sala tiene una estación propia que no es un juego (reglas puras, sin interfaz; las pantallas están en
 ## casino_service_screens.gd). Rompen a propósito la regla de que todo es apuesta: son decisiones con precio fijo.
 ## - Taberna: ninguno (es el primer casino: lo justo para jugar).
-## - Salón, "Taller": se vende un boost o consumible por claridad, o se cambia por otro del mismo nivel (se libera lugar en las barras).
+## - Salón, "Taller": se vende un boost o consumible por claridad, o se cambia por otro del mismo nivel (cada cambio de la visita cuesta más que el anterior).
 ## - Casino y gran casino: ninguno (el ahorro ahora son un boost y un consumible: Caja fuerte y Alcancía; ver `enter`).
 
 const Items := preload("res://scripts/datos/items.gd")
@@ -50,8 +50,10 @@ static func sell_price(run, id: String) -> int:
 	return maxi(int(round(Items.value_of(Items.get_item(id), Roulette.run_price(run)) * SELL_FRACTION)), 1)
 
 
+## Lo que cuesta el próximo cambio: SWAP_FRACTION de la ficha por cada cambio que ya hiciste en esta visita más uno (así no se cambia una y otra vez hasta que salga lo que se busca).
 static func swap_price(run) -> int:
-	return maxi(int(round(Roulette.run_price(run) * SWAP_FRACTION)), 1)
+	var visita = run.casino_visit if run.casino_visit is Dictionary else {}
+	return maxi(int(round(Roulette.run_price(run) * SWAP_FRACTION * float(1 + int(visita.get("cambios", 0))))), 1)
 
 
 static func _list(run, kind: String) -> Array:
@@ -115,6 +117,8 @@ static func swap(run, kind: String, index: int, rng: RandomNumberGenerator) -> D
 	if not _fits(run, after if kind == "boost" else run.boosts, after if kind != "boost" else run.consumables):
 		return {"ok": false, "error": Loc.t("Si lo cambias, lo demás no entraría en las barras")}
 	run.spend(price)
+	if run.casino_visit is Dictionary and not run.casino_visit.is_empty():
+		run.casino_visit["cambios"] = int(run.casino_visit.get("cambios", 0)) + 1
 	var old := str(list[index])
 	list[index] = pick.id
 	return {"ok": true, "error": "", "old": old, "new": pick.id, "price": price}

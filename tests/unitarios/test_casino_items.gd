@@ -123,7 +123,7 @@ func test_rules() -> void:
 	var run2 := make_run(["mesa_caliente"])
 	Rules.enter(run2, 1)
 	var out2 := Rules.settle(run2, 100, 200, true, false, "ruleta")
-	check(int(out2.total) == 50, "Mesa caliente: lo ganado paga un 25 % más (%d)" % int(out2.total))
+	check(int(out2.total) == 50, "Mesa caliente: lo ganado paga un 25 %% más (%d)" % int(out2.total))
 	var run3 := make_run()
 	Rules.enter(run3, 1)
 	run3.casino_visit["double"] = true

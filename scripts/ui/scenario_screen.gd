@@ -276,8 +276,6 @@ static func rule_lines(s: Dictionary) -> Array[String]:
 		out.append("Llegan más papeles nuevos al tablón en cada visita.")
 	if float(contratos.get("premio_mult", 1.0)) > 1.0:
 		out.append(Loc.f("Las recompensas y las fianzas de los contratos son %d %% mayores.", [int(round((float(contratos.premio_mult) - 1.0) * 100.0))]))
-	if int(s.get("especiales_desde", 0)) > 0:
-		out.append("Todos los bloques especiales aparecen desde la primera etapa.")
 	if float(s.get("peso_especiales", 0.0)) > 0.0:
 		out.append("Las salas con especiales salen mucho más seguido.")
 	if float(s.get("toll_mult", 1.0)) > 1.0:

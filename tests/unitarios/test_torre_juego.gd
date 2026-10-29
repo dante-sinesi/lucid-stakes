@@ -47,16 +47,21 @@ func _init() -> void:
 	main._torre_arrancar(3)
 	# la dificultad del run gradúa los niveles de las salas
 	var Torre = main.torre.Torre
-	var facil_ok := true
-	var pes_ok := true
+	var sube := true
+	var ordenadas := true
 	for etapa in [1, 5, 10, 15]:
-		for i in 6:
-			var nf: Array = Torre.niveles_para(i, 6, etapa, "facil")
-			facil_ok = facil_ok and not nf.has("dificil") and not nf.has("pesadilla")
-			var np: Array = Torre.niveles_para(i, 6, etapa, "pesadilla")
-			pes_ok = pes_ok and not np.has("facil")
-	_ok(facil_ok, "en Fácil no salen salas difíciles ni pesadilla")
-	_ok(pes_ok, "en Pesadilla no salen salas fáciles")
+		var previo := -1.0
+		for i in 7:
+			var b: float = Torre.bits_objetivo(Torre.progreso(i, 7, etapa, "media"))
+			sube = sube and b >= previo
+			previo = b
+		var bf: float = Torre.bits_objetivo(Torre.progreso(3, 7, etapa, "facil"))
+		var bm: float = Torre.bits_objetivo(Torre.progreso(3, 7, etapa, "media"))
+		var bd: float = Torre.bits_objetivo(Torre.progreso(3, 7, etapa, "dificil"))
+		var bp: float = Torre.bits_objetivo(Torre.progreso(3, 7, etapa, "pesadilla"))
+		ordenadas = ordenadas and bf <= bm and bm <= bd and bd <= bp
+	_ok(sube and Torre.bits_objetivo(Torre.progreso(0, 7, 15)) > Torre.bits_objetivo(Torre.progreso(6, 7, 1)), "la dificultad que busca cada sala sube dentro de la torre y con la etapa")
+	_ok(ordenadas, "Fácil busca salas más simples que Medio, Difícil que Medio y Pesadilla que Difícil")
 	_ok(Torre.max_movimientos(20, "media", 8, "facil") > Torre.max_movimientos(20, "media", 8, "media") and Torre.max_movimientos(20, "media", 8, "media") > Torre.max_movimientos(20, "media", 8, "pesadilla"), "cuanto más difícil, menos margen de movimientos")
 	# telemetría: una sala perdida deja su evento
 	var eventos: Array = main.Telemetry.read_all()

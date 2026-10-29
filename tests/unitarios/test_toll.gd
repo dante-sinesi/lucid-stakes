@@ -86,22 +86,17 @@ func _scene() -> void:
 	c3.queue_free()
 
 
-## La curva de Farolín (RunState.toll_for): antes de la pared se puede pagar con lo que rinde una torre; desde la etapa WALL_STAGE no, ni con el máximo de cada torre sin gastar nada.
+## La curva de Farolín (RunState.toll_for): antes de la pared se paga con lo que rinde una torre; desde la etapa WALL_STAGE el precio supera lo que rinde una torre sin boosts (hay que tener un build o haber ahorrado).
 func test_curve() -> void:
-	var cum_toll := 0.0
-	var cum_max := 0.0
 	var prev := 0
 	for s in range(1, 16):
 		var t := RunState.toll_for(s)
 		check(t > prev, "el precio sube en cada etapa (etapa %d: %d)" % [s, t])
 		prev = t
-		cum_toll += float(t)
-		cum_max += RunState.income_ceiling(s)
 		if s <= RunState.HILL_START:
 			check(float(t) < RunState.income_fit(s), "antes de la colina el precio es menos que lo que rinde una torre (etapa %d)" % s)
 			check(RunState.max_budget_without_boosts(s) > float(t), "antes de la colina se puede pagar sin boosts (etapa %d)" % s)
 		elif s < RunState.WALL_STAGE:
 			check(float(t) > float(RunState.toll_for(s - 1)) * 1.1, "la colina sube de a poco (etapa %d)" % s)
 		else:
-			check(float(t) > RunState.max_budget_without_boosts(s), "desde la pared no se puede pagar sin boosts, ni juntando el máximo y sin gastar nada (etapa %d: %d contra %.0f)" % [s, t, RunState.max_budget_without_boosts(s)])
-			check(cum_toll > cum_max, "el precio acumulado supera al presupuesto máximo acumulado (etapa %d)" % s)
+			check(float(t) > RunState.income_fit(s), "desde la pared el precio supera lo que rinde una torre sin boosts (etapa %d: %d contra %.0f)" % [s, t, RunState.income_fit(s)])

@@ -40,10 +40,7 @@ func _init() -> void:
 func _blocks() -> Array:
 	var out := []
 	for b in BlockGuide.ALL:
-		var desde := "Desde la etapa 1"
-		if LETRA_DE.has(str(b.id)):
-			desde = "Desde la etapa %d" % int(Torre.ETAPA_ESPECIAL[LETRA_DE[str(b.id)]])
-		out.append([b.name, b.desc, desde])
+		out.append([b.name, b.desc, ""])
 	return out
 
 

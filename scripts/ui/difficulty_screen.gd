@@ -1,6 +1,6 @@
 extends Control
 ## Selector de dificultad (al elegir el escenario): Fácil, Medio, Difícil y Pesadilla en La Pesadilla; los demás escenarios no tienen Fácil. La dificultad gradúa el nivel de las salas a lo largo de las 15 etapas
-## (ver `Torre.niveles_para`) y cuánto margen de movimientos tienen. Se elige con las flechas (o WASD) y Espacio; Shift o Esc vuelven.
+## (ver `Torre.progreso`) y cuánto margen de movimientos tienen. Se elige con las flechas (o WASD) y Espacio; Shift o Esc vuelven.
 ## `ask()` abre el cuadro y se contesta con `chosen(id)` ("" = volvió atrás).
 
 const Draw := preload("res://scripts/ui/voxel_draw.gd")

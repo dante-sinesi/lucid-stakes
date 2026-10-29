@@ -3,7 +3,7 @@ extends RefCounted
 ## Pisar un bloque (o colgarse de él) lo purifica y da su claridad por la racha; una acción que no purifica nada nuevo corta la racha.
 ## La claridad que se junta en una sala se asegura al llegar a su checkpoint: si se muere, se pierde la de ese intento (y la racha) y la sala empieza de nuevo.
 
-## Multiplicador global de la claridad de la torre (balance: con 2,25 el bot de habilidad media gana el 4 % de los runs; el bot lo prueba con la variable CLARIDAD de tests/sondas/bot_runs.gd; 1,0 = las reglas tal cual).
+## Multiplicador global de la claridad de la torre (balance: con 2,25 y la curva del peaje vigente el bot de habilidad media gana el 15 % de los runs en Medio; el bot lo prueba con la variable CLARIDAD de tests/sondas/bot_runs.gd; 1,0 = las reglas tal cual).
 static var mult_global := 2.25
 
 const STREAK_STEP := 0.5
@@ -59,20 +59,27 @@ func streak_mult(n: int) -> float:
 	return minf(1.0 + step * maxi(n - 1, 0), cap)
 
 
-## Claridad de más por cada bloque purificado: Pies de luz +1, Pies de oro +2, Midas +3 (suman).
-func flat_por_bloque() -> int:
-	return (1 if perks.has("pies_de_luz") else 0) + (2 if perks.has("pies_de_oro") else 0) + (3 if perks.has("midas") else 0)
+## Cuánta claridad de más da cada bloque purificado (en fracción de lo que vale): Pies de luz +50 %, Pies de oro +75 %, Midas +200 %. No se suman: vale el mayor.
+const POR_BLOQUE := {"pies_de_luz": 0.5, "pies_de_oro": 0.75, "midas": 2.0}
+
+
+func extra_por_bloque() -> float:
+	var m := 0.0
+	for id in POR_BLOQUE:
+		if perks.has(id):
+			m = maxf(m, float(POR_BLOQUE[id]))
+	return m
 
 
 ## Lo que da purificar un bloque de esa letra, con Buen ojo (los especiales dan el doble) y lo que se suma por bloque.
-func claridad_de(letra: String) -> int:
+func claridad_de(letra: String) -> float:
 	var l := letra.substr(0, 1)
 	if l == "b":
 		l = "d"   # (la bomba que se pisa queda desactivada: vale lo que una bomba)
 	var base: int = CLARIDAD.get(l, 1)
 	if perks.has("buen_ojo") and l != "n" and l != "p" and l != "f":
 		base *= 2
-	return base + flat_por_bloque()
+	return float(base) * (1.0 + extra_por_bloque())
 
 
 func _ganar(n: float) -> int:
@@ -94,10 +101,10 @@ func despues_de_accion(nuevos: Array, agarro: bool, piso: int) -> int:
 		streak += 1
 		best_streak = maxi(best_streak, streak)
 		purificados += nuevos.size()
-		var base := 0
+		var base := 0.0
 		for l in nuevos:
 			base += claridad_de(str(l))
-		ganado += _ganar(float(base) * streak_mult(streak))
+		ganado += _ganar(base * streak_mult(streak))
 	if perks.has("escalador") and piso > max_piso and max_piso > 0:
 		ganado += _ganar(float((piso - max_piso) * CLIMB_BONUS))
 	if perks.has("empuje_rentable") and agarro:
@@ -108,7 +115,7 @@ func despues_de_accion(nuevos: Array, agarro: bool, piso: int) -> int:
 
 ## Un bloque purificado vuelve a corromperse (la prueba Corrupción que vuelve): se pierde lo que había dado en esta sala (nunca más de lo que hay). Devuelve lo que se perdió.
 func perder_bloque(letra: String) -> int:
-	var v := mini(int(round(float(claridad_de(letra)) * harvest_mult() * mult_global)), sala)
+	var v := mini(int(round(claridad_de(letra) * harvest_mult() * mult_global)), sala)
 	sala -= v
 	return v
 
@@ -120,10 +127,10 @@ func extra(letras: Array) -> int:
 	streak += 1
 	best_streak = maxi(best_streak, streak)
 	purificados += letras.size()
-	var base := 0
+	var base := 0.0
 	for l in letras:
 		base += claridad_de(str(l))
-	return _ganar(float(base) * streak_mult(streak))
+	return _ganar(base * streak_mult(streak))
 
 
 ## Lo que se junta cambia con cada acción: una foto para deshacer (la poción de cosecha no se deshace: se gastó).

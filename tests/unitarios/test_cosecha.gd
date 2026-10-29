@@ -24,8 +24,8 @@ func _init() -> void:
 	_ok(c.sala == 0 and c.streak == 0, "al morir se pierde la claridad del intento")
 	var p = Cosecha.new()
 	p.aplicar_boosts(["cosecha_doble", "pies_de_luz", "mano_de_oro", "buen_ojo"])
-	p.despues_de_accion(["i"], false, 2)   # 2 x2 (buen ojo) + 1 (pies de luz) = 5, racha 1 x1, cosecha x2 = 10
-	_ok(p.sala == 10, "boosts de cosecha: hielo con buen ojo, pies de luz y cosecha doble = 10 (%d)" % p.sala)
+	p.despues_de_accion(["i"], false, 2)   # 2 x2 (buen ojo) = 4, +50 % (pies de luz) = 6, racha 1 x1, cosecha x2 = 12
+	_ok(p.sala == 12, "boosts de cosecha: hielo con buen ojo, pies de luz y cosecha doble = 12 (%d)" % p.sala)
 	var r = Cosecha.new()
 	r.aplicar_boosts(["racha_imparable"])
 	r.despues_de_accion(["n"], false, 2)
