@@ -582,7 +582,8 @@ func _prizes_closed() -> void:
 	paused = false
 
 
-func _unhandled_input(event: InputEvent) -> void:
+## (Va en `_input`, no en `_unhandled_input`: las flechas y A/D también navegan el foco de la interfaz (`ui_left` y `ui_right`), y si algún botón conserva el foco se las quedaría antes de que lleguen acá.)
+func _input(event: InputEvent) -> void:
 	if paused or not visible or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	if event.keycode == KEY_C:
