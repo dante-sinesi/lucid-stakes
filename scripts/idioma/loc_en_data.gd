@@ -97,7 +97,7 @@ const TABLE := {
 	"Relojería": "Clockwork",
 	"Cada sala da menos movimientos, pero la ficha es más barata.": "Each room gives fewer moves, but the chip is cheaper.",
 	"Gran Casino": "Grand Casino",
-	"Casino de lujo desde el principio y ficha más barata, pero torres un escalón más difíciles.": "Luxury casino from the start and a cheaper chip, but towers one step harder.",
+	"Casino de lujo desde el principio y ficha más barata, pero torres más difíciles.": "Luxury casino from the start and a cheaper chip, but harder towers.",
 	"Contratista": "Contractor",
 	"Cuatro contratos activos a la vez, más papeles en cada visita y recompensas y fianzas un 50 % mayores.": "Four active contracts at once, more papers every visit, and rewards and deposits 50 % bigger.",
 	"Mundo abierto": "Open world",

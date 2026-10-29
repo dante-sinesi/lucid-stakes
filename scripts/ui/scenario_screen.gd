@@ -266,7 +266,7 @@ static func rule_lines(s: Dictionary) -> Array[String]:
 	if int(s.get("casino_tier", -1)) >= 0:
 		out.append("El casino es de lujo desde la primera etapa.")
 	if int(s.get("escalon", 0)) > 0:
-		out.append("Las torres son un escalón más difíciles.")
+		out.append("Las torres son más difíciles.")
 	if float(s.get("margen_mov", 1.0)) < 1.0:
 		out.append("Cada sala da menos movimientos de margen.")
 	var contratos: Dictionary = s.get("contratos", {})

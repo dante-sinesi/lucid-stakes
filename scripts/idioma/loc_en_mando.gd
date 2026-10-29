@@ -39,7 +39,7 @@ const TABLE := {
 	"Marco del foco": "Focus frame",
 	"Un marco blanco que titila alrededor del botón elegido, para verlo mejor con el mando.": "A blinking white frame around the selected button, to see it better with a gamepad.",
 	"El camino corto": "The Short Path",
-	"Cada sala permite 2 movimientos en falso (los que te alejan de la salida). Al tercero pierdes una vida. No se puede deshacer.": "Each room allows 2 wrong moves (the ones that take you away from the exit). On the third you lose a life. No undo.",
+	"Cada sala permite solo 2 movimientos en falso*; al tercero pierdes una vida. No se puede deshacer. * Movimiento en falso: movimiento que te deja a más pasos del final que antes.": "Each room allows only 2 false moves*; on the third you lose a life. No undo. * False move: a move that leaves you more steps from the end than before.",
 	"Margen de error": "Margin for error",
 	"En El camino corto, cada sala permite un movimiento en falso más (3).": "In The Short Path, each room allows one more wrong move (3).",
 	"En este escenario no se puede deshacer": "You can't undo in this scenario",
