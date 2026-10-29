@@ -100,17 +100,18 @@ func apply_interest() -> int:
 
 
 ## La curva de Farolín (docs/diseno.md §46). Se construye sobre lo que rinde una torre (`INGRESO_MEDIDO`;
-## lo más que se juntó fue 1,5 veces eso) y tiene una pared: **a partir de la etapa WALL_STAGE no se puede pagar sin boosts ni consumibles que suban la ganancia**,
-## ni siquiera juntando lo máximo en cada torre y sin gastar nada en el casino.
-## Lo que rinde una torre por etapa siguiendo el camino mínimo de cada sala, sin boosts (medido con el bot de `tests/sondas`, 10 torres por etapa en dificultad media; docs/plan_casinos.md).
-const INGRESO_MEDIDO: Array[int] = [167, 283, 315, 439, 463, 546, 565, 621, 609, 709, 783, 727, 841, 832, 927]
+## lo más que se juntó fue 1,5 veces eso) y tiene una pared: **a partir de la etapa WALL_STAGE el precio supera lo que rinde una torre sin boosts**: hace falta un build (o ahorro),
+## y después crece `wall_growth` por etapa. La altura de la pared (`wall_frac`) y el crecimiento se calibran con el bot de balance (docs/economia.md): el bot de habilidad media gana el 15 % en Medio.
+## Lo que rinde una torre por etapa siguiendo el camino mínimo de cada sala, sin boosts (medido con `tests/sondas/medir_ingresos.gd`, 30 torres de 7 salas por etapa en dificultad media, un poco suavizado; docs/plan_casinos.md).
+const INGRESO_MEDIDO: Array[int] = [232, 297, 380, 396, 423, 432, 450, 440, 430, 430, 434, 436, 440, 450, 490]
 static var income_scale := 1.0      # (variables, no constantes: el bot las cambia por variable de entorno para probar curvas, tests/sondas/bot_runs.gd)
 static var income_ceil := 1.5       # lo máximo que junta una torre sin boosts, sobre la recta
 const WALL_STAGE := 8          # desde acá hay que tener boosts que disparen la ganancia
 const HILL_START := 3          # hasta esta etapa el precio es el de siempre; de ahí sube de a poco hasta la pared (la colina)
 static var hill_power := 1.25        # 1 = geométrico parejo; más: sube más tarde
-static var wall_growth := 1.25      # lo que crece el precio cada etapa después de la pared
-static var wall_margin := 50        # lo que se pasa del presupuesto máximo el precio de la pared
+static var wall_growth := 1.15      # lo que crece el precio cada etapa después de la pared
+static var wall_margin := 50        # lo que se suma de más al precio de la pared
+static var wall_frac := 0.53        # la pared pide esta fracción de lo máximo que se puede juntar sin boosts (con 1,0 sería imposible de pagar sin boosts; más baja, el juego es más generoso: se calibra con el bot)
 static var pre_wall_from := 0.35    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
 static var pre_wall_to := 1.00      # ...y esta en la etapa anterior a la pared
 
@@ -165,6 +166,7 @@ static func wall_toll() -> float:
 	var ceilings := 0.0
 	for k in range(1, WALL_STAGE + 1):
 		ceilings += income_ceiling(k)
+	ceilings *= wall_frac
 	var t8 := ceilings * 0.5
 	for _i in 30:
 		var paid := 0.0

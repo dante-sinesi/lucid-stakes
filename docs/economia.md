@@ -11,9 +11,9 @@ Todo el balance vive en variables (`static var`) para poder probarlo con el bot 
 
 ## El peaje: una colina y una pared
 
-- `RunState.INGRESO_MEDIDO` (tabla por etapa, de 167 a 927, medida con el bot por la ruta óptima de cada sala; `income_fit`, escalable con `income_scale`) es lo que rinde una torre sin boosts (referencia); `wall_growth` es 1,25 y con eso el bot de runs completos gana el 4,7 a 5,3 % (objetivo 3 a 7 %); el máximo que se puede juntar sin boosts es 1,5 veces esa recta (`income_ceil`).
-- Antes de la pared el precio va del 35 % (`pre_wall_from`) al 100 % (`pre_wall_to`) de lo que rinde una torre. La etapa 8 (`WALL_STAGE`) es la **pared**: su precio (`wall_toll()`) es lo que no se puede pagar sin boosts aunque se junte el máximo en cada torre y no se gaste nada; de la etapa 4 a la 8 sube en colina (`hill_power` 1,25, más tarde cuanto mayor), y después de la pared crece 20 % por etapa (`wall_growth`).
-- Espíritu de Balatro (decisión de Dante): después de la pared el juego puede romperse de forma absurda con los puntos, pero no al principio, y **superar el run completo no tiene que ser fácil**. Objetivo: que gane el 3 a 7 % de los runs de un bot casi perfecto.
+- `RunState.INGRESO_MEDIDO` (tabla por etapa: de 232 en la etapa 1 a unos 430-490 desde la 4, con torres de 7 salas; medida con `tests/sondas/medir_ingresos.gd` por la ruta óptima de cada sala, sin boosts; `income_fit`, escalable con `income_scale`) es lo que rinde una torre sin boosts (referencia). Como la torre ya no crece con las etapas, **el ingreso base es casi parejo: el crecimiento lo ponen los boosts**.
+- Antes de la pared el precio va del 35 % (`pre_wall_from`) al 100 % (`pre_wall_to`) de lo que rinde una torre. La etapa 8 (`WALL_STAGE`) es la **pared**: su precio (`wall_toll()`) es la fracción `wall_frac` (0,53) de lo máximo que se puede juntar sin boosts hasta ahí (1,5 veces lo medido, sin gastar nada), más `wall_margin`: **desde la etapa 8 el precio supera lo que rinde una torre y hace falta un build (o ahorro)**; después crece un 15 % por etapa (`wall_growth`). Precios con la calibración vigente: 81 en la etapa 1, 214 en la 3, 621 en la 8 y 1638 en la 15.
+- Espíritu de Balatro (decisión de Dante): después de la pared el juego puede romperse de forma absurda con los puntos, pero no al principio, y **superar el run completo no tiene que ser fácil**. Objetivo (decisión de Dante, 2026-10): que escape de la pesadilla el **15 % de los runs en Medio** de un jugador medio (bot de habilidad 1,0).
 - Descuentos: *Descuento de Farolín* 15 % (hasta 2), *Soborno* 30 %; *Interés* hace crecer 25 % la claridad que queda al salir (tope 150).
 
 ## La ficha de la ruleta
@@ -36,6 +36,7 @@ Todo el balance vive en variables (`static var`) para poder probarlo con el bot 
 
 ## Calibración con el bot
 
-- Resultados con la torre actual (120 runs, habilidad media): claridad ×2,25 y `pre_wall_from` 0,35 → gana ~5 % y pasa la etapa 1 sin reintentos. Con ×1 los runs se traban en las etapas 3 a 5.
+- Calibración vigente (400 runs, habilidad 1,0, Medio): `INGRESO_MEDIDO` nuevo, `wall_frac` 0,53 y `wall_growth` 1,15 → gana el **14,8 %**; pasa la etapa 8 el 93 %, la 10 el 53 %, la 12 el 27 % y la 15 el 15 %. Con habilidad 0,7: 12 %; 1,3: 18,5 %; 2,0: 17 %. **La habilidad casi no cambia el resultado**: el bot sube por el camino mínimo y su probabilidad de perder una sala es una suposición (`die_per_bit`, ver `bot.md`); la economía y la suerte con los boosts mandan. Calibrar con partidas reales.
+- Boosts por bloque (Pies de luz +50 %, Pies de oro +75 %, Midas +200 % de la claridad del bloque): no se suman entre sí, vale el mayor (`Cosecha.POR_BLOQUE`). El Taller cobra cada cambio de una visita más que el anterior (`Services.swap_price`).
 - Configuraciones probadas con la torre anterior (para entender la sensibilidad): crecimiento 1,15 y ficha 50 → 15 a 45 %; 1,20 y ficha 50 → 20 a 30 %; ficha 75 + 6 → 7 a 17 %; ficha 75 + 6 con precio previo del 60 al 100 % → 3 a 7 %.
 - **Pendiente:** calibrar con partidas reales (telemetría local, `herramientas/resumen_telemetria.py`). El bot es un jugador casi perfecto; la dificultad elegida no cambia la economía.

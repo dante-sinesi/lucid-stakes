@@ -73,7 +73,7 @@ func test_restart_flow() -> void:
 	# al perder (morir no cuesta claridad: el costo ya es la vida) se puede reintentar aunque no quede claridad
 	main.torre.perder("Caíste al vacío")
 	check(main.lost_screen.visible and main.lost_screen.title_label.text == "Caíste al vacío", "al perder aparece la pantalla de derrota con el motivo")
-	check(main.lost_screen.retry_button.text.begins_with("Reintentar") and main.lost_screen.hint_label.text == "", "después de morir el botón es Reintentar, sin costo de claridad, aunque no alcance la claridad")
+	check(main.lost_screen.retry_button.text.begins_with("Reintentar") and main.lost_screen.hint_label.text.begins_with("Vuelves a empezar la sala"), "después de morir el botón es Reintentar, sin costo de claridad (y avisa cuántas vidas quedan), aunque no alcance la claridad")
 	var lives_before: int = main.run.lives
 	main.lost_screen.retry_button.pressed.emit()
 	check(not main.run_over and main.run.claridad == 25 and main.run.lives == lives_before - 1 and not main.torre.t.muerta, "reintentar después de morir no cobra claridad: cuesta una vida")

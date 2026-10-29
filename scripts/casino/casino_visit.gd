@@ -17,7 +17,7 @@ const POOL_SHARE := 0.5          # fracción de lo perdido que va al pozo del ja
 
 ## Estado nuevo de una visita a la sala de ese nivel.
 static func new_visit(tier: int) -> Dictionary:
-	return {"tier": tier, "streak": 0, "max_streak": 0, "pool": 0, "racha": false, "stats": {}, "claridad_in": 0, "best": 0, "best_game": ""}
+	return {"tier": tier, "streak": 0, "max_streak": 0, "pool": 0, "racha": false, "stats": {}, "claridad_in": 0, "best": 0, "best_game": "", "cambios": 0}
 
 
 ## Se entra a la sala: arma el estado de la visita en el run.

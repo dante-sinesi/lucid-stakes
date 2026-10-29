@@ -10,7 +10,7 @@ const REGATEO := 0.10   # Buen regateo: lo que baja el peaje de Farolín
 
 const ALL: Array[Dictionary] = [
 	{"id": "mente_despejada", "name": "Mente despejada", "desc": "Empiezas cada run con +25 de claridad."},
-	{"id": "ojos_de_gato", "name": "Ojos de gato", "desc": "Purificar un bloque da +1 de claridad.", "perk": "pies_de_luz"},
+	{"id": "ojos_de_gato", "name": "Ojos de gato", "desc": "Purificar un bloque da +50 % de claridad (no se suma con Pies de oro ni Midas).", "perk": "pies_de_luz"},
 	{"id": "racha_firme", "name": "Racha firme", "desc": "El tope de la racha sube de ×4 a ×6.", "perk": "racha_larga"},
 	{"id": "margen_de_error", "name": "Margen de error", "desc": "En El camino corto, cada sala permite un movimiento en falso más (3)."},
 	{"id": "corazon_extra", "name": "Corazón extra", "desc": "Una vida más en todas las partidas (4 corazones), salvo en Compromiso."},

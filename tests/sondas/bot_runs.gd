@@ -33,12 +33,13 @@ func _init() -> void:
 		cfg.hesitate = float(OS.get_environment("HES"))   # probabilidad de titubear (= movimiento en falso) en cada paso para habilidad 1,0
 	# parámetros de balance que se pueden cambiar por variable de entorno (para probar curvas)
 	var tuned := []
-	for pair in [["WALL_GROWTH", "wall_growth"], ["WALL_MARGIN", "wall_margin"], ["PRE_FROM", "pre_wall_from"], ["PRE_TO", "pre_wall_to"], ["INCOME_SCALE", "income_scale"], ["INCOME_CEIL", "income_ceil"], ["HILL_POWER", "hill_power"]]:
+	for pair in [["WALL_GROWTH", "wall_growth"], ["WALL_MARGIN", "wall_margin"], ["WALL_FRAC", "wall_frac"], ["PRE_FROM", "pre_wall_from"], ["PRE_TO", "pre_wall_to"], ["INCOME_SCALE", "income_scale"], ["INCOME_CEIL", "income_ceil"], ["HILL_POWER", "hill_power"]]:
 		if OS.get_environment(pair[0]) != "":
 			var v := float(OS.get_environment(pair[0]))
 			match pair[1]:
 				"wall_growth": RunState.wall_growth = v
 				"wall_margin": RunState.wall_margin = int(v)
+				"wall_frac": RunState.wall_frac = v
 				"pre_wall_from": RunState.pre_wall_from = v
 				"pre_wall_to": RunState.pre_wall_to = v
 				"income_scale": RunState.income_scale = v
@@ -55,12 +56,9 @@ func _init() -> void:
 	if OS.get_environment("FICHA_STEP") != "":
 		Roulette.price_step = int(OS.get_environment("FICHA_STEP"))
 		tuned.append("FICHA_STEP=" + OS.get_environment("FICHA_STEP"))
-	if OS.get_environment("DIE_FIRST") != "":
-		cfg.die_first = float(OS.get_environment("DIE_FIRST"))
-		tuned.append("DIE_FIRST=" + OS.get_environment("DIE_FIRST"))
-	if OS.get_environment("DIE_LAST") != "":
-		cfg.die_last = float(OS.get_environment("DIE_LAST"))
-		tuned.append("DIE_LAST=" + OS.get_environment("DIE_LAST"))
+	if OS.get_environment("DIE_BIT") != "":
+		cfg.die_per_bit = float(OS.get_environment("DIE_BIT"))
+		tuned.append("DIE_BIT=" + OS.get_environment("DIE_BIT"))
 	if not tuned.is_empty():
 		print("PARAMETROS ", " ".join(tuned))
 	var rng := RandomNumberGenerator.new()

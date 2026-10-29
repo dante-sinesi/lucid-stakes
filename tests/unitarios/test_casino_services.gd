@@ -78,6 +78,15 @@ func test_taller() -> void:
 	var bal := run.claridad
 	res = Services.swap(run, "boost", 0, rng)
 	check(res.ok and run.boosts.size() == 1 and run.boosts[0] != "aire_extra" and run.claridad == bal - Services.swap_price(run), "cambiar reemplaza el boost y cobra")
+	# dentro de una visita, cada cambio cuesta más que el anterior
+	run.claridad = 100000
+	run.casino_visit = {"tier": 1, "cambios": 0}
+	var p0 := Services.swap_price(run)
+	var s1 := Services.swap(run, "boost", 0, rng)
+	var p1 := Services.swap_price(run)
+	var s2 := Services.swap(run, "boost", 0, rng)
+	check(s1.ok and s2.ok and absi(p1 - p0 * 2) <= 1 and absi(Services.swap_price(run) - p0 * 3) <= 2, "cada cambio de la visita cuesta más que el anterior (%d, %d, %d)" % [p0, p1, Services.swap_price(run)])
+	run.casino_visit = {}
 	run.claridad = 0
 	check(not Services.swap(run, "boost", 0, rng).ok, "sin claridad no se puede cambiar")
 	# no se puede vender el boost que agranda las barras si los demás ya no entrarían

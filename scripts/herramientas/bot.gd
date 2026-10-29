@@ -22,8 +22,7 @@ static func default_config() -> Dictionary:
 	return {
 		"skill": 1.0,            # habilidad: 1,0 = el jugador medio; más: titubea y muere menos
 		"hesitate": 0.04,        # probabilidad de titubear (ir y volver) en cada paso, para un jugador de habilidad 1,0
-		"die_first": 0.03,       # probabilidad de morir en una torre de la etapa 1 (sube hasta die_last en la 15), para habilidad 1,0
-		"die_last": 0.20,
+		"die_per_bit": 0.000226, # probabilidad de perder una sala por cada bit de complejidad que tiene (una sala de 100 bits se pierde el 2,3 % de las veces), para habilidad 1,0
 		"spend": 0.8,            # fracción de lo que sobra (después de apartar el precio de Farolín) que se juega en el casino
 		"max_rotations": 3,      # cuántas veces rota la vitrina buscando un premio de la lista
 		"play_blind": true,      # si no hay nada de la lista en la vitrina y no se puede rotar: juega igual una apuesta común
@@ -37,8 +36,8 @@ static func default_config() -> Dictionary:
 
 # --- la torre ---------------------------------------------------------------------------------------------------------------------
 
-## Qué tan fácil o difícil le sale al bot cada nivel de sala (multiplica la probabilidad de perderla).
-const PESO_NIVEL := {"facil": 0.5, "media": 1.0, "dificil": 1.6, "pesadilla": 2.4}
+## Los bits típicos de cada nivel, para una sala que no trae su complejidad medida.
+const BITS_DEL_NIVEL := {"facil": 31.0, "media": 83.0, "dificil": 136.0, "pesadilla": 214.0}
 
 
 ## Un banco de torres (armarlas lleva unos 0,3 s cada una): {etapa: [Torre]}. Cada partida juega una copia (`Torre.copia`).
@@ -113,11 +112,6 @@ static func play_tower(entry, run, rng: RandomNumberGenerator, cfg: Dictionary) 
 	t.aplicar_boosts(run.boosts)
 	t.mov_run = run.movs_extra
 	var skill: float = maxf(float(cfg.skill), 0.05)
-	var stage: int = run.stage
-	var p_torre: float = lerpf(float(cfg.die_first), float(cfg.die_last), float(stage - 1) / float(FINAL_STAGE - 1)) / skill
-	var peso_total := 0.0
-	for sala in t.salas:
-		peso_total += float(PESO_NIVEL.get(str(sala.d.nivel), 1.0))
 	var hes_p: float = float(cfg.hesitate) / skill
 	var estado := {"used": 0}
 	var lives_lost := 0
@@ -125,7 +119,8 @@ static func play_tower(entry, run, rng: RandomNumberGenerator, cfg: Dictionary) 
 	var rooms: Array = []
 	while not t.terminada:
 		var sala: Dictionary = t.sala_actual()
-		var p_sala := clampf(p_torre * float(PESO_NIVEL.get(str(sala.d.nivel), 1.0)) / maxf(peso_total, 0.1), 0.0, 0.95)
+		var bits := float(sala.d.get("complejidad", BITS_DEL_NIVEL.get(str(sala.d.nivel), 83.0)))
+		var p_sala := clampf(float(cfg.die_per_bit) * bits / skill, 0.0, 0.95)
 		var ok := _jugar_sala(t, run, rng, cfg, p_sala, hes_p, estado)
 		var info: Dictionary = t.ultima_sala
 		if ok:

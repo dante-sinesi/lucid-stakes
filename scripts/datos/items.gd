@@ -26,7 +26,7 @@ const ALL: Array[Dictionary] = [
 		"desc": "La racha sube de a 1,0 en vez de 0,5."},
 	# ---- raros: boosts ----
 	{"id": "pies_de_luz", "name": "Pies de luz", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 200,
-		"desc": "Purificar un bloque da +1 de claridad."},
+		"desc": "Purificar un bloque da +50 % de claridad (no se suma con Pies de oro ni Midas)."},
 	{"id": "paso_firme", "name": "Paso firme", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 220,
 		"desc": "Subir y bajar un piso no cuenta como movimiento."},
 	{"id": "reflejos", "name": "Reflejos", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 200,
@@ -61,12 +61,12 @@ const ALL: Array[Dictionary] = [
 	{"id": "racha_imparable", "name": "Racha imparable", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 620,
 		"desc": "Empujar y tirar no cortan la racha. Tope: ×8."},
 	{"id": "midas", "name": "Midas", "type": Type.BOOST, "tier": Tier.EPICO, "weight": 1, "value": 640,
-		"desc": "Purificar un bloque da +3 de claridad."},
+		"desc": "Purificar un bloque da +200 % de claridad (no se suma con Pies de luz ni Pies de oro)."},
 	# raros
 	{"id": "cosecha", "name": "Cosecha", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 230,
 		"desc": "La claridad de la torre vale ×1,5."},
 	{"id": "pies_de_oro", "name": "Pies de oro", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 215,
-		"desc": "Purificar un bloque da +2 de claridad."},
+		"desc": "Purificar un bloque da +75 % de claridad (no se suma con Pies de luz ni Midas)."},
 	{"id": "buen_ojo", "name": "Buen ojo", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 200,
 		"desc": "Los bloques especiales dan el doble de claridad."},
 	{"id": "escalador", "name": "Escalador", "type": Type.BOOST, "tier": Tier.RARO, "weight": 1, "value": 210,

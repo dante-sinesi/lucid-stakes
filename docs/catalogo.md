@@ -25,19 +25,19 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Mano de oro | La racha sube de a 1,0 en vez de 0,5. | Épico |
 | Cosecha doble | La claridad de la torre vale el doble. | Épico |
 | Racha imparable | Empujar y tirar no cortan la racha. Tope: ×8. | Épico |
-| Midas | Purificar un bloque da +3 de claridad. | Épico |
+| Midas | Purificar un bloque da +200 % de claridad (no se suma con Pies de luz ni Pies de oro). | Épico |
 | Mano de 23 | En el blackjack el tope es 23 en vez de 21. | Épico |
 | Mesa caliente | Todo lo que ganas en el casino paga un 25 % más. | Épico |
 | Pozo del jackpot | Parte de lo que pierdes en el casino va a un pozo; el premio mayor se lo lleva. | Épico |
 | Contratista | Cada contrato paga el doble. | Épico |
-| Pies de luz | Purificar un bloque da +1 de claridad. | Raro |
+| Pies de luz | Purificar un bloque da +50 % de claridad (no se suma con Pies de oro ni Midas). | Raro |
 | Paso firme | Subir y bajar un piso no cuenta como movimiento. | Raro |
 | Reflejos | Las bombas empiezan con 3 movimientos más. | Raro |
 | Bolsillo hondo | +1 lugar de consumibles. Se acumula. | Raro (se acumula) |
 | Mente abierta | +2 lugares de boosts (ocupa uno). Se acumula. | Raro (se acumula) |
 | Racha larga | El tope de la racha sube de ×4 a ×6. | Raro |
 | Cosecha | La claridad de la torre vale ×1,5. | Raro |
-| Pies de oro | Purificar un bloque da +2 de claridad. | Raro |
+| Pies de oro | Purificar un bloque da +75 % de claridad (no se suma con Pies de luz ni Midas). | Raro |
 | Buen ojo | Los bloques especiales dan el doble de claridad. | Raro |
 | Escalador | Cada piso nuevo que alcanzas da claridad de más. | Raro |
 | Empuje rentable | Cada bloque que empujas o tiras da +1 de claridad. | Raro |
@@ -118,7 +118,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Nombre | Descripción | Más datos |
 |---|---|---|
 | Mente despejada | Empiezas cada run con +25 de claridad. | Se gana en: La Pesadilla |
-| Ojos de gato | Purificar un bloque da +1 de claridad. | Se gana en: La Pesadilla |
+| Ojos de gato | Purificar un bloque da +50 % de claridad (no se suma con Pies de oro ni Midas). | Se gana en: La Pesadilla |
 | Racha firme | El tope de la racha sube de ×4 a ×6. | Se gana en: La Pesadilla |
 | Margen de error | En El camino corto, cada sala permite un movimiento en falso más (3). | Se gana en: El camino corto |
 | Corazón extra | Una vida más en todas las partidas (4 corazones), salvo en Compromiso. | Se gana en: Compromiso |
