@@ -56,9 +56,27 @@ func _init() -> void:
 	if OS.get_environment("FICHA_STEP") != "":
 		Roulette.price_step = int(OS.get_environment("FICHA_STEP"))
 		tuned.append("FICHA_STEP=" + OS.get_environment("FICHA_STEP"))
-	if OS.get_environment("DIE_BIT") != "":
-		cfg.die_per_bit = float(OS.get_environment("DIE_BIT"))
-		tuned.append("DIE_BIT=" + OS.get_environment("DIE_BIT"))
+	cfg.dif = _env("DIF", "media")
+	if OS.get_environment("DIE_K") != "":
+		cfg.die_k = float(OS.get_environment("DIE_K"))
+		tuned.append("DIE_K=" + OS.get_environment("DIE_K"))
+	if OS.get_environment("DIE_EXP") != "":
+		cfg.die_exp = float(OS.get_environment("DIE_EXP"))
+		tuned.append("DIE_EXP=" + OS.get_environment("DIE_EXP"))
+	if OS.get_environment("TOLL_MULT") != "":   # el peaje de la dificultad DIF se multiplica por esto (RunState.toll_dif)
+		RunState.toll_dif[cfg.dif] = float(OS.get_environment("TOLL_MULT"))
+		tuned.append("TOLL_MULT=" + OS.get_environment("TOLL_MULT"))
+	if OS.get_environment("TOLL_SWEEP") != "":   # prueba varios multiplicadores del peaje con el mismo banco de torres: "0.8,1.0,1.2" (imprime sólo el porcentaje de victorias de cada uno)
+		var rng_s := RandomNumberGenerator.new()
+		for m in OS.get_environment("TOLL_SWEEP").split(","):
+			RunState.toll_dif[cfg.dif] = float(m)
+			rng_s.seed = int(_env("SEED", "1"))
+			var w := 0
+			for r in runs:
+				w += 1 if Bot.run_one(bank, rng_s, cfg).won else 0
+			print("PEAJE x%s (%s): gana %.1f %%" % [m, cfg.dif, 100.0 * w / runs])
+		quit(0)
+		return
 	if not tuned.is_empty():
 		print("PARAMETROS ", " ".join(tuned))
 	var rng := RandomNumberGenerator.new()

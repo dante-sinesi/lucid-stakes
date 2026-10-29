@@ -18,6 +18,7 @@ func _init() -> void:
 	check(RunState.toll_for(1) < RunState.toll_for(15), "el peaje sube con la etapa")
 	check(RunState.toll_for(1) > 0, "siempre hay peaje")
 	test_curve()
+	test_peaje_por_dificultad()
 	await _scene()
 	print("tests del peaje terminados, fallos: ", fails)
 	quit(1 if fails > 0 else 0)
@@ -84,6 +85,17 @@ func _scene() -> void:
 	var before: int = run.claridad
 	check(c3.step(Vector2i(0, -1)) == "exit" and left_n[0] == 2 and run.claridad == before, "sin peaje se pasa gratis")
 	c3.queue_free()
+
+
+## La dificultad elegida cambia el peaje: Fácil cobra menos, Difícil y Pesadilla más (RunState.toll_dif).
+func test_peaje_por_dificultad() -> void:
+	var precios := {}
+	for dif in ["facil", "media", "dificil", "pesadilla"]:
+		var r := RunState.new()
+		r.dificultad = dif
+		precios[dif] = r.toll_after_discounts(1000)
+	check(precios.media == 1000, "en Medio el peaje es el de la curva (%d)" % precios.media)
+	check(precios.facil < precios.media and precios.media < precios.dificil and precios.dificil < precios.pesadilla, "el peaje sube con la dificultad (%s)" % str(precios))
 
 
 ## La curva de Farolín (RunState.toll_for): antes de la pared se paga con lo que rinde una torre; desde la etapa WALL_STAGE el precio supera lo que rinde una torre sin boosts (hay que tener un build o haber ahorrado).

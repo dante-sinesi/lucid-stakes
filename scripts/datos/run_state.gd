@@ -77,7 +77,7 @@ func toll_after_discounts(base: int) -> int:
 	if base <= 0:
 		return 0
 	var cut := TOLL_DISCOUNT * float(boosts.count("descuento_duende")) + (BRIBE_DISCOUNT if toll_bribe else 0.0) + toll_meta_discount
-	var priced := float(base) * float(scenario().get("toll_mult", 1.0))   # (el Usurero cobra de más antes de los descuentos)
+	var priced := float(base) * float(scenario().get("toll_mult", 1.0)) * float(toll_dif.get(dificultad, 1.0))   # (el Usurero cobra de más antes de los descuentos)
 	return maxi(int(round(priced * (1.0 - minf(cut, 0.9)))), 1)
 
 
@@ -110,6 +110,8 @@ const WALL_STAGE := 8          # desde acá hay que tener boosts que disparen la
 const HILL_START := 3          # hasta esta etapa el precio es el de siempre; de ahí sube de a poco hasta la pared (la colina)
 static var hill_power := 1.25        # 1 = geométrico parejo; más: sube más tarde
 static var wall_growth := 1.15      # lo que crece el precio cada etapa después de la pared
+## Cuánto cambia la dificultad elegida el peaje de Farolín (Medio es la referencia): las torres difíciles dan más claridad (salas más grandes, con más especiales), así que el peaje sube con ellas, y baja en Fácil. Se calibra con el bot (docs/economia.md).
+static var toll_dif := {"facil": 0.63, "media": 1.0, "dificil": 1.6, "pesadilla": 1.95}
 static var wall_margin := 50        # lo que se suma de más al precio de la pared
 static var wall_frac := 0.53        # la pared pide esta fracción de lo máximo que se puede juntar sin boosts (con 1,0 sería imposible de pagar sin boosts; más baja, el juego es más generoso: se calibra con el bot)
 static var pre_wall_from := 0.35    # antes de la pared el precio es esta fracción de lo que rinde una torre en la etapa 1...
