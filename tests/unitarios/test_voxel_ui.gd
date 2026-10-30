@@ -48,7 +48,7 @@ func test_font() -> void:
 		var rows: Array = VFont.G[ch]
 		shape_ok = shape_ok and (rows.size() == 7 or rows.size() == 9)
 		for r in rows:
-			shape_ok = shape_ok and r.length() == 5
+			shape_ok = shape_ok and (r.length() == 5 or (ch == "∞" and r.length() == 9))   # (el infinito es más ancho: va al final del texto)
 	check(shape_ok, "cada glifo mide 5 de ancho y 7 u 9 filas")
 	# Celdas dentro del casillero
 	var inside := true
