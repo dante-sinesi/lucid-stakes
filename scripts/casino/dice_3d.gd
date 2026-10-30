@@ -26,13 +26,13 @@ const PIPS := {
 	5: [[0.27, 0.27], [0.27, 0.73], [0.5, 0.5], [0.73, 0.27], [0.73, 0.73]],
 	6: [[0.27, 0.27], [0.27, 0.5], [0.27, 0.73], [0.73, 0.27], [0.73, 0.5], [0.73, 0.73]],
 }
-## El dado de cada casino (los cuatro siguen la progresión de las mesas de casino_theme.gd). Taberna: hueso amarillento, comido en las esquinas y manchado, con alguna grieta violeta. Salón: marfil limpio con las
-## esquinas de latón. Casino: mármol blanco veteado de gris, puntos pizarra y esquinas de latón. Gran casino: cáscara lila opaca con las esquinas de oro; el número y el núcleo son de cristal ("ventanas").
+## El dado de cada casino (los cuatro siguen la progresión de las mesas de casino_theme.gd). Taberna: hueso amarillento, comido en las esquinas y manchado, con alguna grieta violeta. Salón: mármol blanco
+## veteado de gris, puntos pizarra y esquinas de latón. Casino: marfil limpio con las esquinas de latón. Gran casino: cáscara celeste muy clara, opaca, con las esquinas de oro; el número y el núcleo son de cristal ("ventanas").
 const DADOS := [
 	{"cuerpo": Color(0.84, 0.78, 0.62), "pip": Color(0.22, 0.10, 0.26), "desgaste": 1.0, "mancha": Color(0.66, 0.58, 0.42), "grieta": Color(0.42, 0.14, 0.60), "rugosidad": 0.9, "metal": 0.0},
-	{"cuerpo": Color(0.96, 0.93, 0.84), "pip": Color(0.15, 0.09, 0.20), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.5, "metal": 0.0},
 	{"cuerpo": Color(0.94, 0.94, 0.95), "pip": Color(0.30, 0.31, 0.36), "desgaste": 0.0, "vetas": "marmol", "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.25, "metal": 0.05},
-	{"cuerpo": Color(0.78, 0.74, 1.0), "ventanas": true, "pip": Color(0.45, 0.34, 0.95, 0.80), "nucleo": Color(0.62, 0.52, 1.0, 0.62), "desgaste": 0.0, "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.3, "metal": 0.1},
+	{"cuerpo": Color(0.96, 0.93, 0.84), "pip": Color(0.15, 0.09, 0.20), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.5, "metal": 0.0},
+	{"cuerpo": Color(0.90, 0.96, 1.0), "ventanas": true, "pip": Color(0.36, 0.66, 1.0, 0.80), "nucleo": Color(0.64, 0.86, 1.0, 0.62), "desgaste": 0.0, "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.3, "metal": 0.1},
 ]
 const YAWS := [-0.32, 0.2, -0.14, 0.34, -0.24]   # cada dado descansa un poco girado, así se ven sus caras de costado
 
@@ -261,7 +261,7 @@ static func _h(x: int, y: int, z: int, k: int) -> float:
 
 
 ## El dado: un cubo de N x N x N cubitos con las aristas un poco más oscuras y los puntos hundidos (se saca el cubito de la superficie y el de abajo queda del color del punto). Cada casino
-## tiene el suyo (`DADOS`): desgastado en la taberna, con esquinas de latón en el salón, de mármol veteado en el casino y de cáscara lila opaca, con el número y el núcleo de cristal, en el gran casino.
+## tiene el suyo (`DADOS`): desgastado en la taberna, de mármol veteado en el salón, de marfil limpio con esquinas de latón en el casino y de cáscara celeste muy clara opaca, con el número y el núcleo de cristal, en el gran casino.
 static func _die_voxels(nivel := 1) -> Dictionary:
 	var e: Dictionary = estilo(nivel)
 	var ventanas := bool(e.get("ventanas", false))

@@ -44,7 +44,7 @@ func _init() -> void:
 						abiertas += 1
 				check(abiertas == celdas.size(), "los puntos son ventanas de la cáscara hasta el núcleo (%d de %d)" % [abiertas, celdas.size()])
 				check(not vox.has(Vector3i(3, 3, 3)), "la cáscara está hueca donde va el núcleo")
-	check(Dice3D.estilo(2).get("vetas", "") == "marmol" and Dice3D.estilo(3).get("ventanas", false), "el casino tiene el dado de mármol y el gran casino el lila de ventanas")
+	check(Dice3D.estilo(1).get("vetas", "") == "marmol" and Dice3D.estilo(2).get("vetas", "") == "" and Dice3D.estilo(3).get("ventanas", false), "el salón tiene el dado de mármol veteado, el casino el marfil limpio y el gran casino el de ventanas")
 	# el juego usa el estilo del casino que se está por entrar
 	var g = load("res://scripts/casino/dice_game.gd").new()
 	root.add_child(g)
