@@ -36,7 +36,6 @@ class Base extends Control:
 	var hints
 	signal resolved
 	signal closed
-	signal open_shop   ## se pidió ir a la tienda (sólo el Taller tiene el botón)
 
 	var run
 	var rng: RandomNumberGenerator
@@ -76,20 +75,11 @@ class Base extends Control:
 		var gap := Control.new()
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(gap)
-		if service_id == "taller":   # (el Taller tiene un botón para pasar a la tienda)
-			var shop_button := UI.button("Tienda", false, 3.0, 20, false)
-			shop_button.name = "tienda"
-			shop_button.pressed.connect(func(): open_shop.emit())
-			top.add_child(shop_button)
 		exit_button = UI.button("Salir", false, 3.0, 16, false)
 		exit_button.name = "salir"
 		exit_button.pressed.connect(func(): request_close())
 		top.add_child(exit_button)
-		var replaced: Array = [exit_button]
-		var shop_node := top.find_child("tienda", true, false)
-		if shop_node != null:
-			replaced.append(shop_node)
-		hints = PadHints.attach(self, [], replaced)
+		hints = PadHints.attach(self, [], [exit_button])
 		_set_hints([])
 		var center := CenterContainer.new()
 		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -105,11 +95,9 @@ class Base extends Control:
 	func _build_body() -> void:
 		pass
 
-	## La botonera: lo propio de cada servicio, la tienda (LB o Q, sólo en el Taller) y salir.
+	## La botonera: lo propio de cada servicio y salir.
 	func _set_hints(extra: Array) -> void:
 		var items: Array = extra.duplicate()
-		if service_id == "taller":
-			items.append({"name": "LB", "key": "Q", "text": Loc.t("Tienda"), "keycode": KEY_Q, "call": func(): open_shop.emit()})
 		items.append({"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": func(): request_close()})
 		if hints != null:
 			hints.set_items(items)

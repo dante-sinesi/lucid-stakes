@@ -39,6 +39,13 @@ func _init() -> void:
 	check(main.casino.screen != null and main.casino.screen.service_id == "tienda", "elegir 'Ver la tienda' abre la tienda")
 	check(main.casino.screen.find_child("tienda", true, false) == null, "y es la pantalla de la tienda sola (sin botón ni pestañas hacia otro lado)")
 	main.casino.close_roulette()
+	# la tienda sólo se alcanza así: el tablón y el Taller no tienen ningún botón hacia ella
+	for id in ["tablon", "taller"]:
+		var servicio: Control = main.casino.ServiceScreens.make(id)
+		main.casino.add_child(servicio)
+		servicio.setup(main.run, RandomNumberGenerator.new(), true)
+		check(servicio.find_child("tienda", true, false) == null and not servicio.has_signal("open_shop"), "la pantalla de %s no tiene nada de la tienda" % id)
+		servicio.queue_free()
 	# "Nada, gracias": se vuelve a caminar
 	main.dialogue.hide_box()
 	main.casino.talk_to_keeper()
