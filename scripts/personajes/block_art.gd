@@ -71,14 +71,17 @@ const PALETA_TRAMPA := {
 }
 
 ## Los pinchos: una base de acero oscuro de siete minibloques de alto y, encima, cinco púas (una en cada esquina y una en el centro) que llegan hasta arriba de todo; plateadas y brillantes
-## cuando están limpias y negras, con la punta de magma, cuando están corruptas. Nadie se para encima: la cara que se pisa es la de la base, tapada por las púas.
+## cuando están limpias y, corruptas, de acero pálido y enfermizo (para que resalten contra la base casi negra), con la punta un poco más clara y sin brillo (nada de violeta ni de rojo: el magma violeta es el de las grietas de la
+## piedra y se confundía con ellas). La base lleva una franja de peligro (tramos ámbar) en el borde de arriba. Nadie se para encima: la cara que se pisa es la de la base, tapada por las púas.
 const PALETA_PINCHOS := {
 	"base": [Color(0.34, 0.36, 0.46), Color(0.38, 0.40, 0.50), Color(0.42, 0.44, 0.54)],
 	"base_limpia": [Color(0.40, 0.42, 0.52), Color(0.44, 0.46, 0.56), Color(0.48, 0.50, 0.60)],
 	"corrupto": [Color(0.08, 0.08, 0.12), Color(0.11, 0.10, 0.15), Color(0.14, 0.13, 0.19)],
 	"pua": Color(0.74, 0.77, 0.86),
 	"punta": Color(0.92, 0.95, 1.0),
-	"pua_corrupta": Color(0.15, 0.12, 0.20),
+	"pua_corrupta": Color(0.66, 0.62, 0.74),
+	"punta_corrupta": Color(0.80, 0.77, 0.87),
+	"franja": Color(0.96, 0.62, 0.12),
 	"cicatriz": Color(0.28, 0.30, 0.40),
 }
 const TOPE_PINCHOS := 6   # el último piso de la base (los pisos 7 y 8 son las púas)
@@ -184,13 +187,13 @@ static func oscuro(semilla: int) -> Dictionary:
 
 
 ## La catapulta: una placa de abajo, un plato de arriba (que se pisa: la cara de arriba queda entera) y cuatro resortes en las esquinas con uno más fino en el medio. Limpia: placas
-## naranjas y resortes plateados. Corrupta: placas casi negras con grietas de magma y resortes de hierro oscuro, con tramos rotos y alguna grieta de magma.
+## naranjas y resortes plateados. Corrupta: placas de cobre oxidado (cálidas: la piedra corrupta es violeta y gris) con el borde al rojo vivo, y resortes de acero claro y opaco, con tramos rotos.
 static func catapulta(c: float, semilla: int) -> Dictionary:
 	var sd := semilla * 31 + 7
 	var vox := {}
 	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
 	var naranja := Color(1.0, 0.6, 0.15)
-	var placa_oscura := Color(0.10, 0.08, 0.14)
+	var placa_oscura := Color(0.36, 0.16, 0.07)   # (cobre oxidado)
 	for x in N:
 		for z in N:
 			for y: int in [0, 1, 8, 9]:
@@ -203,7 +206,9 @@ static func catapulta(c: float, semilla: int) -> Dictionary:
 				var base := naranja.darkened(0.2 if y < 2 else 0.0).lightened(0.0 if y != N - 1 or borde else (0.25 if x >= 3 and x <= 6 and z >= 3 and z <= 6 else 0.1))
 				base = base.lightened(r * 0.06)
 				var col := base.lerp(placa_oscura.lightened(r * 0.25), clampf(c * 1.6, 0.0, 1.0) * (0.55 + 0.45 * oscuro))
-				if not tapa and c > 0.2 and r > 1.0 - c * 0.16:   # grietas de magma en los costados y el borde de las placas
+				if borde and c > 0.4 and (y == 1 or y == 8) and r < 0.8:   # el borde de las placas, al rojo vivo (brilla)
+					col = Color(1.0, 0.42, 0.10, lerpf(1.0, 0.5, oscuro))
+				elif not tapa and c > 0.2 and r > 1.0 - c * 0.06:   # alguna grieta de magma en los costados de las placas
 					col = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.5)
 				vox[p] = col
 	var resortes := [Vector2i(1, 1), Vector2i(1, 7), Vector2i(7, 1), Vector2i(7, 7), Vector2i(4, 4)]
@@ -218,10 +223,10 @@ static func catapulta(c: float, semilla: int) -> Dictionary:
 						continue   # (un tramo roto)
 					var aro := y % 2 == 0
 					var plata := Color(0.82, 0.82, 0.88) if aro else Color(0.62, 0.62, 0.7)
-					var hierro := Color(0.20, 0.18, 0.24) if aro else Color(0.12, 0.11, 0.16)
+					var hierro := Color(0.62, 0.58, 0.66) if aro else Color(0.46, 0.43, 0.52)   # (acero claro y opaco: contra el cobre oscuro de las placas se lee de lejos)
 					var col := plata.lerp(hierro, clampf(c * 1.6, 0.0, 1.0) * (0.55 + 0.45 * oscuro))
-					if c > 0.2 and r > 1.0 - c * 0.1:
-						col = Color(PALETA.vena.r, PALETA.vena.g, PALETA.vena.b, 0.5)   # (alguna grieta de magma en los resortes corruptos)
+					if c > 0.2 and r > 1.0 - c * 0.05:
+						col = Color(1.0, 0.42, 0.10, 0.5)   # (algún tramo al rojo vivo en los resortes corruptos)
 					vox[q] = col
 	return vox
 
@@ -528,6 +533,9 @@ static func _color_pinchos(p: Vector3i, c: float, sd: int) -> Color:
 	var base: Color = (PALETA_PINCHOS.base[i] as Color).lerp(PALETA_PINCHOS.base_limpia[i], clampf(1.0 - c * 2.0, 0.0, 1.0))
 	var col := base.lerp(PALETA_PINCHOS.corrupto[i], oscuro)
 	if p.y == TOPE_PINCHOS and _bordes(p) >= 1 and (p.x == 0 or p.x == N - 1 or p.z == 0 or p.z == N - 1):
+		if int((p.x + p.z) / 2) % 2 == 0:   # la franja de peligro: tramos ámbar (con corrupción, brasa que brilla)
+			var f: Color = PALETA_PINCHOS.franja
+			return Color(f.r, f.g, f.b, lerpf(1.0, 0.55, oscuro))
 		col = col.darkened(0.25)   # (el borde de la base)
 	return col
 
@@ -628,13 +636,12 @@ static func portal(nivel := 0, semilla := 0) -> Dictionary:
 	return vox
 
 
-## Las cinco púas: cada una de 2 x 2 minibloques de base y uno más de alto, que se afinan hasta una punta de uno (pisos 7 y 8). Plateadas con la punta casi blanca; con corrupción, negras con la punta de magma
-## (que brilla); en los niveles intermedios, un poco de cada.
+## Las cinco púas: cada una de 2 x 2 minibloques de base y uno más de alto, que se afinan hasta una punta de uno (pisos 7 y 8). Plateadas con la punta casi blanca; con corrupción, de acero pálido con la punta un poco más clara
+## y sin brillo; en los niveles intermedios, un poco de cada.
 static func _puas(vox: Dictionary, c: float) -> void:
 	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
 	var cuerpo: Color = (PALETA_PINCHOS.pua as Color).lerp(PALETA_PINCHOS.pua_corrupta, oscuro)
-	var punta: Color = (PALETA_PINCHOS.punta as Color).lerp(PALETA.vena, oscuro)
-	punta.a = lerpf(1.0, 0.45, oscuro)   # (la punta corrupta brilla)
+	var punta: Color = (PALETA_PINCHOS.punta as Color).lerp(PALETA_PINCHOS.punta_corrupta, oscuro)
 	for esquina in [Vector2i(1, 1), Vector2i(1, 7), Vector2i(7, 1), Vector2i(7, 7), Vector2i(4, 4)]:
 		for dx in 2:
 			for dz in 2:
