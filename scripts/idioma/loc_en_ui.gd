@@ -22,7 +22,6 @@ const TABLE := {
 	"Movimientos %d/%d": "Moves %d/%d",
 	"Fondo de movimientos %d/%d": "Move pool %d/%d",
 	"Bloques movidos: %d de %d": "Blocks moved: %d of %d",
-	"−%d claridad": "−%d clarity",
 	"Ya moviste todos los bloques que se pueden mover": "You have already moved all the blocks you can",
 	"Movimientos en falso: quedan %d de %d": "False moves: %d of %d left",
 	"Claridad %s": "Clarity %s",
@@ -37,9 +36,6 @@ const TABLE := {
 	"Vuelves a empezar la sala. Vidas que te quedan: %d.": "You start the room again. Lives left: %d.",
 	# --- HUD y mensajes de la torre (main.gd) ---
 	"Empezar": "Start",
-	"+%d claridad": "+%d clarity",
-	"   racha ×%.1f": "   streak ×%.1f",
-	"   cosecha ×%.1f": "   harvest ×%.1f",
 	"¡Terminaste el tutorial!": "You finished the tutorial!",
 	"¡Bien!": "Nice!",
 	"¡Portal alcanzado!": "Portal reached!",

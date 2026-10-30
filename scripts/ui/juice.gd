@@ -113,6 +113,31 @@ func dust(pos: Vector3, amount := 8, speed := 1.0) -> void:
 	main.get_tree().create_timer(0.9).timeout.connect(p.queue_free)
 
 
+## La luz de una ganancia de claridad: cubitos dorados que suben desde `pos` (`peso` 0..1: más cubitos, más grandes y más altos cuanto más grande la ganancia).
+func luz_ganancia(pos: Vector3, peso: float) -> void:
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.amount = int(14.0 + 44.0 * peso)
+	p.lifetime = 0.8 + 0.5 * peso
+	p.explosiveness = 0.85
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.25
+	p.direction = Vector3.UP
+	p.spread = 35.0
+	p.initial_velocity_min = 1.5
+	p.initial_velocity_max = 3.0 + 3.0 * peso
+	p.gravity = Vector3(0, -2.5, 0)
+	var m := BoxMesh.new()
+	m.size = Vector3.ONE * (0.09 + 0.07 * peso)
+	m.material = _gold_mat
+	p.mesh = m
+	main.add_child(p)
+	p.position = pos
+	p.emitting = true
+	main.get_tree().create_timer(1.8).timeout.connect(p.queue_free)
+
+
 ## Lluvia dorada de cubitos (al llegar al portal).
 func gold_burst(pos: Vector3) -> void:
 	var p := CPUParticles3D.new()

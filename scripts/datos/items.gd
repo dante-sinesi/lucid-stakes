@@ -9,7 +9,7 @@ extends RefCounted
 const Demo := preload("res://scripts/datos/demo.gd")
 
 ## Premios que en la demo no sirven (el blackjack, las tragamonedas y las bombas son del juego completo): no salen en la ruleta, la vitrina ni los premios de las pruebas.
-const DEMO_SIN_USO: Array[String] = ["mano_23", "blackjack_de_oro", "rayos_x", "giro_de_cortesia", "reflejos", "desarmar"]
+const DEMO_SIN_USO: Array[String] = ["mano_23", "blackjack_de_oro", "rayos_x", "giro_de_cortesia", "reflejos", "desarmar", "pozo_del_jackpot", "racha_de_la_casa", "red_de_seguridad", "racha_de_visita"]
 
 enum Tier { CONSUMIBLE, COMUN, RARO, EPICO }
 enum Type { BOOST, CONSUMABLE, CLARITY }

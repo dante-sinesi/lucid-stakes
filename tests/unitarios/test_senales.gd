@@ -98,6 +98,35 @@ func test_en_el_juego() -> void:
 	while main.generating or main.torre == null:
 		await process_frame
 	check(not main.has_method("_flash"), "el juego ya no tiene carteles de texto flotantes")
+	check(not main.has_method("_flash_gain") and main.get("gain_label") == null, "ni el cartel \"+N claridad\": la ganancia se ve con luz")
+	var antes: int = main.get_child_count()
+	main._luz_de_ganancia(50)
+	main._luz_de_ganancia(5000000)
+	var luces := 0
+	for ch in main.get_children():
+		if ch is CPUParticles3D:
+			luces += 1
+	check(main.get_child_count() == antes + 2 and luces >= 2, "una ganancia de claridad suelta luz que sale del personaje (sin texto)")
+	var clins := 0
+	for ch in main.hud_layer.get_children():
+		if ch.get_script() != null and str(ch.get_script().resource_path).ends_with("clin_claridad.gd"):
+			clins += 1
+	check(clins >= 2, "y el \"clin\" de la claridad (el ícono con +N) aparece sobre el personaje")
+	var Clin = load("res://scripts/ui/clin_claridad.gd")
+	check(Clin.tamano(1.0, 10) < Clin.tamano(3.0, 10) and Clin.tamano(3.0, 10) < Clin.tamano(6.0, 10), "cuanta más racha, más grande el clin")
+	main._luz_de_ganancia(-20)
+	check(main.hud_layer.get_children().any(func(n): return n.get_script() != null and str(n.get_script().resource_path).ends_with("clin_claridad.gd") and n._cantidad == -20), "una pérdida de claridad también sale como clin (en rojo)")
+	# el contador de movimientos de la ventana de la partida: "Movimientos x/y"
+	await process_frame
+	main._refresh()
+	var mv: Control = main.hud_panel.moves_label
+	check(mv.visible and mv.text == "Movimientos %d/%d" % [main.torre.t.movs, main.torre.t.max_mov()], "el HUD muestra Movimientos x/y (%s)" % mv.text)
+	main.torre.t.movs += 1
+	main._refresh()
+	check(mv.text.begins_with("Movimientos %d/" % main.torre.t.movs), "el contador sube con cada movimiento")
+	main.torre.t.movs = main.torre.t.max_mov() - 2
+	main._refresh()
+	check(mv.color.r > 0.99 and mv.color.g < 0.6, "con pocos movimientos que quedan se pone en rojo")
 	# deshacer sin nada que deshacer no muestra nada; un escenario que no deja deshacer muestra el cancelado
 	main.run.consumables.assign(["freno"])
 	main.left_bar.refresh()

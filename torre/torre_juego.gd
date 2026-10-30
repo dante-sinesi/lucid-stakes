@@ -48,7 +48,7 @@ signal movimiento_hecho(accion: String, modo: int, agarre: String)   ## el jugad
 signal camara_usada(accion: String)   ## se movió la cámara con una de las teclas de cámara (el tutorial las dora)
 signal accion_hecha                  ## después de cada acción que salió bien (el juego actualiza su HUD)
 signal contrato_evento(evento: String, datos: Dictionary)   ## para los contratos: "accion" (lo de la acción y de la sala), "sala" (se superó una) o "sala_perdida"; ver contratos.gd
-signal ganancia(texto: String, cantidad: int)   ## la claridad que dio la última acción (el juego muestra el cartel "+N claridad")
+signal ganancia(cantidad: int, racha: float)   ## la claridad que dio la última acción (negativa si se perdió) y el multiplicador de racha: el juego la muestra con el "clin" y la luz que sale del personaje
 signal falsos_cambiaron(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: bool)   ## El camino corto: lo que quedan de movimientos en falso en la sala
 signal deshacer_pedido               ## se apretó deshacer (el juego decide si se puede en este escenario)
 signal pista_cambiada(texto: String)   ## la pista que hay que mostrar arriba ("" = ninguna)
@@ -784,14 +784,8 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 	if str(r.evento) == "torre":
 		efectos.juice.gold_burst(portal.position if portal != null else gato_nodo.position)
 		efectos.juice.zoom_punch(0.05)
-	if t.cosecha.last_gain > 0 and str(r.evento) != "muerte" and str(r.evento) != "fin":   # el cartel "+N claridad" (con la racha y la cosecha)
-		var mult: float = t.cosecha.streak_mult(t.cosecha.streak)
-		var texto := Loc.f("+%d claridad", [t.cosecha.last_gain])
-		if t.cosecha.streak >= 2:
-			texto += Loc.f("   racha ×%.1f", [mult])
-		if t.cosecha.harvest_mult() > 1.0:
-			texto += Loc.f("   cosecha ×%.1f", [t.cosecha.harvest_mult()])
-		ganancia.emit(texto, t.cosecha.last_gain)
+	if t.cosecha.last_gain > 0 and str(r.evento) != "muerte" and str(r.evento) != "fin":   # la luz de la claridad ganada (con la racha y la cosecha)
+		ganancia.emit(t.cosecha.last_gain, t.cosecha.streak_mult(t.cosecha.streak))
 	if falsos != null:
 		var ev := str(r.evento)
 		if ev == "":
@@ -921,7 +915,7 @@ func _corrupcion() -> void:
 	efectos.juice.flash(Color(0.55, 0.1, 0.75), 0.2, 0.4)
 	Sfx.play("miss", 0.7, -8.0)
 	if int(r.perdida) > 0:
-		ganancia.emit(Loc.f("−%d claridad", [int(r.perdida)]), 0)
+		ganancia.emit(-int(r.perdida), 1.0)
 	_refrescar(false)
 	accion_hecha.emit()
 
