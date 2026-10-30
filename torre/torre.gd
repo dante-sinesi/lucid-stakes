@@ -967,6 +967,42 @@ func _morir(motivo: String) -> Dictionary:
 	return {"ok": true, "msg": motivo, "evento": "muerte"}
 
 
+## La sala actual tal como está (para guardarla): dónde está el jugador, los bloques, los movimientos y la claridad de la sala. Sólo datos simples: `restaurar_sala` la vuelve a poner.
+func estado_sala() -> Dictionary:
+	var m = motor
+	var datos := {"bloques": m.bloques, "jugador": m.jugador, "colgado": m.colgado, "pasos": m.pasos, "ids": m.ids, "sig_id": m.sig_id, "purificados": m.purificados, "movidos": m.movidos}
+	return {"sala": indice, "motor": var_to_str(datos), "movs": movs, "mov_extra": mov_extra, "cosecha": var_to_str(cosecha.estado()), "pocion": cosecha.harvest_potion,
+		"encendidos": var_to_str(encendidos), "aliento": aliento_usado, "muertes_sala": muertes_sala}
+
+
+## Vuelve a poner la sala que guardó `estado_sala` (la torre tiene que estar ya en esa sala). false si no coincide y no se tocó nada.
+func restaurar_sala(e: Dictionary) -> bool:
+	if e.is_empty() or int(e.get("sala", -1)) != indice or not e.has("motor"):
+		return false
+	var datos = str_to_var(str(e.motor))
+	var cos = str_to_var(str(e.get("cosecha", "")))
+	var enc = str_to_var(str(e.get("encendidos", "")))
+	if typeof(datos) != TYPE_DICTIONARY or typeof(cos) != TYPE_DICTIONARY or typeof(enc) != TYPE_DICTIONARY or not datos.has("bloques") or not datos.has("jugador"):
+		return false
+	motor.bloques = datos.bloques
+	motor.jugador = datos.jugador
+	motor.colgado = datos.get("colgado", Vector3i.ZERO)
+	motor.pasos = int(datos.get("pasos", 0))
+	motor.ids = datos.get("ids", {})
+	motor.sig_id = int(datos.get("sig_id", 0))
+	motor.purificados = datos.get("purificados", {})
+	motor.movidos = datos.get("movidos", {})
+	movs = int(e.get("movs", 0))
+	mov_extra = int(e.get("mov_extra", 0))
+	cosecha.restaurar(cos)
+	cosecha.harvest_potion = bool(e.get("pocion", false))
+	encendidos = enc
+	aliento_usado = bool(e.get("aliento", false))
+	muertes_sala = int(e.get("muertes_sala", 0))
+	deshacer_pila.clear()
+	return true
+
+
 ## Deshace el último movimiento de la sala actual (con lo que se había juntado y la cuenta de movimientos). false si no hay nada que deshacer.
 func deshacer() -> bool:
 	if deshacer_pila.is_empty() or terminada or perdida or muerta:

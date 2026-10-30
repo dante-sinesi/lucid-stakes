@@ -123,7 +123,6 @@ var training := false       # tutorial: lecciones sueltas, sin casino ni clarida
 var trial := {}              # prueba (etapa especial) de la torre actual: {} si es una etapa común (ver trials.gd)
 var run_new_abilities: Array[String] = []   # habilidades persistentes ganadas en este run (se muestran al terminar)
 var trial_banner: Control   # el cartel de la prueba (abajo, letras grandes sin fondo): ver trial_banner.gd
-var _trial_msg := ""         # resultado de la prueba superada (se muestra al llegar al portal)
 var lost_screen              # pantalla de derrota: Reintentar o Salir al menú
 var contrato_pantalla         # la pantalla de un contrato resuelto (contrato_resuelto.gd)
 var _contratos_cola: Array = []   # contratos resueltos que esperan su pantalla
@@ -472,8 +471,10 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.falsos_permitidos = permitidos
 	torre.sala_inicial = _continuar_sala
 	torre.banco_inicial = _continuar_banco
+	torre.estado_inicial = _continuar_estado
 	_continuar_sala = 0
 	_continuar_banco = 0
+	_continuar_estado = {}
 	if tutorial_index >= 0:
 		var leccion: Dictionary = Tutorial.lessons()[tutorial_index]
 		if leccion.has("generated"):
@@ -545,7 +546,7 @@ func _torre_accion() -> void:
 	_contratos_mostrar()   # (los contratos que se cumplieron con esta acción)
 	if torre == null:   # (la última acción ganó la torre y la escena ya se sacó)
 		return
-	if not attempt_dirty and torre.t != null and torre.t.movs > 0:   # el primer movimiento en la sala: el guardado ya la marca como empezada
+	if torre.t != null and torre.t.movs > 0:   # (se guarda la sala tal como queda después de cada movimiento: si el juego se cierra o se cae, se continúa desde ahí)
 		attempt_dirty = true
 		save_game()
 	if torre.t != null:   # (el "Movimientos" del resumen del run: sólo suman los movimientos nuevos, no lo que vuelve al deshacer o al empezar otra sala)
@@ -679,7 +680,6 @@ func _torre_ganada() -> void:
 			return
 		return
 	_bank_claridad()
-	banner.text = "¡Portal alcanzado!" + ("\n" + _trial_msg if _trial_msg != "" else "")
 	if not quick_portal:
 		await get_tree().create_timer(1.5).timeout   # (el personaje se mete en el portal)
 	if torre == null or in_menu:
@@ -791,6 +791,7 @@ func restart() -> void:
 
 var _continuar_sala := 0    # (al continuar una partida guardada en la torre: el checkpoint donde se quedó)
 var _continuar_banco := 0
+var _continuar_estado := {}   # la sala tal como se dejó (si se guardó a mitad de sala)
 
 
 ## 0 en la primera etapa y 1 en la última: cuánto se aclararon el fondo y los bloques.
@@ -982,7 +983,6 @@ func _bank_claridad() -> void:
 	run.claridad_earned += gained
 	ultimo_ingreso_torre = gained
 	run.gain(gained)
-	_trial_msg = ""
 	if not trial.is_empty() and not training:
 		run.trials_cleared += 1
 		var rng := RandomNumberGenerator.new()
@@ -992,10 +992,9 @@ func _bank_claridad() -> void:
 			run.take(rw.item)
 		else:
 			run.gain(int(rw.claridad))
-		_trial_msg = Loc.f("¡Prueba superada!   +%d de claridad extra\n%s", [gained - cl, rw.text])
 		var new_chars: Array = Profile.on_trial_cleared()   # superar una prueba puede desbloquear personajes
 		if not new_chars.is_empty():
-			_trial_msg = Loc.join([_trial_msg, _character_msg(new_chars)])
+			_mostrar_logro(new_chars)   # (personaje nuevo: la ventana de logro; al llegar al portal no sale ningún cartel)
 			Sfx.play("item")
 
 
@@ -2370,6 +2369,9 @@ func save_game() -> void:
 			data["sala"] = torre.t.indice
 			data["banco"] = torre.t.cosecha.banco
 		data["dirty"] = attempt_dirty
+		var foto: Dictionary = torre.estado_guardado()
+		if not foto.is_empty():
+			data["estado_sala"] = foto
 		data["dead"] = torre.t != null and torre.t.muerta   # (murió y todavía no reintentó: al continuar cuenta como reintento después de morir)
 	SaveGame.write(data)
 
@@ -2401,16 +2403,19 @@ func continue_game() -> void:
 		new_tower(seed_value)
 		return
 	trial = run.trial_at(stage_number)
-	if data.get("dirty", false) and trial.get("no_retry", false):
+	if data.get("dirty", false) and not data.has("estado_sala") and trial.get("no_retry", false):
 		end_run(false, Loc.f("Abandonaste la prueba «%s» (no hay reintentos).", [Loc.t(trial.name)]))
 		return
 	_continuar_sala = int(data.get("sala", 0))
 	_continuar_banco = int(data.get("banco", 0))
+	var foto = data.get("estado_sala", {})
+	if typeof(foto) == TYPE_DICTIONARY and not data.get("dead", false):
+		_continuar_estado = foto   # (se retoma la sala justo donde se dejó: no cuesta nada)
 	var was_dead: bool = data.get("dead", false)
 	if was_dead and not run.can_revive():
 		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
 		return
-	if data.get("dirty", false) or was_dead:
+	if (data.get("dirty", false) and _continuar_estado.is_empty()) or was_dead:   # (sin foto de la sala, empezarla de nuevo cuenta como perderla)
 		if not run.can_revive():
 			end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
 			return

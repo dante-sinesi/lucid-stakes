@@ -105,22 +105,25 @@ func test_flow_tower() -> void:
 	var cam: Array = a.torre.t.salas[0].d.camino   # (el primer paso del camino de la sala)
 	a.torre.accion(Vector3i(int(cam[0][0]), 0, int(cam[0][1])), int(cam[0][2]))
 	check(a.attempt_dirty and SaveGame.read().dirty == true, "al primer movimiento el guardado queda marcado como intento empezado")
-	# Continuar con la sala empezada cuenta como perderla: cuesta una vida (y nada de claridad)
+	# Continuar con la sala empezada retoma la sala justo donde se dejó (posición, bloques y movimientos): no cuesta nada
+	a.torre.accion(Vector3i(int(cam[1][0]), 0, int(cam[1][1])), int(cam[1][2])) if cam.size() > 1 else null
 	var d := make_main()
 	await wait_tower(d)
 	a.save_game()
 	var vidas: int = a.run.lives
 	d.continue_game()
-	check(d.run.retries == 1 and d.run.tower_retries == 1 and d.run.lives == vidas - 1 and d.run.claridad == 300, "continuar con la sala empezada cuesta una vida y ninguna claridad")
-	check(d.torre.t.movs == 0, "...y la sala empieza de cero")
-	# Sin vidas ni Tótem: al continuar con la sala empezada el run termina
+	check(d.run.retries == 0 and d.run.lives == vidas and d.run.claridad == 300, "continuar con la sala empezada no cuesta una vida ni claridad")
+	check(d.torre.t.movs == a.torre.t.movs and d.torre.t.movs > 0, "...y conserva los movimientos de la sala")
+	check(d.torre.t.motor.jugador == a.torre.t.motor.jugador and d.torre.t.motor.bloques == a.torre.t.motor.bloques, "...y el personaje y los bloques quedan donde estaban")
+	check(d.torre.t.cosecha.sala == a.torre.t.cosecha.sala and d.torre.t.cosecha.streak == a.torre.t.cosecha.streak, "...y la claridad de la sala y la racha")
+	# Aunque no queden vidas: la sala no se perdió, así que se continúa
 	a.run.lives = 0
 	a.save_game()
 	var e := make_main()
 	await wait_tower(e)
 	a.save_game()
 	e.continue_game()
-	check(e.run_over and e.run_end.visible and not SaveGame.exists(), "si no te quedan vidas, continuar con la sala empezada termina el run (y se borra el guardado)")
+	check(not e.run_over and e.torre != null and e.torre.t.movs == a.torre.t.movs, "sin vidas pero con la sala viva, continuar no termina el run")
 	for m in [a, c, d, e]:
 		m.queue_free()
 	await process_frame
