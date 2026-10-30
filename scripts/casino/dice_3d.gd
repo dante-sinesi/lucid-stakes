@@ -38,15 +38,13 @@ const ALTERNATIVAS := {
 		{"cuerpo": Color(0.14, 0.24, 0.66), "pip": Color(0.96, 0.95, 0.90), "desgaste": 0.0, "esquina": Color(0.78, 0.80, 0.86), "rugosidad": 0.25, "metal": 0.15},
 		{"cuerpo": Color(0.46, 0.20, 0.66), "pip": Color(0.97, 0.94, 0.88), "desgaste": 0.0, "esquina": Color(0.88, 0.80, 0.95), "rugosidad": 0.25, "metal": 0.1},
 	],
-	3: [   # el gran casino: A cristal, B cristal con esquinas de oro, C nácar sin oro
-		{"cuerpo": Color(0.72, 0.84, 1.0), "pip": Color(0.14, 0.12, 0.42), "desgaste": 0.0, "cristal": true, "nucleo": Color(0.42, 0.55, 0.92), "rugosidad": 0.08, "metal": 0.0},
-		{"cuerpo": Color(0.78, 0.74, 1.0), "pip": Color(0.14, 0.12, 0.42), "desgaste": 0.0, "cristal": true, "nucleo": Color(0.48, 0.40, 0.88), "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.08, "metal": 0.0},
+	3: [   # el gran casino: A cáscara celeste, B cáscara lila con esquinas de oro (el número y el núcleo son de cristal), C nácar sin oro
+		{"cuerpo": Color(0.72, 0.84, 1.0), "ventanas": true, "pip": Color(0.28, 0.58, 1.0, 0.80), "nucleo": Color(0.45, 0.80, 1.0, 0.62), "desgaste": 0.0, "rugosidad": 0.3, "metal": 0.1},
+		{"cuerpo": Color(0.78, 0.74, 1.0), "ventanas": true, "pip": Color(0.45, 0.34, 0.95, 0.80), "nucleo": Color(0.62, 0.52, 1.0, 0.62), "desgaste": 0.0, "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.3, "metal": 0.1},
 		{"cuerpo": Color(0.97, 0.95, 0.92), "pip": Color(0.12, 0.12, 0.40), "desgaste": 0.0, "nacar": true, "arista": Color(0.82, 0.78, 0.92), "rugosidad": 0.22, "metal": 0.2},
 	],
 }
 var variante := 0   # la alternativa de dado del casino y del gran casino
-## Cuánto se agranda el núcleo del cristal (el cubo de 4 x 4 x 4 minicubos del centro): lo justo para no pisar la capa de los puntos, que van a un minicubo de profundidad.
-const NUCLEO_ESCALA := 1.42
 const YAWS := [-0.32, 0.2, -0.14, 0.34, -0.24]   # cada dado descansa un poco girado, así se ven sus caras de costado
 
 ## Las fases de dice_game.gd (el orden del enum Phase): IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE.
@@ -68,8 +66,8 @@ const FACES := {
 var viewport: SubViewport
 var tier := 1                       # la estética de los dados y de la mesa según el casino (0 taberna, 1 salón, 2 casino, 3 gran casino; casino_theme.gd)
 var _table_mi: MeshInstance3D
-var nucleos: Array[MeshInstance3D] = []   # el núcleo opaco del dado de cristal (tapa los puntos de la cara de atrás, que si no se ven a través y confunden el número)
-var atras: Array[MeshInstance3D] = []   # las caras de atrás del dado de cristal (otra malla igual, con su material, que se dibuja antes)
+var vidrio_atras: Array[MeshInstance3D] = []     # el vidrio del dado de ventanas (el número y el núcleo): sus caras de atrás, que se dibujan antes
+var vidrio_delante: Array[MeshInstance3D] = []   # y sus caras de adelante (dos mallas iguales, como el hielo: dentro de una sola Godot no ordena las caras translúcidas)
 var cam: Camera3D
 var dice: Array[Node3D] = []        # la raíz de cada dado (gira y se mueve)
 var mats: Array[StandardMaterial3D] = []
@@ -132,20 +130,15 @@ func _init() -> void:
 		mat.vertex_color_use_as_albedo = true
 		mi.material_override = mat
 		root.add_child(mi)
-		var mi_atras := MeshInstance3D.new()   # (sólo se ve con el dado de cristal)
-		mi_atras.mesh = die_mesh
+		var mi_atras := MeshInstance3D.new()   # (el vidrio: sólo se ve en el dado de ventanas del gran casino)
 		mi_atras.position = mi.position
 		root.add_child(mi_atras)
-		atras.append(mi_atras)
-		var mi_nucleo := MeshInstance3D.new()
-		mi_nucleo.position = mi.position
-		var mat_nucleo := StandardMaterial3D.new()
-		mat_nucleo.vertex_color_use_as_albedo = true
-		mat_nucleo.roughness = 0.35
-		mi_nucleo.material_override = mat_nucleo
-		root.add_child(mi_nucleo)
-		nucleos.append(mi_nucleo)
-		_ajustar_material(mat, mi, mi_atras, mi_nucleo)
+		vidrio_atras.append(mi_atras)
+		var mi_delante := MeshInstance3D.new()
+		mi_delante.position = mi.position
+		root.add_child(mi_delante)
+		vidrio_delante.append(mi_delante)
+		_ajustar_material(mat, mi, mi_atras, mi_delante)
 		viewport.add_child(root)
 		dice.append(root)
 		mats.append(mat)
@@ -197,48 +190,81 @@ static func estilo(nivel: int, alt := 0) -> Dictionary:
 	return DADOS[clampi(nivel, 0, DADOS.size() - 1)]
 
 
-## El núcleo opaco del dado de cristal: un cubo de (N - 4) de lado en el centro, con un degradé suave (más claro hacia arriba).
-static func _nucleo_voxels(color: Color) -> Dictionary:
+## Las celdas de los puntos de un dado: para cada una, [la celda de la superficie, la normal de su cara].
+static func _celdas_de_puntos() -> Array:
+	var out: Array = []
+	for value in FACES:
+		var f: Array = FACES[value]
+		var n: Vector3i = f[0]
+		var u: Vector3i = f[1]
+		var w: Vector3i = f[2]
+		var base := Vector3i((N - 1) if n.x > 0 else 0, (N - 1) if n.y > 0 else 0, (N - 1) if n.z > 0 else 0)
+		if n.x == 0:
+			base.x = 0
+		if n.y == 0:
+			base.y = 0
+		if n.z == 0:
+			base.z = 0
+		for pip in PIPS[value]:
+			var su := clampi(roundi(float(pip[0]) * N) - 1, 0, N - 2)
+			var sw := clampi(roundi(float(pip[1]) * N) - 1, 0, N - 2)
+			for du in 2:
+				for dw in 2:
+					out.append([base + u * (su + du) + w * (sw + dw), n])
+	return out
+
+
+## El vidrio del dado de ventanas: el número (cada punto es una ventanita que baja dos minicubos hasta el núcleo) y el núcleo, un cubo de (N - 4) de lado en el centro con un degradé suave.
+static func _vidrio_voxels(e: Dictionary) -> Dictionary:
 	var vox := {}
+	var nucleo: Color = e.nucleo
 	for x in range(2, N - 2):
 		for y in range(2, N - 2):
 			for z in range(2, N - 2):
 				var t := 1.0 - float(y - 2) / float(N - 5) * 0.3
-				vox[Vector3i(x, y, z)] = Color(color.r * t, color.g * t, color.b * t)
+				vox[Vector3i(x, y, z)] = Color(nucleo.r * t, nucleo.g * t, nucleo.b * t, nucleo.a)
+	var pip: Color = e.pip
+	for celda in _celdas_de_puntos():
+		vox[celda[0]] = pip
+		vox[celda[0] - celda[1]] = pip
 	return vox
 
 
-## La malla del dado del casino actual: con el cristal, cada minicubo lleva su opacidad (el canto más opaco, como vidrio esmerilado; los puntos, del todo).
+## La malla de la cáscara del dado del casino actual.
 func _malla_dado() -> ArrayMesh:
-	var vox := _die_voxels(tier, variante)
-	if bool(estilo(tier, variante).get("cristal", false)):
-		return VoxelMesh.build(vox, VOX, func(_p, c: Color): return c.a)
-	return VoxelMesh.build(vox, VOX)
+	return VoxelMesh.build(_die_voxels(tier, variante), VOX)
 
 
-## El material del dado (brillo, metal y, para el cristal, los dos materiales translúcidos: el de adelante y el de las caras de atrás, que se dibuja antes).
-func _ajustar_material(mat: StandardMaterial3D, mi: MeshInstance3D, mi_atras: MeshInstance3D, mi_nucleo: MeshInstance3D) -> void:
+## La malla del vidrio (con la opacidad de cada minicubo en UV.x, como el hielo).
+func _malla_vidrio() -> ArrayMesh:
+	return VoxelMesh.build(_vidrio_voxels(estilo(tier, variante)), VOX, func(_p, c: Color): return c.a)
+
+
+## El material del dado (brillo y metal de la cáscara) y, en el dado de ventanas, el vidrio: los dos materiales translúcidos, el de adelante y el de las caras de atrás (que se dibuja antes).
+func _ajustar_material(mat: StandardMaterial3D, mi: MeshInstance3D, mi_atras: MeshInstance3D, mi_delante: MeshInstance3D) -> void:
 	var e := estilo(tier, variante)
 	mat.roughness = float(e.rugosidad)
 	mat.metallic = float(e.metal)
-	if bool(e.get("cristal", false)):
-		var delante := ShaderMaterial.new()
-		delante.shader = CRISTAL
-		delante.render_priority = 1
-		var detras := ShaderMaterial.new()
-		detras.shader = CRISTAL_ATRAS
-		detras.render_priority = 0
-		mi.material_override = delante
-		mi_atras.material_override = detras
-		mi_atras.visible = true
-		mi_nucleo.mesh = VoxelMesh.build(_nucleo_voxels(e.nucleo), VOX)
-		mi_nucleo.scale = Vector3.ONE * NUCLEO_ESCALA
-		mi_nucleo.position = mi.position * NUCLEO_ESCALA   # (crece alrededor de su centro, que es el del dado)
-		mi_nucleo.visible = true
-	else:
-		mi.material_override = mat
-		mi_atras.visible = false
-		mi_nucleo.visible = false
+	mi.material_override = mat
+	var ventanas := bool(e.get("ventanas", false))
+	mi_atras.visible = ventanas
+	mi_delante.visible = ventanas
+	if not ventanas:
+		return
+	var delante := ShaderMaterial.new()
+	delante.shader = CRISTAL
+	delante.render_priority = 1
+	var detras := ShaderMaterial.new()
+	detras.shader = CRISTAL_ATRAS
+	detras.render_priority = 0
+	mi_delante.material_override = delante
+	mi_atras.material_override = detras
+	var vidrio := _malla_vidrio()
+	mi_delante.mesh = vidrio
+	mi_atras.mesh = vidrio
+	for m in [mi_delante, mi_atras]:   # (un poco más chico que la cáscara hueca, para no tocar sus paredes)
+		(m as MeshInstance3D).scale = Vector3.ONE * 0.97
+		(m as MeshInstance3D).position = mi.position * 0.97
 
 
 ## Un número pseudoaleatorio estable en 0..1 para una celda.
@@ -248,10 +274,10 @@ static func _h(x: int, y: int, z: int, k: int) -> float:
 
 
 ## El dado: un cubo de N x N x N cubitos con las aristas un poco más oscuras y los puntos hundidos (se saca el cubito de la superficie y el de abajo queda del color del punto). Cada casino
-## tiene el suyo (`DADOS`): desgastado en la taberna, con esquinas de latón en el salón, rojo y oro en el casino, y nácar con aristas de oro y puntos azul real en el gran casino.
+## tiene el suyo (`DADOS`, `ALTERNATIVAS`): desgastado en la taberna, con esquinas de latón en el salón, y en el casino y el gran casino los que se elijan (el del gran casino, de cáscara opaca con el número y el núcleo de cristal).
 static func _die_voxels(nivel := 1, alt := 0) -> Dictionary:
 	var e: Dictionary = estilo(nivel, alt)
-	var cristal := bool(e.get("cristal", false))
+	var ventanas := bool(e.get("ventanas", false))
 	var cuerpo: Color = e.cuerpo
 	var desgaste: float = e.desgaste
 	var vox := {}
@@ -275,8 +301,6 @@ static func _die_voxels(nivel := 1, alt := 0) -> Dictionary:
 				elif e.has("esquina") and edges == 3:
 					var esq: Color = e.esquina
 					col = Color(esq.r * tone, esq.g * tone, esq.b * tone)
-				elif cristal:   # (minicubos transparentes: el canto un poco más opaco, como vidrio esmerilado)
-					col.a = 0.62 if edges >= 2 else 0.34
 				elif desgaste > 0.0 and edges <= 1:
 					if r > 1.0 - 0.1 * desgaste:
 						col = e.mancha   # (manchas)
@@ -285,6 +309,15 @@ static func _die_voxels(nivel := 1, alt := 0) -> Dictionary:
 				vox[Vector3i(x, y, z)] = col
 	var pip_col: Color = e.pip
 	pip_col.a = 1.0
+	if ventanas:   # (la cáscara es opaca y hueca: los puntos son ventanas hasta el núcleo, que se rellenan con el vidrio aparte)
+		for celda in _celdas_de_puntos():
+			vox.erase(celda[0])
+			vox.erase(celda[0] - celda[1])
+		for x in range(2, N - 2):
+			for y in range(2, N - 2):
+				for z in range(2, N - 2):
+					vox.erase(Vector3i(x, y, z))
+		return vox
 	for value in FACES:
 		var f: Array = FACES[value]
 		var n: Vector3i = f[0]
@@ -339,8 +372,7 @@ func set_tier(t: int, alt := 0) -> void:
 	var malla := _malla_dado()
 	for i in dice.size():
 		(dice[i].get_child(0) as MeshInstance3D).mesh = malla
-		atras[i].mesh = malla
-		_ajustar_material(mats[i], dice[i].get_child(0) as MeshInstance3D, atras[i], nucleos[i])
+		_ajustar_material(mats[i], dice[i].get_child(0) as MeshInstance3D, vidrio_atras[i], vidrio_delante[i])
 
 
 ## La mesa de cada casino. Taberna: tablones gastados, fieltro raído con parches de madera, una mancha y alguna grieta violeta. Salón: madera barnizada con tachuelas de latón y fieltro limpio. Casino: madera
