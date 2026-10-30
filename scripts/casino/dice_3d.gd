@@ -24,6 +24,14 @@ const PIPS := {
 	5: [[0.27, 0.27], [0.27, 0.73], [0.5, 0.5], [0.73, 0.27], [0.73, 0.73]],
 	6: [[0.27, 0.27], [0.27, 0.5], [0.27, 0.73], [0.73, 0.27], [0.73, 0.5], [0.73, 0.73]],
 }
+## El dado de cada casino. La taberna: hueso amarillento, comido en las esquinas y manchado, con alguna grieta violeta. El salón: marfil limpio con las esquinas de latón. El casino: rojo rubí con las
+## aristas y los puntos dorados. El gran casino: nácar con todas las aristas de oro y los puntos de oro.
+const DADOS := [
+	{"cuerpo": Color(0.84, 0.78, 0.62), "pip": Color(0.22, 0.10, 0.26), "desgaste": 1.0, "mancha": Color(0.66, 0.58, 0.42), "grieta": Color(0.42, 0.14, 0.60), "rugosidad": 0.9, "metal": 0.0},
+	{"cuerpo": Color(0.96, 0.93, 0.84), "pip": Color(0.15, 0.09, 0.20), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.5, "metal": 0.0},
+	{"cuerpo": Color(0.70, 0.10, 0.14), "pip": Color(0.97, 0.80, 0.32), "desgaste": 0.0, "oro_aristas": Color(0.92, 0.74, 0.28), "esquina": Color(0.92, 0.74, 0.28), "rugosidad": 0.28, "metal": 0.15},
+	{"cuerpo": Color(0.97, 0.95, 0.92), "pip": Color(0.12, 0.12, 0.40), "desgaste": 0.0, "oro_aristas": Color(1.0, 0.85, 0.35), "nacar": true, "rugosidad": 0.22, "metal": 0.25},
+]
 const YAWS := [-0.32, 0.2, -0.14, 0.34, -0.24]   # cada dado descansa un poco girado, así se ven sus caras de costado
 
 ## Las fases de dice_game.gd (el orden del enum Phase): IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE.
@@ -43,6 +51,8 @@ const FACES := {
 }
 
 var viewport: SubViewport
+var tier := 1                       # la estética de los dados y de la mesa según el casino (0 taberna, 1 salón, 2 casino, 3 gran casino; casino_theme.gd)
+var _table_mi: MeshInstance3D
 var cam: Camera3D
 var dice: Array[Node3D] = []        # la raíz de cada dado (gira y se mueve)
 var mats: Array[StandardMaterial3D] = []
@@ -92,7 +102,7 @@ func _init() -> void:
 	_spark_mat.emission_enabled = true
 	_spark_mat.emission = Color(1.0, 0.85, 0.3)
 	_spark_mat.emission_energy_multiplier = 1.6
-	var die_mesh := VoxelMesh.build(_die_voxels(), VOX)
+	var die_mesh := VoxelMesh.build(_die_voxels(tier), VOX)
 	var lock_mesh := VoxelMesh.build(_lock_voxels(), 0.07)
 	var shadow_mesh := QuadMesh.new()
 	shadow_mesh.size = Vector2(1.0, 1.0)
@@ -103,7 +113,8 @@ func _init() -> void:
 		mi.position = -Vector3(HALF, HALF, HALF)
 		var mat := StandardMaterial3D.new()
 		mat.vertex_color_use_as_albedo = true
-		mat.roughness = 0.55
+		mat.roughness = float(DADOS[tier].rugosidad)
+		mat.metallic = float(DADOS[tier].metal)
 		mi.material_override = mat
 		root.add_child(mi)
 		viewport.add_child(root)
@@ -151,16 +162,46 @@ func _fit() -> void:
 
 # --- los modelos -----------------------------------------------------------------------------------------------------
 
-## El dado: un cubo de marfil de N x N x N cubitos con las aristas un poco más oscuras y los puntos hundidos (se saca el cubito de la superficie y el de abajo queda oscuro).
-static func _die_voxels() -> Dictionary:
+## Un número pseudoaleatorio estable en 0..1 para una celda.
+static func _h(x: int, y: int, z: int, k: int) -> float:
+	var h := (x * 73856093) ^ (y * 19349663) ^ (z * 83492791) ^ (k * 2654435761)
+	return float(absi(h) % 1000) / 1000.0
+
+
+## El dado: un cubo de N x N x N cubitos con las aristas un poco más oscuras y los puntos hundidos (se saca el cubito de la superficie y el de abajo queda del color del punto). Cada casino
+## tiene el suyo (`DADOS`): desgastado en la taberna, con esquinas de latón en el salón, rojo y oro en el casino, y nácar con aristas de oro y puntos azul real en el gran casino.
+static func _die_voxels(nivel := 1) -> Dictionary:
+	var e: Dictionary = DADOS[clampi(nivel, 0, DADOS.size() - 1)]
+	var cuerpo: Color = e.cuerpo
+	var desgaste: float = e.desgaste
 	var vox := {}
 	for x in N:
 		for y in N:
 			for z in N:
 				var edges := int(x == 0 or x == N - 1) + int(y == 0 or y == N - 1) + int(z == 0 or z == N - 1)
+				var r := _h(x, y, z, 5)
+				if desgaste > 0.0:   # (las esquinas y alguna arista, comidas)
+					if edges == 3 and r < 0.6 * desgaste:
+						continue
+					if edges == 2 and r < 0.16 * desgaste:
+						continue
 				var tone := 1.0 - (0.09 if edges >= 2 else 0.0) - float((x * 7 + y * 13 + z * 17) % 5) * 0.012
-				vox[Vector3i(x, y, z)] = Color(0.96 * tone, 0.93 * tone, 0.84 * tone)
-	var pip_col := Color(0.2, 0.11, 0.24)
+				var col := Color(cuerpo.r * tone, cuerpo.g * tone, cuerpo.b * tone)
+				if bool(e.get("nacar", false)):   # (un reflejo que va del rosa al celeste según el lugar)
+					col = col.lerp(Color(0.88, 0.93, 1.0) * tone, float(x + y + z) / float(3 * N - 3) * 0.7)
+				if e.has("oro_aristas") and edges >= 2:
+					var oro: Color = e.oro_aristas
+					col = Color(oro.r * tone, oro.g * tone, oro.b * tone)
+				elif e.has("esquina") and edges == 3:
+					var esq: Color = e.esquina
+					col = Color(esq.r * tone, esq.g * tone, esq.b * tone)
+				elif desgaste > 0.0 and edges <= 1:
+					if r > 1.0 - 0.1 * desgaste:
+						col = e.mancha   # (manchas)
+					elif (x * 5 + y * 3 + z * 11) % 23 == 0:
+						col = e.grieta   # (una grieta violeta: la corrupción de la taberna)
+				vox[Vector3i(x, y, z)] = col
+	var pip_col: Color = e.pip
 	for value in FACES:
 		var f: Array = FACES[value]
 		var n: Vector3i = f[0]
@@ -205,30 +246,105 @@ static func _lock_voxels() -> Dictionary:
 	return vox
 
 
+## Cambia la estética de los dados y de la mesa al casino `t` (0 taberna, 1 salón, 2 casino, 3 gran casino).
+func set_tier(t: int) -> void:
+	tier = clampi(t, 0, DADOS.size() - 1)
+	if _table_mi != null:
+		_table_mi.queue_free()
+	_build_table()
+	var malla := VoxelMesh.build(_die_voxels(tier), VOX)
+	for i in dice.size():
+		(dice[i].get_child(0) as MeshInstance3D).mesh = malla
+		mats[i].roughness = float(DADOS[tier].rugosidad)
+		mats[i].metallic = float(DADOS[tier].metal)
+
+
+## La mesa de cada casino. Taberna: tablones gastados, fieltro raído con parches de madera, una mancha y alguna grieta violeta. Salón: madera barnizada con tachuelas de latón y fieltro limpio. Casino: madera
+## pulida con un filete dorado, gemas en las esquinas y fieltro profundo con su hilo dorado. Gran casino: mármol cálido con filigrana de oro, fieltro esmeralda con un rombo bordado en oro y pilares dorados en las esquinas.
 func _build_table() -> void:
 	var vox := {}
 	var xn := int(TABLE_X / TABLE_VOX)
 	var zn := int(TABLE_Z / TABLE_VOX)
+	var oro := Color(0.92, 0.74, 0.28)
 	for x in xn:
 		for z in zn:
-			var rim := x < 2 or x >= xn - 2 or z < 2 or z >= zn - 2
+			var d := mini(mini(x, xn - 1 - x), mini(z, zn - 1 - z))   # (distancia al borde de la mesa)
+			var rim := d < 2
 			var n := float((x * 31 + z * 17) % 7) * 0.012
+			var r := _h(x, 0, z, 9)
+			var grueso := _h(x / 4, 1, z / 4, 3)   # (ruido en parches)
+			var madera_borde := Color(0.42 - n, 0.26 - n, 0.12 - n)
+			var madera_tapa := Color(0.5 - n, 0.31 - n, 0.15 - n)
+			var madera_bajo := Color(0.3 - n, 0.18 - n, 0.08 - n)
+			var fieltro := Color(0.1 + n, 0.4 + n * 1.4, 0.26 + n)
+			var tapa := true   # (si el borde tiene el cubito de arriba)
+			match tier:
+				0:
+					madera_borde = Color(0.30 - n, 0.18 - n, 0.08 - n)
+					madera_tapa = Color(0.36 - n, 0.22 - n, 0.10 - n)
+					madera_bajo = Color(0.22 - n, 0.13 - n, 0.06 - n)
+					fieltro = Color(0.07 + n, 0.15 + n * 1.2, 0.12 + n)
+					tapa = r > 0.12   # (el borde, mordido)
+					if grueso < 0.14:
+						fieltro = Color(0.25 - n, 0.15 - n, 0.07 - n)   # (parche gastado: se ve la madera)
+					elif Vector2(x - xn * 0.3, z - zn * 0.62).length() < 5.0:
+						fieltro = Color(0.04, 0.09, 0.07)   # (una mancha)
+					elif (x + z * 2) % 37 == 0 and r < 0.7:
+						fieltro = Color(0.28, 0.10, 0.40)   # (una grieta violeta)
+				1:
+					madera_borde = Color(0.46 - n, 0.27 - n, 0.12 - n)
+					madera_tapa = Color(0.56 - n, 0.34 - n, 0.15 - n)
+					madera_bajo = Color(0.40 - n, 0.24 - n, 0.11 - n)
+					fieltro = Color(0.08 + n, 0.25 + n * 0.8, 0.17 + n) if (x + z) % 2 == 0 else Color(0.07 + n, 0.23 + n * 0.8, 0.155 + n)
+				2:
+					madera_borde = Color(0.22 - n, 0.12 - n, 0.07 - n)
+					madera_tapa = Color(0.29 - n, 0.16 - n, 0.09 - n)
+					madera_bajo = Color(0.17 - n, 0.09 - n, 0.05 - n)
+					fieltro = Color(0.05 + n, 0.30 + n * 0.8, 0.20 + n)
+				3:
+					var veta := 0.0 if _h(x / 3, z / 3, 2, 7) > 0.2 else 0.12   # (vetas del mármol)
+					madera_borde = Color(0.93 - veta - n, 0.90 - veta - n, 0.82 - veta - n)
+					madera_tapa = Color(0.97 - veta - n, 0.94 - veta - n, 0.86 - veta - n)
+					madera_bajo = Color(0.85 - n, 0.82 - n, 0.74 - n)
+					fieltro = Color(0.04 + n, 0.38 + n * 0.8, 0.26 + n)
+					if (x + z) % 10 == 0 or (x - z + 1000) % 10 == 0:
+						fieltro = Color(0.06, 0.50, 0.34)   # (el rombo bordado en oro: hilos de otro verde)
 			if rim:
-				vox[Vector3i(x, 0, z)] = Color(0.42 - n, 0.26 - n, 0.12 - n)
-				vox[Vector3i(x, 1, z)] = Color(0.5 - n, 0.31 - n, 0.15 - n)
+				vox[Vector3i(x, 0, z)] = madera_borde
+				if tapa:
+					vox[Vector3i(x, 1, z)] = madera_tapa
+				if tier == 1 and d == 1 and x % 8 == 4 and z % 1 == 0 and (x < 2 or x >= xn - 2 or z < 2 or z >= zn - 2) and (x % 8 == 4):
+					vox[Vector3i(x, 1, z)] = Color(0.80, 0.62, 0.25)   # (tachuelas de latón)
+				if tier >= 2 and d == 1:
+					vox[Vector3i(x, 1, z)] = oro if tier == 2 else Color(1.0, 0.85, 0.35)   # (el filete dorado)
+				if tier == 3 and d == 0 and (x + z) % 4 == 0:
+					vox[Vector3i(x, 2, z)] = Color(1.0, 0.85, 0.35)   # (la filigrana: tachas doradas en el borde de afuera)
 			else:
-				vox[Vector3i(x, -1, z)] = Color(0.1 + n, 0.4 + n * 1.4, 0.26 + n)
+				vox[Vector3i(x, -1, z)] = fieltro
+				if tier == 1 and d == 2:
+					vox[Vector3i(x, -1, z)] = Color(0.80, 0.62, 0.25)   # (el hilo de latón junto al borde)
+				if tier >= 2 and d == 2:
+					vox[Vector3i(x, -1, z)] = oro if tier == 2 else Color(1.0, 0.85, 0.35)   # (el hilo dorado)
 			for y in range(-4, -1):
-				vox[Vector3i(x, y, z)] = Color(0.3 - n, 0.18 - n, 0.08 - n)
-		# el fieltro está un cubito más abajo que el borde: el piso del fieltro es la capa y = -1
-	var mi := MeshInstance3D.new()
-	mi.mesh = VoxelMesh.build(vox, TABLE_VOX)
-	mi.position = Vector3(-TABLE_X * 0.5, 0.0, -TABLE_Z * 0.5)
+				vox[Vector3i(x, y, z)] = madera_bajo
+	if tier >= 2:   # las esquinas: gemas en el casino, pilares dorados en el gran casino
+		for esquina in [Vector2i(0, 0), Vector2i(xn - 3, 0), Vector2i(0, zn - 3), Vector2i(xn - 3, zn - 3)]:
+			for dx in 3:
+				for dz in 3:
+					var gema := Color(0.78, 0.22, 0.2) if (esquina.x + esquina.y) % 2 == 0 else Color(0.40, 0.14, 0.60)
+					vox[Vector3i(esquina.x + dx, 2, esquina.y + dz)] = gema if tier == 2 else Color(1.0, 0.85, 0.35)
+					if tier == 3:
+						vox[Vector3i(esquina.x + dx, 3, esquina.y + dz)] = Color(1.0, 0.9, 0.5)
+	# el fieltro está un cubito más abajo que el borde: el piso del fieltro es la capa y = -1
+	_table_mi = MeshInstance3D.new()
+	_table_mi.mesh = VoxelMesh.build(vox, TABLE_VOX)
+	_table_mi.position = Vector3(-TABLE_X * 0.5, 0.0, -TABLE_Z * 0.5)
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 0.95
-	mi.material_override = mat
-	viewport.add_child(mi)
+	mat.roughness = 0.95 if tier == 0 else (0.7 if tier == 1 else 0.45)
+	mat.metallic = 0.0 if tier < 3 else 0.1
+	_table_mi.material_override = mat
+	viewport.add_child(_table_mi)
 
 
 ## La orientación de un dado que muestra el número `v` arriba (girado `yaw` sobre la mesa).
