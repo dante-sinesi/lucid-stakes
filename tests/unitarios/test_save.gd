@@ -105,21 +105,22 @@ func test_flow_tower() -> void:
 	var cam: Array = a.torre.t.salas[0].d.camino   # (el primer paso del camino de la sala)
 	a.torre.accion(Vector3i(int(cam[0][0]), 0, int(cam[0][1])), int(cam[0][2]))
 	check(a.attempt_dirty and SaveGame.read().dirty == true, "al primer movimiento el guardado queda marcado como intento empezado")
-	# Continuar con el intento empezado cuenta como un reintento
+	# Continuar con la sala empezada cuenta como perderla: cuesta una vida (y nada de claridad)
 	var d := make_main()
 	await wait_tower(d)
 	a.save_game()
+	var vidas: int = a.run.lives
 	d.continue_game()
-	check(d.run.retries == 1 and d.run.tower_retries == 1 and d.run.claridad == 275, "continuar con el intento empezado cuesta un reintento (25)")
-	check(d.torre.t.movs == 0, "...y la torre empieza de cero")
-	# Sin claridad para ese reintento: el run termina
-	a.run.claridad = 0
+	check(d.run.retries == 1 and d.run.tower_retries == 1 and d.run.lives == vidas - 1 and d.run.claridad == 300, "continuar con la sala empezada cuesta una vida y ninguna claridad")
+	check(d.torre.t.movs == 0, "...y la sala empieza de cero")
+	# Sin vidas ni Tótem: al continuar con la sala empezada el run termina
+	a.run.lives = 0
 	a.save_game()
 	var e := make_main()
 	await wait_tower(e)
 	a.save_game()
 	e.continue_game()
-	check(e.run_over and e.run_end.visible and not SaveGame.exists(), "si no alcanza para pagar el reintento al continuar, el run termina (y se borra el guardado)")
+	check(e.run_over and e.run_end.visible and not SaveGame.exists(), "si no te quedan vidas, continuar con la sala empezada termina el run (y se borra el guardado)")
 	for m in [a, c, d, e]:
 		m.queue_free()
 	await process_frame
@@ -174,6 +175,7 @@ func test_checkpoint() -> void:
 		a.torre.accion(Vector3i(int(paso[0]), 0, int(paso[1])), int(paso[2]))
 	check(a.torre.t.indice == 1, "se superó la primera sala")
 	var banco: int = a.torre.t.cosecha.banco
+	check(int(SaveGame.read().get("sala", -1)) == 1 and SaveGame.read().dirty == false, "al llegar al checkpoint se guarda solo (sala nueva, todavía sin empezar)")
 	a.save_game()
 	check(int(SaveGame.read().get("sala", -1)) == 1 and int(SaveGame.read().get("banco", -1)) == banco, "el guardado dice en qué checkpoint estás y cuánta claridad ya es tuya")
 	var b := make_main()
@@ -181,6 +183,7 @@ func test_checkpoint() -> void:
 	a.save_game()
 	b.continue_game()
 	check(b.torre.t.indice == 1 and b.torre.t.cosecha.banco == banco and b.torre.t.movs == 0, "continuar retoma en el último checkpoint, con la claridad asegurada")
+	check(b.run.lives == a.run.lives and b.run.retries == 0 and not b.run_over, "y no cuesta nada: pasar un checkpoint y cerrar el juego no es perder la sala")
 	check(b.torre.t.salas[0].d.bloques == a.torre.t.salas[0].d.bloques, "y es la misma torre")
 	a.queue_free()
 	b.queue_free()
