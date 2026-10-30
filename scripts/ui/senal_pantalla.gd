@@ -1,0 +1,120 @@
+extends Control
+## Las señales grandes de la pantalla, sin una sola palabra: en vez de un cartel de texto, un símbolo de cubitos que aparece un momento y se desvanece.
+##  - REBOBINAR: dos flechas a la izquierda sobre una banda oscura, como el cartel del nombre de la prueba (se deshizo un movimiento).
+##  - NO_REBOBINAR: lo mismo, con el símbolo de cancelado en rojo encima (el escenario no deja deshacer).
+##  - RECHAZO: el símbolo de cancelado en rojo, chico, en un punto de la pantalla (algo no se puede hacer ahora).
+##  - CANDADO: un candado (algo del juego completo que la demo no incluye).
+## Uso: `mostrar(tipo)` (o `mostrar(tipo, punto)` para ponerla en un punto de la pantalla).
+
+const Draw := preload("res://scripts/ui/voxel_draw.gd")
+
+enum Tipo { REBOBINAR, NO_REBOBINAR, RECHAZO, CANDADO }
+
+const CELDA := 14.0              # lado de un cubito de las señales grandes
+const MARGEN_ABAJO := 74.0        # lo que queda libre abajo (la guía de controles), igual que el cartel de la prueba
+const FLECHA := ["....#", "...##", "..###", ".####", "#####", ".####", "..###", "...##", "....#"]
+const CANDADO_FILAS := ["...###...", "..#...#..", "..#...#..", "..#...#..", ".#######.", ".#######.", ".###.###.", ".###.###.", ".#######.", ".#######."]
+
+var _tipo := Tipo.REBOBINAR
+var _punto := Vector2(-1, -1)
+var _t := 1.0e9                   # segundos desde que apareció
+var _dur := 1.0
+var _tween: Tween
+
+
+func _init() -> void:
+	name = "senal_pantalla"
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visible = false
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+## Muestra una señal. `punto`: dónde ponerla (por omisión, abajo en el centro las de rebobinar y en el centro de la pantalla las demás).
+func mostrar(tipo: int, punto := Vector2(-1, -1)) -> void:
+	_tipo = tipo
+	_punto = punto
+	_t = 0.0
+	_dur = 1.1 if tipo == Tipo.REBOBINAR or tipo == Tipo.NO_REBOBINAR else 0.9
+	visible = true
+	modulate.a = 1.0
+	if _tween != null:
+		_tween.kill()
+	_tween = create_tween()
+	_tween.tween_interval(_dur * 0.55)
+	_tween.tween_property(self, "modulate:a", 0.0, _dur * 0.45)
+	_tween.tween_callback(func(): visible = false)
+	queue_redraw()
+
+
+func ocultar() -> void:
+	if _tween != null:
+		_tween.kill()
+	visible = false
+
+
+func _process(delta: float) -> void:
+	if visible:
+		_t += delta
+		queue_redraw()
+
+
+## El símbolo de cancelado (un aro con una barra en diagonal) de `n` x `n` cubitos, centrado en `centro`. `alfa` lo desvanece.
+static func dibujar_cancelar(ci: CanvasItem, centro: Vector2, celda: float, n := 11, alfa := 1.0) -> void:
+	var c := (n - 1) * 0.5
+	var origen := centro - Vector2(n, n) * celda * 0.5
+	var rojo := Color(0.95, 0.18, 0.2, alfa)
+	for y in n:
+		for x in n:
+			var d := Vector2(x - c, y - c).length()
+			var aro := d >= c - 1.15 and d <= c + 0.45
+			var barra := absf(float(x) - float(y)) < 1.1 and d <= c + 0.45
+			if not (aro or barra):
+				continue
+			var p := origen + Vector2(x, y) * celda
+			ci.draw_rect(Rect2(p + Vector2(2, 3), Vector2(celda, celda)), Color(0, 0, 0, 0.5 * alfa))
+			Draw.cube(ci, p, celda, rojo, true)
+
+
+func _flechas(centro: Vector2, celda: float, desplazamiento: float, color: Color) -> void:
+	var ancho := 11.0   # dos flechas de 5 columnas y una de separación
+	var origen := centro - Vector2(ancho, 9.0) * celda * 0.5 + Vector2(desplazamiento, 0.0)
+	for f in 2:
+		for y in 9:
+			for x in 5:
+				if String(FLECHA[y])[x] != "#":
+					continue
+				var p := origen + Vector2(x + f * 6, y) * celda
+				draw_rect(Rect2(p + Vector2(2, 3), Vector2(celda, celda)), Color(0, 0, 0, 0.5))
+				Draw.cube(self, p, celda, color, true)
+
+
+func _draw() -> void:
+	if not visible:
+		return
+	var k := minf(_t / 0.12, 1.0)   # entra rápido
+	var pop := 1.0 + 0.25 * (1.0 - k)
+	match _tipo:
+		Tipo.REBOBINAR, Tipo.NO_REBOBINAR:
+			var abajo := size.y - MARGEN_ABAJO
+			var alto := 9.0 * CELDA + 70.0
+			var centro := Vector2(size.x * 0.5, abajo - alto * 0.5 + 10.0) if _punto.x < 0.0 else _punto
+			draw_rect(Rect2(0, centro.y - alto * 0.5, size.x, alto), Color(0.02, 0.01, 0.05, 0.6))
+			var corre := (-_t * 70.0 + 35.0) if _tipo == Tipo.REBOBINAR else 0.0   # las flechas "rebobinan": se corren hacia la izquierda mientras se ven (con el cancelado, quietas)
+			_flechas(centro, CELDA * pop, corre, Color(1.0, 0.85, 0.35))
+			if _tipo == Tipo.NO_REBOBINAR:
+				dibujar_cancelar(self, centro, CELDA * 1.2 * pop, 11)
+		Tipo.RECHAZO:
+			var c := _punto if _punto.x >= 0.0 else size * 0.5
+			dibujar_cancelar(self, c - Vector2(0, 30.0 * k), 8.0 * pop, 11)
+		Tipo.CANDADO:
+			var c := _punto if _punto.x >= 0.0 else size * 0.5
+			var celda := 9.0 * pop
+			var origen := c - Vector2(9, 10) * celda * 0.5
+			for y in 10:
+				for x in 9:
+					if String(CANDADO_FILAS[y])[x] != "#":
+						continue
+					var p := origen + Vector2(x, y) * celda
+					draw_rect(Rect2(p + Vector2(2, 3), Vector2(celda, celda)), Color(0, 0, 0, 0.5))
+					Draw.cube(self, p, celda, Color(1.0, 0.85, 0.35) if y >= 4 else Color(0.75, 0.75, 0.82), true)

@@ -23,6 +23,10 @@ const FondoAnimado := preload("res://scripts/ui/fondo_animado.gd")
 const KeyDirs := preload("res://scripts/entrada/key_dirs.gd")
 const CasinoRules := preload("res://scripts/casino/casino_visit.gd")
 const BalanceScreen := preload("res://scripts/casino/casino_balance_screen.gd")
+const SenalPantalla := preload("res://scripts/ui/senal_pantalla.gd")
+const ItemVuela := preload("res://scripts/ui/item_vuela.gd")
+const ResumenClaridad := preload("res://scripts/ui/resumen_claridad.gd")
+const VentanaLogro := preload("res://scripts/ui/ventana_logro.gd")
 const Contratos := preload("res://scripts/datos/contratos.gd")
 const ContratoResuelto := preload("res://scripts/ui/contrato_resuelto.gd")
 const PadBridge := preload("res://scripts/entrada/pad_bridge.gd")
@@ -90,9 +94,12 @@ var debug_hud := false
 var stage_label: Control     # "Etapa 5/27" y el piso en que estás
 var hud_panel               # la ventana de la partida: corazones, etapa, claridad y racha
 var banner: Control
-var toast: Control
+var senal: Control          # las señales sin texto (rebobinar, cancelado, candado)
+var resumen_claridad: Control   # la ventana del resumen de claridad (al entrar al casino y antes de la torre)
+var ventana_logro: Control      # la ventana de un logro (personaje nuevo)
+var ultimo_ingreso_torre := 0   # lo que dio la última torre superada (para el resumen de claridad)
+var ingreso_dados := 0          # la claridad que dieron los dados de esa visita
 var _gain_tween: Tween     # el desvanecer del cartel de ganancia (uno solo a la vez)
-var _toast_tween: Tween    # y el del aviso
 var gain_label: Control
 var depth_mode := 1
 var run := RunState.new()   # estado del run: claridad, boosts, consumibles
@@ -194,7 +201,7 @@ func _ready() -> void:
 	_register_globals()
 	var pad_bridge := PadBridge.new()   # el mando se traduce a las teclas de cada acción
 	pad_bridge.nav_mode = func() -> bool:
-		return in_menu or get_tree().paused or (dice != null and dice.visible) or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible) or (dialogue != null and dialogue.is_active()) or (confirm_box != null and confirm_box.is_open()) or (difficulty_screen != null and difficulty_screen.is_open())
+		return in_menu or get_tree().paused or (resumen_claridad != null and resumen_claridad.visible) or (ventana_logro != null and ventana_logro.visible) or (dice != null and dice.visible) or (casino != null and casino.screen != null) or (lost_screen != null and lost_screen.visible) or (dialogue != null and dialogue.is_active()) or (confirm_box != null and confirm_box.is_open()) or (difficulty_screen != null and difficulty_screen.is_open())
 	pad_bridge.process_mode = Node.PROCESS_MODE_ALWAYS   # (el mando tiene que seguir andando con el juego en pausa: si no, el menú de pausa no responde)
 	add_child(pad_bridge)
 	add_to_group("graphics")
@@ -373,12 +380,15 @@ func _build_hud() -> void:
 	perk_label.y_offset = 104.0
 	perk_label.margin = 120.0 + Compass.SPAN
 	perk_label.plate_alpha = 0.55
-	toast = _label(layer, 3, Color(0.95, 0.93, 0.88))
-	toast.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	toast.align = VoxelLabel.Align.CENTER
-	toast.y_offset = 215.0
-	toast.plate_alpha = 0.6
-	toast.modulate.a = 0.0
+	senal = SenalPantalla.new()
+	layer.add_child(senal)
+	var capa_ventanas := CanvasLayer.new()
+	capa_ventanas.layer = 55
+	add_child(capa_ventanas)
+	resumen_claridad = ResumenClaridad.new()
+	capa_ventanas.add_child(resumen_claridad)
+	ventana_logro = VentanaLogro.new()
+	capa_ventanas.add_child(ventana_logro)
 	gain_label = _label(layer, 3, Color(1.0, 0.93, 0.5))
 	gain_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	gain_label.align = VoxelLabel.Align.CENTER
@@ -425,7 +435,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	if not training:
 		var unlocked: Array = Profile.on_stage_reached(stage_number)   # la etapa 10 desbloquea al conejito
 		if not unlocked.is_empty():
-			_flash(_character_msg(unlocked))
+			_mostrar_logro(unlocked)
 			Sfx.play("item")
 	if con_dados:   # (una torre nueva: los reintentos de la anterior no cuentan; al rehacer la misma torre sí)
 		run.tower_retries = 0
@@ -482,7 +492,8 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.murio.connect(_torre_murio)
 	torre.accion_hecha.connect(_torre_accion)
 	torre.falsos_cambiaron.connect(_torre_falsos)
-	torre.aviso.connect(func(texto: String): _flash(Loc.t(texto)))
+	torre.rechazo.connect(_on_rechazo_torre)
+	torre.aliento.connect(_on_aliento_torre)
 	torre.ganancia.connect(_flash_gain)
 	torre.portal = _cubo_portal()
 	torre.deshacer_pedido.connect(undo_move)
@@ -491,8 +502,9 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.reintentar_pedido.connect(request_restart)
 	add_child(torre)
 	if not training and tutorial_index < 0:   # los contratos activos empiezan su seguimiento en esta torre (los que no se pueden cumplir en ella se anulan)
-		for p in Contratos.empezar_torre(run, Contratos.capacidad_de(torre.t)):
-			_flash(Loc.f("Contrato anulado: esta torre no tiene lo necesario (%s)", [Contratos.titulo(p)]))
+		for p in Contratos.empezar_torre(run, Contratos.capacidad_de(torre.t)):   # (el papel se anula con su sello, como cuando se cancela: la fianza vuelve)
+			_contratos_cola.append({"papel": p, "cumplido": false, "monto": int(p.get("fianza", 0)), "cancelado": true})
+		_contratos_mostrar()
 	hud_layer.visible = true
 	banner.text = ""
 	if permitidos == 0:
@@ -555,7 +567,6 @@ func _torre_falsos(quedan: int, permitidos: int, sin_salida: bool, hubo_falso: b
 		if cuenta <= permitidos and cuenta > 0:
 			Sfx.play("miss")
 			juice.flash(Color(0.8, 0.1, 0.15), 0.18, 0.4)
-			_flash(Loc.f("¡Sin salida! Movimiento en falso %d de %d", [cuenta, permitidos]) if sin_salida else Loc.f("¡Movimiento en falso! %d de %d", [cuenta, permitidos]))
 
 
 ## La telemetría de la torre (local, nada se envía): un evento "sala" por cada sala que termina (superada o perdida) y uno "torre" por intento.
@@ -653,7 +664,7 @@ func _torre_ganada() -> void:
 	if training:   # (el tutorial: se festeja y pasa solo a la siguiente lección)
 		if tutorial_index >= 0:
 			if tutorial_locked():   # llegaste, pero te faltan las teclas de la lección: no se pasa
-				_flash(Loc.t("Todavía te faltan teclas: prueba todas las de arriba."))
+				_senal_rechazo()   # (las teclas que faltan siguen grises arriba)
 				await get_tree().create_timer(1.2).timeout
 				if tutorial_index >= 0 and torre != null:
 					restart()   # (las teclas ya doradas se quedan así)
@@ -701,7 +712,6 @@ func _torre_murio(motivo: String) -> void:
 		var previo: float = torre.animar_derrota(motivo)
 		juice.flash(Color(0.8, 0.1, 0.15), 0.4, 0.6)
 		Sfx.play("lose")
-		_flash(Loc.t(motivo))
 		var mi_epoca := epoch
 		await get_tree().create_timer(previo + 3.2 if not test_mode else 0.1).timeout
 		if mi_epoca == epoch and not in_menu and not run_over:
@@ -897,14 +907,36 @@ func _play_trial_banner() -> void:
 	trial_banner.play(Loc.t(trial.name), Loc.t(trial.desc))
 
 
-func _flash(msg: String) -> void:
-	toast.text = msg
-	toast.modulate.a = 1.0
-	juice.pop(toast, 1.2)
-	if _toast_tween != null:
-		_toast_tween.kill()
-	_toast_tween = create_tween()
-	_toast_tween.tween_property(toast, "modulate:a", 0.0, 1.4)
+## Un consumible no se puede usar ahora: su casillero tiembla con el símbolo de cancelado en rojo (sin texto).
+func _rechazar_item(slot: int) -> void:
+	if left_bar != null:
+		left_bar.rechazar(slot)
+	Sfx.play("miss", 0.8, -4.0)
+
+
+## Un ítem que se usó: su ícono sale de su casillero de la barra (`barra`: la de consumibles o la de boosts), vuela al medio y se deshace en luz (sin texto).
+func _item_vuela(id: String, barra, idx: int) -> void:
+	if barra != null and idx >= 0:
+		ItemVuela.volar(hud_layer, id, barra.rect_de(idx))
+
+
+## Algo que no se puede hacer ahora y no tiene un casillero donde mostrarlo: el símbolo de cancelado en el medio (sin texto).
+func _senal_rechazo() -> void:
+	senal.mostrar(SenalPantalla.Tipo.RECHAZO)
+	Sfx.play("miss", 0.8, -4.0)
+
+
+## La torre rechazó un movimiento: siempre un sonido bajito; y si es por una regla que no se ve (Solo tres bloques, una fila de más de tres), el símbolo de cancelado sobre el personaje.
+func _on_rechazo_torre(msg: String) -> void:
+	Sfx.play("miss", 0.7, -8.0)
+	if (msg == "Ya moviste todos los bloques que se pueden mover" or msg == "Demasiados bloques") and torre != null and torre.cam != null and torre.gato_nodo != null:
+		senal.mostrar(SenalPantalla.Tipo.RECHAZO, torre.cam.unproject_position(torre.gato_nodo.global_position + Vector3(0, 1.3, 0)))
+
+
+## El Segundo aliento salvó la sala: su ícono sale de la barra de boosts y se deshace en luz.
+func _on_aliento_torre() -> void:
+	if run != null:
+		_item_vuela("segundo_aliento", right_bar, run.boosts.find("segundo_aliento"))
 
 
 ## El HUD con la torre: la etapa, la claridad del run más la de la torre, lo que cobrará Farolín, las vidas y las barras de boosts y consumibles.
@@ -946,6 +978,7 @@ func _bank_claridad() -> void:
 	var cl: int = torre.t.cosecha.claridad() if torre != null and torre.t != null else 0
 	var gained := int(round(cl * float(trial.get("mult", 1.0))))
 	run.claridad_earned += gained
+	ultimo_ingreso_torre = gained
 	run.gain(gained)
 	_trial_msg = ""
 	if not trial.is_empty() and not training:
@@ -1144,7 +1177,7 @@ func _menu_elegir(id: String) -> void:
 			var tipo := "boost" if es_boost else "consumable"
 			var err: String = run.discard_error(tipo, idx)
 			if err != "":
-				_flash(Loc.t(err))
+				Sfx.play("miss", 0.8, -4.0)
 			else:
 				var tirado: String = run.discard(tipo, idx)
 				if casino != null:
@@ -1168,7 +1201,7 @@ func _menu_elegir(id: String) -> void:
 					_contratos_cola.append({"papel": papel, "cumplido": false, "monto": int(r.devuelto), "cancelado": true})   # (el sello de CANCELADO, como el de los contratos resueltos)
 					_contratos_mostrar()
 				else:
-					_flash(Loc.t(str(r.error)))
+					Sfx.play("miss", 0.8, -4.0)
 				save_game()
 			else:
 				var res: Dictionary = Contratos.abandonar(run, idx)
@@ -1261,35 +1294,38 @@ func use_consumable_slot(slot: int) -> void:
 	if slot >= run.consumables.size():
 		return
 	if trial.get("no_items", false):
-		_flash(Loc.f("Prueba «%s»: no se pueden usar consumibles", [Loc.t(trial.name)]))
+		_rechazar_item(slot)
 		return
 	var id: String = run.consumables[slot]
 	if run.item_blocked(id):
-		_flash(Loc.t("No funciona en este escenario"))
+		_rechazar_item(slot)
 		return
 	if id == "vida_extra":
 		if run.add_life():
+			_item_vuela(id, left_bar, slot)
 			run.use_consumable(id)
-			_flash(Loc.t("¡Una vida más!"))
 			Sfx.play("item")
 			_refresh()
 			save_game()
 		else:
-			_flash(Loc.f("Ya tienes las %d vidas", [run.max_lives()]))
+			_rechazar_item(slot)
 		return
-	if id == "totem" or id == "soborno":
-		_flash(Loc.t("Se usa solo cuando hace falta") if id != "soborno" else Loc.t("Se usa en el casino, frente a Farolín"))
+	if id == "totem" or id == "soborno":   # (se usan solos cuando hace falta: el Tótem al morir, el Soborno frente a Farolín)
+		_rechazar_item(slot)
 		return
 	var r: Dictionary = torre.t.usar_item(id)
 	if bool(r.ok):
+		_item_vuela(id, left_bar, slot)
 		run.use_consumable(id)
-		_flash(Loc.t(str(r.msg)))
+		var ganado := int(r.get("claridad", 0))
+		if ganado > 0:
+			_flash_gain(Loc.f("+%d claridad", [ganado]), ganado)
 		Sfx.play("item")
 		torre.actualizar()
 		_refresh()
 		save_game()
 	else:
-		_flash(Loc.t(str(r.msg)))
+		_rechazar_item(slot)
 
 
 ## Empieza la lección actual del tutorial (una sala armada a mano o, la última, una torre de verdad chica).
@@ -1339,6 +1375,16 @@ func _check_keys_complete() -> void:
 ## Aviso de los personajes que se acaban de desbloquear.
 
 ## Aviso de los personajes que se acaban de desbloquear.
+## Se desbloqueó uno o más personajes: una ventana de logro con su nombre (no un cartel).
+func _mostrar_logro(ids: Array) -> void:
+	if test_mode or ventana_logro == null:
+		return
+	var nombres: Array = []
+	for id in ids:
+		nombres.append(Loc.t(str(Characters.get_character(str(id)).name)))
+	ventana_logro.mostrar(Loc.t("¡Personaje nuevo!"), nombres)
+
+
 func _character_msg(ids: Array) -> String:
 	var parts: Array[String] = []
 	for id in ids:
@@ -1387,10 +1433,13 @@ func enter_casino(restoring := false) -> void:
 	if not restoring:
 		_bank_claridad()
 		_preparar_dados()
+	ingreso_dados = 0
 	if run.dados_por_jugar:
+		var antes_de_dados := run.claridad
 		await _dados_del_tabernero()   # (superaste la torre: antes del casino, el tabernero tira los dados sobre la claridad que acabas de cobrar)
 		if mi_epoca != epoch or in_menu or run_over or casino != null:
 			return
+		ingreso_dados = maxi(run.claridad - antes_de_dados, 0)
 		run.dados_por_jugar = false
 		_claim_dice_rewards()   # (superaste la torre: lo que dieron los dados es tuyo)
 	if not training and tutorial_index < 0:
@@ -1409,6 +1458,10 @@ func enter_casino(restoring := false) -> void:
 	casino.keeper_talk.connect(_on_keeper_talk)
 	hud_layer.visible = false
 	banner.text = ""
+	if not restoring:
+		await _resumen_de_entrada()   # (la cuenta de lo que sumaron la torre, los dados y los ahorros, antes de empezar a jugar)
+		if casino == null or in_menu or run_over or mi_epoca != epoch:
+			return
 	_evento_del_casino()
 	save_game()
 
@@ -1511,7 +1564,6 @@ func _on_pay_failed() -> void:
 		cam.make_current()
 	hud_layer.visible = true
 	restart()
-	_flash(Loc.t("Perdiste una vida: vuelves a subir la torre"))
 	save_game()
 
 
@@ -1530,9 +1582,67 @@ func leave_casino() -> void:
 		screen.setup(run)
 		screen.done.connect(func():
 			_close_balance()
-			_leave_casino_now())
+			_salir_con_resumen())
+		return
+	_salir_con_resumen()
+
+
+## Después del balance del casino y antes de la torre: la ventana de claridad con lo que sumó el peaje y los boosts con los que se empieza.
+func _salir_con_resumen() -> void:
+	await _resumen_de_salida()
+	if casino == null or in_menu or run_over:
 		return
 	_leave_casino_now()
+
+
+## ¿Se muestran las ventanas del resumen de claridad? (no en las pruebas, el entrenamiento ni el tutorial)
+func _resumenes_activos() -> bool:
+	return not test_mode and not training and tutorial_index < 0 and resumen_claridad != null and run != null
+
+
+## Al entrar al casino: la claridad con la que empezó la torre, lo que se añadió (la torre, los dados, la Caja fuerte, la Alcancía, los contratos) y el total.
+func _resumen_de_entrada() -> void:
+	if not _resumenes_activos() or casino == null:
+		return
+	var total: int = run.claridad
+	var ahorro: int = int(casino._ahorro_cobrado)
+	var caja := 0
+	if run.boosts.has("caja_fuerte"):
+		caja = mini(int(round(float(run.claridad_inicio_torre) * 0.15)), ahorro)
+	var filas := [
+		{"id": "", "nombre": Loc.t("Torre"), "valor": ultimo_ingreso_torre},
+		{"id": "", "nombre": Loc.t("Dados"), "valor": ingreso_dados},
+		{"id": "caja_fuerte", "nombre": Loc.t("Caja fuerte"), "valor": caja},
+		{"id": "alcancia", "nombre": Loc.t("Alcancía"), "valor": ahorro - caja},
+	]
+	var entrada: int = run.claridad_inicio_torre
+	var suma := 0
+	for f in filas:
+		suma += int(f.valor)
+	if total - entrada - suma != 0:   # (lo que no es de ninguno de los de arriba, por ejemplo los contratos que se cobraron al terminar la torre)
+		filas.append({"id": "", "nombre": Loc.t("Contratos"), "valor": total - entrada - suma})
+	casino.input_locked = true
+	resumen_claridad.mostrar(Loc.t("Entras al casino"), entrada, filas)
+	await resumen_claridad.cerrado
+	if casino != null:
+		casino.input_locked = false
+
+
+## Después del balance del casino: la claridad con la que sales del peaje, lo que sumó el Interés y lo que devolvió Farolín, y lo con lo que empieza la torre (Ahorro, Bolsillo de luz).
+func _resumen_de_salida() -> void:
+	if not _resumenes_activos() or casino == null or Demo.is_last_casino(stage_number):
+		return
+	var interes := int(casino.resumen_salida.get("interes", 0))
+	var devuelto := int(casino.resumen_salida.get("devuelto", 0))
+	var filas := [
+		{"id": "interes", "nombre": Loc.t("Interés"), "valor": interes},
+		{"id": "", "nombre": Loc.t("Farolín te devuelve"), "valor": devuelto},
+		{"id": "ahorro", "nombre": Loc.t("Ahorro"), "valor": 20 if run.boosts.has("ahorro") else 0},
+		{"id": "bolsillo_de_luz", "nombre": Loc.t("Bolsillo de luz"), "valor": 60 if run.boosts.has("bolsillo_de_luz") else 0},
+	]
+	casino.input_locked = true
+	resumen_claridad.mostrar(Loc.f("Empiezas la torre %d", [mini(stage_number + 1, FINAL_STAGE)]), run.claridad - interes - devuelto, filas)
+	await resumen_claridad.cerrado
 
 
 func _close_balance() -> void:
@@ -1770,12 +1880,13 @@ func undo_move() -> void:
 	if torre == null:
 		return
 	if run != null and bool(run.scenario().get("no_undo", false)) and not training:
-		_flash(Loc.t("En este escenario no se puede deshacer"))
+		senal.mostrar(SenalPantalla.Tipo.NO_REBOBINAR)   # (el escenario no deja deshacer)
+		Sfx.play("miss", 0.8, -4.0)
 		return
 	if in_menu or generating or casino != null or dialogue.is_active():
 		return
 	if torre.deshacer():
-		_flash(Loc.t("Movimiento deshecho"))
+		senal.mostrar(SenalPantalla.Tipo.REBOBINAR)
 		_contratos_registrar("deshacer", {})
 		_contratos_mostrar()
 
@@ -1790,25 +1901,23 @@ func request_restart() -> void:
 			end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [costo]))
 			return
 		var con_totem: bool = run.consumables.has("totem") and not run.item_blocked("totem")
+		var casillero_totem: int = run.consumables.find("totem") if con_totem else -1
+		if con_totem:
+			_item_vuela("totem", left_bar, casillero_totem)   # (el Tótem sale de su casillero y se deshace en luz: te salvó la vida)
 		run.spend(costo)
 		run.note_retry(true)
 		lost_screen.hide_screen()
 		torre.reiniciar_sala()
-		_flash(Loc.t("Reintento gratis: el Tótem te dio otra vida") if con_totem else Loc.t("Reintento: perdiste una vida"))
 		_refresh()
 		save_game()
 		return
 	if training:
 		restart()
 		return
-	if trial.get("no_retry", false):
-		_flash(Loc.f("Prueba «%s»: no hay reintentos", [Loc.t(trial.name)]))
-		return
-	if not run.pay_voluntary_retry():
-		_flash(Loc.t("No te quedan vidas para reintentar la torre"))
+	if trial.get("no_retry", false) or not run.pay_voluntary_retry():
+		_senal_rechazo()   # (Todo o nada, o sin vidas)
 		return
 	restart()
-	_flash(Loc.t("Reintento: −1 vida"))
 
 
 ## Termina el run y muestra el resumen.
@@ -2044,8 +2153,7 @@ func _update_perk_label() -> void:
 
 
 ## Se tiró un ítem con clic derecho en la barra: se actualiza el HUD y se guarda. (Un boost tirado deja de valer desde el próximo intento.)
-func _on_item_discarded(item_kind: int, id: String) -> void:
-	_flash(Loc.f("Tiraste %s.", [Loc.t(str(Items.get_item(id).get("name", id)))]) + ("" if item_kind == ItemBar.Kind.CONSUMABLE else Loc.t(" Deja de valer desde el próximo intento.")))
+func _on_item_discarded(_item_kind: int, _id: String) -> void:
 	Sfx.play("miss")
 	if torre != null:
 		_refresh()

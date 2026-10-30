@@ -43,7 +43,6 @@ const TABLE := {
 	"Cuidado con las cruces rojas: esos bloques mienten y se desarman apenas los pisas.": "Beware the red crosses: those blocks lie and fall apart as soon as you step on them.",
 	"Esas púas plateadas no perdonan: no te pares encima.": "Those silver spikes show no mercy: don't stand on them.",
 	"Una catapulta: al pisarla te dispara hacia arriba.": "A catapult: stepping on it launches you upward.",
-	"En las tragamonedas y el blackjack puedes apostar 1, 2, 3 o 5 fichas juntas.": "At the slots and blackjack you can bet 1, 2, 3 or 5 chips at once.",
 	"Gracias, soñador. Te prendo el camino.": "Thank you, dreamer. I'll light your way.",
 	"Otra vez a subir. La luz no se va a ningún lado.": "Up you go again. The light isn't going anywhere.",
 	"Entonces se apaga todo... Nos vemos en el próximo sueño.": "Then everything goes dark... See you in the next dream.",

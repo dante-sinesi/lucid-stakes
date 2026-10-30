@@ -27,7 +27,7 @@ Resumen (detalle en `reglas_torre.md`): un anillo de 11x11 alrededor de un vací
 - **Balance del casino** (`casino_balance_screen.gd`): al salir se ve una tabla por mesa de lo jugado, ganado y perdido.
 - **Farolín** (`scripts/personajes/farolin.gd`): farol con patas junto a la puerta de salida (celda libre de muebles en los cuatro casinos). Al llegar a la puerta o caminar hacia él se abre su diálogo con las decisiones (cada opción muestra su tecla —1, 2, 3— o su botón del mando); después dice una frase (`Farolin.REACTIONS`).
 - **Dados de la pantalla de carga** (`dice_game.gd`): una predicción de 5 dados y 3 tiradas; los aciertos quedan retenidos. Premios: claridad y, con 4 aciertos (15 % de chance) o 5 (seguro), un cosmético con la rareza que permite la dificultad. Van siempre (también cuando la torre ya está lista).
-- **Tabernero** (cuadro de diálogo de cubitos, `dialogue_box.gd`): toda voz de un personaje usa ese cuadro; los avisos chicos (`_flash`) quedan para lo que no tiene voz.
+- **Tabernero** (cuadro de diálogo de cubitos, `dialogue_box.gd`): toda voz de un personaje usa ese cuadro; ya no hay carteles de texto flotantes: lo que no tiene voz se muestra con señales sin palabras (`senal_pantalla.gd`: rebobinar, no se puede, candado), el ítem que vuela de la barra al medio (`item_vuela.gd`) o las ventanas de resumen (`resumen_claridad.gd`, al entrar al casino y antes de la torre).
 
 ## Meta-progresión
 

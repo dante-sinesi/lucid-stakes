@@ -86,6 +86,19 @@ func refresh() -> void:
 	reset_size()
 
 
+## El ítem del casillero `idx` no se puede usar ahora: tiembla y muestra el símbolo de cancelado.
+func rechazar(idx: int) -> void:
+	if idx >= 0 and idx < slots.size():
+		slots[idx].rechazar()
+
+
+## El rectángulo en pantalla del casillero `idx` (para animar un ítem que sale de la barra). Vacío si no existe.
+func rect_de(idx: int) -> Rect2:
+	if idx >= 0 and idx < slots.size():
+		return (slots[idx] as Control).get_global_rect()
+	return Rect2()
+
+
 ## Marca un casillero como el elegido para usar (-1: ninguno).
 func set_pick(idx: int) -> void:
 	for i in slots.size():
