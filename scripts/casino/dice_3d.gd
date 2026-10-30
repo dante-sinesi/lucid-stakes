@@ -45,6 +45,8 @@ const ALTERNATIVAS := {
 	],
 }
 var variante := 0   # la alternativa de dado del casino y del gran casino
+## Cuánto se agranda el núcleo del cristal (el cubo de 4 x 4 x 4 minicubos del centro): lo justo para no pisar la capa de los puntos, que van a un minicubo de profundidad.
+const NUCLEO_ESCALA := 1.42
 const YAWS := [-0.32, 0.2, -0.14, 0.34, -0.24]   # cada dado descansa un poco girado, así se ven sus caras de costado
 
 ## Las fases de dice_game.gd (el orden del enum Phase): IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE.
@@ -230,6 +232,8 @@ func _ajustar_material(mat: StandardMaterial3D, mi: MeshInstance3D, mi_atras: Me
 		mi_atras.material_override = detras
 		mi_atras.visible = true
 		mi_nucleo.mesh = VoxelMesh.build(_nucleo_voxels(e.nucleo), VOX)
+		mi_nucleo.scale = Vector3.ONE * NUCLEO_ESCALA
+		mi_nucleo.position = mi.position * NUCLEO_ESCALA   # (crece alrededor de su centro, que es el del dado)
 		mi_nucleo.visible = true
 	else:
 		mi.material_override = mat
