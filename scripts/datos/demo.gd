@@ -15,7 +15,7 @@ const CHARACTERS: Array[String] = ["dante", "gaby", "gato", "perro"]
 const HATS: Array[String] = ["corona", "gorro_lana"]
 const OUTFITS: Array[String] = ["remera", "capa"]
 const WISHLIST_URL := "https://store.steampowered.com/"   # (la dirección de la página del juego en Steam: se completa al publicarla)
-const TITLE := "Balatro x Catherine — Demo"
+const TITLE := "Lucid Stakes — Demo"
 
 ## Las pruebas lo cambian: 1 = demo, 0 = juego completo, -1 = lo que diga el entorno.
 static var forced := -1

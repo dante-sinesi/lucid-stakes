@@ -1,5 +1,5 @@
 extends RefCounted
-## Tragamonedas con "retener" (estilo Balatro): reglas puras, sin interfaz.
+## Tragamonedas con "retener" (estilo roguelike de cartas): reglas puras, sin interfaz.
 ##
 ## Tres rodillos con cinco símbolos (cubo, hielo, bomba, sol y corona; los comunes salen más). Se paga una ficha (la misma de la ruleta)
 ## y giran los tres. Después se puede, UNA vez, retener los rodillos que se quieran y volver a girar los otros pagando media ficha.

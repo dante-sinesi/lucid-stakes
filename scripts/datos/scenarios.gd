@@ -1,5 +1,5 @@
 extends RefCounted
-## Escenarios: como los mazos de Balatro, pero cada vez que querés jugar uno hay que pagar su entrada con Luz. La Pesadilla (el juego
+## Escenarios: como los mazos de un roguelike de cartas, pero cada vez que querés jugar uno hay que pagar su entrada con Luz. La Pesadilla (el juego
 ## de siempre) es gratis; el resto cambia las reglas del run: qué bloques abundan, el casino o la economía, qué pruebas
 ## salen (y con eso, qué habilidades persistentes se pueden ganar) y cuánta Luz paga (más cuanto más difícil).
 ## Un escenario es {id, name, desc, entry (Luz), luz_mult, pool (pruebas que pueden salir), abilities (las habilidades persistentes que se pueden ganar al escapar en este escenario),

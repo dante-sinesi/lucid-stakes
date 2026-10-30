@@ -1,6 +1,6 @@
 # Diseño del juego (estado vigente)
 
-Balatro x Catherine: puzzle de torres de bloques (estilo Catherine) con casino y economía de boosts (estilo Balatro), en Godot 4.7.2. Este documento describe cómo es el juego hoy; los números de balance están en `economia.md`, los premios en `catalogo.md`, las reglas exactas de la torre en `reglas_torre.md` y lo aprendido en el camino en `aprendizajes.md`.
+Lucid Stakes: puzzle de torres de bloques con casino y economía de boosts, en Godot 4.7.2. Este documento describe cómo es el juego hoy; los números de balance están en `economia.md`, los premios en `catalogo.md`, las reglas exactas de la torre en `reglas_torre.md` y lo aprendido en el camino en `aprendizajes.md`.
 
 ## Estructura de una partida
 

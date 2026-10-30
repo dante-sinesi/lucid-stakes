@@ -10,10 +10,10 @@ El mismo código del juego completo con un interruptor (`scripts/datos/demo.gd`)
 - **Premios:** en la demo no salen los que no se pueden usar (`Items.DEMO_SIN_USO`: Mano de 23, Blackjack de oro, Rayos X, Giro de cortesía, Reflejos y Desarmar), ni en la ruleta, ni en la vitrina, ni como premio de las pruebas; la prueba Todo o nada no cae antes del último casino (`Trials.draw_schedule`).
 - **Torres:** se arman en vivo como en el juego completo (la generación es instantánea); la demo no genera nada más allá de su última etapa.
 - **Guardado aparte:** `user://demo/` (perfil y partida): la demo no pisa los guardados del juego completo.
-- Título de la ventana: "Balatro x Catherine — Demo".
+- Título de la ventana: "Lucid Stakes — Demo".
 
 ## Construirla
-1. Exportar con el preset **Windows Demo**: `tools\Godot_v4.7.2-stable_win64_console.exe --headless --path . --export-release "Windows Demo" build/demo/BalatroXCatherineDemo.exe` (el preset incluye `data/*.jsonl` —la biblioteca de salas— y `data/modelos/*`; las escenas de herramientas no se exportan). Para el juego completo: preset "Windows Desktop".
+1. Exportar con el preset **Windows Demo**: `tools\Godot_v4.7.2-stable_win64_console.exe --headless --path . --export-release "Windows Demo" build/demo/LucidStakesDemo.exe` (el preset incluye `data/*.jsonl` —la biblioteca de salas— y `data/modelos/*`; las escenas de herramientas no se exportan). Para el juego completo: preset "Windows Desktop".
 2. Probarla en el editor: `GAME_DEMO=1 herramientas\demo.bat`
 
 ## Pruebas

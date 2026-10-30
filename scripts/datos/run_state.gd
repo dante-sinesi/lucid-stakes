@@ -1,6 +1,6 @@
 extends RefCounted
 ## Estado del run que viaja entre etapas: claridad, boosts, consumibles y etapa actual.
-## Los boosts duran todo el run (hay un máximo de lugares, como los jokers de Balatro) y los consumibles se gastan.
+## Los boosts duran todo el run (hay un máximo de lugares, como los comodines de un roguelike de cartas) y los consumibles se gastan.
 
 const Items := preload("res://scripts/datos/items.gd")
 const Trials := preload("res://scripts/datos/trials.gd")
