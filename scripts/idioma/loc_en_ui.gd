@@ -22,7 +22,6 @@ const TABLE := {
 	"Movimientos %d/%d": "Moves %d/%d",
 	"Fondo de movimientos %d/%d": "Move pool %d/%d",
 	"Bloques movidos: %d de %d": "Blocks moved: %d of %d",
-	"−%d claridad": "−%d clarity",
 	"Ya moviste todos los bloques que se pueden mover": "You have already moved all the blocks you can",
 	"Movimientos en falso: quedan %d de %d": "False moves: %d of %d left",
 	"Claridad %s": "Clarity %s",

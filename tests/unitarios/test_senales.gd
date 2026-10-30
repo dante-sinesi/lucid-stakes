@@ -107,6 +107,15 @@ func test_en_el_juego() -> void:
 		if ch is CPUParticles3D:
 			luces += 1
 	check(main.get_child_count() == antes + 2 and luces >= 2, "una ganancia de claridad suelta luz que sale del personaje (sin texto)")
+	var clins := 0
+	for ch in main.hud_layer.get_children():
+		if ch.get_script() != null and str(ch.get_script().resource_path).ends_with("clin_claridad.gd"):
+			clins += 1
+	check(clins >= 2, "y el \"clin\" de la claridad (el ícono con +N) aparece sobre el personaje")
+	var Clin = load("res://scripts/ui/clin_claridad.gd")
+	check(Clin.tamano(1.0, 10) < Clin.tamano(3.0, 10) and Clin.tamano(3.0, 10) < Clin.tamano(6.0, 10), "cuanta más racha, más grande el clin")
+	main._luz_de_ganancia(-20)
+	check(main.hud_layer.get_children().any(func(n): return n.get_script() != null and str(n.get_script().resource_path).ends_with("clin_claridad.gd") and n._cantidad == -20), "una pérdida de claridad también sale como clin (en rojo)")
 	# el contador de movimientos de la ventana de la partida: "Movimientos x/y"
 	await process_frame
 	main._refresh()

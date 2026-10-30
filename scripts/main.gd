@@ -26,6 +26,7 @@ const BalanceScreen := preload("res://scripts/casino/casino_balance_screen.gd")
 const SenalPantalla := preload("res://scripts/ui/senal_pantalla.gd")
 const ItemVuela := preload("res://scripts/ui/item_vuela.gd")
 const ResumenClaridad := preload("res://scripts/ui/resumen_claridad.gd")
+const ClinClaridad := preload("res://scripts/ui/clin_claridad.gd")
 const VentanaLogro := preload("res://scripts/ui/ventana_logro.gd")
 const Contratos := preload("res://scripts/datos/contratos.gd")
 const ContratoResuelto := preload("res://scripts/ui/contrato_resuelto.gd")
@@ -822,7 +823,11 @@ func _apply_casino_light() -> void:
 
 
 ## El cubo de salida: un cubo claro y luminoso con bordes dorados y, en los cuatro costados, las ondas del portal (como las puertas del casino).
-func _luz_de_ganancia(gain: int) -> void:
+func _luz_de_ganancia(gain: int, racha := 1.0) -> void:
+	if torre != null and torre.cam != null and torre.gato_nodo != null:   # el "clin" de la claridad, sobre el personaje (una pérdida, en rojo)
+		ClinClaridad.lanzar(hud_layer, torre.cam.unproject_position(torre.gato_nodo.global_position + Vector3(0, 1.9, 0)), gain, racha)
+	if gain <= 0:
+		return
 	var w := gain_weight(gain)   # (una ganancia grande suelta más luz, tiembla más y suena más fuerte)
 	if torre != null and torre.gato_nodo != null and juice != null:
 		juice.luz_ganancia(torre.gato_nodo.global_position + Vector3(0, 1.0, 0), w)
