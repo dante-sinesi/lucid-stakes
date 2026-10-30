@@ -24,14 +24,25 @@ const PIPS := {
 	5: [[0.27, 0.27], [0.27, 0.73], [0.5, 0.5], [0.73, 0.27], [0.73, 0.73]],
 	6: [[0.27, 0.27], [0.27, 0.5], [0.27, 0.73], [0.73, 0.27], [0.73, 0.5], [0.73, 0.73]],
 }
-## El dado de cada casino. La taberna: hueso amarillento, comido en las esquinas y manchado, con alguna grieta violeta. El salón: marfil limpio con las esquinas de latón. El casino: rojo rubí con las
-## aristas y los puntos dorados. El gran casino: nácar con todas las aristas de oro y los puntos de oro.
+## El dado de cada casino. La taberna: hueso amarillento, comido en las esquinas y manchado, con alguna grieta violeta. El salón: marfil limpio con las esquinas de latón. El casino y el gran casino tienen
+## varias alternativas (`ALTERNATIVAS`, indicadas con `variante`).
 const DADOS := [
 	{"cuerpo": Color(0.84, 0.78, 0.62), "pip": Color(0.22, 0.10, 0.26), "desgaste": 1.0, "mancha": Color(0.66, 0.58, 0.42), "grieta": Color(0.42, 0.14, 0.60), "rugosidad": 0.9, "metal": 0.0},
 	{"cuerpo": Color(0.96, 0.93, 0.84), "pip": Color(0.15, 0.09, 0.20), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.5, "metal": 0.0},
-	{"cuerpo": Color(0.70, 0.10, 0.14), "pip": Color(0.97, 0.80, 0.32), "desgaste": 0.0, "oro_aristas": Color(0.92, 0.74, 0.28), "esquina": Color(0.92, 0.74, 0.28), "rugosidad": 0.28, "metal": 0.15},
-	{"cuerpo": Color(0.97, 0.95, 0.92), "pip": Color(0.12, 0.12, 0.40), "desgaste": 0.0, "oro_aristas": Color(1.0, 0.85, 0.35), "nacar": true, "rugosidad": 0.22, "metal": 0.25},
 ]
+const ALTERNATIVAS := {
+	2: [   # el casino: A ébano con latón, B lapislázuli con plata, C amatista
+		{"cuerpo": Color(0.10, 0.10, 0.16), "pip": Color(0.95, 0.92, 0.82), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.25, "metal": 0.1},
+		{"cuerpo": Color(0.14, 0.24, 0.66), "pip": Color(0.96, 0.95, 0.90), "desgaste": 0.0, "esquina": Color(0.78, 0.80, 0.86), "rugosidad": 0.25, "metal": 0.15},
+		{"cuerpo": Color(0.46, 0.20, 0.66), "pip": Color(0.97, 0.94, 0.88), "desgaste": 0.0, "esquina": Color(0.88, 0.80, 0.95), "rugosidad": 0.25, "metal": 0.1},
+	],
+	3: [   # el gran casino: A cristal, B cristal con esquinas de oro, C nácar sin oro
+		{"cuerpo": Color(0.72, 0.84, 1.0), "pip": Color(0.14, 0.12, 0.42), "desgaste": 0.0, "cristal": true, "rugosidad": 0.08, "metal": 0.0},
+		{"cuerpo": Color(0.78, 0.74, 1.0), "pip": Color(0.14, 0.12, 0.42), "desgaste": 0.0, "cristal": true, "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.08, "metal": 0.0},
+		{"cuerpo": Color(0.97, 0.95, 0.92), "pip": Color(0.12, 0.12, 0.40), "desgaste": 0.0, "nacar": true, "arista": Color(0.82, 0.78, 0.92), "rugosidad": 0.22, "metal": 0.2},
+	],
+}
+var variante := 0   # la alternativa de dado del casino y del gran casino
 const YAWS := [-0.32, 0.2, -0.14, 0.34, -0.24]   # cada dado descansa un poco girado, así se ven sus caras de costado
 
 ## Las fases de dice_game.gd (el orden del enum Phase): IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE.
@@ -102,7 +113,7 @@ func _init() -> void:
 	_spark_mat.emission_enabled = true
 	_spark_mat.emission = Color(1.0, 0.85, 0.3)
 	_spark_mat.emission_energy_multiplier = 1.6
-	var die_mesh := VoxelMesh.build(_die_voxels(tier), VOX)
+	var die_mesh := VoxelMesh.build(_die_voxels(tier, variante), VOX)
 	var lock_mesh := VoxelMesh.build(_lock_voxels(), 0.07)
 	var shadow_mesh := QuadMesh.new()
 	shadow_mesh.size = Vector2(1.0, 1.0)
@@ -113,8 +124,7 @@ func _init() -> void:
 		mi.position = -Vector3(HALF, HALF, HALF)
 		var mat := StandardMaterial3D.new()
 		mat.vertex_color_use_as_albedo = true
-		mat.roughness = float(DADOS[tier].rugosidad)
-		mat.metallic = float(DADOS[tier].metal)
+		_ajustar_material(mat)
 		mi.material_override = mat
 		root.add_child(mi)
 		viewport.add_child(root)
@@ -162,6 +172,22 @@ func _fit() -> void:
 
 # --- los modelos -----------------------------------------------------------------------------------------------------
 
+static func estilo(nivel: int, alt := 0) -> Dictionary:
+	if ALTERNATIVAS.has(nivel):
+		return ALTERNATIVAS[nivel][clampi(alt, 0, (ALTERNATIVAS[nivel] as Array).size() - 1)]
+	return DADOS[clampi(nivel, 0, DADOS.size() - 1)]
+
+
+## El material del dado (brillo, metal y, para el cristal, transparencia).
+func _ajustar_material(mat: StandardMaterial3D) -> void:
+	var e := estilo(tier, variante)
+	mat.roughness = float(e.rugosidad)
+	mat.metallic = float(e.metal)
+	var cristal := bool(e.get("cristal", false))
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if cristal else BaseMaterial3D.TRANSPARENCY_DISABLED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED if cristal else BaseMaterial3D.CULL_BACK
+
+
 ## Un número pseudoaleatorio estable en 0..1 para una celda.
 static func _h(x: int, y: int, z: int, k: int) -> float:
 	var h := (x * 73856093) ^ (y * 19349663) ^ (z * 83492791) ^ (k * 2654435761)
@@ -170,8 +196,9 @@ static func _h(x: int, y: int, z: int, k: int) -> float:
 
 ## El dado: un cubo de N x N x N cubitos con las aristas un poco más oscuras y los puntos hundidos (se saca el cubito de la superficie y el de abajo queda del color del punto). Cada casino
 ## tiene el suyo (`DADOS`): desgastado en la taberna, con esquinas de latón en el salón, rojo y oro en el casino, y nácar con aristas de oro y puntos azul real en el gran casino.
-static func _die_voxels(nivel := 1) -> Dictionary:
-	var e: Dictionary = DADOS[clampi(nivel, 0, DADOS.size() - 1)]
+static func _die_voxels(nivel := 1, alt := 0) -> Dictionary:
+	var e: Dictionary = estilo(nivel, alt)
+	var cristal := bool(e.get("cristal", false))
 	var cuerpo: Color = e.cuerpo
 	var desgaste: float = e.desgaste
 	var vox := {}
@@ -189,12 +216,14 @@ static func _die_voxels(nivel := 1) -> Dictionary:
 				var col := Color(cuerpo.r * tone, cuerpo.g * tone, cuerpo.b * tone)
 				if bool(e.get("nacar", false)):   # (un reflejo que va del rosa al celeste según el lugar)
 					col = col.lerp(Color(0.88, 0.93, 1.0) * tone, float(x + y + z) / float(3 * N - 3) * 0.7)
-				if e.has("oro_aristas") and edges >= 2:
-					var oro: Color = e.oro_aristas
-					col = Color(oro.r * tone, oro.g * tone, oro.b * tone)
+				if e.has("arista") and edges >= 2:
+					var ar: Color = e.arista
+					col = Color(ar.r * tone, ar.g * tone, ar.b * tone)
 				elif e.has("esquina") and edges == 3:
 					var esq: Color = e.esquina
 					col = Color(esq.r * tone, esq.g * tone, esq.b * tone)
+				elif cristal:   # (minicubos transparentes: el canto un poco más opaco, como vidrio esmerilado)
+					col.a = 0.62 if edges >= 2 else 0.34
 				elif desgaste > 0.0 and edges <= 1:
 					if r > 1.0 - 0.1 * desgaste:
 						col = e.mancha   # (manchas)
@@ -202,6 +231,7 @@ static func _die_voxels(nivel := 1) -> Dictionary:
 						col = e.grieta   # (una grieta violeta: la corrupción de la taberna)
 				vox[Vector3i(x, y, z)] = col
 	var pip_col: Color = e.pip
+	pip_col.a = 1.0
 	for value in FACES:
 		var f: Array = FACES[value]
 		var n: Vector3i = f[0]
@@ -247,16 +277,16 @@ static func _lock_voxels() -> Dictionary:
 
 
 ## Cambia la estética de los dados y de la mesa al casino `t` (0 taberna, 1 salón, 2 casino, 3 gran casino).
-func set_tier(t: int) -> void:
-	tier = clampi(t, 0, DADOS.size() - 1)
+func set_tier(t: int, alt := 0) -> void:
+	tier = clampi(t, 0, 3)
+	variante = alt
 	if _table_mi != null:
 		_table_mi.queue_free()
 	_build_table()
-	var malla := VoxelMesh.build(_die_voxels(tier), VOX)
+	var malla := VoxelMesh.build(_die_voxels(tier, variante), VOX)
 	for i in dice.size():
 		(dice[i].get_child(0) as MeshInstance3D).mesh = malla
-		mats[i].roughness = float(DADOS[tier].rugosidad)
-		mats[i].metallic = float(DADOS[tier].metal)
+		_ajustar_material(mats[i])
 
 
 ## La mesa de cada casino. Taberna: tablones gastados, fieltro raído con parches de madera, una mancha y alguna grieta violeta. Salón: madera barnizada con tachuelas de latón y fieltro limpio. Casino: madera
@@ -331,7 +361,7 @@ func _build_table() -> void:
 		for esquina in [Vector2i(0, 0), Vector2i(xn - 3, 0), Vector2i(0, zn - 3), Vector2i(xn - 3, zn - 3)]:
 			for dx in 3:
 				for dz in 3:
-					var gema := Color(0.78, 0.22, 0.2) if (esquina.x + esquina.y) % 2 == 0 else Color(0.40, 0.14, 0.60)
+					var gema := Color(0.25, 0.45, 0.90) if (esquina.x + esquina.y) % 2 == 0 else Color(0.45, 0.20, 0.65)
 					vox[Vector3i(esquina.x + dx, 2, esquina.y + dz)] = gema if tier == 2 else Color(1.0, 0.85, 0.35)
 					if tier == 3:
 						vox[Vector3i(esquina.x + dx, 3, esquina.y + dz)] = Color(1.0, 0.9, 0.5)
