@@ -18,6 +18,32 @@ const VIDAS := 3
 ## Niveles de dificultad que admite cada sala de la torre (la curva sube de a poco); las dos primeras son de bloques comunes (se aprende a jugar).
 const CURVA := [["facil"], ["facil", "media"], ["media"], ["media", "dificil"], ["dificil"], ["dificil", "pesadilla"]]
 const ETAPAS := 15
+
+## Las salas demasiado sencillas (una escalera casi directa donde sólo hay que tirar de un bloque y seguir) no entran en las torres. El filtro mira cuántos bloques distintos mueve la solución
+## de la sala: "A" pide al menos 2; "B" (el de siempre) pide además más cuanto más alta es la sala (un bloque más cada 3 pisos); "ninguno" no filtra (sólo para comparar). Para probar otro se
+## define la variable de entorno SALAS_FILTRO con una de esas tres palabras.
+const FILTRO_A := "A"
+const FILTRO_B := "B"
+const FILTRO_NINGUNO := "ninguno"
+static var filtro_sencillas := _filtro_por_omision()
+
+
+static func _filtro_por_omision() -> String:
+	var v := OS.get_environment("SALAS_FILTRO")
+	if v.to_lower() == "a":
+		return FILTRO_A
+	if v.to_lower() == "ninguno":
+		return FILTRO_NINGUNO
+	return FILTRO_B
+
+
+## Los bloques distintos que como mínimo tiene que mover la solución de una sala de `pisos` pisos con el filtro `modo` (0 = sin mínimo).
+static func minimo_distintos(pisos: int, modo := filtro_sencillas) -> int:
+	if modo == FILTRO_A:
+		return 2
+	if modo == FILTRO_B:
+		return maxi(2, int(round(float(pisos) / 3.0)))
+	return 0
 ## Cómo corre la dificultad del run la curva de niveles de las salas: p' = p * a + b (p va de 0 a 1 a lo largo de las 15 etapas). Fácil no pasa de salas medias; Pesadilla arranca en medias y termina en pesadillas.
 ## Cuántas salas tiene cada torre (todas igual: la dificultad la ponen las salas, no el largo).
 const SALAS_POR_TORRE := 7
@@ -154,7 +180,8 @@ static func camino_ok(d: Dictionary, obstaculos: Array = []) -> bool:
 	var t = Vista.motor_de(d)
 	t.agregar_obstaculos(obstaculos)
 	for a in d.get("camino", []):
-		t.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
+		if not bool(t.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2])).ok):
+			return false   # (un paso que no se puede jugar: ni en la sala girada ni con la de arriba tapando; antes se ignoraba si igual se llegaba a la salida)
 	return t.ganado
 
 
@@ -455,6 +482,8 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			continue
 		if i < 2 and str(d.get("categoria", "base")) != "base":
 			continue   # (las dos primeras salas son de bloques comunes)
+		if int(d.get("distintos", 99)) < minimo_distintos(int(d.get("pisos", int(d.meta) - 1))):
+			continue   # (una escalera donde sólo hay que tirar de un bloque no es un puzzle: ver el filtro de salas sencillas)
 		if int(ctx.reglas.get("solo_bloques", -1)) >= 0 and (int(d.get("distintos", 99)) > int(ctx.reglas.solo_bloques) or int(d.get("distintos", 0)) < int(ctx.reglas.solo_bloques) - 1):
 			continue   # (Solo tres bloques: sólo salas cuya solución conocida mueve dos o tres bloques distintos: se pueden resolver con la regla y la regla se nota; con uno solo no cambiaría nada)
 		if bool(ctx.reglas.get("terremoto", false)) and int(d.get("distintos", 1)) < 3:
