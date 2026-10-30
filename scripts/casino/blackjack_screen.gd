@@ -12,6 +12,7 @@ const VFont := preload("res://scripts/ui/voxel_font.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
+const AvisoPeaje := preload("res://scripts/ui/aviso_peaje.gd")
 const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Sfx := preload("res://scripts/sonido/sfx.gd")
 const ResultOverlay := preload("res://scripts/ui/result_overlay.gd")
@@ -40,6 +41,8 @@ var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_the
 var sparkles: Control
 var message: Control
 var bet_counter
+var aviso_peaje            # "Cuidado": la apuesta (o doblar) te deja por debajo del peaje
+var peaje_fn := Callable()   # cuánto cobra hoy Farolín (lo pone la escena del casino)
 var claridad_counter
 var deal_button
 var hit_button
@@ -149,6 +152,8 @@ func _build() -> void:
 	bet_counter = ClarityCounter.new(3.0)
 	bet_counter.name = "apuesta"
 	bet_row.add_child(bet_counter)
+	aviso_peaje = AvisoPeaje.new(true)   # (en una sola línea, al lado de la apuesta: abajo no sobra alto)
+	bet_row.add_child(aviso_peaje)
 
 	flash_rect = ColorRect.new()
 	flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -398,6 +403,11 @@ func _refresh() -> void:
 	claridad_counter.value = run.claridad
 	var showing_bet: bool = game.bet > 0 and game.phase != Blackjack.Phase.IDLE
 	bet_counter.value = game.bet if showing_bet else Roulette.run_price(run)
+	var peaje: int = int(peaje_fn.call()) if peaje_fn.is_valid() else 0
+	if game.phase == Blackjack.Phase.PLAYER:   # (en la mano, lo único que cuesta es doblar)
+		aviso_peaje.actualizar(run.claridad, game.bet if game.can_double() else 0, peaje, Loc.f("Doblar puede dejarte por debajo del peaje (%d).", [peaje]))
+	else:
+		aviso_peaje.actualizar(run.claridad, 0 if run.free_chip else Roulette.run_price(run), peaje)
 	deal_button.visible = game.phase != Blackjack.Phase.PLAYER
 	deal_button.disabled = not can_deal()
 	deal_button.set_label(Loc.t("Repartir") if game.phase == Blackjack.Phase.IDLE else Loc.t("Otra mano"))

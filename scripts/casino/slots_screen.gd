@@ -12,6 +12,7 @@ const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const ClarityCounter := preload("res://scripts/ui/clarity_counter.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
+const AvisoPeaje := preload("res://scripts/ui/aviso_peaje.gd")
 const Rules := preload("res://scripts/casino/casino_visit.gd")
 const Sfx := preload("res://scripts/sonido/sfx.gd")
 const ResultOverlay := preload("res://scripts/ui/result_overlay.gd")
@@ -45,6 +46,8 @@ var exit_button
 var prizes_button
 var claridad_counter
 var price_counter
+var aviso_peaje            # "Cuidado": la tirada (o volver a girar) te deja por debajo del peaje
+var peaje_fn := Callable()   # cuánto cobra hoy Farolín (lo pone la escena del casino)
 var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
 var sparkles: Control
 var result_label: Control
@@ -157,6 +160,8 @@ func _build() -> void:
 	price_counter = ClarityCounter.new(3.0)
 	price_counter.name = "ficha"
 	price_box.add_child(price_counter)
+	aviso_peaje = AvisoPeaje.new()
+	col.add_child(aviso_peaje)
 
 	_build_prizes_panel()
 	flash_rect = ColorRect.new()
@@ -447,6 +452,14 @@ func _flash() -> void:
 func _refresh() -> void:
 	claridad_counter.value = run.claridad
 	price_counter.value = game.price if ui_state == UiState.HOLD or ui_state == UiState.SPINNING else Roulette.run_price(run)
+	var peaje: int = int(peaje_fn.call()) if peaje_fn.is_valid() else 0
+	if ui_state == UiState.SPINNING:
+		aviso_peaje.visible = false
+	elif ui_state == UiState.HOLD:   # (volver a girar cuesta media ficha, o nada con Giro de cortesía)
+		var costo_giro: int = 0 if run.boosts.has("giro_de_cortesia") else Slots.respin_price(game.price)
+		aviso_peaje.actualizar(run.claridad, costo_giro, peaje, Loc.f("Volver a girar puede dejarte por debajo del peaje (%d).", [peaje]))
+	else:
+		aviso_peaje.actualizar(run.claridad, 0 if run.free_chip else Roulette.run_price(run), peaje)
 	var holding := ui_state == UiState.HOLD
 	for i in Slots.REELS:
 		hold_buttons[i].visible = true

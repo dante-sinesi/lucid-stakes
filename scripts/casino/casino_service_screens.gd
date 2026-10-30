@@ -3,6 +3,7 @@ extends RefCounted
 ## Todas se abren como los juegos (casino_scene._open_screen): `setup(run, rng, quick)`, señal `closed` al salir y `resolved` cuando algo cambió
 ## en el run (hay que guardar).
 
+const AvisoPeaje := preload("res://scripts/ui/aviso_peaje.gd")
 const NumberFormat := preload("res://scripts/datos/number_format.gd")
 const Services := preload("res://scripts/casino/casino_services.gd")
 const Showcase := preload("res://scripts/casino/showcase.gd")
@@ -41,6 +42,8 @@ class Base extends Control:
 	var rng: RandomNumberGenerator
 	var fast := false
 	var service_id := ""
+	var peaje_fn := Callable()   # cuánto cobra hoy Farolín (lo pone la escena del casino)
+	var aviso_peaje   # "Cuidado": lo que vas a gastar te puede dejar por debajo del peaje
 	var claridad_counter
 	var col: VBoxContainer
 	var message: Control
@@ -72,6 +75,8 @@ class Base extends Control:
 		claridad_counter = ClarityCounter.new(4.0)
 		claridad_counter.name = "claridad"
 		top.add_child(claridad_counter)
+		aviso_peaje = AvisoPeaje.new(true)   # (en una línea, junto a la claridad: la columna del medio ya es alta y abajo está la guía de teclas)
+		top.add_child(aviso_peaje)
 		var gap := Control.new()
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(gap)
@@ -108,6 +113,14 @@ class Base extends Control:
 
 	func _refresh() -> void:
 		claridad_counter.value = run.claridad
+
+	## El aviso de abajo: `costo` es lo que gastaría la acción elegida (0 = ninguna); `texto`, lo que se dice.
+	func _peaje() -> int:
+		return int(peaje_fn.call()) if peaje_fn.is_valid() else 0
+
+	func _aviso(costo: int, texto: String) -> void:
+		if aviso_peaje != null:
+			aviso_peaje.actualizar(run.claridad, costo, _peaje(), texto)
 
 	func button(parent: Node, text: String, node_name: String, action: Callable, primary := false, cells := 0) -> Button:
 		var b := UI.button(text, primary, 3.0, cells, false)
@@ -243,6 +256,7 @@ class TallerScreen extends Base:
 			swap_button.disabled = true
 			sell_button.set_label(Loc.t("Vender"))
 			swap_button.set_label(Loc.t("Cambiar"))
+			_aviso(0, "")
 			_update_taller_hints()
 			return
 		var it := Items.get_item(id)
@@ -251,6 +265,7 @@ class TallerScreen extends Base:
 		swap_button.set_label(Loc.f("Cambiar (−%d)", [Services.swap_price(run)]))
 		sell_button.disabled = false
 		swap_button.disabled = Services.swap_options(run, sel_kind, sel_index).is_empty() or not run.can_afford(Services.swap_price(run))
+		_aviso(0 if swap_button.disabled else Services.swap_price(run), Loc.f("Cambiar puede dejarte por debajo del peaje (%d).", [_peaje()]))
 		_update_taller_hints()
 
 	func _update_taller_hints() -> void:
@@ -336,6 +351,7 @@ class TiendaScreen extends Base:
 			info.text = Loc.t("Toca un premio para ver qué hace.")
 			buy_button.disabled = true
 			buy_button.set_label(Loc.t("Comprar"))
+			_aviso(0, "")
 			_update_tienda_hints()
 			return
 		var item := Items.get_item(sel)
@@ -343,6 +359,7 @@ class TiendaScreen extends Base:
 		info.text = "%s: %s" % [Loc.t(str(item.name)), Loc.t(str(item.desc))]
 		buy_button.set_label(Loc.f("Comprar (−%d)", [p]))
 		buy_button.disabled = not run.can_afford(p)
+		_aviso(0 if buy_button.disabled else p, Loc.f("Comprar puede dejarte por debajo del peaje (%d).", [_peaje()]))
 		_update_tienda_hints()
 
 	func _update_tienda_hints() -> void:
@@ -456,6 +473,7 @@ class TablonScreen extends Base:
 			info.text = Loc.t("Aquí no hay ningún papel. En la próxima torre pueden aparecer nuevos.") if cart.is_empty() or cart.count(null) == cart.size() else Loc.t("Este lugar está vacío.")
 			accept_button.disabled = true
 			reject_button.disabled = true
+			_aviso(0, "")
 		else:
 			var reward := Contratos.recompensa(papel, run.stage)
 			var texto := "%s\n%s\n%s" % [Contratos.titulo(papel), Contratos.condicion(papel), Loc.f("Recompensa: %d de claridad", [reward])]
@@ -464,6 +482,10 @@ class TablonScreen extends Base:
 			info.text = texto
 			accept_button.disabled = false
 			reject_button.disabled = false
+			if con_fianza and Contratos.permite_fianza(tier):   # (la fianza se paga al aceptar)
+				_aviso(Contratos.fianza(papel, run.stage), Loc.f("Esta fianza puede dejarte por debajo del peaje (%d).", [_peaje()]))
+			else:
+				_aviso(0, "")
 		_update_tablon_hints()
 
 	func _update_tablon_hints() -> void:
