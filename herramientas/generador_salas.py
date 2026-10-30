@@ -75,12 +75,26 @@ def guardar(archivo, d):
         f.write(json.dumps(d) + '\n')
 
 
+def minimo_distintos(pisos, filtro):
+    """Los bloques distintos que tiene que mover una sala para no ser una escalera (igual que Torre.minimo_distintos del juego): A = 2; B = el mayor entre 2 y un tercio de los pisos."""
+    if filtro == 'A':
+        return 2
+    if filtro == 'B':
+        return max(2, int(pisos / 3.0 + 0.5))
+    return 0
+
+
+def es_sencilla(d, filtro):
+    """¿Esta sala se descarta por moverse muy pocos bloques distintos? (pisos = meta - 1)"""
+    return int(d.get('distintos', 99)) < minimo_distintos(int(d.get('pisos', int(d.get('meta', 1)) - 1)), filtro)
+
+
 def trabajar(idx, fin, base_inicial, cont, cfg):
     rng = random.Random(time.time_ns() ^ (idx * 7919))
     k = idx * 3
     semilla = 5000 + idx * 100000 + int(time.time()) % 90000
     tipos = cfg['tipos']
-    pool = [d for d in base_inicial if d['tipo'] in tipos]   # (con --tipos, también las especiales se arman solo sobre esos tamaños)
+    pool = [d for d in base_inicial if d['tipo'] in tipos and not es_sencilla(d, cfg['filtro'])]   # (con --tipos, también las especiales se arman solo sobre esos tamaños)
     pesos_tipo = [{'3x3': 40, '5x3': 35, '8x3': 25}[t] for t in tipos]
     pesos_rol = cfg['roles']
     while datetime.datetime.now() < fin and not os.path.exists(PARAR):
@@ -98,6 +112,9 @@ def trabajar(idx, fin, base_inicial, cont, cfg):
                     try:
                         d = json.loads(l)
                     except ValueError:
+                        continue
+                    if es_sencilla(d, cfg['filtro']):
+                        cont['descartadas'] = cont.get('descartadas', 0) + 1
                         continue
                     d['nivel'] = nivel_de(d.get('complejidad', 0))
                     d['categoria'] = 'base'
@@ -131,6 +148,9 @@ def trabajar(idx, fin, base_inicial, cont, cfg):
                         nueva = j
             if nueva is None:
                 break
+            if es_sencilla(nueva, cfg['filtro']):   # (no se guarda ni se sigue encadenando)
+                cont['descartadas'] = cont.get('descartadas', 0) + 1
+                break
             roles.append(rol)
             nueva['nivel_base'] = d.get('nivel', 'facil')
             nueva['roles'] = roles[:]
@@ -155,6 +175,7 @@ def principal():
     ap.add_argument('--nivel', type=int, default=0, help='un nivel fijo para las salas base (1 muy fácil a 5 pesadilla); 0 las reparte')
     ap.add_argument('--base', type=int, default=45, help='porcentaje de salas base nuevas (el resto son salas con especiales)')
     ap.add_argument('--roles', default='', help='pesos de los especiales, por ejemplo hielo=60,bomba=40 (los que no se nombran no salen); por omisión, el reparto de siempre')
+    ap.add_argument('--filtro', default='B', choices=['A', 'B', 'ninguno'], help='salas sencillas: A descarta las de menos de 2 bloques distintos; B (por omisión) las de menos de 2 o de un tercio de los pisos; ninguno no descarta')
     a = ap.parse_args()
     roles = ROLES
     if a.roles:
@@ -165,7 +186,7 @@ def principal():
     tipos = [t for t in a.tipos.split(',') if t in ALTURAS]
     if not tipos:
         sys.exit('tipos desconocidos: hay 3x3, 5x3 y 8x3')
-    cfg = {'tipos': tipos, 'hmax': a.hmax, 'nivel': a.nivel, 'base': a.base, 'roles': roles}
+    cfg = {'tipos': tipos, 'hmax': a.hmax, 'nivel': a.nivel, 'base': a.base, 'roles': roles, 'filtro': a.filtro}
     ahora = datetime.datetime.now()
     if a.minutos > 0:
         fin = ahora + datetime.timedelta(minutes=a.minutos)
