@@ -1,5 +1,5 @@
 extends SceneTree
-## El panel de información (Tab): lo que cuenta, que se abre y se cierra, los modos mantener y alternar, que la pausa lo esconde y que V es la vista de toda la torre.
+## El panel de información (Tab): lo que cuenta, que se abre y se cierra, los modos mantener y alternar, que la pausa lo esconde y que V alterna la vista de sala y la del personaje.
 ## Uso: GAME_SANDBOX=1 godot --headless --path . -s tests/unitarios/test_panel_info.gd
 const Profile := preload("res://scripts/datos/profile.gd")
 const Contratos := preload("res://scripts/datos/contratos.gd")
@@ -48,7 +48,7 @@ func _init() -> void:
 	await _frames(4)
 	var d: Dictionary = main._panel_datos()
 	_ok(d.has("etapa") and d.has("sala") and d.has("claridad") and d.has("movs"), "los datos traen etapa, sala, claridad y movimientos")
-	_ok(Controls.key_of("panel_info") == KEY_TAB and Controls.key_of("vista_torre") == KEY_V, "Tab abre el panel y V es la vista de toda la torre")
+	_ok(Controls.key_of("panel_info") == KEY_TAB and Controls.key_of("vista_sala") == KEY_V, "Tab abre el panel y V alterna la vista de sala y la del personaje")
 	Settings.set_value("panel_modo", "alternar")   # (en mantener se cierra solo porque la tecla no está apretada)
 	main.panel_info.abrir(d)
 	await _frames(30)

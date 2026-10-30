@@ -15,7 +15,7 @@ Propuesta de diseño (nada está programado). Idea de Dante: una **ventana later
 | Qué queda en el HUD | **Vidas, consumibles y boosts** (la columna de la derecha). Nada más |
 | Qué se va del HUD | La **claridad** y los **movimientos** pasan al panel |
 | Qué se va de la pausa | La etapa, el peaje, los contratos y el cartel de la prueba: todo pasa al panel. La pausa queda **solo con el título y los botones**, centrada |
-| Tab | Abre el panel. La **vista de toda la torre**, que hoy usa Tab, pasa a **V** |
+| Tab | Abre el panel. La vista que hoy usa Tab (primero la de toda la torre, después reemplazada por la **vista de sala**, que alterna con la del personaje) pasa a **V** |
 | V hoy | Hoy V cambia la **ayuda de profundidad** (ninguna, más claro lo cercano, o eso con transparencia). Esa elección pasa a **Opciones**, y V queda libre |
 | Mantener o alternar | **Opciones → General → "Panel de información"**: mantener (apretado se ve, soltado se va) o alternar (un toque lo abre y otro lo cierra) |
 | El cartel de la prueba | Queda **solo al empezar la torre** (como hoy). Ya no se repite al pausar: la prueba se lee en el panel |
@@ -48,13 +48,13 @@ El panel también se abre en el casino, con lo que sirve ahí: claridad, etapa, 
 | Acción | Teclado | Mando |
 |---|---|---|
 | **Panel de información** (nueva) | **Tab** | **Select** (se propone; ver abajo) |
-| **Vista de toda la torre** (hoy Tab, fija) | **V**, **reasignable** | sin botón (se puede asignar) |
+| **Vista de sala o de personaje** (hoy Tab, fija) | **V**, **reasignable** | sin botón (se puede asignar) |
 | **Pausa** | Esc | Start (como ahora) |
 
 - **Select hoy** reintenta la torre. Eso pasa a hacerse **solo desde la pausa** (ya está ahí), lo que además evita reintentar sin querer apretando un botón del centro del mando.
 - **Por qué no un gatillo o hombro:** todos están usados. LB y RB giran la vista (Q y E), LT es empujar, RT usa el consumible, y los clics de los sticks son el zoom.
 - **El problema de Select con el mando:** con el pulgar en el stick no se puede mantener apretado a la vez. Para el mando conviene el modo **alternar**; por eso la opción es configurable. (Si más adelante se prefiere otro botón, se reasigna desde Opciones → Controles.)
-- Las acciones nuevas son **reasignables** (`panel_info` y `vista_torre`) como las demás.
+- Las acciones nuevas son **reasignables** (`panel_info` y `vista_sala`) como las demás.
 
 ## Opciones
 
@@ -68,7 +68,7 @@ El tabernero enseña la tecla (y cada ayuda de teclas, `H`) en el tutorial, porq
 ## Cómo se haría
 
 1. **Una pantalla nueva** (`scripts/ui/panel_info.gd`): marco de cubitos, entra y sale deslizándose por la izquierda (unos 0,15 s), con los datos que le pasa `main.gd`.
-2. **Controles:** acciones `panel_info` y `vista_torre` en `controls.gd`; la que usaba Tab fijo en la torre pasa a ser reasignable; Select deja de reintentar.
+2. **Controles:** acciones `panel_info` y `vista_sala` en `controls.gd`; la que usaba Tab fijo en la torre pasa a ser reasignable; Select deja de reintentar.
 3. **HUD:** se sacan la claridad y los movimientos del marco de arriba a la izquierda.
 4. **Pausa:** se saca la columna de la izquierda, el cartel fijado y el corrimiento del menú; queda el título y los botones.
 5. **Opciones:** el selector de la ayuda de profundidad y el del modo del panel.

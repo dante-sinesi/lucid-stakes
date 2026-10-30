@@ -29,7 +29,7 @@ const TABLE := {
 	"Peaje %s": "Toll %s",
 	"Etapa %d/%d": "Stage %d/%d",
 	"Sala %d/%d": "Room %d/%d",
-	"Vista de toda la torre": "View of the whole tower",
+	"Vista de sala o de personaje": "Room or character view",
 	"Paneles de información y de ítems (mantener o alternar, ver Opciones)": "Information and items panels (hold or toggle, see Options)",
 	"Reintentar (−1 vida)": "Retry (−1 life)",
 	"Vuelves a empezar la sala; el Tótem te salva la vida.": "You start the room again; the Totem saves your life.",
