@@ -33,7 +33,7 @@ Se toma UN camino más corto exacto y, en cada estado, se prueban todos los movi
 - **bits de decisión** = Σ log2(legales / optimos); **bits de peligro** = Σ −log2(1 − letales / legales); **complejidad** = suma de ambos (pesos 1 y 1, provisorios).
 - También se guardan pasos, agarres, **bloques distintos movidos** (la que importa), pasos críticos y los hijos sin resolver (si hay, la métrica es aproximada).
 - Bandas de nivel: fácil < 60, media 60–110, difícil 110–180, pesadilla > 180 bits.
-- Se calibró con salas reales: las 3x3 de 5 a 8 pisos dan 1,2 a 2,4 bloques distintos movidos por piso (Catherine pide ~1) y el riesgo medido (movimientos legales que matan o dejan sin solución) va del 10 al 25 %.
+- Se calibró con salas reales: las 3x3 de 5 a 8 pisos dan 1,2 a 2,4 bloques distintos movidos por piso (los puzzles de torres clásicos piden ~1) y el riesgo medido (movimientos legales que matan o dejan sin solución) va del 10 al 25 %.
 
 ## Mínimo real de las salas altas (`--minimo ub=N tope=M`)
 

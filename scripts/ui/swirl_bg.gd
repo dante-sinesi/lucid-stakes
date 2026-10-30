@@ -1,5 +1,5 @@
 extends Control
-## Fondo en remolino hecho de cubitos grandes (estilo Balatro): una espiral que gira y respira, en violetas oscuros con
+## Fondo en remolino hecho de cubitos grandes (estilo roguelike de cartas): una espiral que gira y respira, en violetas oscuros con
 ## manchas de corrupción más claras. `dim` oscurece el fondo (0 = tal cual, 1 = negro) para que el texto se lea.
 
 const Draw := preload("res://scripts/ui/voxel_draw.gd")

@@ -145,7 +145,7 @@ Un contrato es una tarea para **la próxima torre** (la que se sube después de 
 - **La explosividad no la pone la fianza**: la ponen la dificultad de la tarea (los objetivos muy duros pagan mucho de por sí) y los ítems:
   - **Boost "Contratista"** (nombre provisorio, épico): cada contrato paga el doble, también el premio de la fianza.
   - **Consumible "Sello de oro"** (nombre provisorio): el **próximo contrato que se cobre después de usarlo paga ×5**. Se puede usar en la torre o en el casino; queda preparado hasta que se cobre un contrato (si el contrato falla, sigue esperando al siguiente). Multiplica la recompensa; la fianza devuelta no se multiplica. Solo uno a la vez.
-  - Con todos los factores juntos (tarea dura × fianza × Contratista × Sello de oro) un contrato puede pagar varias veces lo que rinde una torre. Es lo que se busca en las etapas altas (el "se rompe" de Balatro), contenido por el límite de contratos activos (2, o 3 con Caza recompensas).
+  - Con todos los factores juntos (tarea dura × fianza × Contratista × Sello de oro) un contrato puede pagar varias veces lo que rinde una torre. Es lo que se busca en las etapas altas (el "se rompe" de los roguelikes de cartas), contenido por el límite de contratos activos (2, o 3 con Caza recompensas).
 
 ### Objetivos posibles (a pulir)
 Se apoyan en cosas que el juego ya mide: sobrar movimientos, no deshacer, llegar a una racha, desarmar una bomba, purificar N bloques especiales, no empujar ni tirar en una sala, no perder vidas, usar una catapulta.

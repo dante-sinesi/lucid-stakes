@@ -202,7 +202,7 @@ const TABLE := {
 	"Empate: te devuelven la apuesta": "Push: your bet is returned",
 	"Ganó la casa": "The house wins",
 	"Ya hay una mano en curso": "A hand is already in progress",
-	"Balatro × Catherine": "Balatro × Catherine",
+	"Lucid Stakes": "Lucid Stakes",
 	"(gratis)": "(free)",
 	# --- diálogo ---
 	"Tabernero": "Innkeeper",

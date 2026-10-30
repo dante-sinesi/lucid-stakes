@@ -13,7 +13,7 @@ Por eso **ningún escenario elige un tema de salas**: la elección sigue siendo 
 
 ## Qué es un escenario
 
-Como un mazo de Balatro: un cambio de reglas que se siente al jugar, que se paga con Luz para entrar y que da una **habilidad persistente** al escapar (valen en todos los escenarios). Cada uno define su entrada en Luz, el multiplicador de Luz, qué pruebas pueden salir (`pool`) y, si hace falta, parámetros de reglas (hoy: `lives`, `permadeath`, `no_totem`, `no_extra_life`, `mistakes`, `no_undo`, `price_mult`, `casino_tier`).
+Como un mazo de un roguelike de cartas: un cambio de reglas que se siente al jugar, que se paga con Luz para entrar y que da una **habilidad persistente** al escapar (valen en todos los escenarios). Cada uno define su entrada en Luz, el multiplicador de Luz, qué pruebas pueden salir (`pool`) y, si hace falta, parámetros de reglas (hoy: `lives`, `permadeath`, `no_totem`, `no_extra_life`, `mistakes`, `no_undo`, `price_mult`, `casino_tier`).
 
 Las entradas y los multiplicadores de Luz siguen el rango actual (de 15 a 35 de entrada y de ×1,4 a ×2,2); son de partida y se calibran jugando.
 

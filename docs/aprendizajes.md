@@ -4,7 +4,7 @@ El juego pasó por varias torres y generadores antes de llegar a la actual (`tor
 
 ## La torre vieja (núcleo sólido, piso y fila que cae)
 
-- Torre en una cuadrícula con un núcleo 2x2 fijo y salas apiladas alrededor, con piso, y una fila de abajo que caía cada N movimientos. Los bloques solo se mueven en horizontal y la altura total se conserva: **subir exige transportar material hasta la escalera**. Ahí está la complejidad (en Catherine hay unos 15 movimientos de bloque por cada 3 filas).
+- Torre en una cuadrícula con un núcleo 2x2 fijo y salas apiladas alrededor, con piso, y una fila de abajo que caía cada N movimientos. Los bloques solo se mueven en horizontal y la altura total se conserva: **subir exige transportar material hasta la escalera**. Ahí está la complejidad (en los puzzles de torres clásicos hay unos 15 movimientos de bloque por cada 3 filas).
 - Generadores que existieron: por situaciones (`rooms.gd`), por módulos (trampolín, pinchos con colgada, hielo, transporte), por pasos (salas libres), minero 24/7 con empaquetador y Estudio, y una biblioteca de salas viajando con el juego. Se retiraron cuando la torre nueva demostró ser mejor en dificultad, rapidez (generar una torre es instantáneo) y variedad.
 - También se archivaron el experimento del **cilindro** (torre circular) y el escenario **Glaciar** (piso y bloques de hielo): no lograron una complejidad buena.
 

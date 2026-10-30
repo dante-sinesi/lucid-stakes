@@ -7,7 +7,7 @@ const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const SwirlBG := preload("res://scripts/ui/swirl_bg.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 
-const TITLE := "Balatro × Catherine"
+const TITLE := "Lucid Stakes"
 const SUBTITLE := "Escapa de la pesadilla, una torre a la vez"
 
 ## Créditos del juego.

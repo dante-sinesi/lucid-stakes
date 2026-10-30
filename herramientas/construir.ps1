@@ -1,4 +1,4 @@
-# Exporta el juego a build\: el juego completo (BalatroXCatherine.exe) y la demo (demo\BalatroXCatherineDemo.exe), con el motor de lanzamiento de Godot.
+# Exporta el juego a build\: el juego completo (LucidStakes.exe) y la demo (demo\LucidStakesDemo.exe), con el motor de lanzamiento de Godot.
 # Hace falta tener las plantillas de exportación instaladas (Godot > Administrar plantillas de exportación) y tools\Godot_v4.7.2-stable_win64_console.exe.
 # Uso:  powershell -ExecutionPolicy Bypass -File herramientas\construir.ps1
 
@@ -16,12 +16,12 @@ Write-Host "== importando"
 & $godot --headless --path $root --import 2>&1 | Out-Null
 
 Write-Host "== juego completo"
-& $godot --headless --path $root --export-release "Windows Desktop" (Join-Path $out "BalatroXCatherine.exe") 2>&1 | Out-Null
-if (-not (Test-Path (Join-Path $out "BalatroXCatherine.exe"))) { throw "No se pudo exportar el juego" }
+& $godot --headless --path $root --export-release "Windows Desktop" (Join-Path $out "LucidStakes.exe") 2>&1 | Out-Null
+if (-not (Test-Path (Join-Path $out "LucidStakes.exe"))) { throw "No se pudo exportar el juego" }
 
 Write-Host "== demo"
-& $godot --headless --path $root --export-release "Windows Demo" (Join-Path $out "demo\BalatroXCatherineDemo.exe") 2>&1 | Out-Null
-if (-not (Test-Path (Join-Path $out "demo\BalatroXCatherineDemo.exe"))) { throw "No se pudo exportar la demo" }
+& $godot --headless --path $root --export-release "Windows Demo" (Join-Path $out "demo\LucidStakesDemo.exe") 2>&1 | Out-Null
+if (-not (Test-Path (Join-Path $out "demo\LucidStakesDemo.exe"))) { throw "No se pudo exportar la demo" }
 
 # El solucionador nativo (lo usa Sin piedad para medir los movimientos en falso) va al lado del juego, en tools\: sin él ese escenario no castiga nada.
 if (Test-Path (Join-Path $root "tools\salas.exe")) {

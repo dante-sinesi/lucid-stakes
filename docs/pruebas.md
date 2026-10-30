@@ -4,7 +4,7 @@ Borrador para conversar. La primera parte describe lo que hay hoy en el juego; l
 
 ## Cómo funcionan las pruebas hoy
 
-Una prueba es una etapa especial, como los jefes de Balatro: **la torre de esa etapa cambia una regla**.
+Una prueba es una etapa especial, como los jefes de un roguelike de cartas: **la torre de esa etapa cambia una regla**.
 
 - **Cuándo caen:** en las etapas **3, 6, 9, 12 y 15** (una por cada tres etapas, cinco por partida).
 - **Qué prueba toca:** se sortea al empezar la partida, entre las que admite el escenario, y **nunca se repite la misma dos veces seguidas**. El jugador sabe desde el principio cuál es la próxima y cuántas etapas faltan.
@@ -40,7 +40,7 @@ Criterios para elegir entre las ideas de abajo:
 2. **Cambia cómo piensas, no solo cuánto dura.** Mejor una regla que obligue a planear distinto que un número más chico.
 3. **Es justa:** si fallas, fue por decisión tuya y no por azar puro.
 4. **Se nota en la pantalla,** no es solo un cartel.
-5. **A veces es un trato y no un castigo:** algunas pruebas dan algo a cambio de un riesgo (como los jefes de Balatro que también ofrecen ventajas).
+5. **A veces es un trato y no un castigo:** algunas pruebas dan algo a cambio de un riesgo (como los jefes de un roguelike de cartas que también ofrecen ventajas).
 6. **Entra en distintos momentos del run:** las suaves arriba (etapas 3 y 6), las serias en el medio (9 y 12) y una especial para el final (15).
 
 ## Ideas nuevas: lo que ya decidimos

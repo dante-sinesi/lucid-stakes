@@ -1,10 +1,10 @@
-# Balatro x Catherine
+# Lucid Stakes
 
-Juego de puzzle de torres de cubos (estilo Catherine) con casino y economía de boosts (estilo Balatro), en Godot 4.7.2 (GDScript, Compatibility). 15 etapas; cada torre se arma en el momento con salas de una biblioteca. El usuario habla español rioplatense, pero **la interfaz y los diálogos del juego van en español neutro** (tuteo, sin voseo: lo vigila `tests/unitarios/test_neutro.gd`); los comentarios del código van en español.
+Juego de puzzle de torres de cubos con casino y economía de boosts, en Godot 4.7.2 (GDScript, Compatibility). 15 etapas; cada torre se arma en el momento con salas de una biblioteca. El usuario habla español rioplatense, pero **la interfaz y los diálogos del juego van en español neutro** (tuteo, sin voseo: lo vigila `tests/unitarios/test_neutro.gd`); los comentarios del código van en español.
 
 ## Cómo se trabaja (reglas del usuario)
 
-- **Git**: todo se sube a GitHub (origin `sinesiuade/BalatroXCatherine`). Cada cambio nuevo en una rama propia; se mergea a `main` solo cuando el usuario y yo terminamos ese trabajo. Commitear y hacer push en cada hito.
+- **Git**: todo se sube a GitHub (origin `sinesiuade/LucidStakes`). Cada cambio nuevo en una rama propia; se mergea a `main` solo cuando el usuario y yo terminamos ese trabajo. Commitear y hacer push en cada hito.
 - Diseño primero: los sistemas grandes se conversan antes de programarlos. No poner ayuda ni texto de depuración en el HUD.
 - Los tests y las capturas nunca tocan las partidas reales: usar `GAME_SANDBOX=1`.
 - Esperas bloqueantes: no dejar tareas en segundo plano y cortar el turno. Los topes de generación son de **trabajo** (contadores), no de tiempo, para que sea determinista.

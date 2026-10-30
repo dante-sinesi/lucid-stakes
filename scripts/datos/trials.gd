@@ -1,5 +1,5 @@
 extends RefCounted
-## Pruebas: etapas especiales (como los jefes de Balatro). Caen en las etapas 3, 6, 9... 27 (de a múltiplos de 3). Cada partida
+## Pruebas: etapas especiales (como los jefes de un roguelike de cartas). Caen en las etapas 3, 6, 9... 27 (de a múltiplos de 3). Cada partida
 ## se sortea qué prueba toca en cada una (el escenario inclina el sorteo), y se sabe desde el principio cuál es la próxima y
 ## cuántas etapas faltan. Cada prueba cambia una regla de la torre, paga más claridad, regala un boost al superarla y, la primera
 ## vez, da un regalo (ver `reward`). Las habilidades persistentes no salen de acá: se ganan por escenario (ver scenarios.gd).

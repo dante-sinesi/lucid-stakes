@@ -1,5 +1,5 @@
 extends Button
-## Botón-carta hecho de cubitos (estilo Balatro): flota, se inclina hacia el mouse, crece al pasar por encima y se hunde al
+## Botón-carta hecho de cubitos (estilo roguelike de cartas): flota, se inclina hacia el mouse, crece al pasar por encima y se hunde al
 ## apretarlo; una franja de brillo la cruza. Es un Button de verdad (foco, teclado, señales); sólo cambia cómo se dibuja.
 ## El tamaño se calcula a partir del texto, con margen de sobra: el texto nunca toca el borde.
 
