@@ -37,9 +37,6 @@ const TABLE := {
 	"Vuelves a empezar la sala. Vidas que te quedan: %d.": "You start the room again. Lives left: %d.",
 	# --- HUD y mensajes de la torre (main.gd) ---
 	"Empezar": "Start",
-	"+%d claridad": "+%d clarity",
-	"   racha ×%.1f": "   streak ×%.1f",
-	"   cosecha ×%.1f": "   harvest ×%.1f",
 	"¡Terminaste el tutorial!": "You finished the tutorial!",
 	"¡Bien!": "Nice!",
 	"¡Portal alcanzado!": "Portal reached!",

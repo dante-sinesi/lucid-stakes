@@ -12,6 +12,7 @@ var lives
 var stage_label: Control
 var clarity
 var toll_label: Control      # lo que cobra Farolín del portal de salida
+var moves_label: Control     # los movimientos de la sala: "Movimientos x/y"
 var mistakes: Control        # los movimientos en falso que quedan en la sala (El camino corto): cubitos rojos
 
 
@@ -29,6 +30,13 @@ func _init(with_stage := true) -> void:
 		stage_label.cube = 3.0
 		stage_label.color = Color(0.97, 0.95, 0.9)
 		add_child(stage_label)
+	moves_label = VoxelLabel.new()
+	moves_label.name = "movimientos"
+	moves_label.cube = 3.0
+	moves_label.color = Color(0.97, 0.95, 0.9)
+	moves_label.localize = false   # (llega ya traducido, con los números)
+	moves_label.visible = false
+	add_child(moves_label)
 	clarity = ClarityCounter.new(3.5)   # la claridad no es texto: es el ícono girando y el número
 	clarity.name = "claridad"
 	add_child(clarity)
@@ -42,6 +50,13 @@ func _init(with_stage := true) -> void:
 	add_child(mistakes)
 	resized.connect(queue_redraw)
 	minimum_size_changed.connect(queue_redraw)
+
+
+## Los movimientos de la sala ("" lo oculta); `poco`: quedan pocos (se pone en rojo).
+func set_moves(text: String, poco := false) -> void:
+	moves_label.visible = text != ""
+	moves_label.text = text
+	moves_label.color = Color(1.0, 0.55, 0.45) if poco else Color(0.97, 0.95, 0.9)
 
 
 ## Los movimientos en falso que quedan en la sala (`total` 0 lo oculta): un cubito rojo por cada uno, apagado el que ya se gastó.

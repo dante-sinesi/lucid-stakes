@@ -99,8 +99,6 @@ var resumen_claridad: Control   # la ventana del resumen de claridad (al entrar 
 var ventana_logro: Control      # la ventana de un logro (personaje nuevo)
 var ultimo_ingreso_torre := 0   # lo que dio la última torre superada (para el resumen de claridad)
 var ingreso_dados := 0          # la claridad que dieron los dados de esa visita
-var _gain_tween: Tween     # el desvanecer del cartel de ganancia (uno solo a la vez)
-var gain_label: Control
 var depth_mode := 1
 var run := RunState.new()   # estado del run: claridad, boosts, consumibles
 var casino                  # escena del casino mientras se está en él
@@ -389,11 +387,6 @@ func _build_hud() -> void:
 	capa_ventanas.add_child(resumen_claridad)
 	ventana_logro = VentanaLogro.new()
 	capa_ventanas.add_child(ventana_logro)
-	gain_label = _label(layer, 3, Color(1.0, 0.93, 0.5))
-	gain_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	gain_label.align = VoxelLabel.Align.CENTER
-	gain_label.y_offset = 100.0
-	gain_label.modulate.a = 0.0
 
 
 ## Texto de cubitos para la interfaz de juego: `cube` es el lado de un cubito en píxeles.
@@ -494,7 +487,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	torre.falsos_cambiaron.connect(_torre_falsos)
 	torre.rechazo.connect(_on_rechazo_torre)
 	torre.aliento.connect(_on_aliento_torre)
-	torre.ganancia.connect(_flash_gain)
+	torre.ganancia.connect(_luz_de_ganancia)
 	torre.portal = _cubo_portal()
 	torre.deshacer_pedido.connect(undo_move)
 	torre.movimiento_hecho.connect(_tutorial_movimiento)
@@ -829,22 +822,14 @@ func _apply_casino_light() -> void:
 
 
 ## El cubo de salida: un cubo claro y luminoso con bordes dorados y, en los cuatro costados, las ondas del portal (como las puertas del casino).
-func _flash_gain(text: String, gain := 0) -> void:
-	var w := gain_weight(gain)
-	gain_label.cube = 3.0 + 3.0 * w   # (una ganancia grande se ve más grande, dura más y suena más fuerte)
-	gain_label.color = Color(1.0, 0.93, 0.5).lerp(Color(1.0, 0.62, 0.2), w)
-	gain_label.text = text
-	gain_label.modulate.a = 1.0
-	juice.pop(gain_label, 1.35 + 0.6 * w)
+func _luz_de_ganancia(gain: int) -> void:
+	var w := gain_weight(gain)   # (una ganancia grande suelta más luz, tiembla más y suena más fuerte)
+	if torre != null and torre.gato_nodo != null and juice != null:
+		juice.luz_ganancia(torre.gato_nodo.global_position + Vector3(0, 1.0, 0), w)
 	if w > 0.4:
 		juice.add_shake(0.1 + 0.35 * w)
 	if gain >= 1000:
 		Sfx.play("item", 0.9 + 0.5 * w, -4.0)
-	if _gain_tween != null:   # (un solo desvanecer a la vez: si quedaban los de las ganancias anteriores pisaban la transparencia y el cartel no volvía a verse)
-		_gain_tween.kill()
-	_gain_tween = create_tween()
-	_gain_tween.tween_interval(0.3 + 1.2 * w)
-	_gain_tween.tween_property(gain_label, "modulate:a", 0.0, 1.8 + 1.0 * w)
 
 
 ## Qué tan "pesada" es una ganancia de claridad, de 0 (10 o menos) a 1 (10 millones o más), en escala logarítmica.
@@ -944,6 +929,7 @@ func _refresh_torre() -> void:
 	stage_label.text = Loc.f("Etapa %d/%d%s", [stage_number, Demo.shown_final(FINAL_STAGE), " *" if not trial.is_empty() else ""])
 	stage_label.visible = false   # (la etapa y el peaje se ven en el menú de pausa; el HUD muestra los movimientos de la sala)
 	hud.text = "Semilla %d   Sala %d/%d   Movimientos %d/%d   Dificultad %s" % [seed_value, torre.t.indice + 1, torre.t.salas.size(), torre.t.movs, torre.t.max_mov(), run.dificultad] if torre.t != null else ""
+	_refresh_movimientos()
 	var total: int = run.claridad + (torre.t.cosecha.claridad() if torre.t != null and not banked else 0)   # (ya sumada al run al llegar al portal: no se cuenta dos veces)
 	var show_toll: bool = not training and tutorial_index < 0 and not (test_mode and not toll_in_tests)
 	var next_toll: int = run.toll_after_discounts(RunState.toll_for(stage_number)) if show_toll else 0
@@ -1028,6 +1014,23 @@ func _panel_permitido() -> bool:
 	if casino != null:
 		return casino.screen == null
 	return torre != null and not run_over
+
+
+## "Movimientos x/y" en la ventana de la partida: los movimientos hechos y los máximos de la sala (con Presupuesto compartido, los de toda la torre).
+func _refresh_movimientos() -> void:
+	var t = torre.t if torre != null else null
+	if t == null or casino != null:
+		hud_panel.set_moves("")
+		return
+	var usados: int = t.movs
+	var tope: int = t.max_mov()
+	if t.presupuesto_total > 0:
+		usados = t.gastado_antes + t.movs
+		tope = t.presupuesto_total + t.mov_extra + t.mov_run
+	if tope >= 99999:
+		hud_panel.set_moves(Loc.f("Movimientos %d (sin límite)", [usados]))
+	else:
+		hud_panel.set_moves(Loc.f("Movimientos %d/%d", [usados, tope]), tope - usados <= 3)
 
 
 ## Lo que cuenta el panel de información ahora (ver `PanelInfo`).
@@ -1319,7 +1322,7 @@ func use_consumable_slot(slot: int) -> void:
 		run.use_consumable(id)
 		var ganado := int(r.get("claridad", 0))
 		if ganado > 0:
-			_flash_gain(Loc.f("+%d claridad", [ganado]), ganado)
+			_luz_de_ganancia(ganado)
 		Sfx.play("item")
 		torre.actualizar()
 		_refresh()
