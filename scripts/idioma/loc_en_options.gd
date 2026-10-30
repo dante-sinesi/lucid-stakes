@@ -73,7 +73,6 @@ const TABLE := {
 	"Reintentar la torre": "Retry the tower",
 	"Deshacer el último movimiento": "Undo the last move",
 	"Modo pista (activar o apagar)": "Hint mode (turn on or off)",
-	"Movimiento deshecho": "Move undone",
 	"Usar consumible 1": "Use consumable 1",
 	"Usar el consumible elegido (mantener y arriba o abajo para elegir)": "Use the chosen consumable (hold, then up or down to choose)",
 	"Usar consumible 2": "Use consumable 2",
@@ -87,7 +86,6 @@ const TABLE := {
 	"Vista isométrica, girar a la derecha": "Isometric view, turn right",
 	"Acercar la cámara": "Zoom in",
 	"Alejar la cámara": "Zoom out",
-	"Cambiar la ayuda de profundidad": "Change the depth aid",
 	"Pausa": "Pause",
 	# botones y ejes del mando
 	"Select": "Select",

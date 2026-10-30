@@ -227,7 +227,6 @@ func test_in_game() -> void:
 	main._refresh()
 	main.request_restart()
 	await process_frame
-	main._flash("Madrugada")
 	main.pause_game()
 	main.resume_game()
 	main.enter_casino()

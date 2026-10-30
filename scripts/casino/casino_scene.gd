@@ -10,6 +10,8 @@ extends Node3D
 const Controls := preload("res://scripts/entrada/controls.gd")
 const Room := preload("res://scripts/casino/casino_room.gd")
 const VoxelMesh := preload("res://scripts/ui/voxel_mesh.gd")
+const SenalPantalla := preload("res://scripts/ui/senal_pantalla.gd")
+const ItemVuela := preload("res://scripts/ui/item_vuela.gd")
 const RouletteScreen := preload("res://scripts/casino/roulette_screen.gd")
 const SlotsScreen := preload("res://scripts/casino/slots_screen.gd")
 const BlackjackScreen := preload("res://scripts/casino/blackjack_screen.gd")
@@ -75,7 +77,7 @@ var cam: Camera3D
 var walls := {}               # "west"/"north" -> [sólido, luces]
 var hud: Control
 var hud_panel                  # la ventana de la partida: corazones y claridad
-var toast: Control
+var senal: Control               # las señales sin texto (mesa cerrada, candado de la demo)
 var hud_layer: CanvasLayer
 var left_bar
 var consumable_pick := ConsumablePick.new()   # elegir y usar consumibles con el mando (mantener RT y arriba o abajo)
@@ -85,7 +87,6 @@ var lives_hud
 var item_tip: Control
 var overlay: CanvasLayer
 var screen
-var _toast_tween: Tween
 var _walk_tween: Tween
 var _cam_tween: Tween
 var story := false            # modo historia (tutorial): la ruleta no se abre y no se ve la interfaz de juego
@@ -100,6 +101,7 @@ var _farolin: Node3D
 var _arrow: Node3D            # flecha que marca la puerta de salida
 var _t := 0.0
 var quick := false            # pruebas: sin animaciones
+var resumen_salida := {"interes": 0, "devuelto": 0}   # lo que sumó el peaje al salir (el interés y lo que devolvió Farolín): lo muestra la ventana de claridad antes de la torre
 var _ahorro_cobrado := 0      # lo que cobraron la Caja fuerte y la Alcancía al entrar (lo comenta el tabernero)
 var _greeting := -1           # qué saludo toca ahora (el tabernero va variando)
 var evento := {}              # el evento aleatorio de esta visita (casino_eventos.gd): {} si no hay
@@ -132,8 +134,6 @@ func setup(run_state, random: RandomNumberGenerator) -> void:
 	facing = Vector2i(1, 0)   # (al llegar mira hacia adentro de la sala, como si saliera del portal de la pared oeste)
 	_place_player()
 	_ahorro_cobrado = ahorro
-	if ahorro > 0:
-		_flash(Loc.f("Tus ahorros rinden: cobras %d de claridad.", [ahorro]))
 	_refresh_hud()
 
 
@@ -284,14 +284,14 @@ func pay_toll() -> bool:
 		run.toll_adelanto = 0
 		if devuelto > 0:
 			run.gain(devuelto)
-			_flash(Loc.f("Farolín te devuelve %d de claridad.", [devuelto]))
+			resumen_salida["devuelto"] = devuelto
 	if price > 0 or con_adelanto:   # (con el adelanto también vale el soborno y rinde el interés: el peaje se pagó igual, sólo que antes)
 		if price > 0:
 			run.spend(price)
 		run.toll_bribe = false   # (el soborno vale para una sola vez)
 		var interest: int = run.apply_interest()
 		if interest > 0:
-			_flash(Loc.f("Interés: +%d de claridad", [interest]))
+			resumen_salida["interes"] = interest
 		_refresh_hud()
 	leaving = true
 	_update_toll_ui()
@@ -392,12 +392,8 @@ func _build_hud() -> void:
 	right_bar.discarded.connect(_on_item_discarded)
 	right_bar.tip = item_tip
 	right_bar.setup(run, ItemBar.Kind.BOOST, false)
-	toast = _label(layer, 2, Color(1.0, 0.95, 0.85))
-	toast.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	toast.align = VoxelLabel.Align.CENTER
-	toast.y_offset = 104.0
-	toast.plate_alpha = 0.6
-	toast.modulate.a = 0.0
+	senal = SenalPantalla.new()
+	layer.add_child(senal)
 
 
 func _label(parent: Node, cube: float, color: Color) -> Control:
@@ -419,80 +415,63 @@ func _place_player() -> void:
 	player_node.rotation.y = atan2(facing.x, facing.y)
 
 
-## Usa un consumible dentro del casino: sólo los que sirven acá (Vida extra y Soborno; los demás son de la torre).
+## Usa un consumible dentro del casino: sólo los que sirven acá (Vida extra y Soborno; los demás son de la torre). Sin texto: si no se puede, el casillero tiembla con el símbolo de
+## cancelado; si funciona, el ícono vuela al medio y se deshace en luz.
 func use_consumable_slot(slot: int) -> void:
 	if busy or leaving or input_locked or screen != null or story or slot >= run.consumables.size():
 		return
 	var id: String = run.consumables[slot]
-	if not Items.CASINO_USABLE.has(id):
-		_flash(Loc.t("Ese consumible sólo se usa en la torre"))
-		return
-	if run.item_blocked(id):
-		_flash(Loc.t("No funciona en este escenario"))
+	if not Items.CASINO_USABLE.has(id) or run.item_blocked(id):
+		_rechazar(slot)
 		return
 	if id == "vida_extra":
 		if not run.add_life():
-			_flash(Loc.f("Ya tienes las %d vidas", [run.max_lives()]))
+			_rechazar(slot)
 			return
-		run.use_consumable(id)
-		_flash(Loc.t("¡Una vida más!"))
 	elif id == "ficha_gratis":
 		if run.free_chip:
-			_flash(Loc.t("Ya tienes una ficha gratis lista"))
+			_rechazar(slot)
 			return
 		run.free_chip = true
-		run.use_consumable(id)
-		_flash(Loc.t("Tu próxima apuesta no cuesta la ficha"))
 	elif id == "rayos_x":
 		if run.xray:
-			_flash(Loc.t("Ya tienes los rayos X listos"))
+			_rechazar(slot)
 			return
 		run.xray = true
-		run.use_consumable(id)
-		_flash(Loc.t("En tu próxima mano de blackjack ves la carta tapada"))
 	elif id == "doble_o_nada":
 		var visit = run.casino_visit
 		if not (visit is Dictionary) or visit.is_empty() or bool(visit.get("double", false)):
-			_flash(Loc.t("No se puede usar ahora"))
+			_rechazar(slot)
 			return
 		run.casino_visit["double"] = true
-		run.use_consumable(id)
-		_flash(Loc.t("Lo que ganes en esta visita vale el doble"))
 	elif id == "racha_de_visita":
 		if run.boosts.has("racha_de_la_casa") or not Rules.encender_racha(run):
-			_flash(Loc.t("La racha ya está encendida"))
+			_rechazar(slot)
 			return
-		run.use_consumable(id)
-		_flash(Loc.t("Esta visita, cada victoria seguida suma al pago de la siguiente"))
 	elif id == "alcancia":
 		if run.alcancia:
-			_flash(Loc.t("Ya tienes una alcancía lista"))
+			_rechazar(slot)
 			return
 		run.alcancia = true
-		run.use_consumable(id)
-		_flash(Loc.t("En el próximo casino cobras parte de lo que ahorraste"))
 	elif id == "sello_de_oro":
 		if run.sello_oro:
-			_flash(Loc.t("Ya tienes un sello de oro listo"))
+			_rechazar(slot)
 			return
 		run.sello_oro = true
-		run.use_consumable(id)
-		_flash(Loc.t("El próximo contrato que cobres paga cinco veces más"))
 	elif id == "soborno":
 		if toll_base <= 0 or run.toll_bribe:
-			_flash(Loc.t("Farolín no cobra, o ya lo sobornaste"))
+			_rechazar(slot)
 			return
 		run.toll_bribe = true
-		run.use_consumable(id)
-		_flash(Loc.f("Farolín te cobra un 30 %% menos: %d", [toll_now()]))
+	_usado(id, slot)   # (antes de sacarlo de la barra: el vuelo sale de su casillero)
+	run.use_consumable(id)
 	Sfx.play("item")
 	_refresh_hud()
 	changed.emit()
 
 
 ## Se tiró un ítem con clic derecho en una barra: se actualiza el HUD y se avisa para guardar.
-func _on_item_discarded(_kind: int, id: String) -> void:
-	_flash(Loc.f("Tiraste %s.", [Loc.t(str(preload("res://scripts/datos/items.gd").get_item(id).get("name", id)))]))
+func _on_item_discarded(_kind: int, _id: String) -> void:
 	_refresh_hud()
 	changed.emit()
 
@@ -509,13 +488,15 @@ func _refresh_hud() -> void:
 	_update_toll_ui()
 
 
-func _flash(msg: String) -> void:
-	toast.text = msg
-	toast.modulate.a = 1.0
-	if _toast_tween != null:   # (un solo desvanecer a la vez: si no, los viejos pisan la transparencia del aviso nuevo)
-		_toast_tween.kill()
-	_toast_tween = create_tween()
-	_toast_tween.tween_property(toast, "modulate:a", 0.0, 3.0).set_delay(1.5)
+## Un consumible que no se puede usar ahora: su casillero tiembla con el símbolo de cancelado (sin texto).
+func _rechazar(slot: int) -> void:
+	left_bar.rechazar(slot)
+	Sfx.play("miss", 0.8, -4.0)
+
+
+## Un consumible que funcionó: su ícono sale del casillero, vuela al medio y se deshace en luz (sin texto).
+func _usado(id: String, slot: int) -> void:
+	ItemVuela.volar(hud_layer, id, left_bar.rect_de(slot))
 
 
 ## Intenta dar un paso hacia `dir` (en celdas). Devuelve qué pasó: "moved", "blocked", "roulette", "soon" o "exit".
@@ -622,7 +603,8 @@ func _bump(n: Vector2i) -> String:
 func _mesa_cerrada(juego: String) -> bool:
 	if evento.is_empty() or not Eventos.cerrada(run, juego):
 		return false
-	_flash(Loc.t("Esta mesa está cerrada esta noche."))
+	senal.mostrar(SenalPantalla.Tipo.RECHAZO)   # (la mesa está cerrada esta noche)
+	Sfx.play("miss", 0.8, -4.0)
 	return true
 
 
@@ -685,7 +667,7 @@ func open_roulette() -> void:
 
 func open_slots() -> void:
 	if Demo.on():   # la demo: las tragamonedas son del juego completo
-		_flash(Demo.casino_text())
+		senal.mostrar(SenalPantalla.Tipo.CANDADO)   # (las tragamonedas son del juego completo)
 		return
 	_open_screen(SlotsScreen.new())
 
@@ -705,7 +687,7 @@ func open_tablon() -> void:
 
 func open_blackjack() -> void:
 	if Demo.on():   # la demo: el blackjack es del juego completo
-		_flash(Demo.casino_text())
+		senal.mostrar(SenalPantalla.Tipo.CANDADO)   # (el blackjack es del juego completo)
 		return
 	_open_screen(BlackjackScreen.new())
 

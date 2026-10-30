@@ -5,6 +5,7 @@ extends Control
 const Draw := preload("res://scripts/ui/voxel_draw.gd")
 const VFont := preload("res://scripts/ui/voxel_font.gd")
 const Icons := preload("res://scripts/ui/item_icons.gd")
+const Senal := preload("res://scripts/ui/senal_pantalla.gd")
 
 const SLOT := 78.0      # lado del casillero en píxeles
 const ICON_CUBE := 6.0
@@ -28,6 +29,8 @@ var selected := false:   # el casillero elegido (con teclado, mando o mouse): un
 var interactive := false     # los de consumibles se usan con un clic
 var _t := 0.0
 var _hover := false
+var _rechazo := 0.0          # 1 al rechazar un uso (el casillero tiembla y muestra el símbolo de cancelado en rojo), baja a 0
+var _rechazo_tween: Tween
 
 
 func _init() -> void:
@@ -42,6 +45,16 @@ func _init() -> void:
 		_hover = false
 		hovered.emit(false)
 		queue_redraw())
+
+
+## El ítem no se puede usar ahora: el casillero tiembla y aparece el símbolo de cancelado en rojo (sin texto).
+func rechazar() -> void:
+	if _rechazo_tween != null:
+		_rechazo_tween.kill()
+	_rechazo = 1.0
+	_rechazo_tween = create_tween()
+	_rechazo_tween.tween_interval(0.35)
+	_rechazo_tween.tween_property(self, "_rechazo", 0.0, 0.35)
 
 
 func is_empty() -> bool:
@@ -74,6 +87,8 @@ func _draw() -> void:
 		rel = ((get_local_mouse_position() - center) / center).clampf(-1.0, 1.0)
 	var scl := 1.08 if _hover and filled else 1.0
 	var xf := Transform2D(sin(_t * 1.2) * 0.02 * (1.0 if filled else 0.0) + rel.x * 0.06, Vector2(scl * (1.0 - absf(rel.y) * 0.04), scl * (1.0 - absf(rel.x) * 0.03)), rel.y * 0.07, center + Vector2(0, bob))
+	if _rechazo > 0.0:
+		xf = Transform2D(0.0, Vector2.ONE, 0.0, Vector2(sin(_t * 70.0) * 7.0 * _rechazo, 0.0)) * xf
 	draw_set_transform_matrix(xf)
 	var body := Rect2(-center + Vector2(0, 0), size - Vector2(0, 0))
 	Draw.card(self, body, s, 1 if (_hover and filled) else (0 if filled else 3), 0.25 if filled else 0.5, hash(item_id) & 0xFFFF, false, -1.0)
@@ -85,3 +100,5 @@ func _draw() -> void:
 	if selected and filled:
 		draw_rect(body.grow(5.0), Color(1.0, 1.0, 0.9, 0.55 + 0.45 * sin(_t * 8.0)), false, 4.0)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
+	if _rechazo > 0.0:
+		Senal.dibujar_cancelar(self, size * 0.5, maxf(size.x / SLOT * 4.5, 3.0), 11, clampf(_rechazo * 1.6, 0.0, 1.0))

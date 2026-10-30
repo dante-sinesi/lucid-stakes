@@ -36,9 +36,6 @@ static func full_text() -> String:
 	return Loc.t("Disponible en la versión completa")
 
 
-static func casino_text() -> String:
-	return Loc.t("Disponible en el juego completo")
-
 
 ## ¿Se puede jugar este escenario? (el tutorial siempre)
 static func scenario_allowed(id: String) -> bool:

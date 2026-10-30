@@ -62,12 +62,11 @@ func test_restart_flow() -> void:
 	var l0: int = main.run.lives
 	main.request_restart()
 	check(main.run.claridad == 100 and main.run.lives == l0 - 1 and main.run.retries == 1 and main.run.tower_retries == 1 and not main.run_over, "reintentar por voluntad cuesta una vida y no claridad")
-	check(main.toast.text.contains("vida"), "se avisa que costó una vida")
 	main.request_restart()
 	check(main.run.claridad == 100 and main.run.lives == l0 - 2 and main.run.retries == 2, "el segundo también cuesta una vida")
 	main.run.lives = 0
 	main.request_restart()
-	check(main.run.retries == 2 and not main.run_over and main.toast.text.contains("vidas"), "sin vidas no se puede reintentar por voluntad")
+	check(main.run.retries == 2 and not main.run_over and main.senal.visible, "sin vidas no se puede reintentar por voluntad (se ve el símbolo de cancelado, sin texto)")
 	main.run.lives = 2
 	main.run.claridad = 25
 	# al perder (morir no cuesta claridad: el costo ya es la vida) se puede reintentar aunque no quede claridad

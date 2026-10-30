@@ -53,7 +53,8 @@ signal falsos_cambiaron(quedan: int, permitidos: int, sin_salida: bool, hubo_fal
 signal deshacer_pedido               ## se apretó deshacer (el juego decide si se puede en este escenario)
 signal pista_cambiada(texto: String)   ## la pista que hay que mostrar arriba ("" = ninguna)
 signal reintentar_pedido             ## se apretó reintentar la torre
-signal aviso(texto: String)          ## algo para mostrar en el cartel del juego (Segundo aliento, etc.)
+signal rechazo(msg: String)            ## un movimiento que no se puede (el juego decide si lo muestra y cómo: nunca como un cartel de texto)
+signal aliento                         ## el Segundo aliento salvó la sala (el juego anima el ítem que sale de su barra)
 
 var t                     # la Torre
 var paquete: Array = []
@@ -82,8 +83,6 @@ var _paso_tween: Tween
 var estaticas: Array = []   # una por sala: la sala dibujada tal como empieza (decorado; la actual se dibuja viva aparte)
 var vivo: Node3D            # la sala actual, dibujada con su estado
 var texto_hud: Label
-var texto_aviso: Label
-var _aviso_id := 0
 var panorama := false      # V: se ve la torre entera desde afuera
 var en_juego := false      # se juega dentro del juego (main.gd): vidas, claridad y boosts son los del run
 var etapa := 0
@@ -192,18 +191,6 @@ func _ready() -> void:
 	texto_hud.position = Vector2(18, 12)
 	texto_hud.add_theme_font_size_override("font_size", 22)
 	capa.add_child(texto_hud)
-	texto_aviso = Label.new()
-	texto_aviso.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	texto_aviso.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	texto_aviso.offset_top = -90
-	texto_aviso.offset_bottom = -40
-	texto_aviso.offset_left = -500
-	texto_aviso.offset_right = 500
-	texto_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	texto_aviso.add_theme_font_size_override("font_size", 30)
-	texto_aviso.add_theme_color_override("font_outline_color", Color.BLACK)
-	texto_aviso.add_theme_constant_override("outline_size", 8)
-	capa.add_child(texto_aviso)
 	if en_juego:
 		if paquete.is_empty():
 			paquete = Torre.cargar_paquete_del_juego()
@@ -221,7 +208,6 @@ func _ready() -> void:
 		ruta = ProjectSettings.globalize_path("res://bibliotecas/paquete_salas.jsonl")
 	paquete = Torre.cargar_paquete(ruta)
 	if paquete.is_empty():
-		_aviso("No se encontró el paquete de salas: " + ruta, 0.0)
 		return
 	var s := OS.get_environment("SALAS_SEMILLA")
 	semilla = int(s) if s != "" else int(Time.get_unix_time_from_system()) % 1000000
@@ -251,7 +237,6 @@ func _nueva_torre() -> void:
 	else:
 		t = Torre.armar(paquete, semilla, n_salas)
 	if t.salas.is_empty():
-		_aviso("No se pudo armar la torre", 0.0)
 		return
 	Vista.etapa_arte = etapa if en_juego else 0   # (el arte de los bloques depende de la etapa)
 	for i in t.salas.size():
@@ -265,8 +250,6 @@ func _nueva_torre() -> void:
 		estaticas.append(nodo)
 	_poner_portal()
 	_refrescar()
-	if not en_juego:
-		_aviso("Torre %d: %d salas, %d pisos" % [semilla, t.salas.size(), t.total_pisos()], 3.0)
 
 
 func _refrescar(animar := false) -> void:
@@ -561,20 +544,6 @@ func _poner_farolin() -> void:
 	faro_tronco.rotation.y = ang
 
 
-func _aviso(msg: String, segundos := 2.2) -> void:
-	if en_juego:   # (dentro del juego los avisos salen por el cartel del juego, no por un texto propio)
-		aviso.emit(msg)
-		return
-	_aviso_id += 1
-	var mi_id := _aviso_id
-	texto_aviso.text = msg
-	if segundos <= 0.0:
-		return
-	await get_tree().create_timer(segundos).timeout
-	if mi_id == _aviso_id:
-		texto_aviso.text = ""
-
-
 ## Gira (x) e inclina (y) la cámara según un desplazamiento en píxeles del mouse (o las flechas).
 func orbitar(rel: Vector2) -> void:
 	yaw_target -= rel.x * MOUSE_SENS
@@ -792,7 +761,7 @@ func accion(dir: Vector3i, modo: int) -> Dictionary:
 	var r: Dictionary = t.actuar(dir, modo)
 	mira = dir
 	if not r.ok:
-		_aviso(str(r.msg), 1.4)
+		rechazo.emit(str(r.msg))
 		_poner_gato(false)   # (aunque no se mueva, gira hacia donde se lo intentó llevar)
 		return r
 	_avisar_contratos(motor_antes, str(r.evento))
@@ -1088,23 +1057,16 @@ func _procesar(r: Dictionary) -> void:
 	match str(r.evento):
 		"checkpoint":
 			_caer_sala(t.ultima_caida)
-			_aviso("¡Checkpoint!", 1.8)
 			checkpoint_alcanzado.emit(t.salas.size() - t.indice, t.salas.size())
 		"torre":
 			if en_juego:
 				_entrar_portal()
 				torre_completa.emit()
-			else:
-				_aviso("¡Llegaste al portal! Pulsa R para otra torre.", 0.0)
 		"muerte":
 			if en_juego:
 				muerte_pendiente = str(r.msg)   # (el juego muestra la pantalla de derrota con el motivo, después de dibujar lo que pasó)
-			else:
-				_aviso("%s. Pierdes una vida (te quedan %d)." % [str(r.msg), t.vidas], 3.0)
 		"aliento":
-			_aviso("Segundo aliento: la sala vuelve a empezar y no pierdes la vida.", 3.0)
-		"fin":
-			_aviso("%s. Te quedaste sin vidas. Pulsa R para otra torre." % str(r.msg), 0.0)
+			aliento.emit()
 	var punto_checkpoint := farolin.global_position if farolin != null else Vector3.ZERO   # (el bloque que se acaba de encender: donde saltan las chispas)
 	if str(r.evento) == "checkpoint":
 		_rastro_pendiente = []   # (el camino es de la sala de abajo: el último paso hasta el checkpoint se anima en línea recta, y la cámara lo acompaña)

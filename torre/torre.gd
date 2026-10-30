@@ -994,7 +994,7 @@ func _usar_item(id: String) -> Dictionary:
 			if letras.is_empty():
 				return {"ok": false, "msg": "No hay nada por purificar"}
 			var got: int = cosecha.extra(letras)
-			return {"ok": true, "msg": "+%d de claridad (%d bloques)" % [got, letras.size()]}
+			return {"ok": true, "msg": "+%d de claridad (%d bloques)" % [got, letras.size()], "claridad": got}
 		"desarmar":
 			var mejor := Vector3i(-999, -999, -999)
 			var mejor_d := 1 << 30
