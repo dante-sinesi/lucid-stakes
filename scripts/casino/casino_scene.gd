@@ -707,6 +707,8 @@ func _open_screen(new_screen: Control) -> void:
 	add_child(overlay)
 	screen = new_screen
 	overlay.add_child(screen)
+	if "peaje_fn" in screen:   # las mesas avisan si una apuesta te deja por debajo del peaje
+		screen.peaje_fn = toll_now
 	screen.setup(run, rng, quick)
 	GameHelp.attach(screen, GameHelp.id_for(screen))   # la ayuda del juego: se abre sola la primera vez y con H o Select
 	screen.closed.connect(close_roulette)

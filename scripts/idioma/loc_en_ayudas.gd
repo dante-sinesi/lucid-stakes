@@ -6,6 +6,8 @@ const TABLE := {
 	"Los sellos": "The seals",
 	"Aceptar, descolgar y rotar": "Accept, take down and rotate",
 	"La fianza": "The deposit",
+	"Cuidado con el peaje": "Watch the toll",
+	"El símbolo {peaje} indica que lo que vas a gastar puede dejarte con menos claridad de la que cobra Farolín al salir.": "The symbol {peaje} means that what you are about to spend could leave you with less clarity than Farolín charges on your way out.",
 	"Ayuda": "Help",
 	"Siguiente": "Next",
 	"Entendido": "Got it",
