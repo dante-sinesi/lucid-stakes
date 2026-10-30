@@ -254,6 +254,19 @@ func _ajustar_material(mat: StandardMaterial3D, mi: MeshInstance3D, mi_atras: Me
 		(m as MeshInstance3D).position = mi.position * 0.97
 
 
+## Ruido de valor suave en 2D, de 0 a 1 (manchas de unos 5 minicubos de la mesa).
+static func _ruido2(x: int, z: int, k: int) -> float:
+	var q := Vector2(x, z) / 5.0
+	var i := Vector2i(floori(q.x), floori(q.y))
+	var f := q - Vector2(i)
+	f = f * f * (Vector2(3, 3) - 2.0 * f)
+	var a := _h(i.x, 0, i.y, k)
+	var b := _h(i.x + 1, 0, i.y, k)
+	var c := _h(i.x, 0, i.y + 1, k)
+	var d := _h(i.x + 1, 0, i.y + 1, k)
+	return lerpf(lerpf(a, b, f.x), lerpf(c, d, f.x), f.y)
+
+
 ## Un número pseudoaleatorio estable en 0..1 para una celda.
 static func _h(x: int, y: int, z: int, k: int) -> float:
 	var h := (x * 73856093) ^ (y * 19349663) ^ (z * 83492791) ^ (k * 2654435761)
@@ -378,7 +391,6 @@ func _build_table() -> void:
 			var rim := d < 2
 			var n := float((x * 31 + z * 17) % 7) * 0.012
 			var r := _h(x, 0, z, 9)
-			var grueso := _h(x / 4, 1, z / 4, 3)   # (ruido en parches)
 			var madera_borde := Color(0.42 - n, 0.26 - n, 0.12 - n)
 			var madera_tapa := Color(0.5 - n, 0.31 - n, 0.15 - n)
 			var madera_bajo := Color(0.3 - n, 0.18 - n, 0.08 - n)
@@ -391,12 +403,15 @@ func _build_table() -> void:
 					madera_bajo = Color(0.22 - n, 0.13 - n, 0.06 - n)
 					fieltro = Color(0.07 + n, 0.15 + n * 1.2, 0.12 + n)
 					tapa = r > 0.12   # (el borde, mordido)
-					if grueso < 0.14:
-						fieltro = Color(0.25 - n, 0.15 - n, 0.07 - n)   # (parche gastado: se ve la madera)
-					elif Vector2(x - xn * 0.3, z - zn * 0.62).length() < 5.0:
-						fieltro = Color(0.04, 0.09, 0.07)   # (una mancha)
-					elif (x + z * 2) % 37 == 0 and r < 0.7:
-						fieltro = Color(0.28, 0.10, 0.40)   # (una grieta violeta)
+					# el desgaste del fieltro: detalles suaves y de poco contraste sobre el paño oscuro (nada de manchones cuadrados)
+					var gastado := clampf((_ruido2(x, z, 11) - 0.58) * 2.6, 0.0, 0.42)   # (zonas donde se le ve el hilo y la madera, con bordes que se funden)
+					fieltro = fieltro.lerp(Color(0.22 - n, 0.15 - n, 0.09 - n), gastado)
+					var manchada := clampf(1.0 - Vector2(x - xn * 0.3 + (_ruido2(x, z, 12) - 0.5) * 10.0, z - zn * 0.62).length() / 7.0, 0.0, 1.0)
+					fieltro = fieltro.lerp(Color(0.035, 0.075, 0.06), manchada * 0.8)   # (una mancha de bebida, de borde irregular)
+					if r < 0.025:
+						fieltro = fieltro.lerp(Color(0.30 - n, 0.20 - n, 0.12 - n), 0.55)   # (alguna rozadura suelta)
+					elif (x + z * 2) % 37 == 0 and r < 0.5:
+						fieltro = Color(0.22, 0.09, 0.32)   # (una grieta violeta, finita y salteada)
 				1:
 					madera_borde = Color(0.46 - n, 0.27 - n, 0.12 - n)
 					madera_tapa = Color(0.56 - n, 0.34 - n, 0.15 - n)
