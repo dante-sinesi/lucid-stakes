@@ -222,6 +222,11 @@ func is_open() -> bool:
 
 
 ## Abre el minijuego: una predicción nueva y 3 tiradas para cumplirla.
+## La estética de los dados y de la mesa según el casino (0 taberna, 1 salón, 2 casino, 3 gran casino; ver `Dice3D.DADOS`).
+func set_estilo(tier: int) -> void:
+	dice3d.set_tier(tier)
+
+
 func open(random: RandomNumberGenerator = null) -> void:
 	if random != null:
 		rng = random
