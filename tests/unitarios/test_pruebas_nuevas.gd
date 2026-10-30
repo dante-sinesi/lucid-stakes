@@ -384,10 +384,11 @@ func test_terremoto_y_corrupcion() -> void:
 		var a: Array = t2.sala_actual().d.camino[k]
 		t2.actuar(Vector3i(int(a[0]), 0, int(a[1])), int(a[2]))
 	var purificados_antes: int = t2.motor.purificados.size()
-	var viejo: int = int(t2.motor.purificados.keys()[0])
+	var ids_antes: Array = t2.motor.purificados.keys()   # (se corrompe el más viejo que se pueda: no el bloque que se pisa ni el fijo, que se saltean)
 	var sala_antes: int = t2.cosecha.sala
 	var rc: Dictionary = t2.corromper()
-	check(bool(rc.ok) and t2.motor.purificados.size() == purificados_antes - 1 and not t2.motor.purificados.has(viejo), "Corrupción que vuelve: se corrompe el bloque purificado más viejo, uno solo (%d -> %d)" % [purificados_antes, t2.motor.purificados.size()])
+	var perdidos: Array = ids_antes.filter(func(id): return not t2.motor.purificados.has(id))
+	check(bool(rc.ok) and t2.motor.purificados.size() == purificados_antes - 1 and perdidos.size() == 1, "Corrupción que vuelve: se corrompe un bloque purificado, uno solo (%d -> %d)" % [purificados_antes, t2.motor.purificados.size()])
 	check(int(rc.perdida) > 0 and t2.cosecha.sala == sala_antes - int(rc.perdida), "Corrupción que vuelve: se pierde la claridad que daba (%d)" % int(rc.perdida))
 	var pisado: int = int(t2.motor.ids[t2.motor.jugador + Vector3i(0, -1, 0)])
 	var sigue := true

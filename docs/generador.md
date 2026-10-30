@@ -66,3 +66,13 @@ La prueba "Travesuras" (`docs/gatito_travieso.md`) mueve de lugar unos bloques c
 - Calibrar los pesos de la métrica y las bandas con salas jugadas por personas.
 - Salas con trampa (todavía no hay) y más salas mixtas altas.
 - Salas de la comunidad (Steam Workshop): pulir el Estudio hasta hacerlo fácil de usar y publicarlo como herramienta aparte.
+
+## Filtro de salas sencillas
+
+Una sala cuya solución mueve un solo bloque ("una escalera recta donde sólo hay que tirar de un cubo y seguir") no es un puzzle, ni siquiera en Fácil. `Torre.armar` las descarta con `Torre.minimo_distintos(pisos)`:
+
+- **B** (el de siempre): al menos 2 bloques distintos movidos, y uno más cada 3 pisos (`max(2, round(pisos / 3))`: 9 pisos piden 3, 15 piden 5).
+- **A**: al menos 2 bloques distintos, sea cual sea la altura.
+- **ninguno**: sin filtro, sólo para comparar.
+
+Se elige con la variable de entorno `SALAS_FILTRO` (`A`, `B` o `ninguno`; sin ella, B). Medido con 16 torres por caso (`distintos` medios por sala): antes del filtro, en Fácil de la etapa 1 a la 4 y en Medio la etapa 1, entre el 90 y el 99 % de las salas eran de un solo bloque; con el filtro, ninguna. De las 2855 salas de la biblioteca quedan 2122 con A y 2031 con B (las de "fácil" bajan de 1253 a 536 y 478), así que conviene generar más salas fáciles con el mismo sesgo (el generador todavía no lo conoce). Prueba: `test_filtro_salas.gd`.
