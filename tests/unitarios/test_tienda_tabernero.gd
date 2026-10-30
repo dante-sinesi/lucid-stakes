@@ -37,7 +37,7 @@ func _init() -> void:
 	check(main.dialogue._options.size() == 2 and str(main.dialogue._options[0].id) == "tienda", "las opciones son ver la tienda y no querer nada")
 	main._on_dialogue_chosen(0)
 	check(main.casino.screen != null and main.casino.screen.service_id == "tienda", "elegir 'Ver la tienda' abre la tienda")
-	check(not main.casino.screen.pestanas, "y se abre sola, sin las pestañas del tablón")
+	check(main.casino.screen.find_child("tienda", true, false) == null, "y es la pantalla de la tienda sola (sin botón ni pestañas hacia otro lado)")
 	main.casino.close_roulette()
 	# "Nada, gracias": se vuelve a caminar
 	main.dialogue.hide_box()
