@@ -26,7 +26,7 @@ func _init() -> void:
 	tj._refrescar(true)
 	await _frames(20)
 	tj.gato_nodo.position = tj.portal.position + Vector3(-1.0, -0.5, 0)   # (en la celda de al lado, a la altura del portal: el último paso lo mete)
-	tj.panorama = false
+	tj.vista_sala = false
 	Engine.time_scale = 0.1   # (guardar cada imagen tarda: con el tiempo del juego a 0,1x el intervalo de 0,16 s es exacto)
 	tj._entrar_portal()
 	root.get_viewport().get_texture().get_image().save_png("%s_00.png" % args[0])

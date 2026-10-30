@@ -83,4 +83,4 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 
 ## 10. Controles
 
-Los del juego (`Controls`): movimiento, empujar, colgarse, deshacer, reintentar, consumibles, cámara, vista isométrica, zoom, vista de toda la torre (V), panel de información (Tab) y pausa, con teclado, mando y reasignaciones. La **ayuda de profundidad** (Opciones → General) aclara lo que está más cerca de la cámara que el personaje y oscurece lo lejano; en su tercer modo, además, los bloques que tapan al personaje se vuelven una malla calada.
+Los del juego (`Controls`): movimiento, empujar, colgarse, deshacer, reintentar, consumibles, cámara, vista isométrica, zoom, vista de sala o de personaje (V), panel de información (Tab) y pausa, con teclado, mando y reasignaciones. La **ayuda de profundidad** (Opciones → General) aclara lo que está más cerca de la cámara que el personaje y oscurece lo lejano; en su tercer modo, además, los bloques que tapan al personaje se vuelven una malla calada.

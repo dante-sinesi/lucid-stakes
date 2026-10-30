@@ -4,7 +4,7 @@ extends Node3D
 ## Se ve como en el juego: cámara isométrica ortogonal que sigue al personaje (por defecto el gatito) y se puede girar.
 ## Teclas: WASD mueve (W es la dirección que más sube en la pantalla), Shift + dirección agarra (empuja o tira), Espacio + dirección se cuelga.
 ## Cámara (como en el juego): arrastrar con el mouse gira e inclina, la rueda acerca y aleja, las flechas giran e inclinan, Q / E vuelven al ángulo isométrico y giran 90°,
-## + / - el zoom, V alterna la vista de toda la torre. R arma otra torre, Esc sale.
+## + / - el zoom, V alterna entre la vista de sala (la cámara abarca la sala) y la del personaje. R arma otra torre, Esc sale.
 ## Variables de entorno: SALAS_PAQUETE (archivo .jsonl, por defecto bibliotecas/paquete_salas.jsonl), SALAS_SEMILLA (para repetir una torre), SALAS_CANTIDAD (cuántas salas),
 ## SALAS_PERSONAJE (gato, perro, conejo, dante o gaby).
 
@@ -83,7 +83,7 @@ var _paso_tween: Tween
 var estaticas: Array = []   # una por sala: la sala dibujada tal como empieza (decorado; la actual se dibuja viva aparte)
 var vivo: Node3D            # la sala actual, dibujada con su estado
 var texto_hud: Label
-var panorama := false      # V: se ve la torre entera desde afuera
+var vista_sala := false    # V: la cámara abarca toda la sala actual en vez de seguir al personaje (otra vez V: vuelve al personaje)
 var en_juego := false      # se juega dentro del juego (main.gd): vidas, claridad y boosts son los del run
 var etapa := 0
 var n_salas_fijo := 0         # >0: cuántas salas tiene la torre (el tutorial); si no, las que le tocan a la etapa
@@ -264,14 +264,7 @@ func _refrescar(animar := false) -> void:
 	_limitar_sombras()
 	_poner_gato(animar)
 	_poner_camara(animar)
-	if panorama:
-		for i in estaticas.size():
-			if estaticas[i] != null and is_instance_valid(estaticas[i]):
-				estaticas[i].visible = i >= t.indice
-		if portal != null and is_instance_valid(portal):
-			portal.visible = true
-	else:
-		_ocultar_arriba()
+	_ocultar_arriba()
 	_poner_farolin()
 	_gatito_revisar()
 	texto_hud.visible = not en_juego   # (dentro del juego no hay texto de depuración: el HUD es el del juego)
@@ -492,13 +485,13 @@ func _punto_en(pts: Array[Vector3], k: float) -> Vector3:
 func _poner_camara(animar: bool) -> void:
 	var foco := (gato_nodo.position if en_juego and t.muerta else _pos_gato()) + Vector3(0, 0.5, 0)   # (al perder el personaje sigue donde estaba: la cámara no salta hasta donde caería)
 	var tam := zoom
-	if panorama:
-		var alto := float(t.total_pisos())
-		foco = Vector3(5.5, alto * 0.5, 5.5)
-		tam = maxf(alto * 0.75, 24.0)
+	if vista_sala:   # la cámara en el centro de la sala, con el zoom que la contiene
+		var c := _gatito_camara()
+		foco = c.foco
+		tam = c.tam
 	if _camara_tween != null and _camara_tween.is_valid():
 		_camara_tween.kill()
-	var libre := (gatito_actuando or _gatito_vuelve or _entrando_portal) and not panorama   # (mientras Ama mueve bloques la cámara está en la sala y vuelve sola: ver `_gatito_camara`; al entrar al portal sigue sola al personaje, sin saltar al punto donde el movimiento lo habría subido)
+	var libre := (gatito_actuando or _gatito_vuelve or _entrando_portal) and not vista_sala   # (mientras Ama mueve bloques la cámara está en la sala y vuelve sola: ver `_gatito_camara`; al entrar al portal sigue sola al personaje, sin saltar al punto donde el movimiento lo habría subido)
 	if animar:
 		_camara_tween = create_tween().set_parallel(true)
 		if not libre:
@@ -557,13 +550,12 @@ func orbitar(rel: Vector2) -> void:
 
 func acercar(factor: float) -> void:
 	zoom = clampf(zoom * factor, 6.0, 36.0)
-	if not panorama:
-		cam.size = zoom
+	cam.size = float(_gatito_camara().tam) if vista_sala else zoom
 
 
 ## Mirando desde arriba, las salas que están sobre el personaje lo taparían: se ocultan.
 func _ocultar_arriba() -> void:
-	var desde_arriba := cam_pitch <= TOP_VIEW_PITCH and not panorama
+	var desde_arriba := cam_pitch <= TOP_VIEW_PITCH
 	for i in estaticas.size():
 		var n = estaticas[i]
 		if n != null and is_instance_valid(n):
@@ -587,7 +579,7 @@ func _process(delta: float) -> void:
 		silueta.visible = bool(Graphics.value("silhouette"))
 	var activa: bool = not (en_juego and puede_jugar.is_valid() and not puede_jugar.call())
 	efectos.proceso(delta, activa)
-	if not panorama and not _cayendo:   # la cámara sigue siempre al personaje (también mientras camina o se desliza), aunque algo la haya movido
+	if not vista_sala and not _cayendo:   # la cámara sigue siempre al personaje (salvo en la vista de sala) (también mientras camina o se desliza), aunque algo la haya movido
 		var foco := gato_nodo.position + Vector3(0, 0.5, 0)
 		var rapidez := 14.0
 		if gatito_actuando or _gatito_vuelve:   # (Ama mueve bloques: la cámara pasa al centro de la sala, con el zoom que la contiene, y después vuelve al personaje)
@@ -663,10 +655,8 @@ func _input(ev: InputEvent) -> void:
 	if k == KEY_ESCAPE and not en_juego:   # (dentro del juego Esc abre la pausa del juego)
 		get_tree().quit()
 		return
-	if accion_id == "vista_torre":   # la vista de toda la torre (V por omisión)
-		if en_juego and bool(reglas.get("memoria_pez", false)):
-			return   # (Memoria de pez: no vale mirar la torre entera)
-		panorama = not panorama
+	if accion_id == "vista_sala":   # alterna entre la vista de sala y la del personaje (V por omisión)
+		vista_sala = not vista_sala
 		_refrescar(true)
 		return
 	if accion_id == "reintentar":
