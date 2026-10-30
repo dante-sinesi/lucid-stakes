@@ -5,6 +5,8 @@ extends SubViewportContainer
 ## para dibujar encima las flechas de elegir y los números.
 
 const VoxelMesh := preload("res://scripts/ui/voxel_mesh.gd")
+const CRISTAL := preload("res://shaders/voxel_cristal.gdshader")
+const CRISTAL_ATRAS := preload("res://shaders/voxel_cristal_atras.gdshader")
 
 const N := 8                   # cubitos por lado de un dado
 const VOX := 0.09              # lado de un cubito del dado (el dado mide 0,72)
@@ -37,8 +39,8 @@ const ALTERNATIVAS := {
 		{"cuerpo": Color(0.46, 0.20, 0.66), "pip": Color(0.97, 0.94, 0.88), "desgaste": 0.0, "esquina": Color(0.88, 0.80, 0.95), "rugosidad": 0.25, "metal": 0.1},
 	],
 	3: [   # el gran casino: A cristal, B cristal con esquinas de oro, C nácar sin oro
-		{"cuerpo": Color(0.72, 0.84, 1.0), "pip": Color(0.14, 0.12, 0.42), "desgaste": 0.0, "cristal": true, "rugosidad": 0.08, "metal": 0.0},
-		{"cuerpo": Color(0.78, 0.74, 1.0), "pip": Color(0.14, 0.12, 0.42), "desgaste": 0.0, "cristal": true, "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.08, "metal": 0.0},
+		{"cuerpo": Color(0.72, 0.84, 1.0), "pip": Color(0.14, 0.12, 0.42), "desgaste": 0.0, "cristal": true, "nucleo": Color(0.42, 0.55, 0.92), "rugosidad": 0.08, "metal": 0.0},
+		{"cuerpo": Color(0.78, 0.74, 1.0), "pip": Color(0.14, 0.12, 0.42), "desgaste": 0.0, "cristal": true, "nucleo": Color(0.48, 0.40, 0.88), "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.08, "metal": 0.0},
 		{"cuerpo": Color(0.97, 0.95, 0.92), "pip": Color(0.12, 0.12, 0.40), "desgaste": 0.0, "nacar": true, "arista": Color(0.82, 0.78, 0.92), "rugosidad": 0.22, "metal": 0.2},
 	],
 }
@@ -64,6 +66,8 @@ const FACES := {
 var viewport: SubViewport
 var tier := 1                       # la estética de los dados y de la mesa según el casino (0 taberna, 1 salón, 2 casino, 3 gran casino; casino_theme.gd)
 var _table_mi: MeshInstance3D
+var nucleos: Array[MeshInstance3D] = []   # el núcleo opaco del dado de cristal (tapa los puntos de la cara de atrás, que si no se ven a través y confunden el número)
+var atras: Array[MeshInstance3D] = []   # las caras de atrás del dado de cristal (otra malla igual, con su material, que se dibuja antes)
 var cam: Camera3D
 var dice: Array[Node3D] = []        # la raíz de cada dado (gira y se mueve)
 var mats: Array[StandardMaterial3D] = []
@@ -113,7 +117,7 @@ func _init() -> void:
 	_spark_mat.emission_enabled = true
 	_spark_mat.emission = Color(1.0, 0.85, 0.3)
 	_spark_mat.emission_energy_multiplier = 1.6
-	var die_mesh := VoxelMesh.build(_die_voxels(tier, variante), VOX)
+	var die_mesh := _malla_dado()
 	var lock_mesh := VoxelMesh.build(_lock_voxels(), 0.07)
 	var shadow_mesh := QuadMesh.new()
 	shadow_mesh.size = Vector2(1.0, 1.0)
@@ -124,9 +128,22 @@ func _init() -> void:
 		mi.position = -Vector3(HALF, HALF, HALF)
 		var mat := StandardMaterial3D.new()
 		mat.vertex_color_use_as_albedo = true
-		_ajustar_material(mat)
 		mi.material_override = mat
 		root.add_child(mi)
+		var mi_atras := MeshInstance3D.new()   # (sólo se ve con el dado de cristal)
+		mi_atras.mesh = die_mesh
+		mi_atras.position = mi.position
+		root.add_child(mi_atras)
+		atras.append(mi_atras)
+		var mi_nucleo := MeshInstance3D.new()
+		mi_nucleo.position = mi.position
+		var mat_nucleo := StandardMaterial3D.new()
+		mat_nucleo.vertex_color_use_as_albedo = true
+		mat_nucleo.roughness = 0.35
+		mi_nucleo.material_override = mat_nucleo
+		root.add_child(mi_nucleo)
+		nucleos.append(mi_nucleo)
+		_ajustar_material(mat, mi, mi_atras, mi_nucleo)
 		viewport.add_child(root)
 		dice.append(root)
 		mats.append(mat)
@@ -178,14 +195,46 @@ static func estilo(nivel: int, alt := 0) -> Dictionary:
 	return DADOS[clampi(nivel, 0, DADOS.size() - 1)]
 
 
-## El material del dado (brillo, metal y, para el cristal, transparencia).
-func _ajustar_material(mat: StandardMaterial3D) -> void:
+## El núcleo opaco del dado de cristal: un cubo de (N - 4) de lado en el centro, con un degradé suave (más claro hacia arriba).
+static func _nucleo_voxels(color: Color) -> Dictionary:
+	var vox := {}
+	for x in range(2, N - 2):
+		for y in range(2, N - 2):
+			for z in range(2, N - 2):
+				var t := 1.0 - float(y - 2) / float(N - 5) * 0.3
+				vox[Vector3i(x, y, z)] = Color(color.r * t, color.g * t, color.b * t)
+	return vox
+
+
+## La malla del dado del casino actual: con el cristal, cada minicubo lleva su opacidad (el canto más opaco, como vidrio esmerilado; los puntos, del todo).
+func _malla_dado() -> ArrayMesh:
+	var vox := _die_voxels(tier, variante)
+	if bool(estilo(tier, variante).get("cristal", false)):
+		return VoxelMesh.build(vox, VOX, func(_p, c: Color): return c.a)
+	return VoxelMesh.build(vox, VOX)
+
+
+## El material del dado (brillo, metal y, para el cristal, los dos materiales translúcidos: el de adelante y el de las caras de atrás, que se dibuja antes).
+func _ajustar_material(mat: StandardMaterial3D, mi: MeshInstance3D, mi_atras: MeshInstance3D, mi_nucleo: MeshInstance3D) -> void:
 	var e := estilo(tier, variante)
 	mat.roughness = float(e.rugosidad)
 	mat.metallic = float(e.metal)
-	var cristal := bool(e.get("cristal", false))
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if cristal else BaseMaterial3D.TRANSPARENCY_DISABLED
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED if cristal else BaseMaterial3D.CULL_BACK
+	if bool(e.get("cristal", false)):
+		var delante := ShaderMaterial.new()
+		delante.shader = CRISTAL
+		delante.render_priority = 1
+		var detras := ShaderMaterial.new()
+		detras.shader = CRISTAL_ATRAS
+		detras.render_priority = 0
+		mi.material_override = delante
+		mi_atras.material_override = detras
+		mi_atras.visible = true
+		mi_nucleo.mesh = VoxelMesh.build(_nucleo_voxels(e.nucleo), VOX)
+		mi_nucleo.visible = true
+	else:
+		mi.material_override = mat
+		mi_atras.visible = false
+		mi_nucleo.visible = false
 
 
 ## Un número pseudoaleatorio estable en 0..1 para una celda.
@@ -283,10 +332,11 @@ func set_tier(t: int, alt := 0) -> void:
 	if _table_mi != null:
 		_table_mi.queue_free()
 	_build_table()
-	var malla := VoxelMesh.build(_die_voxels(tier, variante), VOX)
+	var malla := _malla_dado()
 	for i in dice.size():
 		(dice[i].get_child(0) as MeshInstance3D).mesh = malla
-		_ajustar_material(mats[i])
+		atras[i].mesh = malla
+		_ajustar_material(mats[i], dice[i].get_child(0) as MeshInstance3D, atras[i], nucleos[i])
 
 
 ## La mesa de cada casino. Taberna: tablones gastados, fieltro raído con parches de madera, una mancha y alguna grieta violeta. Salón: madera barnizada con tachuelas de latón y fieltro limpio. Casino: madera

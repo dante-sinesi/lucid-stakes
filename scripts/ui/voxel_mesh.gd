@@ -6,17 +6,18 @@ const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0
 		Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
 
-static func build(vox: Dictionary, size: float) -> ArrayMesh:
+## `opacidad`: función (posición, color) -> 0..1 que va en UV.x (la usan los shaders translúcidos, como el del hielo y el del dado de cristal).
+static func build(vox: Dictionary, size: float, opacidad := Callable()) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for p in vox:
 		for d in DIRS:
 			if not vox.has(p + d):
-				_face(st, p, d, vox[p], size)
+				_face(st, p, d, vox[p], size, float(opacidad.call(p, vox[p])) if opacidad.is_valid() else 1.0)
 	return st.commit()
 
 
-static func _face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color, size: float) -> void:
+static func _face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color, size: float, opacidad := 1.0) -> void:
 	var n := Vector3(d)
 	var a := Vector3(0, 1, 0)
 	var b := Vector3(0, 0, 1)
@@ -40,4 +41,5 @@ static func _face(st: SurfaceTool, p: Vector3i, d: Vector3i, c: Color, size: flo
 	for v in [v0, v1, v2, v0, v2, v3]:
 		st.set_color(c)
 		st.set_normal(n)
+		st.set_uv(Vector2(opacidad, 0.0))
 		st.add_vertex(v)
