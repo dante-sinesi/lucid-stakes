@@ -33,15 +33,14 @@ const DADOS := [
 	{"cuerpo": Color(0.96, 0.93, 0.84), "pip": Color(0.15, 0.09, 0.20), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.5, "metal": 0.0},
 ]
 const ALTERNATIVAS := {
-	2: [   # el casino: A ébano con latón, B lapislázuli con plata, C amatista
-		{"cuerpo": Color(0.10, 0.10, 0.16), "pip": Color(0.95, 0.92, 0.82), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.25, "metal": 0.1},
-		{"cuerpo": Color(0.14, 0.24, 0.66), "pip": Color(0.96, 0.95, 0.90), "desgaste": 0.0, "esquina": Color(0.78, 0.80, 0.86), "rugosidad": 0.25, "metal": 0.15},
-		{"cuerpo": Color(0.46, 0.20, 0.66), "pip": Color(0.97, 0.94, 0.88), "desgaste": 0.0, "esquina": Color(0.88, 0.80, 0.95), "rugosidad": 0.25, "metal": 0.1},
+	2: [   # el casino (a elegir): A madera pulida, B perla rosada, C celadón, D mármol veteado
+		{"cuerpo": Color(0.66, 0.42, 0.24), "pip": Color(0.97, 0.93, 0.82), "desgaste": 0.0, "vetas": "madera", "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.3, "metal": 0.05},
+		{"cuerpo": Color(0.96, 0.89, 0.87), "pip": Color(0.44, 0.20, 0.28), "desgaste": 0.0, "esquina": Color(0.86, 0.70, 0.58), "rugosidad": 0.3, "metal": 0.1},
+		{"cuerpo": Color(0.68, 0.82, 0.75), "pip": Color(0.13, 0.30, 0.27), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.3, "metal": 0.05},
+		{"cuerpo": Color(0.94, 0.94, 0.95), "pip": Color(0.30, 0.31, 0.36), "desgaste": 0.0, "vetas": "marmol", "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.25, "metal": 0.05},
 	],
-	3: [   # el gran casino: A cáscara celeste, B cáscara lila con esquinas de oro (el número y el núcleo son de cristal), C nácar sin oro
-		{"cuerpo": Color(0.72, 0.84, 1.0), "ventanas": true, "pip": Color(0.28, 0.58, 1.0, 0.80), "nucleo": Color(0.45, 0.80, 1.0, 0.62), "desgaste": 0.0, "rugosidad": 0.3, "metal": 0.1},
+	3: [   # el gran casino: cáscara lila con las ocho esquinas de oro; el número y el núcleo son de cristal
 		{"cuerpo": Color(0.78, 0.74, 1.0), "ventanas": true, "pip": Color(0.45, 0.34, 0.95, 0.80), "nucleo": Color(0.62, 0.52, 1.0, 0.62), "desgaste": 0.0, "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.3, "metal": 0.1},
-		{"cuerpo": Color(0.97, 0.95, 0.92), "pip": Color(0.12, 0.12, 0.40), "desgaste": 0.0, "nacar": true, "arista": Color(0.82, 0.78, 0.92), "rugosidad": 0.22, "metal": 0.2},
 	],
 }
 var variante := 0   # la alternativa de dado del casino y del gran casino
@@ -292,7 +291,11 @@ static func _die_voxels(nivel := 1, alt := 0) -> Dictionary:
 					if edges == 2 and r < 0.16 * desgaste:
 						continue
 				var tone := 1.0 - (0.09 if edges >= 2 else 0.0) - float((x * 7 + y * 13 + z * 17) % 5) * 0.012
+				if e.get("vetas", "") == "madera":   # (las vetas de la madera pulida: vetas largas, más claras y más oscuras)
+					tone *= 0.86 + 0.24 * _h(x, 0, z, 21) * (0.6 + 0.4 * _h(x, y / 3, z, 22))
 				var col := Color(cuerpo.r * tone, cuerpo.g * tone, cuerpo.b * tone)
+				if e.get("vetas", "") == "marmol" and (x + y + z * 2) % 7 == 0 and r < 0.75:
+					col = Color(0.62 * tone, 0.63 * tone, 0.68 * tone)   # (las vetas grises del mármol)
 				if bool(e.get("nacar", false)):   # (un reflejo que va del rosa al celeste según el lugar)
 					col = col.lerp(Color(0.88, 0.93, 1.0) * tone, float(x + y + z) / float(3 * N - 3) * 0.7)
 				if e.has("arista") and edges >= 2:

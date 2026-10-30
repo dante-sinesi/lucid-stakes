@@ -11,7 +11,7 @@ func _init() -> void:
 	Profile.mark_tutorial_done()
 	Profile.mark_help_seen("dados")
 	var solo: PackedStringArray = OS.get_cmdline_user_args()[1].split(",") if OS.get_cmdline_user_args().size() > 1 else PackedStringArray()
-	for caso in [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2], [3, 0], [3, 1], [3, 2]]:
+	for caso in [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2], [2, 3], [3, 0]]:
 		var t: int = caso[0]
 		var alt: int = caso[1]
 		if not solo.is_empty() and not solo.has("%d%d" % [t, alt]):
