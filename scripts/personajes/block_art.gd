@@ -71,7 +71,7 @@ const PALETA_TRAMPA := {
 }
 
 ## Los pinchos: una base de acero oscuro de siete minibloques de alto y, encima, cinco púas (una en cada esquina y una en el centro) que llegan hasta arriba de todo; plateadas y brillantes
-## cuando están limpias y, corruptas, de acero pálido y enfermizo (para que resalten contra la base casi negra) con la punta al rojo vivo (no violeta: el magma violeta es el de las grietas de la
+## cuando están limpias y, corruptas, de acero pálido y enfermizo (para que resalten contra la base casi negra), con la punta un poco más clara y sin brillo (nada de violeta ni de rojo: el magma violeta es el de las grietas de la
 ## piedra y se confundía con ellas). La base lleva una franja de peligro (tramos ámbar) en el borde de arriba. Nadie se para encima: la cara que se pisa es la de la base, tapada por las púas.
 const PALETA_PINCHOS := {
 	"base": [Color(0.34, 0.36, 0.46), Color(0.38, 0.40, 0.50), Color(0.42, 0.44, 0.54)],
@@ -80,7 +80,7 @@ const PALETA_PINCHOS := {
 	"pua": Color(0.74, 0.77, 0.86),
 	"punta": Color(0.92, 0.95, 1.0),
 	"pua_corrupta": Color(0.66, 0.62, 0.74),
-	"punta_corrupta": Color(1.0, 0.30, 0.12),
+	"punta_corrupta": Color(0.80, 0.77, 0.87),
 	"franja": Color(0.96, 0.62, 0.12),
 	"cicatriz": Color(0.28, 0.30, 0.40),
 }
@@ -636,13 +636,12 @@ static func portal(nivel := 0, semilla := 0) -> Dictionary:
 	return vox
 
 
-## Las cinco púas: cada una de 2 x 2 minibloques de base y uno más de alto, que se afinan hasta una punta de uno (pisos 7 y 8). Plateadas con la punta casi blanca; con corrupción, negras con la punta de magma
-## (que brilla); en los niveles intermedios, un poco de cada.
+## Las cinco púas: cada una de 2 x 2 minibloques de base y uno más de alto, que se afinan hasta una punta de uno (pisos 7 y 8). Plateadas con la punta casi blanca; con corrupción, de acero pálido con la punta un poco más clara
+## y sin brillo; en los niveles intermedios, un poco de cada.
 static func _puas(vox: Dictionary, c: float) -> void:
 	var oscuro := clampf((c - 0.5) / 0.5, 0.0, 1.0)
 	var cuerpo: Color = (PALETA_PINCHOS.pua as Color).lerp(PALETA_PINCHOS.pua_corrupta, oscuro)
 	var punta: Color = (PALETA_PINCHOS.punta as Color).lerp(PALETA_PINCHOS.punta_corrupta, oscuro)
-	punta.a = lerpf(1.0, 0.45, oscuro)   # (la punta corrupta brilla)
 	for esquina in [Vector2i(1, 1), Vector2i(1, 7), Vector2i(7, 1), Vector2i(7, 7), Vector2i(4, 4)]:
 		for dx in 2:
 			for dz in 2:

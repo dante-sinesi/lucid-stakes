@@ -18,7 +18,7 @@ Cada tipo necesita su versión corrupta y su versión purificada sobre la misma 
 
 ## Pinchos (`pinchos`)
 
-Una base de acero oscuro de siete minibloques de alto (`TOPE_PINCHOS`) con cinco púas encima (cuatro en las esquinas y una en el centro; un piso de 2x2 y un minibloque de punta, hasta el piso 8, con 2x2 en el primer piso de cada púa y la punta de uno encima). Limpios: púas plateadas con la punta casi blanca. Corruptos: base casi negra, púas de acero pálido (resaltan contra la base) y puntas al rojo vivo que brillan (no violetas: el magma violeta es el de las grietas de la piedra y se confundía con ellas). La base lleva una franja de peligro, tramos ámbar en el borde de arriba, que con corrupción brilla como brasa. Las púas no se agrietan; las grietas y el magma van en la base. Se usa en la torre con la letra `s`.
+Una base de acero oscuro de siete minibloques de alto (`TOPE_PINCHOS`) con cinco púas encima (cuatro en las esquinas y una en el centro; un piso de 2x2 y un minibloque de punta, hasta el piso 8, con 2x2 en el primer piso de cada púa y la punta de uno encima). Limpios: púas plateadas con la punta casi blanca. Corruptos: base casi negra, púas de acero pálido (resaltan contra la base) con la punta un poco más clara y sin brillo (nada de violeta ni rojo: el magma violeta es el de las grietas de la piedra y se confundía con ellas). La base lleva una franja de peligro, tramos ámbar en el borde de arriba, que con corrupción brilla como brasa. Las púas no se agrietan; las grietas y el magma van en la base. Se usa en la torre con la letra `s`.
 
 ## Bomba (`bomba`)
 
