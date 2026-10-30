@@ -323,7 +323,7 @@ class _Rich extends Control:
 		if part.has("slot"):
 			return 30.0
 		if part.has("simbolo"):
-			return 44.0
+			return 46.0
 		return {"LB": 32.0, "RB": 32.0, "LT": 32.0, "RT": 32.0, "BACK": 40.0, "START": 40.0}.get(str(part.named), 30.0)
 
 	func _relayout() -> void:
@@ -394,7 +394,7 @@ class _Rich extends Control:
 				elif part.has("slot"):
 					PG.draw(self, c, 13.0, int(part.slot))
 				elif part.has("simbolo"):
-					AP.dibujar(self, c, 2.6)
+					AP.dibujar(self, c, 1.9)
 				else:
 					PG.draw_named(self, c, 12.0, str(part.named))
 				x += w + GAP
@@ -499,7 +499,7 @@ class _Art extends Control:
 		var bob := sin(_t * 3.0) * 4.0
 		match kind:
 			"peaje_cuidado":
-				AP.dibujar(self, c + Vector2(0.0, bob), 12.0, 0.92 + 0.08 * sin(_t * 5.0))
+				AP.dibujar(self, c + Vector2(0.0, bob), 9.5, 0.92 + 0.08 * sin(_t * 5.0))
 			"ruleta_rueda":
 				var radius := 84.0
 				var tiers: Array = [EPIC, CONSUM, COMMON, CONSUM, RARE, CONSUM, COMMON, CONSUM, RARE, COMMON, CONSUM, COMMON, CONSUM]

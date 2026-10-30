@@ -38,7 +38,7 @@ func _init() -> void:
 	check(a.visible, "se ve (es solo el triángulo: sin texto)")
 	a.actualizar(500, 60, 100)
 	check(not a.visible, "se oculta cuando ya no corresponde")
-	check(a.get_child_count() == 0 and a.custom_minimum_size.x > 20.0, "es solo el triángulo de advertencia, sin textos")
+	check(a.get_child_count() == 0 and a.custom_minimum_size.x > 20.0 and absf(a.custom_minimum_size.x / a.custom_minimum_size.y - 1.1) < 0.1, "es solo el triángulo de advertencia, sin textos y casi equilátero")
 	a.queue_free()
 	# las tres mesas
 	var run := RunState.new()
