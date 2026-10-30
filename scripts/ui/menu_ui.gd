@@ -55,6 +55,7 @@ static func credits_text() -> String:
 static func licenses_text() -> String:
 	var t := Loc.t("Godot Engine se distribuye bajo la licencia MIT.\n\n")
 	t += Engine.get_license_text().strip_edges() + "\n\n"
+	t += Loc.t("godot-cpp (el puente de la extensión del solucionador de salas) se distribuye bajo la licencia MIT.\nCopyright (c) 2017-present Godot Engine contributors.\n\n")
 	t += Loc.t("Componentes de terceros incluidos en el motor (nombre: licencias):\n")
 	for comp in Engine.get_copyright_info():
 		var licenses := {}

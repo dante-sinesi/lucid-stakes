@@ -210,6 +210,7 @@ const TABLE := {
 	"Diseño y desarrollo: Dante Jorge Sinesi, Argentina\nArte, música y sonido: Dante Jorge Sinesi\n\nGracias por jugar.": "Design and development: Dante Jorge Sinesi, Argentina\nArt, music and sound: Dante Jorge Sinesi\n\nThanks for playing.",
 	"Hecho con Godot Engine - https://godotengine.org\n": "Made with Godot Engine - https://godotengine.org\n",
 	"Godot Engine se distribuye bajo la licencia MIT.\n\n": "Godot Engine is distributed under the MIT license.\n\n",
+	"godot-cpp (el puente de la extensión del solucionador de salas) se distribuye bajo la licencia MIT.\nCopyright (c) 2017-present Godot Engine contributors.\n\n": "godot-cpp (the bridge of the room solver extension) is distributed under the MIT license.\nCopyright (c) 2017-present Godot Engine contributors.\n\n",
 	"Componentes de terceros incluidos en el motor (nombre: licencias):\n": "Third-party components included in the engine (name: licenses):\n",
 	"\nLos textos completos de esas licencias están en https://godotengine.org/license y en el código fuente de Godot (COPYRIGHT.txt y LICENSE.txt).": "\nThe full texts of those licenses are at https://godotengine.org/license and in Godot's source code (COPYRIGHT.txt and LICENSE.txt).",
 	"¡Personaje nuevo!": "New character!",
