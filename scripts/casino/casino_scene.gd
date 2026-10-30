@@ -677,6 +677,13 @@ func open_service() -> void:
 	_open_screen(ServiceScreens.make(str(lay.station.id)))
 
 
+## Abre la tienda (la ofrece el tabernero al terminar de hablar; también se llega desde el tablón y el Taller).
+func open_tienda() -> void:
+	var shop: Control = ServiceScreens.make("tienda")
+	shop.pestanas = false
+	_open_screen(shop)
+
+
 ## Abre el tablón de contratos.
 func open_tablon() -> void:
 	var s: Control = ServiceScreens.make("tablon")

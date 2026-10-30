@@ -149,6 +149,7 @@ var _leaving_casino := false   # se le pagó a Farolín y se está yendo del cas
 var _dados_en_casino := false     # los dados del tabernero están en pantalla al entrar al casino (no se guarda ni se vuelve a entrar mientras tanto)
 var _toll_options: Array = []   # las salidas que ofrece Farolín en la puerta (ver Farolin.toll_dialog)
 var _keeper_talk := false   # el tabernero del casino está hablando (cuadro de diálogo)
+var _keeper_choice := false  # el tabernero ofrece la tienda (decisión en el cuadro de diálogo)
 var key_hint                # las teclas de la lección arriba al centro: grises hasta que se aprietan (ver key_hint.gd)
 var pista_hint              # el modo pista de Fácil: el próximo movimiento arriba al centro, con sus teclas (el mismo dibujo que key_hint)
 var _pista_on := false      # el modo pista sigue encendido de una torre a la siguiente
@@ -1538,8 +1539,14 @@ func _on_toll_talk() -> void:
 ## Se eligió una salida del diálogo (-1: se cerró con Esc y se sigue en el casino).
 func _on_dialogue_chosen(index: int) -> void:
 	if casino == null:
+		_keeper_choice = false
 		return
 	casino.input_locked = false
+	if _keeper_choice:   # la tienda del tabernero: "Ver la tienda" la abre; lo demás vuelve al casino
+		_keeper_choice = false
+		if index == 0:
+			casino.open_tienda()
+		return
 	if index < 0 or index >= _toll_options.size():
 		if index < 0 and not _toll_options.is_empty():
 			Telemetry.log_event("peaje", {"stage": stage_number, "price": casino.toll_now(), "claridad": run.claridad, "choice": "cancelar"})
@@ -2057,10 +2064,11 @@ func _on_story_message(t: String) -> void:
 
 
 func _on_dialogue_finished() -> void:
-	if _keeper_talk:   # terminó de hablar con el tabernero del casino: se vuelve a caminar
+	if _keeper_talk:   # terminó de hablar con el tabernero del casino: ofrece la tienda
 		_keeper_talk = false
 		if casino != null:
-			casino.input_locked = false
+			_keeper_choice = true
+			dialogue.show_choice(Loc.t("¿Quieres ver lo que tengo a la venta?"), [{"id": "tienda", "text": Loc.t("Ver la tienda"), "enabled": true}, {"id": "nada", "text": Loc.t("Nada, gracias"), "enabled": true}], Story.SPEAKER)
 		return
 	if story_kind == "intro" and casino != null:   # terminó de contar la historia: ahora hay que ir a la puerta de atrás
 		casino.input_locked = false
