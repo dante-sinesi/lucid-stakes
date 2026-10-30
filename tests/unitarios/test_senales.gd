@@ -111,7 +111,12 @@ func test_en_el_juego() -> void:
 	for ch in main.hud_layer.get_children():
 		if ch.get_script() != null and str(ch.get_script().resource_path).ends_with("clin_claridad.gd"):
 			clins += 1
-	check(clins >= 2, "y el \"clin\" de la claridad (el ícono con +N) aparece sobre el personaje")
+	check(clins == 1, "y el \"clin\" de la claridad (el ícono con +N) aparece, uno solo aunque lleguen dos ganancias seguidas (%d)" % clins)
+	var suma := 0
+	for ch in main.hud_layer.get_children():
+		if ch.get_script() != null and str(ch.get_script().resource_path).ends_with("clin_claridad.gd"):
+			suma = int(ch._cantidad)
+	check(suma == 5000050, "las ganancias seguidas se suman en ese clin (%d)" % suma)
 	var Clin = load("res://scripts/ui/clin_claridad.gd")
 	check(Clin.tamano(1.0, 10) < Clin.tamano(3.0, 10) and Clin.tamano(3.0, 10) < Clin.tamano(6.0, 10), "cuanta más racha, más grande el clin")
 	main._luz_de_ganancia(-20)
