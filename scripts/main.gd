@@ -163,7 +163,7 @@ var panel_info: Control      # el panel de información (Tab): la partida contad
 var run_end             # pantalla de fin de run
 var demo_end            # pantalla de fin de la demo (demo_end_screen.gd)
 var run_over := false
-var attempt_dirty := false  # el intento actual de la torre ya empezó (hubo un movimiento o se usó un consumible)
+var attempt_dirty := false  # la sala actual ya se empezó a jugar (hubo un movimiento desde el último checkpoint)
 var left_bar              # barra de consumibles (izquierda)
 var consumable_pick := ConsumablePick.new()   # elegir y usar consumibles con el mando (mantener RT y arriba o abajo)
 var right_bar             # barra de boosts (derecha)
@@ -544,7 +544,7 @@ func _torre_accion() -> void:
 	_contratos_mostrar()   # (los contratos que se cumplieron con esta acción)
 	if torre == null:   # (la última acción ganó la torre y la escena ya se sacó)
 		return
-	if not attempt_dirty:   # el primer movimiento del intento: el guardado ya lo marca como empezado
+	if not attempt_dirty and torre.t != null and torre.t.movs > 0:   # el primer movimiento en la sala: el guardado ya la marca como empezada
 		attempt_dirty = true
 		save_game()
 	if torre.t != null:   # (el "Movimientos" del resumen del run: sólo suman los movimientos nuevos, no lo que vuelve al deshacer o al empezar otra sala)
@@ -588,6 +588,8 @@ func _torre_checkpoint(faltan: int, total: int) -> void:
 	Sfx.play("item")
 	if torre == null:
 		return
+	attempt_dirty = false   # (la sala nueva todavía no se empezó)
+	save_game()   # (el checkpoint se guarda: si se cierra el juego acá, se continúa desde este punto y sin costo)
 	_log_sala()
 	_refresh()
 	_descubrir_bloques()
@@ -1913,15 +1915,10 @@ func request_restart() -> void:
 	if torre == null or in_menu or generating or casino != null:
 		return
 	if torre.t != null and torre.t.muerta:
-		var costo := run.restart_cost(true)
-		if not run.can_afford(costo):
-			end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [costo]))
-			return
 		var con_totem: bool = run.consumables.has("totem") and not run.item_blocked("totem")
 		var casillero_totem: int = run.consumables.find("totem") if con_totem else -1
 		if con_totem:
 			_item_vuela("totem", left_bar, casillero_totem)   # (el Tótem sale de su casillero y se deshace en luz: te salvó la vida)
-		run.spend(costo)
 		run.note_retry(true)
 		lost_screen.hide_screen()
 		torre.reiniciar_sala()
@@ -2369,8 +2366,8 @@ func save_game() -> void:
 	SaveGame.write(data)
 
 
-## Botón Continuar: vuelve al casino donde se quedó, o al comienzo de la misma torre. Si el intento de la torre ya había empezado,
-## continuar cuenta como un reintento (cuesta claridad): así salir y volver no sirve para reiniciar gratis.
+## Botón Continuar: vuelve al casino donde se quedó, o al último checkpoint de la misma torre. Si la sala ya se había empezado a jugar (hubo movimientos desde el checkpoint) o el personaje había muerto,
+## continuar cuenta como perder la sala: cuesta una vida (o el Tótem la salva), así salir y volver no sirve para escapar de una derrota. Si no, continuar no cuesta nada.
 func continue_game() -> void:
 	var data := SaveGame.read()
 	if data.is_empty():
@@ -2406,11 +2403,9 @@ func continue_game() -> void:
 		end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
 		return
 	if data.get("dirty", false) or was_dead:
-		var cost := run.restart_cost(was_dead)
-		if not run.can_afford(cost):
-			end_run(false, Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost]))
+		if not run.can_revive():
+			end_run(false, Loc.t("Moriste: en este escenario no hay segundas oportunidades.") if run.permadeath() else Loc.t("Te quedaste sin vidas."))
 			return
-		run.spend(cost)
-		run.note_retry(was_dead)
+		run.note_retry(true)   # (la vida se gasta, o el Tótem la salva)
 	restart()
 	save_game()
