@@ -40,7 +40,7 @@ var claridad_counter       # [ícono] claridad del run
 var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
 var sparkles: Control
 var price_counter          # [ícono] lo que cuesta el giro
-var aviso_peaje            # "Cuidado": el giro te deja por debajo del peaje
+var aviso_peaje            # el triángulo de advertencia: el giro te deja por debajo del peaje
 var peaje_fn := Callable()   # cuánto cobra hoy Farolín (lo pone la escena del casino)
 var spin_button: Button
 var prizes_button: Button
@@ -136,8 +136,8 @@ func _build() -> void:
 	price_counter = ClarityCounter.new(3.0)
 	price_counter.name = "precio"
 	price_box.add_child(price_counter)
-	aviso_peaje = AvisoPeaje.new()
-	col.add_child(aviso_peaje)
+	aviso_peaje = AvisoPeaje.new()   # (sólo el triángulo, junto al precio del giro)
+	price_box.add_child(aviso_peaje)
 	spin_button = UI.button("GIRAR", true, 4.0, 85)
 	spin_button.name = "girar"
 	spin_button.size_flags_horizontal = Control.SIZE_FILL

@@ -41,7 +41,7 @@ var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_the
 var sparkles: Control
 var message: Control
 var bet_counter
-var aviso_peaje            # "Cuidado": la apuesta (o doblar) te deja por debajo del peaje
+var aviso_peaje            # el triángulo de advertencia: la apuesta (o doblar) te deja por debajo del peaje
 var peaje_fn := Callable()   # cuánto cobra hoy Farolín (lo pone la escena del casino)
 var claridad_counter
 var deal_button
@@ -152,7 +152,7 @@ func _build() -> void:
 	bet_counter = ClarityCounter.new(3.0)
 	bet_counter.name = "apuesta"
 	bet_row.add_child(bet_counter)
-	aviso_peaje = AvisoPeaje.new(true)   # (en una sola línea, al lado de la apuesta: abajo no sobra alto)
+	aviso_peaje = AvisoPeaje.new()   # (sólo el triángulo, al lado de la apuesta)
 	bet_row.add_child(aviso_peaje)
 
 	flash_rect = ColorRect.new()
@@ -405,7 +405,7 @@ func _refresh() -> void:
 	bet_counter.value = game.bet if showing_bet else Roulette.run_price(run)
 	var peaje: int = int(peaje_fn.call()) if peaje_fn.is_valid() else 0
 	if game.phase == Blackjack.Phase.PLAYER:   # (en la mano, lo único que cuesta es doblar)
-		aviso_peaje.actualizar(run.claridad, game.bet if game.can_double() else 0, peaje, Loc.f("Doblar puede dejarte por debajo del peaje (%d).", [peaje]))
+		aviso_peaje.actualizar(run.claridad, game.bet if game.can_double() else 0, peaje)
 	else:
 		aviso_peaje.actualizar(run.claridad, 0 if run.free_chip else Roulette.run_price(run), peaje)
 	deal_button.visible = game.phase != Blackjack.Phase.PLAYER

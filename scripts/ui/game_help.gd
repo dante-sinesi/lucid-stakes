@@ -21,25 +21,28 @@ const MenuAnim := preload("res://scripts/ui/menu_anim.gd")
 signal closed
 
 ## Las páginas de cada juego: {title, art (nombre del dibujito), text}. En los textos, {enter}, {space}, {c}, {esc}, {qe}, {shift}, {lr}, {ud}, {arrows}, {hold} y {help} se
-## dibujan como la tecla (con teclado) o el botón (con mando) que corresponde, con el mismo diseño de las botoneras.
+## dibujan como la tecla (con teclado) o el botón (con mando) que corresponde, con el mismo diseño de las botoneras; {peaje} se dibuja como el triángulo amarillo de advertencia del peaje.
 const PAGES := {
 	"ruleta": [
 		{"title": "La ruleta", "art": "ruleta_rueda", "text": "Todas las casillas dan premio. Un giro cuesta 3 fichas, y la ficha sube con cada etapa."},
 		{"title": "Las casillas", "art": "ruleta_apuestas", "text": "Hay 1 casilla épica, 2 raras, 4 comunes y 6 de bolsas de claridad. Cada una da un premio de su rareza."},
 		{"title": "Sin perder", "art": "ruleta_perder", "text": "No se pierde: una bolsa devuelve claridad, aunque menos de lo que costó el giro. Lo bueno son los ítems."},
 		{"title": "La vitrina", "art": "ruleta_vitrina", "text": "Rotar la vitrina cuesta una ficha, y una más cada vez."},
+		{"title": "Cuidado con el peaje", "art": "peaje_cuidado", "text": "El símbolo {peaje} indica que lo que vas a gastar puede dejarte con menos claridad de la que cobra Farolín al salir."},
 	],
 	"tragamonedas": [
 		{"title": "Los rodillos", "art": "slots_rodillos", "text": "Cinco símbolos: cubo, hielo, bomba, sol y corona. La corona es la más rara."},
 		{"title": "Qué paga", "art": "slots_pagos", "text": "Una pareja paga poco, un trío mucho. Tres coronas: premio gordo y un boost épico."},
 		{"title": "Retener", "art": "slots_retener", "text": "Puedes retener rodillos (con {hold}) y girar el resto por media ficha, una vez por jugada. Conviene retener las parejas."},
 		{"title": "Cobrar", "art": "slots_cobrar", "text": "Cobra cuando quieras, sin volver a girar. Sin retener bien, cada ficha devuelve algo menos de lo que cuesta."},
+		{"title": "Cuidado con el peaje", "art": "peaje_cuidado", "text": "El símbolo {peaje} indica que lo que vas a gastar puede dejarte con menos claridad de la que cobra Farolín al salir."},
 	],
 	"blackjack": [
 		{"title": "Llegar a 21", "art": "bj_objetivo", "text": "Acércate a 21 sin pasarte. Las figuras valen 10 y el As, 1 u 11."},
 		{"title": "Tu turno", "art": "bj_acciones", "text": "Doblar ({c}) solo con las dos primeras cartas: otra ficha, una carta y te plantas."},
 		{"title": "El crupier", "art": "bj_crupier", "text": "El crupier pide hasta 17. Si te pasas de 21 pierdes en el acto."},
 		{"title": "Pagos", "art": "bj_pagos", "text": "Ganar paga 1 a 1; blackjack, 3 a 2. Si empatas, te devuelven la apuesta."},
+		{"title": "Cuidado con el peaje", "art": "peaje_cuidado", "text": "El símbolo {peaje} indica que lo que vas a gastar puede dejarte con menos claridad de la que cobra Farolín al salir."},
 	],
 	"dados": [
 		{"title": "Los dados del tabernero", "art": "dados_elegir", "text": "Elige qué cara saldrá en cada uno de los 5 dados. Juegan al entrar al casino."},
@@ -48,15 +51,18 @@ const PAGES := {
 	],
 	"taller": [
 		{"title": "El taller", "art": "taller_yunque", "text": "Vendes un boost o un consumible por el 40 % de su valor, o lo cambias por otro del mismo nivel por el 30 % de la ficha."},
+		{"title": "Cuidado con el peaje", "art": "peaje_cuidado", "text": "El símbolo {peaje} indica que lo que vas a gastar puede dejarte con menos claridad de la que cobra Farolín al salir."},
 	],
 	"tablon": [
 		{"title": "El tablón de contratos", "art": "tablon_papeles", "text": "Cada papel pide algo para la próxima torre. Acéptalo gratis y se cobra al cumplirlo."},
 		{"title": "Los sellos", "art": "tablon_papeles", "text": "El sello marca la dificultad: gris, azul, violeta y negro (casi imposible). Los que no aceptes siguen en el próximo casino."},
 		{"title": "Aceptar, descolgar y rotar", "art": "tablon_acciones", "text": "Solo unos pocos contratos activos a la vez. Descolgar libera el lugar; llegan dos papeles nuevos por torre. Rotar cambia todos y cada vez cuesta más."},
 		{"title": "La fianza", "art": "tablon_acciones", "text": "Con fianza pagas ahora y, si cumples, cobras más y la recuperas (solo en el casino y el gran casino)."},
+		{"title": "Cuidado con el peaje", "art": "peaje_cuidado", "text": "El símbolo {peaje} indica que lo que vas a gastar puede dejarte con menos claridad de la que cobra Farolín al salir."},
 	],
 	"tienda": [
 		{"title": "La tienda", "art": "tienda_vitrina", "text": "Tres premios (épico, raro y común) a precio fijo, sin tirar la ruleta. Cambian en cada visita."},
+		{"title": "Cuidado con el peaje", "art": "peaje_cuidado", "text": "El símbolo {peaje} indica que lo que vas a gastar puede dejarte con menos claridad de la que cobra Farolín al salir."},
 	],
 }
 
@@ -110,6 +116,8 @@ static func id_for(screen: Control) -> String:
 
 ## Las piezas que se dibujan para un token ({enter}, {space}...): cada una {cap: texto de tecla} / {slot: botón de cara} / {named: botón con nombre}.
 static func glyph_parts(token: String, pad := Controls.using_pad) -> Array:
+	if token == "peaje":
+		return [{"simbolo": "peaje"}]
 	if pad:
 		match token:
 			"enter": return [{"slot": PadGlyph.Slot.SOUTH}]
@@ -286,6 +294,7 @@ class _Rich extends Control:
 	const D := preload("res://scripts/ui/voxel_draw.gd")
 	const VF := preload("res://scripts/ui/voxel_font.gd")
 	const PG := preload("res://scripts/ui/pad_glyph.gd")
+	const AP := preload("res://scripts/ui/aviso_peaje.gd")
 	const Ctl := preload("res://scripts/entrada/controls.gd")
 
 	const CS := 2.5          # lado de un cubito de las letras
@@ -313,6 +322,8 @@ class _Rich extends Control:
 			return maxf(26.0, ThemeDB.fallback_font.get_string_size(str(part.cap), HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 14.0)
 		if part.has("slot"):
 			return 30.0
+		if part.has("simbolo"):
+			return 44.0
 		return {"LB": 32.0, "RB": 32.0, "LT": 32.0, "RT": 32.0, "BACK": 40.0, "START": 40.0}.get(str(part.named), 30.0)
 
 	func _relayout() -> void:
@@ -382,6 +393,8 @@ class _Rich extends Control:
 					PG.draw_cap(self, c, w, 13.0, str(part.cap))
 				elif part.has("slot"):
 					PG.draw(self, c, 13.0, int(part.slot))
+				elif part.has("simbolo"):
+					AP.dibujar(self, c, 2.6)
 				else:
 					PG.draw_named(self, c, 12.0, str(part.named))
 				x += w + GAP
@@ -390,6 +403,7 @@ class _Rich extends Control:
 ## El dibujito de cada página, hecho con cubitos.
 class _Art extends Control:
 	const D := preload("res://scripts/ui/voxel_draw.gd")
+	const AP := preload("res://scripts/ui/aviso_peaje.gd")
 	const VF := preload("res://scripts/ui/voxel_font.gd")
 	const Ic := preload("res://scripts/casino/casino_icons.gd")
 	const D3 := preload("res://scripts/casino/dice_3d.gd")
@@ -484,6 +498,8 @@ class _Art extends Control:
 		var c := size * 0.5
 		var bob := sin(_t * 3.0) * 4.0
 		match kind:
+			"peaje_cuidado":
+				AP.dibujar(self, c + Vector2(0.0, bob), 12.0, 0.92 + 0.08 * sin(_t * 5.0))
 			"ruleta_rueda":
 				var radius := 84.0
 				var tiers: Array = [EPIC, CONSUM, COMMON, CONSUM, RARE, CONSUM, COMMON, CONSUM, RARE, COMMON, CONSUM, COMMON, CONSUM]

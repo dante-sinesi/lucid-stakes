@@ -1,5 +1,5 @@
 extends SceneTree
-## El aviso "Cuidado" de las mesas del casino: aparece (triángulo amarillo con exclamación) cuando la apuesta que vas a hacer te dejaría por debajo del peaje de Farolín, y no cuando no.
+## El aviso del peaje de las mesas del casino: aparece (triángulo amarillo con exclamación, sin texto) cuando la apuesta que vas a hacer te dejaría por debajo del peaje de Farolín, y no cuando no.
 ## Ejecutar: GAME_SANDBOX=1 tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_aviso_peaje.gd
 
 const AvisoPeaje := preload("res://scripts/ui/aviso_peaje.gd")
@@ -35,10 +35,10 @@ func _init() -> void:
 	root.add_child(a)
 	check(not a.visible, "empieza oculto")
 	a.actualizar(150, 60, 100)
-	check(a.visible and a.find_child("detalle", true, false).text.contains("100"), "se ve y dice cuál es el peaje")
+	check(a.visible, "se ve (es solo el triángulo: sin texto)")
 	a.actualizar(500, 60, 100)
 	check(not a.visible, "se oculta cuando ya no corresponde")
-	check(a.find_child("triangulo", true, false) != null, "lleva el triángulo de advertencia")
+	check(a.get_child_count() == 0 and a.custom_minimum_size.x > 20.0, "es solo el triángulo de advertencia, sin textos")
 	a.queue_free()
 	# las tres mesas
 	var run := RunState.new()
@@ -93,7 +93,7 @@ func _init() -> void:
 	tab.setup(run2, RandomNumberGenerator.new(), true)
 	check(not tab.aviso_peaje.visible, "tablón: sin fianza no hay nada que gastar al aceptar: no avisa")
 	tab.toggle_fianza()
-	check(tab.aviso_peaje.visible and tab.aviso_peaje.find_child("detalle", true, false).text.contains("fianza"), "tablón: aceptar con fianza te deja por debajo del peaje: avisa")
+	check(tab.aviso_peaje.visible, "tablón: aceptar con fianza te deja por debajo del peaje: avisa")
 	run2.claridad = peaje + fianza + 50
 	tab._refresh()
 	check(not tab.aviso_peaje.visible, "tablón: con claridad de sobra la fianza no avisa")
@@ -109,8 +109,17 @@ func _init() -> void:
 	run3.claridad = peaje + precio - 1
 	shop.setup(run3, RandomNumberGenerator.new(), true)
 	shop.select("aire_extra")
-	check(shop.aviso_peaje.visible and shop.aviso_peaje.find_child("detalle", true, false).text.contains("Comprar"), "tienda: la compra elegida te deja por debajo del peaje: avisa")
+	check(shop.aviso_peaje.visible, "tienda: la compra elegida te deja por debajo del peaje: avisa")
 	shop.queue_free()
+	# la ayuda explica el símbolo en cada juego donde se gasta claridad
+	var Ayuda := load("res://scripts/ui/game_help.gd")
+	for juego in ["ruleta", "tragamonedas", "blackjack", "taller", "tablon", "tienda"]:
+		var con_simbolo := false
+		for pagina in Ayuda.PAGES[juego]:
+			if str(pagina.text).contains("{peaje}"):
+				con_simbolo = true
+		check(con_simbolo, "la ayuda de %s explica el símbolo del peaje" % juego)
+	check(Ayuda.glyph_parts("peaje", false)[0].has("simbolo") and Ayuda.glyph_parts("peaje", true)[0].has("simbolo"), "{peaje} se dibuja como el triángulo, con teclado y con mando")
 	# sin peaje (la mesa suelta, sin escena del casino) nada avisa
 	run.claridad = 50
 	var suelta := RouletteScreen.new()

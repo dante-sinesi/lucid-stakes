@@ -46,7 +46,7 @@ var exit_button
 var prizes_button
 var claridad_counter
 var price_counter
-var aviso_peaje            # "Cuidado": la tirada (o volver a girar) te deja por debajo del peaje
+var aviso_peaje            # el triángulo de advertencia: la tirada (o volver a girar) te deja por debajo del peaje
 var peaje_fn := Callable()   # cuánto cobra hoy Farolín (lo pone la escena del casino)
 var th := CasinoTheme.for_tier(0)    # estética del nivel de casino (casino_theme.gd)
 var sparkles: Control
@@ -160,8 +160,8 @@ func _build() -> void:
 	price_counter = ClarityCounter.new(3.0)
 	price_counter.name = "ficha"
 	price_box.add_child(price_counter)
-	aviso_peaje = AvisoPeaje.new()
-	col.add_child(aviso_peaje)
+	aviso_peaje = AvisoPeaje.new()   # (sólo el triángulo, junto al precio de la ficha)
+	price_box.add_child(aviso_peaje)
 
 	_build_prizes_panel()
 	flash_rect = ColorRect.new()
@@ -457,7 +457,7 @@ func _refresh() -> void:
 		aviso_peaje.visible = false
 	elif ui_state == UiState.HOLD:   # (volver a girar cuesta media ficha, o nada con Giro de cortesía)
 		var costo_giro: int = 0 if run.boosts.has("giro_de_cortesia") else Slots.respin_price(game.price)
-		aviso_peaje.actualizar(run.claridad, costo_giro, peaje, Loc.f("Volver a girar puede dejarte por debajo del peaje (%d).", [peaje]))
+		aviso_peaje.actualizar(run.claridad, costo_giro, peaje)
 	else:
 		aviso_peaje.actualizar(run.claridad, 0 if run.free_chip else Roulette.run_price(run), peaje)
 	var holding := ui_state == UiState.HOLD
