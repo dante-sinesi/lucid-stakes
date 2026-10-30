@@ -89,6 +89,7 @@ var etapa := 0
 var n_salas_fijo := 0         # >0: cuántas salas tiene la torre (el tutorial); si no, las que le tocan a la etapa
 var boosts: Array = []
 var sala_inicial := 0           # >0: la torre empieza en el checkpoint de esa sala (continuar una partida guardada)
+var estado_inicial := {}           # la sala tal como se dejó al cerrar el juego (`Torre.estado_sala`): al continuar se retoma ahí y no en el checkpoint
 var banco_inicial := 0          # la claridad asegurada hasta ese checkpoint
 var salas_fijas: Array = []         # las salas de una lección del tutorial (en lugar de armar la torre con el paquete)
 var dificultad := "media"       # la dificultad del run (fácil, media, difícil o pesadilla)
@@ -201,6 +202,7 @@ func _ready() -> void:
 			falsos.falso.connect(func(cuenta: int, perm: int, sin_salida: bool): falsos_cambiaron.emit(falsos.quedan(), perm, sin_salida, true))
 			falsos.agotado.connect(_falsos_agotados)
 			falsos.sala_nueva(t.motor)
+			falsos.cuenta = int(estado_inicial.get("falsos", 0))   # (al continuar, los movimientos en falso que ya llevaba)
 			falsos_cambiaron.emit(falsos.quedan(), falsos_permitidos, false, false)
 		return
 	var ruta := OS.get_environment("SALAS_PAQUETE")
@@ -234,6 +236,8 @@ func _nueva_torre() -> void:
 		t.mov_run = mov_run
 		if sala_inicial > 0:
 			t.saltar_a_sala(sala_inicial, banco_inicial)
+		if not estado_inicial.is_empty() and not t.restaurar_sala(estado_inicial):
+			estado_inicial = {}
 	else:
 		t = Torre.armar(paquete, semilla, n_salas)
 	if t.salas.is_empty():
@@ -250,6 +254,16 @@ func _nueva_torre() -> void:
 		estaticas.append(nodo)
 	_poner_portal()
 	_refrescar()
+
+
+## La sala para guardar la partida: la de `Torre.estado_sala` y los movimientos en falso que lleva.
+func estado_guardado() -> Dictionary:
+	if t == null or t.salas.is_empty() or t.muerta or t.terminada or t.perdida:
+		return {}
+	var e: Dictionary = t.estado_sala()
+	if falsos != null:
+		e["falsos"] = falsos.cuenta
+	return e
 
 
 func _refrescar(animar := false) -> void:
