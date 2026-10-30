@@ -26,24 +26,14 @@ const PIPS := {
 	5: [[0.27, 0.27], [0.27, 0.73], [0.5, 0.5], [0.73, 0.27], [0.73, 0.73]],
 	6: [[0.27, 0.27], [0.27, 0.5], [0.27, 0.73], [0.73, 0.27], [0.73, 0.5], [0.73, 0.73]],
 }
-## El dado de cada casino. La taberna: hueso amarillento, comido en las esquinas y manchado, con alguna grieta violeta. El salón: marfil limpio con las esquinas de latón. El casino y el gran casino tienen
-## varias alternativas (`ALTERNATIVAS`, indicadas con `variante`).
+## El dado de cada casino (los cuatro siguen la progresión de las mesas de casino_theme.gd). Taberna: hueso amarillento, comido en las esquinas y manchado, con alguna grieta violeta. Salón: marfil limpio con las
+## esquinas de latón. Casino: mármol blanco veteado de gris, puntos pizarra y esquinas de latón. Gran casino: cáscara lila opaca con las esquinas de oro; el número y el núcleo son de cristal ("ventanas").
 const DADOS := [
 	{"cuerpo": Color(0.84, 0.78, 0.62), "pip": Color(0.22, 0.10, 0.26), "desgaste": 1.0, "mancha": Color(0.66, 0.58, 0.42), "grieta": Color(0.42, 0.14, 0.60), "rugosidad": 0.9, "metal": 0.0},
 	{"cuerpo": Color(0.96, 0.93, 0.84), "pip": Color(0.15, 0.09, 0.20), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.5, "metal": 0.0},
+	{"cuerpo": Color(0.94, 0.94, 0.95), "pip": Color(0.30, 0.31, 0.36), "desgaste": 0.0, "vetas": "marmol", "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.25, "metal": 0.05},
+	{"cuerpo": Color(0.78, 0.74, 1.0), "ventanas": true, "pip": Color(0.45, 0.34, 0.95, 0.80), "nucleo": Color(0.62, 0.52, 1.0, 0.62), "desgaste": 0.0, "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.3, "metal": 0.1},
 ]
-const ALTERNATIVAS := {
-	2: [   # el casino (a elegir): A madera pulida, B perla rosada, C celadón, D mármol veteado
-		{"cuerpo": Color(0.66, 0.42, 0.24), "pip": Color(0.97, 0.93, 0.82), "desgaste": 0.0, "vetas": "madera", "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.3, "metal": 0.05},
-		{"cuerpo": Color(0.96, 0.89, 0.87), "pip": Color(0.44, 0.20, 0.28), "desgaste": 0.0, "esquina": Color(0.86, 0.70, 0.58), "rugosidad": 0.3, "metal": 0.1},
-		{"cuerpo": Color(0.68, 0.82, 0.75), "pip": Color(0.13, 0.30, 0.27), "desgaste": 0.0, "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.3, "metal": 0.05},
-		{"cuerpo": Color(0.94, 0.94, 0.95), "pip": Color(0.30, 0.31, 0.36), "desgaste": 0.0, "vetas": "marmol", "esquina": Color(0.80, 0.62, 0.25), "rugosidad": 0.25, "metal": 0.05},
-	],
-	3: [   # el gran casino: cáscara lila con las ocho esquinas de oro; el número y el núcleo son de cristal
-		{"cuerpo": Color(0.78, 0.74, 1.0), "ventanas": true, "pip": Color(0.45, 0.34, 0.95, 0.80), "nucleo": Color(0.62, 0.52, 1.0, 0.62), "desgaste": 0.0, "esquina": Color(1.0, 0.85, 0.35), "rugosidad": 0.3, "metal": 0.1},
-	],
-}
-var variante := 0   # la alternativa de dado del casino y del gran casino
 const YAWS := [-0.32, 0.2, -0.14, 0.34, -0.24]   # cada dado descansa un poco girado, así se ven sus caras de costado
 
 ## Las fases de dice_game.gd (el orden del enum Phase): IDLE, PICK, ROLLING, REVEAL, HOLD, RESULT, DONE.
@@ -183,9 +173,7 @@ func _fit() -> void:
 
 # --- los modelos -----------------------------------------------------------------------------------------------------
 
-static func estilo(nivel: int, alt := 0) -> Dictionary:
-	if ALTERNATIVAS.has(nivel):
-		return ALTERNATIVAS[nivel][clampi(alt, 0, (ALTERNATIVAS[nivel] as Array).size() - 1)]
+static func estilo(nivel: int) -> Dictionary:
 	return DADOS[clampi(nivel, 0, DADOS.size() - 1)]
 
 
@@ -231,17 +219,17 @@ static func _vidrio_voxels(e: Dictionary) -> Dictionary:
 
 ## La malla de la cáscara del dado del casino actual.
 func _malla_dado() -> ArrayMesh:
-	return VoxelMesh.build(_die_voxels(tier, variante), VOX)
+	return VoxelMesh.build(_die_voxels(tier), VOX)
 
 
 ## La malla del vidrio (con la opacidad de cada minicubo en UV.x, como el hielo).
 func _malla_vidrio() -> ArrayMesh:
-	return VoxelMesh.build(_vidrio_voxels(estilo(tier, variante)), VOX, func(_p, c: Color): return c.a)
+	return VoxelMesh.build(_vidrio_voxels(estilo(tier)), VOX, func(_p, c: Color): return c.a)
 
 
 ## El material del dado (brillo y metal de la cáscara) y, en el dado de ventanas, el vidrio: los dos materiales translúcidos, el de adelante y el de las caras de atrás (que se dibuja antes).
 func _ajustar_material(mat: StandardMaterial3D, mi: MeshInstance3D, mi_atras: MeshInstance3D, mi_delante: MeshInstance3D) -> void:
-	var e := estilo(tier, variante)
+	var e := estilo(tier)
 	mat.roughness = float(e.rugosidad)
 	mat.metallic = float(e.metal)
 	mi.material_override = mat
@@ -273,9 +261,9 @@ static func _h(x: int, y: int, z: int, k: int) -> float:
 
 
 ## El dado: un cubo de N x N x N cubitos con las aristas un poco más oscuras y los puntos hundidos (se saca el cubito de la superficie y el de abajo queda del color del punto). Cada casino
-## tiene el suyo (`DADOS`, `ALTERNATIVAS`): desgastado en la taberna, con esquinas de latón en el salón, y en el casino y el gran casino los que se elijan (el del gran casino, de cáscara opaca con el número y el núcleo de cristal).
-static func _die_voxels(nivel := 1, alt := 0) -> Dictionary:
-	var e: Dictionary = estilo(nivel, alt)
+## tiene el suyo (`DADOS`): desgastado en la taberna, con esquinas de latón en el salón, de mármol veteado en el casino y de cáscara lila opaca, con el número y el núcleo de cristal, en el gran casino.
+static func _die_voxels(nivel := 1) -> Dictionary:
+	var e: Dictionary = estilo(nivel)
 	var ventanas := bool(e.get("ventanas", false))
 	var cuerpo: Color = e.cuerpo
 	var desgaste: float = e.desgaste
@@ -366,9 +354,8 @@ static func _lock_voxels() -> Dictionary:
 
 
 ## Cambia la estética de los dados y de la mesa al casino `t` (0 taberna, 1 salón, 2 casino, 3 gran casino).
-func set_tier(t: int, alt := 0) -> void:
-	tier = clampi(t, 0, 3)
-	variante = alt
+func set_tier(t: int) -> void:
+	tier = clampi(t, 0, DADOS.size() - 1)
 	if _table_mi != null:
 		_table_mi.queue_free()
 	_build_table()

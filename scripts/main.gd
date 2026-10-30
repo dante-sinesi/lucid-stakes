@@ -27,6 +27,7 @@ const SenalPantalla := preload("res://scripts/ui/senal_pantalla.gd")
 const ItemVuela := preload("res://scripts/ui/item_vuela.gd")
 const ResumenClaridad := preload("res://scripts/ui/resumen_claridad.gd")
 const ClinClaridad := preload("res://scripts/ui/clin_claridad.gd")
+const CasinoTheme := preload("res://scripts/casino/casino_theme.gd")
 const VentanaLogro := preload("res://scripts/ui/ventana_logro.gd")
 const Contratos := preload("res://scripts/datos/contratos.gd")
 const ContratoResuelto := preload("res://scripts/ui/contrato_resuelto.gd")
@@ -416,6 +417,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 		var mi_epoca := epoch
 		generating = true
 		dice.claridad_actual = run.claridad if run != null else 0
+		dice.set_estilo(0)   # (en el tutorial, los de la taberna)
 		dice.open()
 		_maybe_dice_intro()
 		dice.set_ready(true)
@@ -1429,6 +1431,7 @@ func _dados_del_tabernero() -> void:
 	dice.claridad_actual = run.claridad
 	var rng_dados := RandomNumberGenerator.new()
 	rng_dados.seed = run.dados_semilla
+	dice.set_estilo(CasinoTheme.tier_for(run))   # (los dados y su mesa son los del casino que estás por entrar)
 	dice.open(rng_dados)
 	dice.set_ready(true)
 	while dice.visible:

@@ -18,13 +18,12 @@ func _init() -> void:
 	root.add_child(d)
 	await process_frame
 	for t in 4:
-		var n: int = (Dice3D.ALTERNATIVAS[t] as Array).size() if Dice3D.ALTERNATIVAS.has(t) else 1
-		for alt in n:
-			d.set_tier(t, alt)
+		for alt in 1:
+			d.set_tier(t)
 			check(d.dice.size() == 5 and d._table_mi != null and d._table_mi.mesh != null, "casino %d, alternativa %d: se arman los cinco dados y la mesa" % [t, alt])
-			var vox := Dice3D._die_voxels(t, alt)
+			var vox := Dice3D._die_voxels(t)
 			check(vox.size() > 250, "casino %d, alternativa %d: el dado tiene sus minicubos (%d)" % [t, alt, vox.size()])
-			var ventanas := bool(Dice3D.estilo(t, alt).get("ventanas", false))
+			var ventanas := bool(Dice3D.estilo(t).get("ventanas", false))
 			var cuerpo: MeshInstance3D = d.dice[0].get_child(0)
 			check(d.vidrio_atras[0].visible == ventanas and d.vidrio_delante[0].visible == ventanas, "casino %d, alternativa %d: el vidrio sólo se usa en el dado de ventanas" % [t, alt])
 			if ventanas:
@@ -45,7 +44,13 @@ func _init() -> void:
 						abiertas += 1
 				check(abiertas == celdas.size(), "los puntos son ventanas de la cáscara hasta el núcleo (%d de %d)" % [abiertas, celdas.size()])
 				check(not vox.has(Vector3i(3, 3, 3)), "la cáscara está hueca donde va el núcleo")
-	check(Dice3D.estilo(2, 0).cuerpo != Color(0.70, 0.10, 0.14), "ya no hay dado rojo")
+	check(Dice3D.estilo(2).get("vetas", "") == "marmol" and Dice3D.estilo(3).get("ventanas", false), "el casino tiene el dado de mármol y el gran casino el lila de ventanas")
+	# el juego usa el estilo del casino que se está por entrar
+	var g = load("res://scripts/casino/dice_game.gd").new()
+	root.add_child(g)
+	g.set_estilo(2)
+	check(g.dice3d.tier == 2, "el juego de dados toma el estilo del casino")
+	g.queue_free()
 	d.queue_free()
 	print("tests de los dados por casino terminados, fallos: ", fallos)
 	quit(1 if fallos > 0 else 0)
