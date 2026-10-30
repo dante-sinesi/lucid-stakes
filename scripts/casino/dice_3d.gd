@@ -401,20 +401,30 @@ func _build_table() -> void:
 					madera_borde = Color(0.46 - n, 0.27 - n, 0.12 - n)
 					madera_tapa = Color(0.56 - n, 0.34 - n, 0.15 - n)
 					madera_bajo = Color(0.40 - n, 0.24 - n, 0.11 - n)
-					fieltro = Color(0.08 + n, 0.25 + n * 0.8, 0.17 + n) if (x + z) % 2 == 0 else Color(0.07 + n, 0.23 + n * 0.8, 0.155 + n)
+					fieltro = Color(0.09 + n, 0.27 + n * 0.8, 0.18 + n) if (x + z) % 2 == 0 else Color(0.08 + n, 0.25 + n * 0.8, 0.165 + n)   # (verde botella, liso, con trama)
+					if d == 6 and (x + z) % 2 == 0:
+						fieltro = Color(0.80, 0.62, 0.25)   # (una costura de latón punteada, adentro del borde)
 				2:
 					madera_borde = Color(0.22 - n, 0.12 - n, 0.07 - n)
 					madera_tapa = Color(0.29 - n, 0.16 - n, 0.09 - n)
 					madera_bajo = Color(0.17 - n, 0.09 - n, 0.05 - n)
-					fieltro = Color(0.05 + n, 0.30 + n * 0.8, 0.20 + n)
+					fieltro = Color(0.05 + n, 0.34 + n * 0.8, 0.23 + n)   # (esmeralda)
+					if ((x + z) % 14 == 0 or (x - z + 1400) % 14 == 0) and d > 8:
+						fieltro = Color(0.07, 0.42, 0.29)   # (rombos tejidos, del mismo verde pero más claro)
+					if d == 4 or d == 6:
+						fieltro = oro   # (el doble filete dorado)
 				3:
 					var veta := 0.0 if _h(x / 3, z / 3, 2, 7) > 0.2 else 0.12   # (vetas del mármol)
 					madera_borde = Color(0.93 - veta - n, 0.90 - veta - n, 0.82 - veta - n)
 					madera_tapa = Color(0.97 - veta - n, 0.94 - veta - n, 0.86 - veta - n)
 					madera_bajo = Color(0.85 - n, 0.82 - n, 0.74 - n)
-					fieltro = Color(0.04 + n, 0.38 + n * 0.8, 0.26 + n)
-					if (x + z) % 10 == 0 or (x - z + 1000) % 10 == 0:
-						fieltro = Color(0.06, 0.50, 0.34)   # (el rombo bordado en oro: hilos de otro verde)
+					fieltro = Color(0.03 + n, 0.40 + n * 0.8, 0.34 + n)   # (esmeralda con un toque de turquesa, más vivo)
+					if ((x + z) % 10 == 0 or (x - z + 1000) % 10 == 0) and d > 10:
+						fieltro = Color(0.82, 0.70, 0.42) if x % 2 == 0 else Color(0.05, 0.50, 0.42)   # (el rombo bordado: hilo de oro punteado y apagado, para no competir con los dados)
+					if d == 4 or d == 7:
+						fieltro = Color(1.0, 0.85, 0.35)   # (el doble filete dorado, más ancho)
+					elif d == 9 and (x + z) % 3 == 0:
+						fieltro = Color(0.95, 0.80, 0.38)   # (y una cenefa punteada)
 			if rim:
 				vox[Vector3i(x, 0, z)] = madera_borde
 				if tapa:
@@ -441,6 +451,21 @@ func _build_table() -> void:
 					vox[Vector3i(esquina.x + dx, 2, esquina.y + dz)] = gema if tier == 2 else Color(1.0, 0.85, 0.35)
 					if tier == 3:
 						vox[Vector3i(esquina.x + dx, 3, esquina.y + dz)] = Color(1.0, 0.9, 0.5)
+	if tier >= 1:   # adornos en las cuatro esquinas del paño, adentro de lo que se ve: tachas de latón en el salón, gemas en el casino, rosetas con perla en el gran casino
+		for esquina in [Vector2i(5, 5), Vector2i(xn - 8, 5), Vector2i(5, zn - 8), Vector2i(xn - 8, zn - 8)]:
+			for dx in 3:
+				for dz in 3:
+					var centro := dx == 1 and dz == 1
+					var q := Vector3i(esquina.x + dx, 0, esquina.y + dz)
+					if tier == 1:
+						if centro:
+							vox[q] = Color(0.80, 0.62, 0.25)
+					elif tier == 2:
+						vox[q] = (Color(0.25, 0.45, 0.90) if (esquina.x + esquina.y) % 2 == 0 else Color(0.45, 0.20, 0.65)) if centro else oro
+					else:
+						vox[q] = Color(0.85, 0.95, 1.0) if centro else Color(1.0, 0.85, 0.35)
+						if centro:
+							vox[q + Vector3i(0, 1, 0)] = Color(0.85, 0.95, 1.0)
 	# el fieltro está un cubito más abajo que el borde: el piso del fieltro es la capa y = -1
 	_table_mi = MeshInstance3D.new()
 	_table_mi.mesh = VoxelMesh.build(vox, TABLE_VOX)
