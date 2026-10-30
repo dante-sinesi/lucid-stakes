@@ -10,8 +10,6 @@ const TABLE := {
 	"Restablecer": "Reset",
 	"Se gana escapando en: %s": "Earned by escaping in: %s",
 	"Tamaño de la interfaz": "Interface size",
-	"Modo de lectura": "Reading mode",
-	"Letras más claras y con contorno.": "Brighter, outlined letters.",
 	"Rosa de los vientos": "Compass rose",
 	"Fondo animado": "Animated background",
 	"El remolino que se mueve despacio detrás de la torre. Apagado, el fondo es un color liso.": "The slowly moving swirl behind the tower. When off, the background is a plain color.",

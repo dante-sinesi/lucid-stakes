@@ -33,7 +33,6 @@ static func defaults() -> Dictionary:
 		"fullscreen": false,
 		"resolution": [1280, 720],
 		"vsync": true,
-		"reading_mode": false,    # modo de lectura: letras más claras y con contorno (ver voxel_draw.gd)
 		"high_contrast": false,   # alto contraste: cartas oscuras de borde claro y la escena con más contraste y color
 		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
 		"focus_frame": false,     # marco blanco que titila alrededor del botón apuntado (ayuda con el mando; por defecto sólo las flechitas doradas)
@@ -72,7 +71,6 @@ static func _sanitize() -> void:
 		data.lang = "es"
 	data.fullscreen = bool(data.fullscreen)
 	data.vsync = bool(data.vsync)
-	data.reading_mode = data.reading_mode is bool and data.reading_mode
 	data.high_contrast = data.high_contrast is bool and data.high_contrast
 	data.compass = not (data.compass is bool) or data.compass
 	if not ["sala", "personaje"].has(str(data.casino_camara)):
@@ -130,17 +128,13 @@ static func set_value(key: String, value) -> void:
 			apply("vsync")
 		"compass", "fondo_animado":
 			pass   # (la rosa de los vientos y el fondo leen el ajuste cada cuadro)
-		"ui_scale", "reading_mode", "high_contrast":
+		"ui_scale", "high_contrast":
 			apply("ui")
 		_:
 			apply("window")
 
 
-## Modo de lectura: letras más claras con contorno. Alto contraste: cartas y escena con más contraste. (El tamaño de la interfaz es aparte.)
-
-
-static func reading_mode() -> bool:
-	return bool(get_value("reading_mode"))
+## Alto contraste: cartas y escena con más contraste. (El tamaño de la interfaz es aparte.)
 
 
 static func high_contrast() -> bool:
@@ -204,7 +198,6 @@ static func apply(what := "all") -> void:
 		var tree := Engine.get_main_loop() as SceneTree
 		if tree != null:
 			tree.root.content_scale_factor = float(int(data.ui_scale)) / 100.0
-			VDraw.reading = reading_mode()
 			VDraw.high_contrast = high_contrast()
 			tree.call_group("graphics", "apply_graphics")
 	if what == "all" or what == "window":

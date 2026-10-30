@@ -30,7 +30,6 @@ var contrast_buttons := {}  # "box": la casilla
 var casino_cam_buttons := {}  # "sala" / "personaje"
 var panel_buttons := {}  # "mantener" / "alternar"
 var profundidad_buttons := {}  # 0 / 1 / 2
-var reading_buttons := {}  # "box": la casilla
 var compass_buttons := {}  # "box": la casilla
 var fondo_buttons := {}  # "box": la casilla
 var vsync_buttons := {}  # "box": la casilla
@@ -163,9 +162,6 @@ func _build_general(page: Control) -> void:
 	for code in Loc.LANG_ORDER:
 		lang_buttons[code] = _toggle(row, Loc.LANGS[code], group, "idioma_" + code, _on_lang.bind(code))
 	_build_interface()
-	row = _row(Loc.t("Modo de lectura"))
-	reading_buttons["box"] = _casilla(row, "lectura", func(): _on_reading(not bool(Settings.get_value("reading_mode"))))
-	_nota(row, Loc.t("Letras más claras y con contorno."))
 	row = _row(Loc.t("Rosa de los vientos"))
 	compass_buttons["box"] = _casilla(row, "rosa", func(): _on_compass(not bool(Settings.get_value("compass"))))
 	_nota(row, Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."))
@@ -476,7 +472,6 @@ func reset_tab() -> void:
 	match tab:
 		"general":   # (el idioma no se toca)
 			Settings.set_value("ui_scale", 100)
-			Settings.set_value("reading_mode", false)
 			Settings.set_value("high_contrast", false)
 			Settings.set_value("compass", true)
 			Settings.set_value("fondo_animado", true)
@@ -519,8 +514,6 @@ func refresh() -> void:
 		style_buttons[k].selected = k == str(Settings.get_value("pad_style"))
 	var ff: bool = Settings.get_value("focus_frame")
 	focus_buttons.box.checked = ff
-	var rm: bool = Settings.get_value("reading_mode")
-	reading_buttons.box.checked = rm
 	var cp: bool = Settings.get_value("compass")
 	compass_buttons.box.checked = cp
 	for k in casino_cam_buttons:
@@ -707,11 +700,6 @@ func _on_pad_style(which: String) -> void:
 
 func _on_focus_frame(on: bool) -> void:
 	Settings.set_value("focus_frame", on)
-	refresh()
-
-
-func _on_reading(on: bool) -> void:
-	Settings.set_value("reading_mode", on)
 	refresh()
 
 

@@ -17,43 +17,39 @@ func check(cond: bool, label: String) -> void:
 		print("FAIL: ", label)
 
 
-func test_reading_mode() -> void:
+func test_general() -> void:
 	var VDraw = load("res://scripts/ui/voxel_draw.gd")
 	var OptionsScreen = load("res://scripts/ui/options_screen.gd")
 	var o: Control = OptionsScreen.new()
 	root.add_child(o)
 	o.visible = true
 	await process_frame
-	check(not Settings.reading_mode() and not VDraw.reading, "el modo de lectura viene apagado")
-	o.reading_buttons.box.pressed.emit()   # (las casillas alternan el ajuste)
-	check(Settings.reading_mode() and VDraw.reading and not VDraw.high_contrast and is_equal_approx(root.content_scale_factor, 1.0), "modo de lectura: letras claras, sin tocar el contraste ni el tamaño de la interfaz")
+	check(not Settings.data.has("reading_mode") and VDraw.get("reading") == null, "ya no hay modo de lectura: las letras son siempre las claras y con contorno")
+	check(o.get("reading_buttons") == null, "y su casilla ya no está en Opciones")
 	check(Settings.get_value("fondo_animado") == true and o.fondo_buttons.box.checked, "el fondo animado viene prendido")
 	o.fondo_buttons.box.pressed.emit()
 	check(Settings.get_value("fondo_animado") == false and not o.fondo_buttons.box.checked, "el fondo animado se apaga desde Opciones")
 	o.reset_button.pressed.emit()
 	check(Settings.get_value("fondo_animado") == true, "Restablecer lo vuelve a prender")
 	o.contrast_buttons.box.pressed.emit()
-	check(Settings.high_contrast() and VDraw.high_contrast and o.contrast_buttons.box.checked, "alto contraste se prende por separado")
-	check(not VDraw.reading and VDraw.high_contrast and is_equal_approx(root.content_scale_factor, 1.0), "y cada uno se apaga sin el otro")
-	o.reading_buttons.box.pressed.emit()
-	check(o.reading_buttons.box.checked, "la casilla lo refleja")
-	o.reading_buttons.box.grab_focus()
+	check(Settings.high_contrast() and VDraw.high_contrast and o.contrast_buttons.box.checked and is_equal_approx(root.content_scale_factor, 1.0), "alto contraste se prende sin tocar el tamaño de la interfaz")
+	o.contrast_buttons.box.grab_focus()
 	o._process(0.1)
 	check(not o._tip.visible, "la ayuda de una casilla no aparece enseguida")
 	o._process(1.0)
-	check(o._tip.visible and o._tip.text == Loc.t("Letras más claras y con contorno."), "si el foco se queda un momento sobre una casilla aparece su ayuda (%s)" % o._tip.text)
-	o.contrast_buttons.box.grab_focus()
+	check(o._tip.visible and o._tip.text.begins_with(Loc.t("Cartas oscuras")), "si el foco se queda un momento sobre una casilla aparece su ayuda (%s)" % o._tip.text)
+	o.compass_buttons.box.grab_focus()
 	check(not o._tip.visible, "al mover el foco la ayuda anterior se va")
 	o._process(1.0)
-	check(o._tip.visible and o._tip.text.begins_with(Loc.t("Cartas oscuras")), "y aparece la de la nueva casilla")
+	check(o._tip.visible and o._tip.text == Loc.t("Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha."), "y aparece la de la nueva casilla")
 	o.show_tab("sonido")
 	check(not o._tip.visible, "al cambiar de pestaña la ayuda se esconde")
 	o.show_tab("general")
-	Settings.data.reading_mode = "x"
+	Settings.data.high_contrast = "x"
 	Settings._sanitize()
-	check(Settings.get_value("reading_mode") == false, "lo que no es un booleano se descarta")
+	check(Settings.get_value("high_contrast") == false, "lo que no es un booleano se descarta")
 	o.reset_button.pressed.emit()
-	check(not Settings.reading_mode() and not VDraw.reading and not Settings.high_contrast() and not VDraw.high_contrast and is_equal_approx(root.content_scale_factor, 1.0), "Restablecer en General apaga los dos")
+	check(not Settings.high_contrast() and not VDraw.high_contrast and is_equal_approx(root.content_scale_factor, 1.0), "Restablecer en General apaga el alto contraste")
 	o.queue_free()
 
 
@@ -65,7 +61,7 @@ func _init() -> void:
 	test_music_default()
 	await test_tabs()
 	await test_ui_scale()
-	await test_reading_mode()
+	await test_general()
 	await test_screen()
 	await test_menus_follow_language()
 	Loc.set_lang("es")

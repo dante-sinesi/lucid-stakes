@@ -15,8 +15,6 @@ const CORRUPT_B := Color(0.64, 0.22, 0.80)
 
 ## Corrupción por defecto de la interfaz (se puede cambiar según la etapa).
 static var default_corruption := 0.45
-## Modo de lectura (Opciones): letras sin corrupción, más claras y con contorno oscuro.
-static var reading := false
 ## Alto contraste (Opciones): cartas más oscuras y de borde blanco, sin ruido ni corrupción.
 static var high_contrast := false
 
@@ -54,19 +52,18 @@ static func corrupt_color(n: float) -> Color:
 	return CORRUPT_A.lerp(CORRUPT_B, fmod(n * 7.0, 1.0))
 
 
-## Dibuja celdas de texto (de VFont.layout). `height_cells`: alto del texto en celdas (la corrupción crece hacia abajo).
-## Cada cubito proyecta una sombra dura abajo a la derecha, así las letras se leen sobre cualquier fondo.
+## Dibuja celdas de texto (de VFont.layout). Las letras son siempre limpias (sin corrupción: el violeta decorativo se leía como parte de la letra, "ç" por "c"), un poco más claras y con contorno oscuro,
+## y cada cubito proyecta una sombra dura abajo a la derecha, así se leen sobre cualquier fondo. (`corruption` sigue valiendo para las cartas y los botones, no para las letras.)
 static func text_cells(ci: CanvasItem, origin: Vector2, cells: Array, height_cells: int, s: float, color: Color, corruption: float, seed_value: int, shadow := true) -> void:
 	var lit := {}
 	for c in cells:
 		lit[c] = true
 	var h := float(maxi(height_cells, 1))
-	if reading:
-		corruption = 0.0
-		color = color.lerp(Color.WHITE, 0.35)
-		var o := maxf(1.0, s * 0.4)
-		for c in cells:   # contorno oscuro: el texto se despega de cualquier fondo
-			ci.draw_rect(Rect2(origin + Vector2(c.x, c.y) * s - Vector2(o, o), Vector2(s + o * 2.0, s + o * 2.0)), Color(0.0, 0.0, 0.02, 0.92))
+	corruption = 0.0
+	color = color.lerp(Color.WHITE, 0.35)
+	var o := maxf(1.0, s * 0.4)
+	for c in cells:   # contorno oscuro: el texto se despega de cualquier fondo
+		ci.draw_rect(Rect2(origin + Vector2(c.x, c.y) * s - Vector2(o, o), Vector2(s + o * 2.0, s + o * 2.0)), Color(0.0, 0.0, 0.02, 0.92))
 	if shadow and s >= 2.0:
 		var off := Vector2(maxf(1.0, s * 0.45), maxf(1.0, s * 0.65))
 		for c in cells:
