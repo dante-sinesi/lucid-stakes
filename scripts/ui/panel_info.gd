@@ -287,7 +287,7 @@ func _armar() -> void:
 		_linea(Loc.f("Fondo de movimientos %d/%d", [int(d.movs), int(d.max_movs)]), 3.0, COLOR_TEXTO, "movimientos")
 	elif d.has("movs"):
 		if bool(d.get("sin_limite", false)):
-			_linea(Loc.f("Movimientos %d (sin límite)", [int(d.movs)]), 3.0, COLOR_TEXTO, "movimientos")
+			_linea(Loc.f("Movimientos %d/∞", [int(d.movs)]), 3.0, COLOR_TEXTO, "movimientos")
 		else:
 			_linea(Loc.f("Movimientos %d/%d", [int(d.movs), int(d.max_movs)]), 3.0, COLOR_TEXTO, "movimientos")
 	if d.has("movibles"):

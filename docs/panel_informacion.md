@@ -31,7 +31,7 @@ De arriba abajo:
 1. **El escenario y la dificultad** ("La Pesadilla - Medio").
 2. **Etapa y sala:** "Etapa 3 / 15 · Sala 2 / 7".
 3. **Claridad:** la que juntaste (y la racha, si hay).
-4. **Movimientos:** "12 / 20" de la sala (en Fácil, sin límite).
+4. **Movimientos:** "12 / 20" de la sala (en Fácil, "12/∞").
 5. **Peaje** de la etapa, en rojo si no alcanza.
 6. **La prueba** (si hay): nombre y la descripción completa, sin límite de ancho ni de líneas.
 7. **Los contratos activos,** con su título y su condición completos. Ya no hace falta pasar el mouse por encima de cada ícono, como hoy en la pausa.

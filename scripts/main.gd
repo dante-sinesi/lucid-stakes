@@ -1043,7 +1043,7 @@ func _refresh_movimientos() -> void:
 		usados = t.gastado_antes + t.movs
 		tope = t.presupuesto_total + t.mov_extra + t.mov_run
 	if tope >= 99999:
-		hud_panel.set_moves(Loc.f("Movimientos %d (sin límite)", [usados]))
+		hud_panel.set_moves(Loc.f("Movimientos %d/∞", [usados]))
 	else:
 		hud_panel.set_moves(Loc.f("Movimientos %d/%d", [usados, tope]), tope - usados <= 3)
 
