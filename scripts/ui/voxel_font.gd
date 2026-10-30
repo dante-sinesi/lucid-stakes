@@ -101,7 +101,7 @@ const G := {
 	"<": ["...#.", "..#..", ".#...", "#....", ".#...", "..#..", "...#."],
 	">": [".#...", "..#..", "...#.", "....#", "...#.", "..#..", ".#..."],
 	"×": [".....", ".....", "#...#", ".#.#.", "..#..", ".#.#.", "#...#"],
-	"∞": [".....", ".....", "##.##", "#.#.#", "##.##", ".....", "....."],
+	"∞": [".........", ".##...##.", "#..#.#..#", "#...#...#", "#..#.#..#", ".##...##.", ".........", ".........", "........."],   # (el único glifo más ancho que W: va siempre al final del texto)
 	"·": [".....", ".....", ".....", "..#..", ".....", ".....", "....."],
 	"|": ["..#..", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
 	"«": [".....", "..#.#", ".#.#.", "#.#..", ".#.#.", "..#.#", "....."],
@@ -153,7 +153,10 @@ static func glyph_cells(ch: String) -> Array[Vector2i]:
 
 ## Ancho (en celdas) de una línea de texto.
 static func line_width(text: String) -> int:
-	return maxi(text.length() * ADVANCE - 1, 0) if text != "" else 0
+	if text == "":
+		return 0
+	var ultimo: Array = G.get(text[text.length() - 1], G["?"])
+	return text.length() * ADVANCE - 1 + maxi(0, str(ultimo[0]).length() - W)   # (un glifo ancho al final sobresale)
 
 
 ## Parte un texto en líneas de a lo sumo `max_cells` celdas de ancho (corta por palabras; respeta los saltos de línea).
