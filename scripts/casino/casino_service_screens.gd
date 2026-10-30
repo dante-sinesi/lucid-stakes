@@ -36,10 +36,6 @@ class Base extends Control:
 	var hints
 	signal resolved
 	signal closed
-	signal open_shop   ## se pidió ir a la tienda (las estaciones tienen un botón; la tienda no)
-	signal open_tablon   ## se pidió volver al tablón (solo cuando la tienda se abrió desde el tablón: son dos pestañas de lo mismo)
-
-	var pestanas := false   ## el tablón y la tienda se ven como dos pestañas ("Contratos" y "Tienda") en vez de un botón suelto
 
 	var run
 	var rng: RandomNumberGenerator
@@ -79,42 +75,11 @@ class Base extends Control:
 		var gap := Control.new()
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(gap)
-		if pestanas:
-			var tabs := HBoxContainer.new()
-			tabs.add_theme_constant_override("separation", 6)
-			var en_tablon := service_id == "tablon"
-			var t_contratos := UI.button("Contratos", en_tablon, 3.0, 12, false)
-			t_contratos.name = "pestana_contratos"
-			t_contratos.pressed.connect(func():
-				if not en_tablon:
-					open_tablon.emit())
-			tabs.add_child(t_contratos)
-			var t_tienda := UI.button("Tienda", not en_tablon, 3.0, 12, false)
-			t_tienda.name = "tienda"
-			t_tienda.pressed.connect(func():
-				if en_tablon:
-					open_shop.emit())
-			tabs.add_child(t_tienda)
-			top.add_child(tabs)
-			var gap2 := Control.new()
-			gap2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			top.add_child(gap2)
-		elif service_id != "tienda":
-			var shop_button := UI.button("Tienda", false, 3.0, 20, false)
-			shop_button.name = "tienda"
-			shop_button.pressed.connect(func(): open_shop.emit())
-			top.add_child(shop_button)
 		exit_button = UI.button("Salir", false, 3.0, 16, false)
 		exit_button.name = "salir"
 		exit_button.pressed.connect(func(): request_close())
 		top.add_child(exit_button)
-		var replaced: Array = [exit_button]
-		var shop_node := top.find_child("tienda", true, false)
-		if shop_node != null:
-			replaced.append(shop_node)
-		if pestanas:
-			replaced.append(top.find_child("pestana_contratos", true, false))
-		hints = PadHints.attach(self, [], replaced)
+		hints = PadHints.attach(self, [], [exit_button])
 		_set_hints([])
 		var center := CenterContainer.new()
 		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -130,16 +95,9 @@ class Base extends Control:
 	func _build_body() -> void:
 		pass
 
-	## La botonera: lo propio de cada servicio, la tienda (LB o Q, salvo en la tienda misma) y salir.
+	## La botonera: lo propio de cada servicio y salir.
 	func _set_hints(extra: Array) -> void:
 		var items: Array = extra.duplicate()
-		if pestanas:   # (Q cambia de pestaña)
-			if service_id == "tablon":
-				items.append({"name": "LB", "key": "Q", "text": Loc.t("Tienda"), "keycode": KEY_Q, "call": func(): open_shop.emit()})
-			else:
-				items.append({"name": "LB", "key": "Q", "text": Loc.t("Contratos"), "keycode": KEY_Q, "call": func(): open_tablon.emit()})
-		elif service_id != "tienda":
-			items.append({"name": "LB", "key": "Q", "text": Loc.t("Tienda"), "keycode": KEY_Q, "call": func(): open_shop.emit()})
 		items.append({"slot": PadGlyph.Slot.EAST, "key": "Esc", "text": Loc.t("Salir"), "call": func(): request_close()})
 		if hints != null:
 			hints.set_items(items)

@@ -677,18 +677,15 @@ func open_service() -> void:
 	_open_screen(ServiceScreens.make(str(lay.station.id)))
 
 
-## Abre la tienda (la ofrece el tabernero al terminar de hablar; también se llega desde el tablón y el Taller).
+## Abre la tienda: sólo se llega a ella hablando con el tabernero, que la ofrece al terminar de hablar.
 func open_tienda() -> void:
-	var shop: Control = ServiceScreens.make("tienda")
-	shop.pestanas = false
-	_open_screen(shop)
+	_open_screen(ServiceScreens.make("tienda"))
 
 
 ## Abre el tablón de contratos.
 func open_tablon() -> void:
 	var s: Control = ServiceScreens.make("tablon")
 	s.tier = int(lay.tier)
-	s.pestanas = true   # (el tablón y la tienda son dos pestañas de lo mismo)
 	_open_screen(s)
 
 
@@ -716,16 +713,6 @@ func _open_screen(new_screen: Control) -> void:
 	screen.resolved.connect(func():
 		changed.emit()
 		_build_tablon())   # (aceptar, rechazar o rotar cambia lo que cuelga del tablón)
-	if screen.has_signal("open_shop"):   # las estaciones de servicio tienen un botón para pasar a la tienda
-		var desde_tablon: bool = screen.pestanas
-		screen.open_shop.connect(func():
-			close_roulette()
-			var shop: Control = ServiceScreens.make("tienda")
-			shop.pestanas = desde_tablon
-			_open_screen(shop))
-		screen.open_tablon.connect(func():
-			close_roulette()
-			open_tablon())
 	hud_layer.visible = false   # el juego ocupa toda la pantalla: la interfaz del casino no se ve detras
 
 

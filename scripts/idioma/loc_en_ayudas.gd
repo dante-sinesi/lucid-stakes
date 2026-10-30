@@ -5,7 +5,7 @@ const TABLE := {
 	"El tablón de contratos": "The contract board",
 	"Los sellos": "The seals",
 	"Aceptar, descolgar y rotar": "Accept, take down and rotate",
-	"Fianza y tienda": "Deposit and shop",
+	"La fianza": "The deposit",
 	"Ayuda": "Help",
 	"Siguiente": "Next",
 	"Entendido": "Got it",
