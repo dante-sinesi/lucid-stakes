@@ -98,6 +98,7 @@ var banner: Control
 var senal: Control          # las señales sin texto (rebobinar, cancelado, candado)
 var resumen_claridad: Control   # la ventana del resumen de claridad (al entrar al casino y antes de la torre)
 var ventana_logro: Control      # la ventana de un logro (personaje nuevo)
+var _clin: Control          # el clin de la claridad que está en pantalla (las ganancias seguidas se suman en él)
 var ultimo_ingreso_torre := 0   # lo que dio la última torre superada (para el resumen de claridad)
 var ingreso_dados := 0          # la claridad que dieron los dados de esa visita
 var depth_mode := 1
@@ -824,8 +825,13 @@ func _apply_casino_light() -> void:
 
 ## El cubo de salida: un cubo claro y luminoso con bordes dorados y, en los cuatro costados, las ondas del portal (como las puertas del casino).
 func _luz_de_ganancia(gain: int, racha := 1.0) -> void:
-	if torre != null and torre.cam != null and torre.gato_nodo != null:   # el "clin" de la claridad, sobre el personaje (una pérdida, en rojo)
-		ClinClaridad.lanzar(hud_layer, torre.cam.unproject_position(torre.gato_nodo.global_position + Vector3(0, 1.9, 0)), gain, racha)
+	var ancla: Vector2 = hud_panel.position + Vector2(8.0, hud_panel.size.y + 62.0)   # el "clin" de la claridad, fijo debajo del marco de la partida (una pérdida, en rojo, un poco más abajo)
+	if gain > 0 and _clin != null and is_instance_valid(_clin) and _clin.vivo():
+		_clin.acumular(gain, racha)   # (las ganancias seguidas se suman en uno solo)
+	elif gain != 0:
+		var c = ClinClaridad.lanzar(hud_layer, ancla + (Vector2(0.0, 50.0) if gain < 0 else Vector2.ZERO), gain, racha)
+		if gain > 0:
+			_clin = c
 	if gain <= 0:
 		return
 	var w := gain_weight(gain)   # (una ganancia grande suelta más luz, tiembla más y suena más fuerte)
