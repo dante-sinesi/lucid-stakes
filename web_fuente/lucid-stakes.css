@@ -1,0 +1,63 @@
+@font-face {
+  font-family: 'Lucid Stakes';
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+  src: url('fonts/lucid-stakes-200.woff2') format('woff2'), url('fonts/lucid-stakes-200.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Lucid Stakes';
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+  src: url('fonts/lucid-stakes-200-italic.woff2') format('woff2'), url('fonts/lucid-stakes-200-italic.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Lucid Stakes';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('fonts/lucid-stakes-400.woff2') format('woff2'), url('fonts/lucid-stakes-400.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Lucid Stakes';
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url('fonts/lucid-stakes-400-italic.woff2') format('woff2'), url('fonts/lucid-stakes-400-italic.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Lucid Stakes';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('fonts/lucid-stakes-700.woff2') format('woff2'), url('fonts/lucid-stakes-700.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Lucid Stakes';
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+  src: url('fonts/lucid-stakes-700-italic.woff2') format('woff2'), url('fonts/lucid-stakes-700-italic.ttf') format('truetype');
+}
+
+/* La fuente de cubitos del juego. Pesos: 200 (cubitos chicos), 400 (con rendija) y 700 (cubitos que se juntan). Cursiva: font-style: italic.
+   Se ve mejor en tamaños que sean múltiplos de 11 px (cada celda de la grilla mide 1/11 del tamaño). */
+.lucid { font-family: 'Lucid Stakes', monospace; font-weight: 400; letter-spacing: 0.02em; -webkit-font-smoothing: none; }
+
+/* El título dorado con la sombra dura que lleva en el juego. */
+.lucid-titulo {
+  font-family: 'Lucid Stakes', monospace;
+  font-weight: 700;
+  color: #f6dc8a;
+  background: linear-gradient(#fff2b8, #e9bd4a 70%, #c58f24);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0.06em 0.08em 0 #1a0d2b) drop-shadow(0 0 0.01em #1a0d2b);
+}
