@@ -1665,8 +1665,8 @@ func _resumen_de_salida() -> void:
 	var filas := [
 		{"id": "interes", "nombre": Loc.t("Interés"), "valor": interes},
 		{"id": "", "nombre": Loc.t("Farolín te devuelve"), "valor": devuelto},
-		{"id": "ahorro", "nombre": Loc.t("Ahorro"), "valor": 20 if run.boosts.has("ahorro") else 0},
-		{"id": "bolsillo_de_luz", "nombre": Loc.t("Bolsillo de luz"), "valor": 60 if run.boosts.has("bolsillo_de_luz") else 0},
+		{"id": "ahorro", "nombre": Loc.t("Ahorro"), "valor": RunState.ahorro_inicial(mini(stage_number + 1, FINAL_STAGE)) if run.boosts.has("ahorro") else 0},
+		{"id": "bolsillo_de_luz", "nombre": Loc.t("Bolsillo de luz"), "valor": RunState.bolsillo_inicial(mini(stage_number + 1, FINAL_STAGE)) if run.boosts.has("bolsillo_de_luz") else 0},
 	]
 	casino.input_locked = true
 	resumen_claridad.mostrar(Loc.f("Empiezas la torre %d", [mini(stage_number + 1, FINAL_STAGE)]), run.claridad - interes - devuelto, filas)

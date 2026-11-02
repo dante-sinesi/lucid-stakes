@@ -42,7 +42,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Buen ojo | Los bloques especiales dan el doble de claridad. | Raro |
 | Escalador | Cada piso nuevo que alcanzas da claridad de más. | Raro |
 | Empuje rentable | Cada bloque que empujas o tiras da +1 de claridad. | Raro |
-| Interés | Al salir del casino, tu claridad crece un 25 % (con tope). | Raro |
+| Interés | Al salir del casino, tu claridad crece un 25 % (con tope de 500). | Raro |
 | Descuento de Farolín | Farolín cobra un 15 % menos. Se acumula (hasta 2). | Raro (se acumula) |
 | Blackjack de oro | El blackjack natural paga 3 a 1 en vez de 3 a 2. | Raro |
 | Ficha barata | La ficha de todas las mesas cuesta un 20 % menos. Se acumula (hasta 2). | Raro (se acumula) |
@@ -50,8 +50,8 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Caja fuerte | Al entrar al casino cobras el 15 % de la claridad con que empezaste la torre. | Raro |
 | Caza recompensas | Un contrato activo más. Se acumula (hasta 2). | Raro (se acumula) |
 | Aire extra | +4 movimientos en cada sala. | Común |
-| Ahorro | Cada etapa empiezas con 20 de claridad. | Común |
-| Bolsillo de luz | Empiezas cada torre con claridad de regalo. | Común |
+| Ahorro | Cada torre empiezas con claridad: el 10 % del peaje de esa etapa (mínimo 20). | Común |
+| Bolsillo de luz | Cada torre empiezas con claridad: el 20 % del peaje de esa etapa (mínimo 60). | Común |
 | Segunda vuelta | Si la ruleta cae en común, 1 de cada 5 veces gira de nuevo. | Común |
 | Red de seguridad | En las tragamonedas y el blackjack, recuperas el 10 % de cada apuesta perdida. | Común |
 | Giro de cortesía | En las tragamonedas, volver a girar es gratis. | Común |
@@ -118,14 +118,14 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 
 | Nombre | Descripción | Más datos |
 |---|---|---|
-| Mente despejada | Empiezas cada run con +25 de claridad. | Se gana en: La Pesadilla |
+| Mente despejada | Empiezas cada run con +50 de claridad. | Se gana en: La Pesadilla |
 | Ojos de gato | Purificar un bloque da +50 % de claridad (no se suma con Pies de oro ni Midas). | Se gana en: La Pesadilla |
 | Racha firme | El tope de la racha sube de ×4 a ×6. | Se gana en: La Pesadilla |
 | Margen de error | En El camino corto, cada sala permite un movimiento en falso más (3). | Se gana en: El camino corto |
 | Corazón extra | Una vida más en todas las partidas (4 corazones), salvo en Compromiso. | Se gana en: Compromiso |
 | Bolsillo de soñador | Un lugar más para consumibles. | Se gana en: Gran Casino |
 | Segunda oportunidad | Reintentar la torre cuesta 15 % menos. | Se gana en: Gran Casino |
-| Pies ligeros | Cada sala tiene 1 movimiento más. | Se gana en: Relojería |
+| Pies ligeros | Cada sala tiene 3 movimientos más. | Se gana en: Relojería |
 | Buena letra | Un contrato con fianza que falles por partida te devuelve la fianza. | Se gana en: Contratista |
 | Mecha larga | Las bombas empiezan con 3 movimientos más. | Se gana en: Mundo abierto |
 | Buen regateo | El peaje de Farolín cuesta 10 % menos. | Se gana en: Usurero |

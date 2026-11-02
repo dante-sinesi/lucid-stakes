@@ -9,14 +9,14 @@ const Trials := preload("res://scripts/datos/trials.gd")
 const REGATEO := 0.10   # Buen regateo: lo que baja el peaje de Farolín
 
 const ALL: Array[Dictionary] = [
-	{"id": "mente_despejada", "name": "Mente despejada", "desc": "Empiezas cada run con +25 de claridad."},
+	{"id": "mente_despejada", "name": "Mente despejada", "desc": "Empiezas cada run con +50 de claridad."},
 	{"id": "ojos_de_gato", "name": "Ojos de gato", "desc": "Purificar un bloque da +50 % de claridad (no se suma con Pies de oro ni Midas).", "perk": "pies_de_luz"},
 	{"id": "racha_firme", "name": "Racha firme", "desc": "El tope de la racha sube de ×4 a ×6.", "perk": "racha_larga"},
 	{"id": "margen_de_error", "name": "Margen de error", "desc": "En El camino corto, cada sala permite un movimiento en falso más (3)."},
 	{"id": "corazon_extra", "name": "Corazón extra", "desc": "Una vida más en todas las partidas (4 corazones), salvo en Compromiso."},
 	{"id": "bolsillo_sonador", "name": "Bolsillo de soñador", "desc": "Un lugar más para consumibles."},
 	{"id": "segunda_oportunidad", "name": "Segunda oportunidad", "desc": "Reintentar la torre cuesta 15 % menos."},
-	{"id": "pies_ligeros", "name": "Pies ligeros", "desc": "Cada sala tiene 1 movimiento más."},
+	{"id": "pies_ligeros", "name": "Pies ligeros", "desc": "Cada sala tiene 3 movimientos más."},
 	{"id": "buena_letra", "name": "Buena letra", "desc": "Un contrato con fianza que falles por partida te devuelve la fianza."},
 	{"id": "mecha_larga", "name": "Mecha larga", "desc": "Las bombas empiezan con 3 movimientos más.", "perk": "reflejos"},
 	{"id": "buen_regateo", "name": "Buen regateo", "desc": "El peaje de Farolín cuesta 10 % menos."},
@@ -44,9 +44,9 @@ static func apply_to_run(run, owned: Array) -> void:
 	for id in owned:
 		match str(id):
 			"mente_despejada":
-				run.claridad += 25
+				run.claridad += 50
 			"pies_ligeros":
-				run.movs_extra += 1
+				run.movs_extra += 3
 			"bolsillo_sonador":
 				run.meta_consumable_slots += 1
 			"segunda_oportunidad":

@@ -10,6 +10,7 @@ extends RefCounted
 const Vista := preload("res://torre/vista.gd")
 const Motor := preload("res://torre/motor.gd")
 const Cosecha := preload("res://torre/cosecha.gd")
+const RunState := preload("res://scripts/datos/run_state.gd")
 
 const LADO := 11
 static var rechazos_choque := 0   # (estadística: placements descartados porque la sala de arriba tapaba el camino de la de abajo)
@@ -622,6 +623,10 @@ func aplicar_boosts(ids: Array) -> void:
 	for id in ids:
 		perks[id] = true
 	cosecha.aplicar_boosts(ids)
+	if perks.has("ahorro"):
+		cosecha.banco += RunState.ahorro_inicial(maxi(etapa, 1))
+	if perks.has("bolsillo_de_luz"):
+		cosecha.banco += RunState.bolsillo_inicial(maxi(etapa, 1))
 	if motor != null:
 		motor.luz_propia = perks.has("luz_propia")
 

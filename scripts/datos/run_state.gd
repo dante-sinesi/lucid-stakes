@@ -71,7 +71,7 @@ func trial_at(st: int) -> Dictionary:
 const TOLL_DISCOUNT := 0.15   # Descuento de Farolín (por cada uno, hasta 2)
 const BRIBE_DISCOUNT := 0.30   # Soborno
 const INTEREST := 0.25   # Interés: lo que crece la claridad que queda al salir del casino
-const INTEREST_CAP := 150   # (con un tope)
+const INTEREST_CAP := 500   # (con un tope)
 
 
 ## Lo que cobra de verdad Farolín: el precio de la etapa (`toll_for`) con los descuentos (boosts Descuento de Farolín y el Soborno).
@@ -90,6 +90,21 @@ func dificultad_torre() -> String:
 	if i < 0 or dificultad == "facil":
 		return dificultad
 	return orden[clampi(i + int(scenario().get("escalon", 0)), 0, orden.size() - 1)]
+
+
+## Lo que dan Ahorro y Bolsillo de luz al empezar una torre: una parte del peaje de esa etapa (con un mínimo), así siguen valiendo en las etapas altas.
+const AHORRO_PCT := 0.10
+const AHORRO_MIN := 20
+const BOLSILLO_PCT := 0.20
+const BOLSILLO_MIN := 60
+
+
+static func ahorro_inicial(etapa: int) -> int:
+	return maxi(int(round(float(toll_for(etapa)) * toll_scale * AHORRO_PCT)), AHORRO_MIN)
+
+
+static func bolsillo_inicial(etapa: int) -> int:
+	return maxi(int(round(float(toll_for(etapa)) * toll_scale * BOLSILLO_PCT)), BOLSILLO_MIN)
 
 
 ## Al salir del casino: con el boost Interés, la claridad que queda crece (con tope). Devuelve lo que ganó.
