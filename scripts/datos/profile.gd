@@ -12,6 +12,7 @@ const Trials := preload("res://scripts/datos/trials.gd")
 const Cosmetics := preload("res://scripts/personajes/cosmetics.gd")
 const Characters := preload("res://scripts/personajes/characters.gd")
 const Demo := preload("res://scripts/datos/demo.gd")
+const Seguro := preload("res://scripts/datos/archivo_seguro.gd")
 const VERSION := 2
 
 ## Ruta del archivo (las pruebas la cambian para no tocar el perfil real).
@@ -31,20 +32,29 @@ static func load_profile() -> Dictionary:
 		return data
 	data = default_data()
 	_loaded_from = path
-	if FileAccess.file_exists(path):
-		var f := FileAccess.open(path, FileAccess.READ)
-		if f != null:
-			var json := JSON.new()
-			if json.parse(f.get_as_text()) == OK and typeof(json.data) == TYPE_DICTIONARY and int(json.data.get("version", 0)) == VERSION:
-				for k in default_data():
-					if json.data.has(k):
-						data[k] = json.data[k]
-				_migrate_cosmetics(json.data)
+	var leido := Seguro.leer(path, func(d: Dictionary): return int(d.get("version", 0)) == VERSION)   # (si el archivo está dañado, se usa la copia anterior)
+	if not leido.is_empty():
+		var base := default_data()
+		for k in base:
+			if leido.has(k) and _tipo_ok(base[k], leido[k]):   # (un valor de otro tipo se descarta y queda el de fábrica)
+				data[k] = _del_tipo(base[k], leido[k])
+		_migrate_cosmetics(leido)
 	for c in Characters.ALL:   # los personajes "de inicio" (el gatito, el perrito, Dante y Gaby) se tienen siempre
 		if c.unlock == "inicio":
 			data.characters[c.id] = true
 	_apply_demo()
 	return data
+
+
+## ¿`valor` (leído del archivo) es del tipo de `base`? Los números del JSON vienen como decimales: un entero esperado acepta cualquier número.
+static func _tipo_ok(base, valor) -> bool:
+	if base is int or base is float:
+		return valor is int or valor is float
+	return typeof(base) == typeof(valor)
+
+
+static func _del_tipo(base, valor):
+	return int(valor) if base is int else valor
 
 
 ## La demo: los 4 personajes; de la ropa sólo se pueden ganar (con los dados) 2 gorros y 2 prendas, y no se tiene ninguna de entrada.
@@ -86,9 +96,7 @@ static func _migrate_cosmetics(raw: Dictionary) -> void:
 
 static func save() -> void:
 	load_profile()
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f != null:
-		f.store_string(JSON.stringify(data))
+	Seguro.escribir(path, JSON.stringify(data))
 
 
 ## Vuelve a un perfil vacío (y lo guarda). Para pruebas y "borrar progreso".

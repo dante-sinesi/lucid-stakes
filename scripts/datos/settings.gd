@@ -3,7 +3,8 @@ extends RefCounted
 ## `apply()` los pone en marcha; se llama al abrir el juego y cada vez que se cambia algo en Opciones.
 
 const Loc := preload("res://scripts/idioma/loc.gd")
-const AudioHub := preload("res://scripts/sonido/audio_hub.gd")
+const Seguro := preload("res://scripts/datos/archivo_seguro.gd")
+const AudioHub :=preload("res://scripts/sonido/audio_hub.gd")
 const VDraw := preload("res://scripts/ui/voxel_draw.gd")
 
 ## Resoluciones de ventana que se ofrecen (se filtran por el tamaño de la pantalla del jugador).
@@ -53,13 +54,11 @@ static func defaults() -> Dictionary:
 
 static func load_settings() -> void:
 	data = defaults()
-	if _io() and FileAccess.file_exists(path):
-		var f := FileAccess.open(path, FileAccess.READ)
-		var parsed = JSON.parse_string(f.get_as_text())
-		if parsed is Dictionary:
-			for k in data:
-				if parsed.has(k):
-					data[k] = parsed[k]
+	if _io():
+		var parsed := Seguro.leer(path)   # (si el archivo está dañado, se usa la copia anterior)
+		for k in data:
+			if parsed.has(k) and (typeof(parsed[k]) == typeof(data[k]) or (data[k] is int and parsed[k] is float)):   # (un valor de otro tipo se descarta)
+				data[k] = parsed[k]
 	if OS.get_environment("GAME_LANG") != "":   # (para completar las traducciones: se corren las pruebas en otro idioma)
 		data.lang = OS.get_environment("GAME_LANG")
 	_loaded = true
@@ -101,9 +100,7 @@ static func _sanitize() -> void:
 static func save() -> void:
 	if not _io():
 		return
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f != null:
-		f.store_string(JSON.stringify(data, "\t"))
+	Seguro.escribir(path, JSON.stringify(data, "\t"))
 
 
 static func get_value(key: String):
