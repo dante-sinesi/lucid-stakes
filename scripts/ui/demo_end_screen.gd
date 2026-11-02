@@ -70,7 +70,7 @@ func _init() -> void:
 	menu_button.name = "menu"
 	menu_button.pressed.connect(func(): to_menu.emit())
 	btns.add_child(menu_button)
-	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Agrégalo a tu lista de deseos"), "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): wishlist_button.pressed.emit()},
+	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Agrégalo a tu lista de deseos"), "destacado": true, "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": func(): wishlist_button.pressed.emit()},
 			{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Jugar de nuevo"), "keycode": KEY_SHIFT, "call": func(): new_game.emit()},
 			{"slot": PadGlyph.Slot.NORTH, "key": "C", "text": Loc.t("Menú principal"), "keycode": KEY_C, "call": func(): to_menu.emit()}], [wishlist_button, new_button, menu_button])
 

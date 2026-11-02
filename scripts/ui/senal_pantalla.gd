@@ -3,10 +3,11 @@ extends Control
 ##  - REBOBINAR: dos flechas a la izquierda sobre una banda oscura, como el cartel del nombre de la prueba (se deshizo un movimiento).
 ##  - NO_REBOBINAR: lo mismo, con el símbolo de cancelado en rojo encima (el escenario no deja deshacer).
 ##  - RECHAZO: el símbolo de cancelado en rojo, chico, en un punto de la pantalla (algo no se puede hacer ahora).
-##  - CANDADO: un candado (algo del juego completo que la demo no incluye).
+##  - CANDADO: un candado (algo del juego completo que la demo no incluye), con el nombre del juego que falta debajo (`mostrar(CANDADO, punto, "Tragamonedas")`).
 ## Uso: `mostrar(tipo)` (o `mostrar(tipo, punto)` para ponerla en un punto de la pantalla).
 
 const Draw := preload("res://scripts/ui/voxel_draw.gd")
+const VoxelLabel := preload("res://scripts/ui/voxel_label.gd")
 
 enum Tipo { REBOBINAR, NO_REBOBINAR, RECHAZO, CANDADO }
 
@@ -20,6 +21,7 @@ var _punto := Vector2(-1, -1)
 var _t := 1.0e9                   # segundos desde que apareció
 var _dur := 1.0
 var _tween: Tween
+var _rotulo: Control = null        # el nombre del juego bajo el candado
 
 
 func _init() -> void:
@@ -28,14 +30,29 @@ func _init() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_rotulo = VoxelLabel.new()
+	_rotulo.cube = 4.0
+	_rotulo.color = Color(1.0, 0.85, 0.35)
+	_rotulo.align = VoxelLabel.Align.CENTER
+	_rotulo.plate_alpha = 0.6
+	_rotulo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rotulo.visible = false
+	add_child(_rotulo)
 
 
 ## Muestra una señal. `punto`: dónde ponerla (por omisión, abajo en el centro las de rebobinar y en el centro de la pantalla las demás).
-func mostrar(tipo: int, punto := Vector2(-1, -1)) -> void:
+func mostrar(tipo: int, punto := Vector2(-1, -1), rotulo := "") -> void:
 	_tipo = tipo
 	_punto = punto
 	_t = 0.0
-	_dur = 1.1 if tipo == Tipo.REBOBINAR or tipo == Tipo.NO_REBOBINAR else 0.9
+	_dur = 1.1 if tipo == Tipo.REBOBINAR or tipo == Tipo.NO_REBOBINAR else (1.6 if rotulo != "" else 0.9)
+	_rotulo.visible = tipo == Tipo.CANDADO and rotulo != ""
+	if _rotulo.visible:
+		_rotulo.text = rotulo
+		var c := _punto if _punto.x >= 0.0 else size * 0.5
+		_rotulo.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		_rotulo.offset_top = c.y + 70.0
+		_rotulo.offset_bottom = c.y + 70.0 + 50.0
 	visible = true
 	modulate.a = 1.0
 	if _tween != null:

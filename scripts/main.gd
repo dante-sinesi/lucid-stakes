@@ -178,6 +178,9 @@ func _ready() -> void:
 		SaveGame.path = Demo.save_dir() + "/save.json"
 		Profile.path = Demo.save_dir() + "/profile.json"
 		Profile._loaded_from = ""
+		Settings.path = Demo.save_dir() + "/settings.json"   # (y sus propias opciones y telemetría: la demo no comparte nada con el juego completo)
+		Settings._loaded = false
+		Telemetry.path = Demo.save_dir() + "/telemetria.jsonl"
 		if DisplayServer.get_name() != "headless":
 			DisplayServer.window_set_title(Demo.TITLE)
 	# Las pruebas (y las capturas hechas con GAME_SANDBOX=1) no tocan la partida, el perfil ni los ajustes reales del jugador.

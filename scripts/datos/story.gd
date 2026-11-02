@@ -54,15 +54,11 @@ static func outro() -> Array:
 	return [
 		"¡Lo lograste, soñador! Ya sabes moverte, empujar, tirar, colgarte y soltarte. Con eso se sube cualquier torre.",
 		"Este salón es más claro que mi taberna, ¿verdad? Cada torre que superes te dará más claridad.",
-		"Aquí puedes jugar a la ruleta: si ganas, te doy consumibles o habilidades para las próximas torres. Solo te cobro claridad.",
+		"Aquí puedes probar suerte en la ruleta: cada giro te da un premio para las próximas torres. Solo te cobro claridad.",
 		"Y mira quién está en la puerta: Farolín.",
 		"Fue un soñador como tú. Se quedó cuidando la salida y, de tanto alumbrarla, terminó convertido en farol.",
 		"Su llama te muestra el camino a la próxima torre, y se paga con claridad. Fíjate en el precio arriba a la izquierda: se pone verde cuando te alcanza.",
 		"Si no te alcanza, puedes volver a subir la torre, pero cuesta una vida. Sin vidas, o pagas o todo se apaga.",
-		"Mi vitrina cambia en cada visita: ahí ves los premios de la ruleta, y puedes rotarla pagando. En la tienda compras directo, pero sale más caro que apostar.",
-		"Lo que ganes te hace juntar más claridad por torre. Y ojo: Farolín cobra más en cada etapa.",
-		"Cada tres torres la pesadilla te pone a prueba y cambia las reglas.",
-		"Si superas todos los pisos, te llevas una habilidad para siempre.",
 		{"text": "Y esto que brilla también te lo deja la pesadilla. No sé para qué sirve, pero es lindo, ¿no?", "icon": "luz"},
 		"Eso es todo, soñador. Acércate a Farolín: te presto la claridad para tu primer peaje. ¡Y después, a despertar!",
 	]

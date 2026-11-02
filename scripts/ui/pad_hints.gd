@@ -3,7 +3,7 @@ extends HBoxContainer
 ## Es lo único que hay para jugar: no hay botones duplicados en la pantalla. Cada ítem también se puede tocar con el mouse.
 ## `set_items([{slot: PadGlyph.Slot | name: "LB|RB", key: "Enter", text, call: Callable, dim: bool}])`:
 ##   slot / name: el botón del mando (de cara, o con nombre: LB, RB, LT, DPAD; varios con "|") · key: la tecla del teclado (varias con "|") · text: lo que hace ·
-##   call: lo que pasa al tocarlo con el mouse · dim: la acción no se puede hacer ahora.
+##   call: lo que pasa al tocarlo con el mouse · dim: la acción no se puede hacer ahora · destacado: la acción principal de la pantalla (la tecla late en dorado y el texto va en dorado).
 
 const PadGlyph := preload("res://scripts/ui/pad_glyph.gd")
 const Controls := preload("res://scripts/entrada/controls.gd")
@@ -87,10 +87,17 @@ class _Icon extends Control:
 	var named := ""
 	var key := ""
 	var dim := false
+	var destacado := false   # late en dorado (la acción principal)
+	var _t := 0.0
 
 	func _init() -> void:
 		size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(delta: float) -> void:
+		if destacado and is_visible_in_tree():
+			_t += delta
+			queue_redraw()
 
 	func setup(new_slot: int, new_named: String, new_key: String, new_dim: bool) -> void:
 		slot = new_slot
@@ -119,6 +126,10 @@ class _Icon extends Control:
 
 	func _draw() -> void:
 		var c := size * 0.5
+		if destacado:   # un resplandor dorado que late detrás de la tecla o del botón
+			var late := 0.5 + 0.5 * sin(_t * 4.5)
+			draw_rect(Rect2(Vector2(1, 1), size - Vector2(2, 2)), Color(1.0, 0.8, 0.2, 0.18 + 0.22 * late))
+			draw_rect(Rect2(Vector2(1, 1), size - Vector2(2, 2)), Color(1.0, 0.82, 0.3, 0.6 + 0.4 * late), false, 2.0)
 		if Controls.using_pad:
 			if named != "":
 				var parts := named.split("|")
@@ -211,10 +222,13 @@ func set_items(new_items: Array) -> void:
 		add_child(box)
 		var icon := _Icon.new()
 		icon.setup(int(it.get("slot", -1)), str(it.get("name", "")), str(it.get("key", "")), bool(it.get("dim", false)))
+		icon.destacado = bool(it.get("destacado", false)) and not icon.dim
 		box.add_child(icon)
 		var l := VoxelLabel.new()
 		l.cube = 1.8
 		l.color = Color(0.9, 0.86, 1.0) if not icon.dim else Color(0.5, 0.46, 0.55)
+		if icon.destacado:
+			l.color = Color(1.0, 0.85, 0.35)
 		l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		l.text = str(it.text)

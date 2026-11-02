@@ -64,7 +64,8 @@ func test_texts() -> void:
 	var outro_text := ""
 	for l in Story.outro():
 		outro_text += line_text(l).to_lower() + "\n"
-	check(outro_text.contains("habilidad") and outro_text.contains("prueba") and outro_text.contains("ruleta"), "el cierre explica habilidades, pruebas y ruleta")
+	check(outro_text.contains("ruleta") and outro_text.contains("peaje"), "el cierre explica la ruleta y el peaje")
+	check(not outro_text.contains("vitrina") and not outro_text.contains("tienda") and not outro_text.contains("habilidad") and not outro_text.contains("prueba"), "el cierre no suelta jerga: vitrina, tienda, habilidades y pruebas se explican cuando aparecen")
 	for l in Tutorial.lessons():
 		check(Story.lesson_say(l.id) != "", "el tabernero tiene su frase para la leccion %s" % l.id)
 	# Todo entra en el cuadro de dialogo (hasta 5 renglones)

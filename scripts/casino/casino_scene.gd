@@ -667,7 +667,7 @@ func open_roulette() -> void:
 
 func open_slots() -> void:
 	if Demo.on():   # la demo: las tragamonedas son del juego completo
-		senal.mostrar(SenalPantalla.Tipo.CANDADO)   # (las tragamonedas son del juego completo)
+		senal.mostrar(SenalPantalla.Tipo.CANDADO, Vector2(-1, -1), "Tragamonedas")   # (las tragamonedas son del juego completo: el candado dice cuál)
 		return
 	_open_screen(SlotsScreen.new())
 
@@ -691,7 +691,7 @@ func open_tablon() -> void:
 
 func open_blackjack() -> void:
 	if Demo.on():   # la demo: el blackjack es del juego completo
-		senal.mostrar(SenalPantalla.Tipo.CANDADO)   # (el blackjack es del juego completo)
+		senal.mostrar(SenalPantalla.Tipo.CANDADO, Vector2(-1, -1), "Blackjack")   # (el blackjack es del juego completo: el candado dice cuál)
 		return
 	_open_screen(BlackjackScreen.new())
 

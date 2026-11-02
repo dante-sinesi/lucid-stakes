@@ -9,7 +9,7 @@ El mismo código del juego completo con un interruptor (`scripts/datos/demo.gd`)
 - **Recortes** (todos por `Demo`): los demás escenarios dicen "Próximamente" (tarjeta bloqueada); el botón Habilidades avisa "Disponible en la versión completa"; el blackjack y las tragamonedas avisan "Disponible en el juego completo"; cosméticos: Corona, Gorro de lana, Remera y Capa **no se tienen de entrada: se ganan con los dados** (con 3 aciertos a veces uno común, con 4 casi siempre uno común o raro, con 5 uno raro o épico; `DiceGame.DEMO_COSMETICOS`); los demás salen con "?" y, al pasar el mouse, "Disponible en la versión completa"; personajes: Dante, Gaby, gatito (predeterminado) y perrito.
 - **Premios:** en la demo no salen los que no se pueden usar (`Items.DEMO_SIN_USO`: Mano de 23, Blackjack de oro, Rayos X, Giro de cortesía, Reflejos, Desarmar, Pozo del jackpot, Racha de la casa, Red de seguridad y Racha de visita), ni en la ruleta, ni en la vitrina, ni como premio de las pruebas; la prueba Todo o nada no cae antes del último casino (`Trials.draw_schedule`).
 - **Torres:** se arman en vivo como en el juego completo (la generación es instantánea); la demo no genera nada más allá de su última etapa.
-- **Guardado aparte:** `user://demo/` (perfil y partida): la demo no pisa los guardados del juego completo.
+- **Guardado aparte:** `user://demo/` (perfil, partida, opciones y telemetría): la demo no pisa ni comparte nada con el juego completo.
 - Título de la ventana: "Lucid Stakes — Demo".
 
 ## Construirla

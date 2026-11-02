@@ -55,7 +55,7 @@ func _init() -> void:
 	await _frames(14)
 	_foto("%s_2_no_rebobinar.png" % pref)
 	await _frames(70)
-	senal.mostrar(SenalPantalla.Tipo.CANDADO)
+	senal.mostrar(SenalPantalla.Tipo.CANDADO, Vector2(-1, -1), "Tragamonedas")
 	await _frames(12)
 	_foto("%s_3_candado.png" % pref)
 	await _frames(60)

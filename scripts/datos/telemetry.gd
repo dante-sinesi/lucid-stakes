@@ -53,7 +53,7 @@ static func clear() -> void:
 
 ## La carpeta donde quedan el archivo, los ajustes y los registros del juego.
 static func folder() -> String:
-	return ProjectSettings.globalize_path("user://")
+	return ProjectSettings.globalize_path(path.get_base_dir())   # (la de la telemetría: en la demo es la carpeta de la demo)
 
 
 static func open_folder() -> void:

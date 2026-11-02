@@ -95,15 +95,16 @@ func show_loss(reason: String, cost: int, can_afford := true, free := false, lif
 	if fast:
 		dim.color.a = DIM_ALPHA
 		box.modulate.a = 1.0
-		pass
+		hints.modulate.a = 1.0
 		return
 	dim.color.a = 0.0
 	box.modulate.a = 0.0
+	hints.modulate.a = 0.0   # (ni el motivo, ni los botones, ni la guía de teclas se ven antes de que el fundido termine: así no se pisan con la torre)
 	_tween = create_tween()
 	_tween.tween_interval(SHOW_DELAY)
 	_tween.tween_property(dim, "color:a", DIM_ALPHA, DIM_TIME).set_trans(Tween.TRANS_SINE)
-	_tween.parallel().tween_property(box, "modulate:a", 1.0, 0.7).set_delay(0.5)
-	_tween.tween_callback(func(): pass)
+	_tween.tween_property(box, "modulate:a", 1.0, 0.5)
+	_tween.parallel().tween_property(hints, "modulate:a", 1.0, 0.5)
 
 
 func hide_screen() -> void:
