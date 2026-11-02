@@ -187,6 +187,7 @@ def demo():
   <div class="fila"><small>700 · negrita cursiva</small><div class="lucid muestra" style="font-weight:700;font-style:italic">Escapa de la pesadilla, una torre a la vez 0123456789</div></div>
   <div class="fila"><small>Acentos, signos y símbolos</small><div class="lucid muestra">ÁÉÍÓÚ ÑÜ áéíóúñü ¿Quieres más? ¡Hola! (1/3) 50 % ∞ ✓ × +</div></div>
   <div class="fila"><small>Símbolos</small><div class="lucid muestra">$ — • … ★ ☆ ‹ › ▸ ← → ♥</div></div>
+  <div class="fila"><small>Más símbolos</small><div class="lucid muestra">@ # &amp; ° ~ { } ▲ ▼ ● ○ ■ □ ↑ ↓ ☰ “comillas” ‘simples’</div></div>
   <div class="fila"><small>Párrafo (22 px)</small><p class="lucid parrafo">Cada ficha es un pedazo de despertar. El peaje de Farolín se paga con claridad: mira el precio arriba a la izquierda, se pone azul cuando te alcanza.</p></div>
 </main>
 </body>
