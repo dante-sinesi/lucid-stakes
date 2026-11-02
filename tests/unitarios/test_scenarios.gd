@@ -133,9 +133,9 @@ func test_abilities_effects() -> void:
 	check(not Profile.grant_ability("pies_ligeros") and Profile.owned_abilities().size() == 4, "una habilidad se gana una sola vez")
 	var run := RunState.new()
 	Profile.apply_to_run(run)
-	check(run.claridad == 25 and run.movs_extra == 1 and run.meta_consumable_slots == 1 and is_equal_approx(run.restart_discount, 0.15), "las habilidades se aplican al empezar el run")
+	check(run.claridad == 50 and run.movs_extra == 3 and run.meta_consumable_slots == 1 and is_equal_approx(run.restart_discount, 0.15), "las habilidades se aplican al empezar el run")
 	check(run.consumable_capacity() == RunState.BASE_CONSUMABLES + 1 and run.restart_cost() == int(round(25 * 0.85)), "Bolsillo de soñador y Segunda oportunidad: un lugar mas y reintentos 15 % mas baratos")
-	check(RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict()))).movs_extra == 1, "los efectos se guardan con el run")
+	check(RunState.from_dict(JSON.parse_string(JSON.stringify(run.to_dict()))).movs_extra == 3, "los efectos se guardan con el run")
 	Profile.reset()
 
 

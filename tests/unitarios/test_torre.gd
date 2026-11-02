@@ -108,5 +108,16 @@ func _init() -> void:
 	var r = m.actuar(Vector3i(1, 0, 0))
 	_ok(r.ok and m.salto and m.purificados.has(id_k), "pisar un trampolín lo purifica, aunque salte")
 	_ok(m.ultimos_purificados.has("k") and m.ultimas_celdas_purificadas.has(cel_k), "...y cuenta como bloque purificado de esa acción (para la claridad)")
+	# deshacer devuelve sólo la mitad de lo que costó: dos deshacer de un movimiento, uno queda gastado
+	var t3 = Torre.armar(paquete, 11, 3, true, 3, "media")
+	var cam3: Array = t3.salas[0].d.camino
+	for k in 4:
+		t3.actuar(Vector3i(int(cam3[k][0]), 0, int(cam3[k][1])), int(cam3[k][2]))
+	var gastados: int = t3.movs
+	t3.deshacer()
+	_ok(t3.movs == gastados, "el primer deshacer no devuelve el movimiento (queda medio sin devolver)")
+	t3.deshacer()
+	_ok(t3.movs == gastados - 1, "el segundo devuelve uno: dos deshacer cuestan uno")
+	_ok(Torre.MARGEN_DIFICULTAD.media < 1.0 and Torre.MARGEN_DIFICULTAD.media > Torre.MARGEN_DIFICULTAD.dificil, "el margen de Medio es más justo que antes y más holgado que el de Difícil")
 	print("fallos: ", fallos)
 	quit(1 if fallos > 0 else 0)

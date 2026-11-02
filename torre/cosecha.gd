@@ -32,10 +32,7 @@ func aplicar_boosts(ids: Array) -> void:
 	perks = {}
 	for id in ids:
 		perks[id] = true
-	if perks.has("ahorro"):
-		banco += 20
-	if perks.has("bolsillo_de_luz"):
-		banco += 60
+	# (Ahorro y Bolsillo de luz dan claridad según la etapa: los suma la torre, que sabe en cuál está; ver `Torre.aplicar_boosts`)
 
 
 ## Cuánto multiplica la cosecha: Cosecha doble (x2), Cosecha (x1,5) y la Poción de cosecha (x2).

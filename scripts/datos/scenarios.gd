@@ -57,7 +57,7 @@ const ALL: Array[Dictionary] = [
 		"desc": "Las salas con especiales salen mucho más seguido.",
 		"abilities": ["mecha_larga"],
 		"pool": ["sin_ayudas", "todo_o_nada", "travesuras", "mareo", "corrupcion", "memoria_pez", "terremoto", "presupuesto", "solo_tres", "espalda_mala", "ventisca", "quebradizo", "a_oscuras", "pesadilla_despierta"],
-		"peso_especiales": 0.6},
+		"peso_especiales": 0.75},
 	{"id": "usurero", "name": "Usurero", "entry": 20, "luz_mult": 1.5,
 		"desc": "Farolín cobra un 40 % más, pero el casino paga más: ficha un 30 % más barata y premios un 25 % mayores.",
 		"abilities": ["buen_regateo"],

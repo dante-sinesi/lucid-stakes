@@ -440,6 +440,7 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	if con_dados:   # (una torre nueva: los reintentos de la anterior no cuentan; al rehacer la misma torre sí)
 		run.tower_retries = 0
 		run.claridad_inicio_torre = run.claridad   # (con esto cobran la Caja fuerte y la Alcancía al entrar al casino)
+		run.no_vistos_torre = BlockGuide.unseen_ids() if not training and tutorial_index < 0 else []   # (para presentar los especiales nuevos)
 	Music.play(_tower_music(stage_number))
 	_apply_stage_look()   # (el fondo y la luz se aclaran con la etapa)
 	generating = false
@@ -460,6 +461,8 @@ func _torre_arrancar(s: int, con_dados := false) -> void:
 	var reglas: Dictionary = run.scenario().duplicate()   # (las del escenario y, en la prueba Travesuras, la de Ama)
 	if trial.get("travesuras", false):
 		reglas["travesuras"] = true
+	if not training and tutorial_index < 0:
+		reglas["no_vistos"] = run.no_vistos_torre.duplicate()
 	reglas.merge(trial.get("reglas", {}), true)   # (las reglas de la prueba: Mareo, Terremoto, Presupuesto compartido... ver trials.gd)
 	torre.reglas = reglas
 	torre.pista_permitida = run.dificultad == "facil" and tutorial_index < 0 and not training
@@ -1665,8 +1668,8 @@ func _resumen_de_salida() -> void:
 	var filas := [
 		{"id": "interes", "nombre": Loc.t("Interés"), "valor": interes},
 		{"id": "", "nombre": Loc.t("Farolín te devuelve"), "valor": devuelto},
-		{"id": "ahorro", "nombre": Loc.t("Ahorro"), "valor": 20 if run.boosts.has("ahorro") else 0},
-		{"id": "bolsillo_de_luz", "nombre": Loc.t("Bolsillo de luz"), "valor": 60 if run.boosts.has("bolsillo_de_luz") else 0},
+		{"id": "ahorro", "nombre": Loc.t("Ahorro"), "valor": RunState.ahorro_inicial(mini(stage_number + 1, FINAL_STAGE)) if run.boosts.has("ahorro") else 0},
+		{"id": "bolsillo_de_luz", "nombre": Loc.t("Bolsillo de luz"), "valor": RunState.bolsillo_inicial(mini(stage_number + 1, FINAL_STAGE)) if run.boosts.has("bolsillo_de_luz") else 0},
 	]
 	casino.input_locked = true
 	resumen_claridad.mostrar(Loc.f("Empiezas la torre %d", [mini(stage_number + 1, FINAL_STAGE)]), run.claridad - interes - devuelto, filas)

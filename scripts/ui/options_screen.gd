@@ -27,6 +27,7 @@ var style_buttons := {}    # botones del mando que se dibujan: automático, Xbox
 var lang_buttons := {}      # código -> botón
 var mode_buttons := {}      # "window" / "fullscreen"
 var contrast_buttons := {}  # "box": la casilla
+var dalto_buttons := {}  # "box": la casilla del daltonismo
 var casino_cam_buttons := {}  # "sala" / "personaje"
 var panel_buttons := {}  # "mantener" / "alternar"
 var profundidad_buttons := {}  # 0 / 1 / 2
@@ -174,6 +175,9 @@ func _build_general(page: Control) -> void:
 	row = _row(Loc.t("Alto contraste"))
 	contrast_buttons["box"] = _casilla(row, "contraste", func(): _on_contrast(not bool(Settings.get_value("high_contrast"))))
 	_nota(row, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."))
+	row = _row(Loc.t("Daltonismo"))
+	dalto_buttons["box"] = _casilla(row, "daltonismo", func(): _on_dalto(not bool(Settings.get_value("daltonismo"))))
+	_nota(row, Loc.t("Azul y naranja en lugar de verde y rojo, y un símbolo sobre cada bloque especial, en el peaje y cuando quedan pocos movimientos."))
 	row = _row(Loc.t("Cámara del casino"))
 	group = ButtonGroup.new()
 	casino_cam_buttons["sala"] = _toggle(row, Loc.t("El casino"), group, "casino_cam_sala", _on_casino_cam.bind("sala"))
@@ -473,6 +477,7 @@ func reset_tab() -> void:
 		"general":   # (el idioma no se toca)
 			Settings.set_value("ui_scale", 100)
 			Settings.set_value("high_contrast", false)
+			Settings.set_value("daltonismo", false)
 			Settings.set_value("compass", true)
 			Settings.set_value("fondo_animado", true)
 			Settings.set_value("focus_frame", false)
@@ -526,6 +531,7 @@ func refresh() -> void:
 	fondo_buttons.box.checked = fa
 	var hc: bool = Settings.get_value("high_contrast")
 	contrast_buttons.box.checked = hc
+	dalto_buttons.box.checked = bool(Settings.get_value("daltonismo"))
 	var vs: bool = Settings.get_value("vsync")
 	vsync_buttons.box.checked = vs
 	var steps: int = Settings.get_value("volume")
@@ -654,6 +660,11 @@ func _on_ui_scale(dir: int) -> void:
 	var i := Settings.UI_SCALES.find(int(Settings.get_value("ui_scale")))
 	i = clampi((i if i >= 0 else 2) + dir, 0, Settings.UI_SCALES.size() - 1)
 	Settings.set_value("ui_scale", Settings.UI_SCALES[i])
+	refresh()
+
+
+func _on_dalto(on: bool) -> void:
+	Settings.set_value("daltonismo", on)
 	refresh()
 
 

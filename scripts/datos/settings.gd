@@ -34,6 +34,7 @@ static func defaults() -> Dictionary:
 		"fullscreen": false,
 		"resolution": [1280, 720],
 		"vsync": true,
+		"daltonismo": false,      # daltonismo: azul y naranja en lugar de verde y rojo, y un símbolo sobre cada bloque especial, en el peaje y en los movimientos que quedan pocos
 		"high_contrast": false,   # alto contraste: cartas oscuras de borde claro y la escena con más contraste y color
 		"ui_scale": 100,          # tamaño de la interfaz en porcentaje (ver UI_SCALES)
 		"focus_frame": false,     # marco blanco que titila alrededor del botón apuntado (ayuda con el mando; por defecto sólo las flechitas doradas)
@@ -71,6 +72,7 @@ static func _sanitize() -> void:
 	data.fullscreen = bool(data.fullscreen)
 	data.vsync = bool(data.vsync)
 	data.high_contrast = data.high_contrast is bool and data.high_contrast
+	data.daltonismo = data.daltonismo is bool and data.daltonismo
 	data.compass = not (data.compass is bool) or data.compass
 	if not ["sala", "personaje"].has(str(data.casino_camara)):
 		data.casino_camara = "sala"
@@ -125,7 +127,7 @@ static func set_value(key: String, value) -> void:
 			apply("vsync")
 		"compass", "fondo_animado":
 			pass   # (la rosa de los vientos y el fondo leen el ajuste cada cuadro)
-		"ui_scale", "high_contrast":
+		"ui_scale", "high_contrast", "daltonismo":
 			apply("ui")
 		_:
 			apply("window")
@@ -196,6 +198,7 @@ static func apply(what := "all") -> void:
 		if tree != null:
 			tree.root.content_scale_factor = float(int(data.ui_scale)) / 100.0
 			VDraw.high_contrast = high_contrast()
+			VDraw.daltonismo = bool(data.daltonismo)
 			tree.call_group("graphics", "apply_graphics")
 	if what == "all" or what == "window":
 		window_applies += 1

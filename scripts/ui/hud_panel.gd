@@ -55,8 +55,8 @@ func _init(with_stage := true) -> void:
 ## Los movimientos de la sala ("" lo oculta); `poco`: quedan pocos (se pone en rojo).
 func set_moves(text: String, poco := false) -> void:
 	moves_label.visible = text != ""
-	moves_label.text = text
-	moves_label.color = Color(1.0, 0.55, 0.45) if poco else Color(0.97, 0.95, 0.9)
+	moves_label.text = text + (" !" if poco and Draw.daltonismo else "")   # (con daltonismo, además del color, un signo de exclamación)
+	moves_label.color = Draw.color_mal() if poco else Color(0.97, 0.95, 0.9)
 
 
 ## Los movimientos en falso que quedan en la sala (`total` 0 lo oculta): un cubito rojo por cada uno, apagado el que ya se gastó.
@@ -68,8 +68,9 @@ func set_mistakes(left: int, total: int) -> void:
 ## El peaje de Farolín (0 lo oculta); `short`: te falta claridad para pagarlo.
 func set_toll(amount: int, short := false) -> void:
 	toll_label.visible = amount > 0
-	toll_label.text = Loc.f("Peaje %d", [amount])
-	toll_label.color = Color(1.0, 0.55, 0.45) if short else Color(0.55, 0.9, 0.4)
+	var simbolo := ("× " if short else "✓ ") if Draw.daltonismo else ""   # (con daltonismo, además del color, una tilde o una equis)
+	toll_label.text = simbolo + Loc.f("Peaje %d", [amount])
+	toll_label.color = Draw.color_mal() if short else Draw.color_bien()
 
 
 func _draw() -> void:
@@ -97,4 +98,4 @@ class _Pips extends Control:
 
 	func _draw() -> void:
 		for i in total:
-			D.cube(self, Vector2(float(i) * 26.0, 0.0), 20.0, Color(1.0, 0.28, 0.25) if i < left else Color(0.22, 0.12, 0.16), true)
+			D.cube(self, Vector2(float(i) * 26.0, 0.0), 20.0, (Color(1.0, 0.58, 0.1) if D.daltonismo else Color(1.0, 0.28, 0.25)) if i < left else Color(0.22, 0.12, 0.16), true)

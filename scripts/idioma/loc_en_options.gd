@@ -15,6 +15,8 @@ const TABLE := {
 	"El remolino que se mueve despacio detrás de la torre. Apagado, el fondo es un color liso.": "The slowly moving swirl behind the tower. When off, the background is a plain color.",
 	"Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha.": "Shows which axis each W, A, S and D key moves along, at the top right.",
 	"Alto contraste": "High contrast",
+	"Daltonismo": "Color blindness",
+	"Azul y naranja en lugar de verde y rojo, y un símbolo sobre cada bloque especial, en el peaje y cuando quedan pocos movimientos.": "Blue and orange instead of green and red, and a symbol over every special block, on the toll and when few moves are left.",
 	"Panel de información": "Information panel",
 	"Cámara del casino": "Casino camera",
 	"El casino": "The casino",
