@@ -53,7 +53,7 @@ const BITS_OBJETIVO := [[0.0, 12.0], [0.1, 20.0], [0.2, 32.0], [0.4, 58.0], [0.6
 const BITS_DEL_NIVEL := {"facil": 31.0, "media": 83.0, "dificil": 136.0, "pesadilla": 214.0}
 const PENDIENTE_DIFICULTAD := {"facil": [0.55, 0.0], "media": [1.0, 0.0], "dificil": [0.75, 0.25], "pesadilla": [0.5, 0.5]}
 ## Cuánto cambia el margen de movimientos de cada sala (el que pasa del mínimo).
-const MARGEN_DIFICULTAD := {"facil": 1.25, "media": 1.0, "dificil": 0.85, "pesadilla": 0.7}
+const MARGEN_DIFICULTAD := {"facil": 1.25, "media": 0.75, "dificil": 0.65, "pesadilla": 0.5}   # (Fácil no tiene límite: ese número no se usa)
 
 # --- la torre armada ---
 var salas: Array = []   # de cada sala: { d: sala ya girada, off: desplazamiento vertical, max_mov: movimientos, sim: simetría, id: id de la sala en el paquete }
@@ -83,6 +83,7 @@ var t0_sala := 0              # cuándo empezó el intento actual de la sala (ms
 var ultima_sala := {}         # lo que pasó en la última sala que terminó (superada o perdida): lo usa la telemetría
 var muerta := false           # (con las vidas del run) se perdió la sala y espera a que el juego decida: reintentar o salir
 var deshacer_pila: Array = []  # fotos de la sala actual antes de cada movimiento (para deshacer)
+var _deshacer_resto := 0      # deshacer devuelve la mitad de lo que costó el movimiento: si quedó medio movimiento sin devolver, se junta con el próximo
 const DESHACER_MAX := 600
 var ultima_caida := -1   # índice de la sala que acaba de caer por el checkpoint (para la animación)
 
@@ -728,6 +729,7 @@ func _entrar(i: int) -> void:
 	_temblores.clear()
 	t0_sala = Time.get_ticks_msec()
 	deshacer_pila.clear()
+	_deshacer_resto = 0
 	encendidos = {}
 	if perks.has("reflejos"):   # las bombas empiezan 3 movimientos más altas
 		for c in motor.bloques:
@@ -1011,7 +1013,10 @@ func deshacer() -> bool:
 	while not _temblores.is_empty() and int(_temblores[_temblores.size() - 1].en) > deshacer_pila.size():
 		_temblores.pop_back()   # (los temblores que vinieron después de la acción deshecha también se deshacen)
 	motor = f.motor
-	movs = int(f.movs)
+	var costo := movs - int(f.movs)   # (deshacer devuelve sólo la mitad de lo que costó: el medio movimiento que sobra se junta con el del próximo deshacer)
+	var mitades := costo + _deshacer_resto
+	movs = int(f.movs) + costo - mitades / 2
+	_deshacer_resto = mitades % 2
 	cosecha.restaurar(f.cosecha)
 	encendidos = f.encendidos
 	return true
