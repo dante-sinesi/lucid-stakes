@@ -20,10 +20,10 @@ const TIER_NAMES := {Items.Tier.EPICO: "Épico", Items.Tier.RARO: "Raro", Items.
 const TIER_ORDER: Array[int] = [Items.Tier.EPICO, Items.Tier.RARO, Items.Tier.COMUN, Items.Tier.CONSUMIBLE]
 const SECOND_SPIN := 0.2     # Segunda vuelta (boost): chance de que, si cae en una casilla común, la ruleta gire de nuevo sin costo
 
-static var base_price := 75   # (variables: el bot las cambia por variable de entorno)
+static var base_price := 50   # (variables: el bot las cambia por variable de entorno)
 ## La ficha sube PRICE_STEP por etapa. Una torre rinde, siguiendo el camino mínimo (medido con el bot, docs/economia.md), unos 230 de claridad en la etapa 1 y entre 400 y 490 desde la 4:
-## la ficha ronda un 20 % de eso desde la etapa 4.
-static var price_step := 6
+## la ficha ronda un 14 % de eso desde la etapa 4, y un giro (3 fichas) un 40-45 %: lo que sobra después del peaje alcanza para al menos un giro por visita.
+static var price_step := 4
 ## Las tres primeras etapas (la taberna) tienen la ficha más chica, para que después del peaje alcance para jugar: es esta fracción de la que daría la fórmula.
 static var chica_mult: Array = [0.45, 0.70, 0.72]
 ## Cuántas fichas cuesta un giro de la ruleta (se calibra para que el rendimiento medio ronde el 95 %: ver `expected_ratio`).

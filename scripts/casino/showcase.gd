@@ -8,8 +8,10 @@ const Roulette := preload("res://scripts/casino/roulette.gd")
 
 ## Cuántos premios muestra la vitrina por nivel.
 const COUNTS := {Items.Tier.EPICO: 3, Items.Tier.RARO: 4, Items.Tier.COMUN: 4, Items.Tier.CONSUMIBLE: 4}
-const SHOP_MARKUP := 1.3   # la tienda cobra esto por el costo esperado de conseguir el premio jugando (valor / rendimiento de la ruleta)
-const SHOP_RTP := 0.95
+## Lo que cuesta en la tienda un premio medio de cada nivel, en fichas (con la ficha de la etapa 4: unos 140, 280 y 560): el común entra siempre, el raro con algo de ahorro y el épico es una meta de dos o tres visitas.
+const SHOP_FICHAS := {Items.Tier.COMUN: 2.25, Items.Tier.RARO: 4.5, Items.Tier.EPICO: 9.0}
+const SHOP_REL_MIN := 0.75   # cuánto se corre el precio de cada premio según lo que vale respecto del medio de su nivel
+const SHOP_REL_MAX := 1.35
 const SHOP_TIERS: Array = [Items.Tier.EPICO, Items.Tier.RARO, Items.Tier.COMUN]   # una oferta de cada nivel (sólo boosts y consumibles, no bolsas)
 
 
@@ -124,9 +126,14 @@ static func pick(run, tier: int, rng: RandomNumberGenerator) -> Dictionary:
 	return p[p.size() - 1]
 
 
-## Lo que cuesta un premio en la tienda: su valor para la ficha de la etapa, dividido por lo que rinde la ruleta, con el recargo.
+## Lo que cuesta un premio en la tienda: las fichas de su nivel, algo más o menos según lo que vale ese premio respecto del medio de su nivel.
 static func shop_price(run, it: Dictionary) -> int:
-	return maxi(int(round(Items.value_of(it, Roulette.run_price(run)) / SHOP_RTP * SHOP_MARKUP)), 1)
+	var ficha := Roulette.run_price(run)
+	var tier := int(it.tier)
+	var base: float = float(SHOP_FICHAS.get(tier, 3.0)) * ficha
+	var medio := Items.mean_value(tier, ficha)
+	var rel := clampf(Items.value_of(it, ficha) / medio, SHOP_REL_MIN, SHOP_REL_MAX) if medio > 0.0 else 1.0
+	return maxi(int(round(base * rel)), 1)
 
 
 ## Las ofertas de la tienda de esta visita que no se compraron: [premio, ...].

@@ -91,7 +91,8 @@ func test_profile() -> void:
 	Profile._loaded_from = ""
 	Profile.load_profile()
 	check(Profile.luz() == 22 - 20 and Profile.has_ability("pies_ligeros") and int(Profile.data.runs) == 1, "el perfil se guarda y se carga")
-	# Archivo roto: se ignora
+	# Archivo roto (y sin copia anterior que lo salve): se ignora
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path + ".bak"))
 	var f := FileAccess.open(Profile.path, FileAccess.WRITE)
 	f.store_string("esto no es json {{{")
 	f = null

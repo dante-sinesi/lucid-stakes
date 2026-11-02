@@ -231,10 +231,10 @@ func test_roulette_statistics() -> void:
 func test_ficha_chica() -> void:
 	var viejo_base: int = Roulette.base_price
 	var viejo_paso: int = Roulette.price_step
-	Roulette.base_price = 75
-	Roulette.price_step = 6
-	check(Roulette.price(1) == 34 and Roulette.price(2) == 57 and Roulette.price(3) == 63, "la ficha de la taberna: 34, 57 y 63 (%d, %d, %d)" % [Roulette.price(1), Roulette.price(2), Roulette.price(3)])
-	check(Roulette.price(4) == 93 and Roulette.price(5) == 99, "desde la etapa 4 la ficha es la de la fórmula")
+	Roulette.base_price = 50
+	Roulette.price_step = 4
+	check(Roulette.price(1) == 23 and Roulette.price(2) == 38 and Roulette.price(3) == 42, "la ficha de la taberna: 23, 38 y 42 (%d, %d, %d)" % [Roulette.price(1), Roulette.price(2), Roulette.price(3)])
+	check(Roulette.price(4) == 62 and Roulette.price(5) == 66, "desde la etapa 4 la ficha es la de la fórmula")
 	check(Roulette.price(3) < Roulette.price(4) and Roulette.price(4) - Roulette.price(3) < 40, "no hay un salto grande al pasar al salón")
 	Roulette.base_price = viejo_base
 	Roulette.price_step = viejo_paso

@@ -174,6 +174,8 @@ func test_mundo_abierto() -> void:
 
 
 func test_usurero() -> void:
+	var escala: float = RunState.toll_scale
+	RunState.toll_scale = 1.0   # (las cuentas son relativas: sin la suba general del peaje)
 	var u = _run("usurero")
 	var n = _run("pesadilla")
 	check(u.toll_after_discounts(100) == 140 and n.toll_after_discounts(100) == 100, "Usurero: el peaje cuesta un 40 %% más (%d contra %d)" % [u.toll_after_discounts(100), n.toll_after_discounts(100)])
@@ -186,6 +188,7 @@ func test_usurero() -> void:
 	var n2 = _run("pesadilla")
 	Profile.apply_to_run(n2)
 	check(n2.toll_after_discounts(100) == 90, "Buen regateo vale en todos los escenarios (%d)" % n2.toll_after_discounts(100))
+	RunState.toll_scale = escala
 	var g := RunState.from_dict(u2.to_dict())
 	check(is_equal_approx(g.toll_meta_discount, 0.1), "Buen regateo se guarda y se carga")
 	# los premios de las mesas valen un 25 % más
