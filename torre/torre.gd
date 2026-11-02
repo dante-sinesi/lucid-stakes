@@ -26,6 +26,11 @@ const ETAPAS := 15
 const FILTRO_A := "A"
 const FILTRO_B := "B"
 const FILTRO_NINGUNO := "ninguno"
+const MUESTRA_SALAS := 1500   # cuántas candidatas se puntúan por sala al armar una torre
+static var _paquete_juego: Array = []   # la biblioteca del juego, ya leída (se lee una sola vez)
+static var _info_de: Array = []   # el paquete del que se calculó `_info_cache` (para reconocerlo)
+static var _info_n := 0
+static var _info_cache: Array = []
 static var filtro_sencillas := _filtro_por_omision()
 
 
@@ -304,9 +309,12 @@ static func decodificar_camino(texto: String) -> Array:
 
 ## El paquete de salas que viaja con el juego (data/salas_torre.jsonl); si no está, el de bibliotecas/ (desarrollo).
 static func cargar_paquete_del_juego() -> Array:
+	if not _paquete_juego.is_empty():   # (se lee una sola vez por partida: son más de 11 mil salas)
+		return _paquete_juego
 	var p := cargar_paquete("res://data/salas_torre.jsonl")
 	if p.is_empty():
 		p = cargar_paquete(ProjectSettings.globalize_path("res://bibliotecas/paquete_salas.jsonl"))
+	_paquete_juego = p
 	return p
 
 
@@ -367,11 +375,18 @@ static func angulo(r: Rect2i) -> float:
 	return atan2(r.position.y + r.size.y * 0.5 - 5.5, r.position.x + r.size.x * 0.5 - 5.5)
 
 
-## Datos de cada sala del paquete que no cambian al girarla: entrada, salida y huella.
+## Datos de cada sala del paquete que no cambian al girarla: entrada, salida y huella (y si es de bloques comunes y cuántos bloques distintos mueve, para no volver a mirarlo en cada búsqueda).
+## Se calcula una vez por paquete (el mismo arreglo): armar una torre no vuelve a recorrerlo.
 static func _info(paquete: Array) -> Array:
+	if _info_n == paquete.size() and is_same(_info_de, paquete):
+		return _info_cache
 	var out: Array = []
 	for d in paquete:
-		out.append({"d": d, "e": entrada_xz(d), "x": salida_xz(d), "r": huella(d)})
+		out.append({"d": d, "e": entrada_xz(d), "x": salida_xz(d), "r": huella(d), "base": str(d.get("categoria", "base")) == "base", "dist": int(d.get("distintos", 99)),
+				"pisos": int(d.get("pisos", int(d.meta) - 1))})
+	_info_de = paquete
+	_info_n = paquete.size()
+	_info_cache = out
 	return out
 
 
@@ -478,13 +493,15 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 	var p := progreso(i, int(ctx.n), int(ctx.etapa), str(ctx.dif)) if con_etapa else 0.0
 	var objetivo := bits_objetivo(p)
 	var orden: Array = []
+	var modo := filtro_sencillas
 	for k in info.size():
-		var d: Dictionary = info[k].d
+		var inf: Dictionary = info[k]
+		var d: Dictionary = inf.d
 		if ctx.usadas.has(int(d.id)):
 			continue
-		if i < 2 and str(d.get("categoria", "base")) != "base":
+		if i < 2 and not inf.base:
 			continue   # (las dos primeras salas son de bloques comunes)
-		if int(d.get("distintos", 99)) < minimo_distintos(int(d.get("pisos", int(d.meta) - 1))):
+		if int(inf.dist) < minimo_distintos(int(inf.pisos), modo):
 			continue   # (una escalera donde sólo hay que tirar de un bloque no es un puzzle: ver el filtro de salas sencillas)
 		if int(ctx.reglas.get("solo_bloques", -1)) >= 0 and (int(d.get("distintos", 99)) > int(ctx.reglas.solo_bloques) or int(d.get("distintos", 0)) < int(ctx.reglas.solo_bloques) - 1):
 			continue   # (Solo tres bloques: sólo salas cuya solución conocida mueve dos o tres bloques distintos: se pueden resolver con la regla y la regla se nota; con uno solo no cambiaría nada)
@@ -493,6 +510,13 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 		if bool(ctx.reglas.get("espalda_mala", false)) and int(d.get("agarres", 0)) < 4:
 			continue   # (Espalda mala: sólo salas en las que la solución empuja o tira al menos cuatro veces: si no, el doble costo casi no se nota)
 		orden.append(k)
+	if orden.size() > MUESTRA_SALAS:   # (con una biblioteca grande no se mira todo en cada sala: alcanza con una muestra al azar, de la que se eligen las más cercanas a lo que se busca)
+		for k in MUESTRA_SALAS:
+			var j := rng.randi_range(k, orden.size() - 1)
+			var tmp = orden[k]
+			orden[k] = orden[j]
+			orden[j] = tmp
+		orden.resize(MUESTRA_SALAS)
 	var buenas: Array = []
 	var otras: Array = []
 	if con_etapa:   # primero las más cercanas a lo que busca esta sala (con un poco de azar para que no salgan siempre las mismas)
