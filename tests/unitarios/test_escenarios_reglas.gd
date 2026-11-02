@@ -247,7 +247,7 @@ func test_arranque() -> void:
 	for e in main.torre.t.salas:
 		if str(e.d.get("categoria", "base")) != "base":
 			especiales += 1
-	check(float(main.torre.reglas.peso_especiales) == 0.6 and especiales > 0, "Mundo abierto: la etapa 1 trae salas con especiales (%d de %d)" % [especiales, main.torre.t.salas.size()])
+	check(float(main.torre.reglas.peso_especiales) == 0.75 and especiales > 0, "Mundo abierto: la etapa 1 trae salas con especiales (%d de %d)" % [especiales, main.torre.t.salas.size()])
 	main.start_game("compromiso", "dificil")
 	for i in 4:
 		await process_frame

@@ -45,6 +45,15 @@ static func for_kind(kind: int) -> Dictionary:
 	return {}
 
 
+## Los ids de los bloques todavía no descubiertos (sin el común): la torre los usa para presentar cada especial en una sala sencilla la primera vez.
+static func unseen_ids() -> Array:
+	var out: Array = []
+	for b in ALL:
+		if str(b.id) != "normal" and not Profile.has_block(str(b.id)):
+			out.append(str(b.id))
+	return out
+
+
 ## Los bloques todavía no descubiertos entre las letras de bloque de una sala (las del motor: n, h, i, c, t, s, k, b7...): [{guía}], uno por tipo y en el orden de la guía.
 static func newly_in_room(letters: Array) -> Array:
 	var out: Array = []

@@ -11,6 +11,8 @@ const Vista := preload("res://torre/vista.gd")
 const Motor := preload("res://torre/motor.gd")
 const Cosecha := preload("res://torre/cosecha.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
+const BlockGuide := preload("res://scripts/datos/block_guide.gd")
+const Tipos := preload("res://torre/tipos.gd")
 
 const LADO := 11
 static var rechazos_choque := 0   # (estadística: placements descartados porque la sala de arriba tapaba el camino de la de abajo)
@@ -26,6 +28,9 @@ const ETAPAS := 15
 const FILTRO_A := "A"
 const FILTRO_B := "B"
 const FILTRO_NINGUNO := "ninguno"
+## Cuánto se favorece (se resta de su distancia a lo que se busca) a las salas de cada especial que casi no salían, para que aparezcan en una torre de cada tantas.
+const BONO_CATEGORIA := {"pinchos": 0.05, "pesado": 0.09, "agrietado": 0.03}
+const BONO_COLGARSE := 0.3     # y a las salas cuyo camino se cuelga de un borde, hasta que la torre tenga una
 const MUESTRA_SALAS := 1500   # cuántas candidatas se puntúan por sala al armar una torre
 static var _paquete_juego: Array = []   # la biblioteca del juego, ya leída (se lee una sola vez)
 static var _info_de: Array = []   # el paquete del que se calculó `_info_cache` (para reconocerlo)
@@ -381,9 +386,26 @@ static func _info(paquete: Array) -> Array:
 	if _info_n == paquete.size() and is_same(_info_de, paquete):
 		return _info_cache
 	var out: Array = []
+	var id_de_letra := {}   # (la letra de cada especial -> su id de la guía de bloques)
+	for letra in Tipos.DE_LETRA:
+		var g := BlockGuide.for_kind(int(Tipos.DE_LETRA[letra]))
+		if not g.is_empty() and str(g.id) != "normal":
+			id_de_letra[letra] = str(g.id)
 	for d in paquete:
+		var ids := {}   # (los especiales que lleva la sala, por id de la guía de bloques)
+		for b in d.bloques:
+			var letra: String = str(b[3])
+			if letra.length() > 1:
+				letra = letra.substr(0, 1)
+			if id_de_letra.has(letra):
+				ids[id_de_letra[letra]] = true
+		var cuelga := false   # (algún paso del camino conocido es colgarse de un borde)
+		for a in d.camino:
+			if int(a[2]) == 2:
+				cuelga = true
+				break
 		out.append({"d": d, "e": entrada_xz(d), "x": salida_xz(d), "r": huella(d), "base": str(d.get("categoria", "base")) == "base", "dist": int(d.get("distintos", 99)),
-				"pisos": int(d.get("pisos", int(d.meta) - 1))})
+				"pisos": int(d.get("pisos", int(d.meta) - 1)), "ids": ids.keys(), "cuelga": cuelga})
 	_info_de = paquete
 	_info_n = paquete.size()
 	_info_cache = out
@@ -405,10 +427,10 @@ static func armar(paquete: Array, semilla: int, n := 6, espiral := true, etapa_r
 	var rng := RandomNumberGenerator.new()
 	rng.seed = semilla
 	var info := _info(paquete)
-	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral, "etapa": etapa_run, "dif": dificultad, "reglas": reglas}
+	var ctx := {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0 if rng.randf() < 0.5 else -1.0, "espiral": espiral, "etapa": etapa_run, "dif": dificultad, "reglas": reglas, "colgadas": 0, "presentadas": 0}
 	var ok := _extender(ctx, 0)
 	if not ok and espiral:
-		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false, "etapa": etapa_run, "dif": dificultad, "reglas": reglas}
+		ctx = {"rng": rng, "info": info, "n": n, "elegidas": [], "usadas": {}, "presupuesto": 6000, "sentido": 1.0, "espiral": false, "etapa": etapa_run, "dif": dificultad, "reglas": reglas, "colgadas": 0, "presentadas": 0}
 		ok = _extender(ctx, 0)
 	var t = load("res://torre/torre.gd").new()
 	t.etapa = etapa_run
@@ -521,8 +543,19 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 	var otras: Array = []
 	if con_etapa:   # primero las más cercanas a lo que busca esta sala (con un poco de azar para que no salgan siempre las mismas)
 		var puntuadas: Array = []
+		var no_vistos: Array = ctx.reglas.get("no_vistos", [])
+		var presentar: bool = i >= 2 and i <= 3 and int(ctx.presentadas) == 0 and not no_vistos.is_empty()   # (la presentación de un especial nuevo: en la tercera o cuarta sala)
+		var sin_colgar: bool = int(ctx.colgadas) == 0 and i >= 2   # (cada torre tiene al menos una sala en la que hay que colgarse: hacia el final se exige)
 		for k in orden:
-			puntuadas.append([distancia_a_objetivo(info[k].d, objetivo, p) + rng.randf() * 0.3, k])
+			var inf: Dictionary = info[k]
+			var punt := distancia_a_objetivo(inf.d, objetivo, p) + rng.randf() * 0.3
+			if i >= 2:
+				punt -= float(BONO_CATEGORIA.get(str(inf.d.get("categoria", "base")), 0.0))
+				if sin_colgar and inf.cuelga:
+					punt -= 5.0 if i >= int(ctx.n) - 2 else BONO_COLGARSE
+				if presentar and inf.ids.size() == 1 and no_vistos.has(inf.ids[0]) and str(inf.d.nivel) != "pesadilla":
+					punt -= 3.0 - 0.05 * float(inf.pisos)   # (una sala con un único especial, el desconocido; las más bajas primero)
+			puntuadas.append([punt, k])
 		puntuadas.sort_custom(func(x, y): return x[0] < y[0])
 		for x in puntuadas:
 			buenas.append(x[1])
@@ -587,8 +620,17 @@ static func _extender(ctx: Dictionary, i: int) -> bool:
 			aceptados += 1
 			ctx.elegidas.append({"d": g, "sim": s, "id": int(datos.d.id), "dx": dx, "dz": dz, "orig": datos.d})
 			ctx.usadas[int(datos.d.id)] = true
+			var cuelga: int = 1 if datos.cuelga else 0
+			var presenta := 0   # (esta sala lleva un especial que el jugador todavía no conocía)
+			for id in datos.ids:
+				if ctx.reglas.get("no_vistos", []).has(id):
+					presenta = 1
+			ctx.colgadas += cuelga
+			ctx.presentadas += presenta
 			if _extender(ctx, i + 1):
 				return true
+			ctx.colgadas -= cuelga
+			ctx.presentadas -= presenta
 			ctx.elegidas.pop_back()
 			ctx.usadas.erase(int(datos.d.id))
 			if ctx.presupuesto <= 0:
