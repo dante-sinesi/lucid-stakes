@@ -196,6 +196,8 @@ func _ready() -> void:
 		dice_always = false
 		block_discovery = false
 	Settings.apply()   # idioma, ventana, resolución y volumen del jugador
+	if Settings.primera_vez:
+		Graphics.autodetectar()   # la primera vez que se abre el juego, los gráficos se eligen según el equipo
 	for par in [["ui_up", KEY_W], ["ui_down", KEY_S], ["ui_left", KEY_A], ["ui_right", KEY_D]]:   # (en los menús también se navega con WASD)
 		var ev := InputEventKey.new()
 		ev.keycode = par[1] as Key

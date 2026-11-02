@@ -27,6 +27,55 @@ const CHOICES := {
 
 static var applies := 0   # las pruebas cuentan cuántas veces se puso en marcha
 
+## Tarjetas que se reconocen por el nombre que informa el controlador (en minúsculas).
+const GPU_SOFTWARE := ["llvmpipe", "swiftshader", "software", "microsoft basic", "basic render", "offscreen"]
+const GPU_DEDICADA := ["rtx", "gtx", "geforce", "radeon rx", "radeon pro", "quadro", "arc a", "arc(tm) a", "titan"]
+const GPU_DEDICADA_FLOJA := ["gt 7", "gt 6", "gt 5", "gt 1030", "mx1", "mx2", "gtx 6", "gtx 4", "gtx 5"]
+const GPU_INTEGRADA := ["intel", "uhd", "iris", "vega", "radeon(tm) graphics", "radeon graphics", "adreno", "mali", "apple", "vc4", "videocore"]
+const GPU_VIEJA := ["hd graphics"]   # (las Intel HD, de antes de las UHD)
+
+
+## El preajuste que le toca a un equipo: "alta", "media" o "baja".
+## `tipo` es el tipo de adaptador que informa Godot (0 otro, 1 integrada, 2 dedicada, 3 virtual, 4 por software); `ram_mb` es -1 si no se sabe.
+static func elegir_preajuste(nombre_gpu: String, tipo: int, nucleos: int, ram_mb: int) -> String:
+	var n := nombre_gpu.to_lower()
+	for m in GPU_SOFTWARE:
+		if n.contains(m):
+			return "baja"
+	if tipo == 3 or tipo == 4:
+		return "baja"
+	var flojo := nucleos <= 2 or (ram_mb >= 0 and ram_mb < 4000)
+	var dedicada := tipo == 2
+	for m in GPU_DEDICADA:
+		if n.contains(m):
+			dedicada = true
+	if dedicada:
+		for m in GPU_DEDICADA_FLOJA:
+			if n.contains(m):
+				return "baja" if flojo else "media"
+		return "media" if flojo else "alta"
+	var integrada := tipo == 1
+	for m in GPU_INTEGRADA:
+		if n.contains(m):
+			integrada = true
+	if integrada:
+		for m in GPU_VIEJA:
+			if n.contains(m) and not n.contains("uhd"):
+				return "baja"
+		return "baja" if flojo else "media"
+	return "baja" if flojo else "media"   # (una tarjeta que no se reconoce: se va a lo seguro)
+
+
+## Lee el equipo y elige el preajuste. Se llama una sola vez, la primera vez que se abre el juego.
+static func autodetectar() -> String:
+	Settings.primera_vez = false
+	if DisplayServer.get_name() == "headless":
+		return preset()
+	var ram := int(OS.get_memory_info().get("physical", -1))
+	var elegido := elegir_preajuste(RenderingServer.get_video_adapter_name(), int(RenderingServer.get_video_adapter_type()), OS.get_processor_count(), ram / 1048576 if ram > 0 else -1)
+	set_preset(elegido)
+	return elegido
+
 
 static func defaults() -> Dictionary:
 	var d: Dictionary = PRESET_VALUES.alta.duplicate()

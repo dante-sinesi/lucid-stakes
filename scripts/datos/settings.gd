@@ -21,6 +21,8 @@ static var _loaded := false
 static var headless_io := false
 ## Cuántas veces se tocó la ventana (modo y tamaño): las pruebas comprueban que cambiar el volumen no lo hace.
 static var window_applies := 0
+## Verdadero si al cargar no había archivo de ajustes: es la primera vez que se abre el juego (main.gd entonces elige los gráficos según el equipo).
+static var primera_vez := false
 
 
 static func _io() -> bool:
@@ -55,6 +57,7 @@ static func defaults() -> Dictionary:
 
 static func load_settings() -> void:
 	data = defaults()
+	primera_vez = _io() and not Seguro.existe(path)
 	if _io():
 		var parsed := Seguro.leer(path)   # (si el archivo está dañado, se usa la copia anterior)
 		for k in data:
