@@ -73,7 +73,7 @@ Una sala tiene 1 a 3 especiales según su altura (1 + (pisos − 3) // 9). Cada 
 - **Dificultad:** cada sala busca una complejidad en bits (`Torre.bits_objetivo`), una curva continua del progreso `p = f × 0,6 + (sala/(n − 1)) × 0,4 × (0,35 + 0,65 × f)`, con `f = (etapa − 1)/14` (dentro de la torre casi no se sube en las primeras etapas), corrido por la dificultad elegida (`PENDIENTE_DIFICULTAD`). Va de unos 12 bits en la primera sala de la etapa 1 a unos 190 en la última de la 15. De las salas que pueden entrar se prueban primero las más cercanas a ese objetivo, con un poco de azar (`Torre.distancia_a_objetivo`). Si no se puede encadenar una sala se pasa a la siguiente más cercana.
 - **Aprendizaje:** no hay topes duros: la misma distancia castiga con suavidad a las salas con más bloques distintos movidos que `1 + 14 p` o con más pasos mínimos que `9 + 90 p`, así que las primeras torres enseñan (pocos bloques, salas cortas) y los topes se aflojan solos, sin saltos.
 - **Especiales:** pueden salir en cualquier etapa (las dos primeras salas de cada torre son siempre comunes). El tabernero avisa la primera vez que se ve cada tipo. No hay salas con trampa: está descontinuada (ver `pendientes.md`).
-- Las salas salen del paquete `data/salas_torre.jsonl` (`herramientas/sumar_salas.py`): 2855 salas de 4 a 23 pisos. Las de más de 10 pisos se resolvieron por lonjas: su camino es válido pero puede no ser el más corto.
+- Las salas salen del paquete `data/salas_torre.jsonl` (`herramientas/sumar_salas.py`): 11505 salas de 4 a 23 pisos. Las de más de 10 pisos se resolvieron por lonjas: su camino es válido pero puede no ser el más corto.
 
 ## 9. Escenarios y pruebas
 
