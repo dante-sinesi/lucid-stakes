@@ -5,6 +5,8 @@ extends RefCounted
 const BlockModels := preload("res://scripts/personajes/block_models.gd")
 const Escena := preload("res://torre/escena.gd")
 const CuentaBomba := preload("res://torre/cuenta_bomba.gd")
+const MarcaEspecial := preload("res://torre/marca_especial.gd")
+const VDraw := preload("res://scripts/ui/voxel_draw.gd")
 const BlockArt := preload("res://scripts/personajes/block_art.gd")
 
 ## La etapa del run (0 = ninguna): decide cuánta corrupción tiene el arte de los bloques (block_art.gd). Lo pone torre_juego.gd antes de dibujar.
@@ -125,6 +127,8 @@ static func poblar(parent: Node3D, t, encendidos := {}, mostrar_referencia := tr
 			m.material_override = _material_brillo(tint, kind == 1, glow, energia) if energia > 0.0 else Escena.material(tint, kind == 1)
 		m.position = world_pos(c)
 		parent.add_child(m)
+		if VDraw.daltonismo and aspecto_juego and MarcaEspecial.tiene(letra):   # (daltonismo: cada especial lleva además su símbolo)
+			parent.add_child(MarcaEspecial.crear(c, letra, t.bloques.has(c + Vector3i(0, 1, 0))))
 		if letra.length() >= 2 and letra[0] == "b":
 			parent.add_child(_cuenta(c, int(letra.substr(1)), t.jugador, t.bloques.has(c + Vector3i(0, 1, 0))))
 			parent.add_child(_zona(c, t))

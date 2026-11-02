@@ -295,7 +295,7 @@ func _armar() -> void:
 	if d.has("falsos"):
 		_linea(Loc.f("Movimientos en falso: quedan %d de %d", [int(d.falsos.quedan), int(d.falsos.permitidos)]), 2.6, COLOR_TEXTO, "falsos")
 	if d.has("peaje"):
-		_linea(Loc.f("Peaje %s", [NumberFormat.fmt(int(d.peaje.precio))]), 3.0, COLOR_TEXTO if bool(d.peaje.alcanza) else ROJO, "peaje")
+		_linea(Loc.f("Peaje %s", [NumberFormat.fmt(int(d.peaje.precio))]), 3.0, COLOR_TEXTO if bool(d.peaje.alcanza) else Draw.color_mal(), "peaje")
 	if d.has("prueba"):
 		_separador()
 		_linea(Loc.t("Prueba"), 2.4, Color(0.85, 0.7, 0.3), "prueba_titulo")

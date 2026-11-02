@@ -16,6 +16,18 @@ const CORRUPT_B := Color(0.64, 0.22, 0.80)
 ## Corrupción por defecto de la interfaz (se puede cambiar según la etapa).
 static var default_corruption := 0.45
 ## Alto contraste (Opciones): cartas más oscuras y de borde blanco, sin ruido ni corrupción.
+static var daltonismo := false   # Opciones > General > Daltonismo: azul y naranja en lugar de verde y rojo (y símbolos que acompañan al color)
+
+
+## El color de "te alcanza" / "va bien" (verde; con daltonismo, azul) y el de "no alcanza" / "cuidado" (rojo coral; con daltonismo, naranja).
+static func color_bien() -> Color:
+	return Color(0.38, 0.68, 1.0) if daltonismo else Color(0.55, 0.9, 0.4)
+
+
+static func color_mal() -> Color:
+	return Color(1.0, 0.62, 0.12) if daltonismo else Color(1.0, 0.55, 0.45)
+
+
 static var high_contrast := false
 
 
