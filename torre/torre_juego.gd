@@ -64,7 +64,7 @@ var pivot: Node3D            # la cámara cuelga de un pivote que gira (yaw) y s
 var pitch_node: Node3D
 var yaw_target := 45.0
 var cam_pitch := PITCH
-var zoom := 9.0
+var zoom := 9.0 / ZOOM_FACTOR   # (un paso de zoom más cerca que antes: el personaje se veía chico)
 var gato: Node3D             # el personaje
 var gato_nodo: Node3D        # su posición y orientación
 var silueta: Node3D          # su silueta (se ve a través de los bloques que lo tapan)

@@ -206,6 +206,7 @@ const TABLE := {
 	"Componentes de terceros incluidos en el motor (nombre: licencias):\n": "Third-party components included in the engine (name: licenses):\n",
 	"\nLos textos completos de esas licencias están en https://godotengine.org/license y en el código fuente de Godot (COPYRIGHT.txt y LICENSE.txt).": "\nThe full texts of those licenses are at https://godotengine.org/license and in Godot's source code (COPYRIGHT.txt and LICENSE.txt).",
 	"¡Personaje nuevo!": "New character!",
+	"Lo eliges en el menú principal, en «Personaje».": "You pick it in the main menu, under “Personaje”.",
 	"Torre": "Tower",
 	"Dados": "Dice",
 	"Entras al casino": "You enter the casino",

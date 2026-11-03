@@ -24,7 +24,7 @@ func _init() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = false
 	band = ColorRect.new()
-	band.color = Color(0.02, 0.01, 0.05, 0.6)
+	band.color = Color(0.02, 0.01, 0.05, 0.82)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(band)
 	title_label = _make(3.0, Color(0.85, 0.7, 0.3))

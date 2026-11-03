@@ -2,6 +2,7 @@ extends SceneTree
 ## Pruebas de guardar y continuar: serializacion de torres y del run, archivo de guardado y el flujo completo en el juego.
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_save.gd
 
+const Demo := preload("res://scripts/datos/demo.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
 const SaveGame := preload("res://scripts/datos/save_game.gd")
 const Items := preload("res://scripts/datos/items.gd")
@@ -16,6 +17,7 @@ func check(cond: bool, label: String) -> void:
 
 
 func _init() -> void:
+	Demo.forced = 0   # (el juego completo: estas pruebas no valen para la demo, aunque se corran con GAME_DEMO=1)
 	SaveGame.path = "user://test_save.json"
 	SaveGame.delete()
 	test_run_roundtrip()

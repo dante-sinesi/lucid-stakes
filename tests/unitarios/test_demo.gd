@@ -43,7 +43,7 @@ func _init() -> void:
 
 func test_switch() -> void:
 	Demo.forced = -1
-	check(not Demo.on(), "sin el interruptor no es la demo")
+	check(Demo.on() == (OS.get_environment("GAME_DEMO") == "1"), "sin el interruptor del código, la demo se prende sólo con GAME_DEMO=1")
 	Demo.forced = 1
 	check(Demo.on() and Demo.LAST_STAGE == 6 and Demo.shown_final(15) == 6 and Demo.is_last_casino(6) and not Demo.is_last_casino(5) and not Demo.is_last_casino(2), "con el interruptor es la demo: dos etapas y el casino de la etapa 6 es el último")
 	Demo.forced = 0

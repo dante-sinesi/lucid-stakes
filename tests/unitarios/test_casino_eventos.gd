@@ -1,6 +1,7 @@
 extends SceneTree
 ## Los eventos aleatorios del casino (casino_eventos.gd): el casino torcido (sólo una mesa abierta) y el peaje por adelantado (Farolín cobra antes y devuelve una parte al salir).
 ## Uso: GAME_SANDBOX=1 godot --headless --path . -s tests/unitarios/test_casino_eventos.gd
+const Demo := preload("res://scripts/datos/demo.gd")
 const RunState := preload("res://scripts/datos/run_state.gd")
 const CasinoScene := preload("res://scripts/casino/casino_scene.gd")
 const Eventos := preload("res://scripts/casino/casino_eventos.gd")
@@ -15,6 +16,7 @@ func check(cond: bool, label: String) -> void:
 
 
 func _init() -> void:
+	Demo.forced = 0   # (el juego completo: estas pruebas no valen para la demo, aunque se corran con GAME_DEMO=1)
 	test_sorteo()
 	test_guardado()
 	await test_torcido()

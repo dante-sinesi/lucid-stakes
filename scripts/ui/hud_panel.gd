@@ -54,6 +54,7 @@ func _init(with_stage := true) -> void:
 
 ## Los movimientos de la sala ("" lo oculta); `poco`: quedan pocos (se pone en rojo).
 func set_moves(text: String, poco := false) -> void:
+	queue_redraw()
 	moves_label.visible = text != ""
 	moves_label.text = text + (" !" if poco and Draw.daltonismo else "")   # (con daltonismo, además del color, un signo de exclamación)
 	moves_label.color = Draw.color_mal() if poco else Color(0.97, 0.95, 0.9)
@@ -61,19 +62,31 @@ func set_moves(text: String, poco := false) -> void:
 
 ## Los movimientos en falso que quedan en la sala (`total` 0 lo oculta): un cubito rojo por cada uno, apagado el que ya se gastó.
 func set_mistakes(left: int, total: int) -> void:
+	queue_redraw()
 	mistakes.visible = total > 0
 	mistakes.set_state(left, total)
 
 
 ## El peaje de Farolín (0 lo oculta); `short`: te falta claridad para pagarlo.
 func set_toll(amount: int, short := false) -> void:
+	queue_redraw()
 	toll_label.visible = amount > 0
 	var simbolo := ("× " if short else "✓ ") if Draw.daltonismo else ""   # (con daltonismo, además del color, una tilde o una equis)
 	toll_label.text = simbolo + Loc.f("Peaje %d", [amount])
 	toll_label.color = Draw.color_mal() if short else Draw.color_bien()
 
 
+## ¿Hay algo que mostrar en la ventana? (si no, no se dibuja el marco: quedaba un recuadro punteado vacío)
+func hay_contenido() -> bool:
+	for h in get_children():
+		if h is CanvasItem and h.visible and h.get_combined_minimum_size().x > 0.0:
+			return true
+	return false
+
+
 func _draw() -> void:
+	if not hay_contenido():
+		return
 	# El marco es de cubitos, igual que el cuadro de diálogo y las pantallas (placa oscura con borde de piedra).
 	var r := Rect2(Vector2(-16, -14), size + Vector2(32, 28))
 	Draw.card(self, r, 5.0, 0, 0.06, 77, false, -1.0)

@@ -3,6 +3,7 @@ extends SceneTree
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_menus.gd
 
 
+const Demo := preload("res://scripts/datos/demo.gd")
 var fails := 0
 
 
@@ -13,6 +14,7 @@ func check(cond: bool, label: String) -> void:
 
 
 func _init() -> void:
+	Demo.forced = 0   # (el juego completo: estas pruebas no valen para la demo, aunque se corran con GAME_DEMO=1)
 	await test_start()
 	await test_pause_and_back()
 	await test_stage_look()

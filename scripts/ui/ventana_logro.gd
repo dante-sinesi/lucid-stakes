@@ -13,6 +13,7 @@ signal cerrado
 
 var titulo_label: Control
 var lista: VBoxContainer
+var donde_label: Control   # dónde se elige lo que se desbloqueó (una sola línea, no cambia nada de la partida)
 
 
 func _init() -> void:
@@ -38,6 +39,8 @@ func _init() -> void:
 	lista = VBoxContainer.new()
 	lista.add_theme_constant_override("separation", 14)
 	col.add_child(lista)
+	donde_label = UI.label(col, "Lo eliges en el menú principal, en «Personaje».", 3, Color(0.8, 0.76, 0.92), false)
+	donde_label.align = UI.VoxelLabel.Align.CENTER
 	PadHints.attach(self, [{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": Loc.t("Continuar"), "keycode": [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER], "call": cerrar}])
 
 

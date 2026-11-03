@@ -7,6 +7,7 @@ extends Control
 ## Uso: `mostrar(tipo)` (o `mostrar(tipo, punto)` para ponerla en un punto de la pantalla).
 
 const Draw := preload("res://scripts/ui/voxel_draw.gd")
+const Icons := preload("res://scripts/casino/casino_icons.gd")
 const VoxelLabel := preload("res://scripts/ui/voxel_label.gd")
 
 enum Tipo { REBOBINAR, NO_REBOBINAR, RECHAZO, CANDADO }
@@ -22,6 +23,7 @@ var _t := 1.0e9                   # segundos desde que apareció
 var _dur := 1.0
 var _tween: Tween
 var _rotulo: Control = null        # el nombre del juego bajo el candado
+var _juego := ""                   # el juego que falta (para dibujar su ícono junto al candado)
 
 
 func _init() -> void:
@@ -44,6 +46,7 @@ func _init() -> void:
 func mostrar(tipo: int, punto := Vector2(-1, -1), rotulo := "") -> void:
 	_tipo = tipo
 	_punto = punto
+	_juego = rotulo
 	_t = 0.0
 	_dur = 1.1 if tipo == Tipo.REBOBINAR or tipo == Tipo.NO_REBOBINAR else (1.6 if rotulo != "" else 0.9)
 	_rotulo.visible = tipo == Tipo.CANDADO and rotulo != ""
@@ -135,3 +138,23 @@ func _draw() -> void:
 					var p := origen + Vector2(x, y) * celda
 					draw_rect(Rect2(p + Vector2(2, 3), Vector2(celda, celda)), Color(0, 0, 0, 0.5))
 					Draw.cube(self, p, celda, Color(1.0, 0.85, 0.35) if y >= 4 else Color(0.75, 0.75, 0.82), true)
+			if _juego != "":
+				_icono_juego(c + Vector2(-92.0, 4.0) * pop, pop)
+
+
+## El ícono del juego que falta, a un lado del candado: tres rodillos para las tragamonedas, una carta para el blackjack.
+func _icono_juego(centro: Vector2, pop: float) -> void:
+	var u := 66.0 * pop
+	match _juego:
+		"Tragamonedas":
+			for i in 3:
+				var cc := centro + Vector2((i - 1) * (u * 0.62), 0.0)
+				draw_rect(Rect2(cc - Vector2(u * 0.28, u * 0.42), Vector2(u * 0.56, u * 0.84)), Color(0.08, 0.05, 0.14))
+				draw_rect(Rect2(cc - Vector2(u * 0.28, u * 0.42), Vector2(u * 0.56, u * 0.84)), Color(1.0, 0.85, 0.35), false, 2.0)
+				Icons.draw(self, ["cubo", "corona", "sol"][i], cc, u * 0.42)
+		"Blackjack":
+			var r := Rect2(centro - Vector2(u * 0.36, u * 0.5), Vector2(u * 0.72, u))
+			draw_rect(Rect2(r.position + Vector2(3, 4), r.size), Color(0, 0, 0, 0.5))
+			draw_rect(r, Color(0.97, 0.94, 0.86))
+			draw_rect(r, Color(1.0, 0.85, 0.35), false, 2.0)
+			Icons.draw(self, "sol", centro, u * 0.46)
