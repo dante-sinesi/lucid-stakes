@@ -17,18 +17,21 @@ const BLOCKED_TABLE := "Primero el portal de atrás, soñador. Después hablamos
 
 static func intro() -> Array:
 	return [
-		"Pasa, soñador. Qué cara... ¿es tu primera vez por aquí?",
-		"Esto es una pesadilla, la tuya, hecha con tus recuerdos. Y los recuerdos se corrompen.",
+		"Pasa, soñador. Esto es una pesadilla, la tuya, hecha con tus recuerdos.",
 		{"text": "Si llegaste hasta aquí es porque te queda claridad: lo que todavía no se corrompió.", "icon": "claridad"},
-		"Se sale devolviéndole claridad a tu pesadilla, torre por torre. No es fácil.",
-		"¿Ves ese portal de atrás? Cruza y te enseñaré cómo se anda por aquí.",
+		"Camina hasta el portal de atrás: ahí te enseñaré cómo se anda por aquí.",
 	]
+
+
+## La ayuda de teclas de la taberna: aparece cuando el tabernero termina de hablar, para que se sepa que se puede caminar antes de ir al portal.
+const INTRO_AYUDA := "Muévete con {?mover_adelante} {?mover_izquierda} {?mover_atras} {?mover_derecha}"
+## Cuántos pasos hay que dar en la taberna antes de que se marque el portal de atrás.
+const INTRO_PASOS := 5
 
 
 ## Lo que dice el tabernero en cada lección del tutorial (en su voz): sólo lore, sin hablar de teclas (la ayuda de arriba lo hace). Una tecla y se va.
 const LESSONS := {
-	"moverse": "Los recuerdos se corrompen, pero caminar no se olvida. Llega hasta el bloque dorado.",
-	"camara": "Algunas cosas se entienden mejor desde otro ángulo. Gira la vista.",
+	"camara": "Algunas cosas se entienden mejor desde otro ángulo. Gira la vista y encuentra el camino.",
 	"empujar": "Si el camino no alcanza, hay que moverlo. Empuja el bloque de enfrente: será tu primer escalón.",
 	"tirar": "Y si un bloque te estorba, también se arrastra: camina alejándote de él y se vendrá contigo.",
 	"colgarse": "Un borde no siempre es el final: agárrate de él y rodéalo.",
@@ -40,8 +43,7 @@ const LESSONS := {
 ## Lo que dice el tabernero cuando se abren los dados (se explica el juego y sus premios).
 static func dice_intro() -> Array:
 	return [
-		"¡Qué agilidad, soñador! Probemos tu suerte.",
-		"Tienes 5 dados. Elige el número que esperas en cada uno y tíralos: los que aciertan se quedan. Puedes tirar hasta 3 veces.",
+		"Tienes 5 dados: elige el número que esperas en cada uno y tíralos, hasta 3 veces. Los que aciertan se quedan.",
 		{"text": "Con dos aciertos ganas claridad. Con cinco, muchísima, y un cosmético.", "icon": "claridad"},
 	]
 
@@ -52,15 +54,12 @@ static func lesson_say(id: String, fallback := "") -> String:
 
 static func outro() -> Array:
 	return [
-		"¡Lo lograste, soñador! Ya sabes moverte, empujar, tirar, colgarte y soltarte. Con eso se sube cualquier torre.",
-		"Este salón es más claro que mi taberna, ¿verdad? Cada torre que superes te dará más claridad.",
-		"Aquí puedes probar suerte en la ruleta: cada giro te da un premio para las próximas torres. Solo te cobro claridad.",
-		"Y mira quién está en la puerta: Farolín.",
-		"Fue un soñador como tú. Se quedó cuidando la salida y, de tanto alumbrarla, terminó convertido en farol.",
-		"Su llama te muestra el camino a la próxima torre, y se paga con claridad. Fíjate en el precio arriba a la izquierda: se pone verde cuando te alcanza.",
-		"Si no te alcanza, puedes volver a subir la torre, pero cuesta una vida. Sin vidas, o pagas o todo se apaga.",
-		{"text": "Y esto que brilla también te lo deja la pesadilla. No sé para qué sirve, pero es lindo, ¿no?", "icon": "luz"},
-		"Eso es todo, soñador. Acércate a Farolín: te presto la claridad para tu primer peaje. ¡Y después, a despertar!",
+		"¡Lo lograste, soñador! Con eso se sube cualquier torre.",
+		"Este salón es más claro que mi taberna. Aquí puedes probar suerte en la ruleta: cada giro da un premio para las próximas torres.",
+		"Y en la puerta está Farolín: cuida la salida y su llama te muestra el camino a la próxima torre.",
+		"Se paga con claridad: mira el precio arriba a la izquierda, se pone verde cuando te alcanza. Si no te alcanza, subes la torre otra vez y te cuesta una vida.",
+		{"text": "Y esto que brilla también te lo deja la pesadilla. No sé para qué sirve, pero es lindo.", "icon": "luz"},
+		"Acércate a Farolín: te presto la claridad para tu primer peaje. ¡Y después, a despertar!",
 	]
 
 

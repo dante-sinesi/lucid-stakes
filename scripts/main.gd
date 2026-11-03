@@ -140,6 +140,7 @@ var fondo                   # el fondo con movimiento suave (fondo_animado.gd)
 var dialogue                 # cuadro de diálogo del tabernero (historia y consejos del tutorial)
 const TUTORIAL_TOLL := 25   # lo que cuesta el peaje de práctica del final del tutorial
 var _outro_phase := 0       # el cierre del tutorial: 0 el tabernero habla, 1 se camina hasta Farolín, 2 Farolín contesta y se termina
+var _pasos_taberna := 0     # tutorial: pasos dados en la taberna (el portal de atrás se marca después de unos cuantos)
 var story_kind := ""         # "intro" o "outro" mientras se está en una sala de historia del tutorial
 var tutorial_label: Control # cartel con la lección
 var block_discovery := true   # al llegar a la fila de un bloque nuevo, el tabernero lo explica (las pruebas lo apagan)
@@ -369,8 +370,11 @@ func _build_hud() -> void:
 	tutorial_label.y_offset = 14.0
 	tutorial_label.plate_alpha = 0.7
 	tutorial_label.visible = false
+	var capa_ayuda := CanvasLayer.new()   # (la ayuda de teclas va aparte de la interfaz de la partida: en la taberna ésta está oculta y igual hay que mostrar con qué teclas se camina)
+	capa_ayuda.layer = 5
+	add_child(capa_ayuda)
 	key_hint = KeyHint.new()
-	layer.add_child(key_hint)
+	capa_ayuda.add_child(key_hint)
 	pista_hint = KeyHint.new()
 	pista_hint.name = "pista"
 	pista_hint.offset_top = 6.0   # (más arriba que la ayuda del tutorial: el cartel de claridad sale justo debajo)
@@ -692,12 +696,6 @@ func _torre_ganada() -> void:
 			return
 	if training:   # (el tutorial: se festeja y pasa solo a la siguiente lección)
 		if tutorial_index >= 0:
-			if tutorial_locked():   # llegaste, pero te faltan las teclas de la lección: no se pasa
-				_senal_rechazo()   # (las teclas que faltan siguen grises arriba)
-				await get_tree().create_timer(1.2).timeout
-				if tutorial_index >= 0 and torre != null:
-					restart()   # (las teclas ya doradas se quedan así)
-				return
 			var idx := tutorial_index
 			banner.text = "¡Terminaste el tutorial!" if idx + 1 >= Tutorial.count() else "¡Bien!"
 			if not quick_portal:
@@ -1399,7 +1397,6 @@ func _tutorial_movimiento(accion: String, modo: int, agarre: String) -> void:
 	if tutorial_index < 0 or key_hint == null or not key_hint.visible:
 		return
 	key_hint.note(accion, modo, agarre)
-	_check_keys_complete()
 
 
 ## Se movió la cámara con una de las teclas de cámara (tutorial).
@@ -1407,15 +1404,6 @@ func _tutorial_camara(accion: String) -> void:
 	if tutorial_index < 0 or key_hint == null or not key_hint.visible:
 		return
 	key_hint.note_camera(accion)
-	_check_keys_complete()
-
-
-## Lecciones sin meta (la cámara): se completan al usar todas las teclas de la ayuda.
-func _check_keys_complete() -> void:
-	if tutorial_index < 0 or torre == null or not key_hint.visible:
-		return
-	if Tutorial.lessons()[tutorial_index].get("complete", "") == "keys" and key_hint.all_done():
-		_torre_ganada()
 
 
 ## Aviso de los personajes que se acaban de desbloquear.
@@ -2072,6 +2060,8 @@ func _open_story_room(stage: int, lines: Array, kind: String) -> void:
 	casino.setup(run, rng)
 	casino.input_locked = true   # no se camina mientras habla
 	casino.story_message.connect(_on_story_message)
+	casino.movida.connect(_on_taberna_movida)
+	_pasos_taberna = 0
 	casino.left.connect(_on_story_left)
 	_apply_casino_light()
 	dialogue.show_lines(lines, Story.SPEAKER, true)
@@ -2097,9 +2087,12 @@ func _on_dialogue_finished() -> void:
 			_keeper_choice = true
 			dialogue.show_choice(Loc.t("¿Quieres ver lo que tengo a la venta?"), [{"id": "tienda", "text": Loc.t("Ver la tienda"), "enabled": true}, {"id": "nada", "text": Loc.t("Nada, gracias"), "enabled": true}], Story.SPEAKER)
 		return
-	if story_kind == "intro" and casino != null:   # terminó de contar la historia: ahora hay que ir a la puerta de atrás
+	if story_kind == "intro" and casino != null:   # terminó de contar la historia: primero se aprende a caminar (la ayuda de teclas) y, después de unos pasos, se marca la puerta de atrás
 		casino.input_locked = false
-		casino.show_exit_arrow(true)
+		if _pasos_taberna >= Story.INTRO_PASOS:
+			casino.show_exit_arrow(true)
+		else:
+			key_hint.show_help(Story.INTRO_AYUDA, "move")
 	elif story_kind == "outro":
 		match _outro_phase:
 			0:   # terminó de hablar el tabernero: ahora a pagarle a Farolín (el tabernero presta la claridad)
@@ -2117,12 +2110,25 @@ func _on_dialogue_finished() -> void:
 		_show_lesson_help()
 
 
+## Se apretó una tecla de movimiento en la taberna: se doran las teclas de la ayuda y, tras unos pasos, se marca la puerta de atrás.
+func _on_taberna_movida(accion: String) -> void:
+	if story_kind != "intro" or casino == null or casino.input_locked:
+		return
+	_pasos_taberna += 1
+	if key_hint.visible:
+		key_hint.note(accion, 0, "")
+	if _pasos_taberna >= Story.INTRO_PASOS and key_hint.visible:
+		key_hint.clear()
+		casino.show_exit_arrow(true)
+
+
 ## Se empujó la puerta de atrás de la taberna: empiezan las lecciones.
 func _on_story_left() -> void:
 	if story_kind != "intro":
 		return
 	story_kind = ""
 	dialogue.hide_box()
+	key_hint.clear()
 	if casino != null:
 		casino.queue_free()
 		casino = null
@@ -2132,16 +2138,6 @@ func _on_story_left() -> void:
 	run.stage = 1
 	hud_layer.visible = true
 	await _load_lesson()
-
-
-## ¿Faltan teclas de la lección por usar? Entonces no se puede pasar a la siguiente (en las pruebas automáticas no rige).
-func tutorial_locked() -> bool:
-	return not test_mode and tutorial_locked_for_test()
-
-
-## (Para las pruebas: lo mismo que tutorial_locked pero sin la excepción del modo de pruebas.)
-func tutorial_locked_for_test() -> bool:
-	return key_hint != null and key_hint.visible and key_hint.has_keys() and not key_hint.all_done()
 
 
 ## El tabernero cuenta el lore de la lección (con cualquier tecla se va) y entonces aparece la ayuda con las teclas.
@@ -2171,7 +2167,7 @@ func _maybe_dice_intro() -> void:
 
 
 func _tutorial_next() -> void:
-	if tutorial_index < 0 or generating or tutorial_locked():
+	if tutorial_index < 0 or generating:
 		return
 	if tutorial_index + 1 >= Tutorial.count():
 		_open_story_room(Story.OUTRO_STAGE, Story.outro(), "outro")   # el tabernero te recibe en el salón de piedra

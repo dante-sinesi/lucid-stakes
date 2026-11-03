@@ -50,7 +50,7 @@ func test_texts() -> void:
 	var joined := ""
 	for l in intro:
 		joined += line_text(l) + "\n"
-	check(intro.size() >= 5 and joined.contains("pesadilla") and joined.contains("portal de atrás") and joined.contains("claridad"), "la bienvenida cuenta la pesadilla y manda al portal de atras")
+	check(intro.size() >= 3 and joined.contains("pesadilla") and joined.contains("portal de atrás") and joined.contains("claridad"), "la bienvenida cuenta la pesadilla y manda al portal de atras")
 	check(joined.find("portal de atrás") > joined.find("pesadilla"), "primero la historia y al final el portal")
 	for l in Story.outro():
 		var t := line_text(l)
@@ -148,7 +148,10 @@ func test_intro_flow() -> void:
 	while main.dialogue.is_active() and guard < 100:
 		main.dialogue.advance()
 		guard += 1
-	check(not main.dialogue.is_active() and not main.casino.input_locked and main.casino._arrow != null, "al terminar la historia se puede caminar y la puerta de atras esta marcada")
+	check(not main.dialogue.is_active() and not main.casino.input_locked and main.key_hint.visible and main.casino._arrow == null, "al terminar la historia se puede caminar y aparece la ayuda de WASD (la puerta todavía no se marca)")
+	for i in Story.INTRO_PASOS:
+		main._on_taberna_movida("mover_adelante")
+	check(main.casino._arrow != null and not main.key_hint.visible, "después de unos pasos se marca la puerta de atras y la ayuda se va")
 	# la ruleta todavia no se abre
 	main.casino.quick = true
 	main.casino.cell = Vector2i(2, 4)
@@ -165,7 +168,7 @@ func test_intro_flow() -> void:
 	while main.generating or main.torre == null or main.tutorial_index != 0:
 		await process_frame
 	check(main.casino == null and main.story_kind == "" and main.tutorial_index == 0 and main.hud_layer.visible, "al cruzar la puerta empiezan las lecciones")
-	check(main.dialogue.is_active() and main.dialogue.blocking and main.dialogue.any_key and str(main.dialogue.lines[0]) == Story.lesson_say("moverse"), "y la primera la explica el tabernero")
+	check(main.dialogue.is_active() and main.dialogue.blocking and main.dialogue.any_key and str(main.dialogue.lines[0]) == Story.lesson_say("camara"), "y la primera la explica el tabernero")
 	main.queue_free()
 	await process_frame
 	# Si el cuadro se salta con Esc, igual hay que ir a la puerta
@@ -173,7 +176,7 @@ func test_intro_flow() -> void:
 	await wait_tower(main)
 	main.start_tutorial()
 	main.dialogue.skip_all()
-	check(not main.casino.input_locked and main.casino._arrow != null, "saltear la historia tambien deja ir a la puerta")
+	check(not main.casino.input_locked and main.key_hint.visible, "saltear la historia tambien deja caminar y ver las teclas")
 	main.open_main_menu()   # volver al menu desde la taberna lo limpia todo
 	check(main.in_menu and main.casino == null and not main.dialogue.is_active() and main.story_kind == "" and not main.training, "volver al menu desde la taberna sale del tutorial")
 	main.queue_free()
