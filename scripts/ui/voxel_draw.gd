@@ -16,6 +16,9 @@ const CORRUPT_B := Color(0.64, 0.22, 0.80)
 ## Corrupción por defecto de la interfaz (se puede cambiar según la etapa).
 static var default_corruption := 0.45
 ## Alto contraste (Opciones): cartas más oscuras y de borde blanco, sin ruido ni corrupción.
+## El texto de cubitos chico (cubito de menos de 3) se agranda un 12 %: más legible, sin cambiar el estilo de la letra.
+const CUBO_CHICO_MULT := 1.12
+
 static var daltonismo := false   # Opciones > General > Daltonismo: azul y naranja en lugar de verde y rojo (y símbolos que acompañan al color)
 
 

@@ -112,7 +112,7 @@ class _Icon extends Control:
 		return key.split("|") if key != "" else PackedStringArray([""])
 
 	func _cap_width(text: String) -> float:
-		return maxf(26.0, ThemeDB.fallback_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 14.0)
+		return PadGlyph.ancho_tapa(text)
 
 	func refresh_size() -> void:
 		var w := 0.0

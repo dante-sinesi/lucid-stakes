@@ -2,6 +2,7 @@ extends SceneTree
 ## Pruebas de los idiomas, los ajustes y la pantalla de Opciones (headless).
 ## Ejecutar: tools/Godot_v4.7.2-stable_win64_console.exe --headless --path . -s tests/unitarios/test_options.gd
 
+const Seguro := preload("res://scripts/datos/archivo_seguro.gd")
 const Loc := preload("res://scripts/idioma/loc.gd")
 const Settings := preload("res://scripts/datos/settings.gd")
 const Graphics := preload("res://scripts/ui/graphics.gd")
@@ -87,7 +88,7 @@ func test_loc() -> void:
 func test_settings() -> void:
 	Settings.headless_io = true
 	Settings.path = "user://test_settings.json"
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(Settings.path))
+	Seguro.borrar(Settings.path)   # (también su copia .bak: si no, otra prueba deja ajustes que se cargan desde ahí)
 	Settings.load_settings()
 	check(Settings.lang() == "es" and not Settings.get_value("fullscreen") and Settings.resolution() == Vector2i(1280, 720) and Settings.volume_linear() == 1.0, "valores por defecto")
 	Settings.set_value("lang", "en")

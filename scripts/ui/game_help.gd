@@ -319,7 +319,7 @@ class _Rich extends Control:
 
 	static func _part_width(part: Dictionary) -> float:
 		if part.has("cap"):
-			return maxf(26.0, ThemeDB.fallback_font.get_string_size(str(part.cap), HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 14.0)
+			return PadGlyph.ancho_tapa(str(part.cap))
 		if part.has("slot"):
 			return 30.0
 		if part.has("simbolo"):

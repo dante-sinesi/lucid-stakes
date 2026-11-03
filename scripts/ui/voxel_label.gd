@@ -16,9 +16,10 @@ var text := "":
 			return
 		text = v
 		_dirty()
+## El tamaño del cubito. El texto chico (menos de 3) se dibuja un 12 % más grande que lo pedido: así no se ve fino (ver `Draw.CUBO_CHICO_MULT`).
 var cube := 3.0:
 	set(v):
-		cube = v
+		cube = v * Draw.CUBO_CHICO_MULT if v < 3.0 else v
 		_dirty()
 var color := Color(0.95, 0.93, 0.88):
 	set(v):
