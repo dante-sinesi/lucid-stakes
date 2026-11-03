@@ -55,7 +55,7 @@ class Tecla extends Control:
 			draw_rect(Rect2(Vector2(8, 6) + Vector2(c.x, c.y) * cubo, Vector2(cubo * 1.5, cubo)), Color(0.12, 0.08, 0.16))
 
 
-func _columna(titulo: String, nueva: bool) -> Control:
+func _columna(titulo: String, nueva: bool, cubo_n := 2.8, grosor_n := 1.5) -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 	var t := UI.label(col, titulo, 3.0, Color(1.0, 0.85, 0.4), false)
@@ -64,7 +64,8 @@ func _columna(titulo: String, nueva: bool) -> Control:
 		if nueva:
 			var n := Negrita.new()
 			n.texto = linea
-			n.cubo = 2.8
+			n.cubo = cubo_n
+			n.grosor = grosor_n
 			n.color = TEXTO
 			col.add_child(n)
 		else:
@@ -77,11 +78,13 @@ func _columna(titulo: String, nueva: bool) -> Control:
 		if nueva:
 			var k := Tecla.new()
 			k.texto = par[0]
-			k.cubo = 2.5
+			k.cubo = cubo_n
 			tira.add_child(k)
 			var n2 := Negrita.new()
 			n2.texto = par[1]
-			n2.cubo = 2.5
+			n2.cubo = cubo_n
+			n2.grosor = grosor_n
+			n2.color = Color(0.95, 0.93, 0.88)
 			tira.add_child(n2)
 		else:
 			var cap := Label.new()
@@ -99,15 +102,16 @@ func _columna(titulo: String, nueva: bool) -> Control:
 	# un párrafo largo, como el de una descripción
 	var parrafo := "Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color. Si te pasas tú, pierdes aunque él también se pase."
 	if nueva:
-		var lineas := VFont.wrap(parrafo, 150)
+		var lineas := VFont.wrap(parrafo, 100)
 		for ln in lineas:
 			var n3 := Negrita.new()
 			n3.texto = ln
-			n3.cubo = 2.8
+			n3.cubo = cubo_n
+			n3.grosor = grosor_n
 			n3.color = TEXTO
 			col.add_child(n3)
 	else:
-		UI.label(col, parrafo, 2.5, TEXTO, false, 420)
+		UI.label(col, parrafo, 2.5, TEXTO, false, 360)
 	return col
 
 
@@ -118,11 +122,12 @@ func _init() -> void:
 	fondo.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_child(fondo)
 	var fila := HBoxContainer.new()
-	fila.add_theme_constant_override("separation", 60)
+	fila.add_theme_constant_override("separation", 24)
 	fila.position = Vector2(40, 30)
 	root.add_child(fila)
 	fila.add_child(_columna("AHORA", false))
-	fila.add_child(_columna("PROPUESTA", true))
+	fila.add_child(_columna("SUAVE", true, 2.8, 1.0))
+	fila.add_child(_columna("MEDIA", true, 2.7, 1.25))
 	for i in 6:
 		await process_frame
 	root.get_texture().get_image().save_png(salida)
