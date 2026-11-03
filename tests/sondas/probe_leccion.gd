@@ -1,6 +1,6 @@
 extends SceneTree
 ## Sonda para diseñar lecciones del tutorial: resuelve una sala escrita en capas y dice si hace falta cada técnica.
-## Uso: GAME_SANDBOX=1 LECCION=moverse godot --headless --path . -s tests/sondas/probe_leccion.gd   (el id de una lección; o LECCION="capa1|capa2|..." con el dibujo)
+## Uso: GAME_SANDBOX=1 LECCION=camara godot --headless --path . -s tests/sondas/probe_leccion.gd   (el id de una lección; o LECCION="capa1|capa2|..." con el dibujo)
 ## Cada capa son filas separadas por "/" (la fila es z) y cada fila celdas separadas por "," (la celda es x); la primera capa es el nivel 1.
 const Tutorial := preload("res://scripts/datos/tutorial.gd")
 const Solucionador := preload("res://torre/solucionador.gd")

@@ -40,6 +40,7 @@ const ServiceScreens := preload("res://scripts/casino/casino_service_screens.gd"
 signal left
 signal roulette_opened
 signal changed   ## el run cambió (se jugó una tirada): hay que guardar
+signal movida(accion: String)   ## se apretó una tecla de movimiento (aunque el paso no se pudiera dar): el tutorial de la taberna cuenta los pasos
 signal story_message(text: String)   ## en el modo historia (tutorial): algo que el tabernero tiene para decir
 signal toll_talk   ## se llegó a la puerta de salida (o se habló con Farolín): el juego muestra su diálogo con las salidas (toll_dialog)
 signal keeper_talk(lines: Array)   ## se habló con el tabernero: lo que dice (el juego lo muestra en el cuadro de diálogo)
@@ -846,10 +847,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		"vista_derecha": rotate_camera(-1)
 		"zoom_mas": zoom_view(1.0 / ZOOM_FACTOR)
 		"zoom_menos": zoom_view(ZOOM_FACTOR)
-		"mover_adelante": step(_dir_for_screen(1, 1))
-		"mover_derecha": step(_dir_for_screen(1, -1))
-		"mover_atras": step(_dir_for_screen(-1, -1))
-		"mover_izquierda": step(_dir_for_screen(-1, 1))
+		"mover_adelante":
+			step(_dir_for_screen(1, 1))
+			movida.emit("mover_adelante")
+		"mover_derecha":
+			step(_dir_for_screen(1, -1))
+			movida.emit("mover_derecha")
+		"mover_atras":
+			step(_dir_for_screen(-1, -1))
+			movida.emit("mover_atras")
+		"mover_izquierda":
+			step(_dir_for_screen(-1, 1))
+			movida.emit("mover_izquierda")
 		"consumible_1": use_consumable_slot(0)
 		"consumible_2": use_consumable_slot(1)
 		"consumible_3": use_consumable_slot(2)
