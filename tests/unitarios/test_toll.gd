@@ -62,7 +62,7 @@ func _scene() -> void:
 	check(c.farolin_cell_free(), "la celda de Farolín está libre de muebles")
 	c.queue_free()
 	await process_frame
-	run.claridad = RunState.toll_for(3) + 7
+	run.claridad = run.toll_after_discounts(RunState.toll_for(3)) + 7   # (el peaje que cobra Farolín: el de la curva, con el multiplicador y los descuentos)
 	var c2 = CasinoScene.new()
 	c2.quick = true
 	c2.toll_base = RunState.toll_for(3)
@@ -94,7 +94,7 @@ func test_peaje_por_dificultad() -> void:
 		var r := RunState.new()
 		r.dificultad = dif
 		precios[dif] = r.toll_after_discounts(1000)
-	check(precios.media == 1000, "en Medio el peaje es el de la curva (%d)" % precios.media)
+	check(precios.media == int(round(1000.0 * RunState.toll_scale)), "en Medio el peaje es el de la curva por el multiplicador (%d)" % precios.media)
 	check(precios.facil < precios.media and precios.media < precios.dificil and precios.dificil < precios.pesadilla, "el peaje sube con la dificultad (%s)" % str(precios))
 
 

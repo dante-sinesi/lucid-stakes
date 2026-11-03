@@ -83,16 +83,16 @@ func _init() -> void:
 	_ok(main.torre.t.movs == 2, "dos movimientos hechos")
 	main.undo_move()
 	main.undo_move()
-	_ok(main.torre.t.movs == 0 and main.torre.t.motor.jugador == pos0 and main.torre.t.cosecha.claridad() == cl0, "deshacer dos veces vuelve al comienzo (jugador, movimientos y claridad)")
+	_ok(main.torre.t.movs == 1 and main.torre.t.motor.jugador == pos0 and main.torre.t.cosecha.claridad() == cl0, "deshacer dos veces vuelve al comienzo (jugador y claridad) y devuelve la mitad de los movimientos")
 	main.undo_move()
-	_ok(main.torre.t.movs == 0, "sin nada que deshacer no pasa nada")
+	_ok(main.torre.t.movs == 1 and main.torre.t.motor.jugador == pos0, "sin nada que deshacer no pasa nada")
 	# el mando entra como teclas: la acción 'mover_adelante' mueve y 'deshacer' deshace
 	var ev := InputEventKey.new()
 	ev.pressed = true
 	ev.keycode = main.Controls.key_of("deshacer")
 	main.torre.accion(Vector3i(int(cam1[0][0]), 0, int(cam1[0][1])), int(cam1[0][2]))
 	main.torre._input(ev)
-	_ok(main.torre.t.movs == 0, "la tecla de deshacer (la que reasigna Controles) deshace")
+	_ok(main.torre.t.motor.jugador == pos0, "la tecla de deshacer (la que reasigna Controles) deshace")
 	# consumible: Freno suma movimientos
 	main.run.consumables.append("freno")
 	var antes: int = main.torre.t.max_mov()
