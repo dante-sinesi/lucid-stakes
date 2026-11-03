@@ -16,7 +16,7 @@ const TABLE := {
 	"Muestra a qué eje va cada tecla W, A, S y D, arriba a la derecha.": "Shows which axis each W, A, S and D key moves along, at the top right.",
 	"Alto contraste": "High contrast",
 	"Daltonismo": "Color blindness",
-	"Azul y naranja en lugar de verde y rojo, y un símbolo sobre cada bloque especial, en el peaje y cuando quedan pocos movimientos.": "Blue and orange instead of green and red, and a symbol over every special block, on the toll and when few moves are left.",
+	"Lleva los verdes hacia el azul en toda la pantalla, usa azul y naranja en lugar de verde y rojo, y pone un símbolo sobre cada bloque especial, en el peaje y cuando quedan pocos movimientos.": "Shifts greens toward blue across the whole screen, uses blue and orange instead of green and red, and puts a symbol over every special block, on the toll and when few moves are left.",
 	"Panel de información": "Information panel",
 	"Cámara del casino": "Casino camera",
 	"El casino": "The casino",

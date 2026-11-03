@@ -135,6 +135,7 @@ var tutorial_forced := false   # primera vez: el tutorial no se puede dejar (la 
 var tutorial_index := -1    # lección del tutorial en curso (-1 = no se está en el tutorial)
 var dice                      # los dados del tabernero: el minijuego de la pantalla de carga
 var _sun: DirectionalLight3D
+var _dalto_filtro: ColorRect   # el filtro de daltonismo, sobre toda la pantalla (se ve sólo con la opción prendida)
 var fondo                   # el fondo con movimiento suave (fondo_animado.gd)
 var dialogue                 # cuadro de diálogo del tabernero (historia y consejos del tutorial)
 const TUTORIAL_TOLL := 25   # lo que cuesta el peaje de práctica del final del tutorial
@@ -216,6 +217,7 @@ func _ready() -> void:
 	_build_hud()
 	_build_menus()
 	Graphics.apply_global()   # sombras, escala de render, antialiasing y tope de cuadros del jugador
+	_build_dalto_filter()
 	_build_dev_console()
 	if test_mode:
 		SaveGame.path = "user://test_save.json"   # las pruebas no tocan la partida real
@@ -266,6 +268,8 @@ func _build_environment() -> void:
 
 ## Pone en marcha los gráficos del jugador en lo que es de esta escena (grupo "graphics"; ver graphics.gd).
 func apply_graphics() -> void:
+	if _dalto_filtro != null:
+		_dalto_filtro.visible = bool(Settings.get_value("daltonismo"))
 	if env != null:   # modo de lectura: la escena con más contraste y color
 		var contrast: bool = Settings.high_contrast()
 		env.adjustment_enabled = contrast
@@ -274,6 +278,22 @@ func apply_graphics() -> void:
 		env.adjustment_brightness = 1.05
 	if _sun != null:
 		Graphics.apply_to_sun(_sun)
+
+
+## Daltonismo: un filtro sobre toda la pantalla (la escena 3D, los menús y los diálogos) que lleva los verdes hacia el azul (`shaders/daltonismo.gdshader`).
+func _build_dalto_filter() -> void:
+	var capa := CanvasLayer.new()
+	capa.layer = 100
+	add_child(capa)
+	_dalto_filtro = ColorRect.new()
+	_dalto_filtro.name = "filtro_daltonismo"
+	_dalto_filtro.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dalto_filtro.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/daltonismo.gdshader")
+	_dalto_filtro.material = mat
+	capa.add_child(_dalto_filtro)
+	_dalto_filtro.visible = bool(Settings.get_value("daltonismo"))
 
 
 func _build_hud() -> void:

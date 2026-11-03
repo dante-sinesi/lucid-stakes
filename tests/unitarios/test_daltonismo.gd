@@ -75,7 +75,22 @@ func _init() -> void:
 		if str(c.name).begins_with("marca_"):
 			sin += 1
 	check(sin == 0, "apagado no hay marcas")
+	# el filtro sobre toda la pantalla: existe, arranca apagado y la opción lo prende y lo apaga
 	Settings.headless_io = false
 	Seguro.borrar("user://test_settings_dalto.json")
+	var sh = load("res://shaders/daltonismo.gdshader")
+	check(sh is Shader and sh.code.contains("hint_screen_texture"), "el filtro de daltonismo es un shader que lee la pantalla")
+	var principal = load("res://scenes/main.tscn").instantiate()
+	principal.test_mode = true
+	root.add_child(principal)
+	await process_frame
+	await process_frame
+	var filtro = principal.find_child("filtro_daltonismo", true, false)
+	check(filtro != null and filtro.material is ShaderMaterial and filtro.mouse_filter == Control.MOUSE_FILTER_IGNORE, "main arma el filtro, que no atrapa el mouse")
+	check(filtro != null and not filtro.visible, "con la opción apagada el filtro no se ve")
+	Settings.set_value("daltonismo", true)
+	check(filtro.visible, "al prender la opción el filtro se ve")
+	Settings.set_value("daltonismo", false)
+	check(not filtro.visible, "al apagarla, se va")
 	print("tests del daltonismo terminados, fallos: ", fallos)
 	quit(1 if fallos > 0 else 0)

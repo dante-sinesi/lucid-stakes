@@ -177,7 +177,9 @@ func _build_general(page: Control) -> void:
 	_nota(row, Loc.t("Cartas oscuras de borde claro, sin ruido, y la escena con más contraste y color."))
 	row = _row(Loc.t("Daltonismo"))
 	dalto_buttons["box"] = _casilla(row, "daltonismo", func(): _on_dalto(not bool(Settings.get_value("daltonismo"))))
-	_nota(row, Loc.t("Azul y naranja en lugar de verde y rojo, y un símbolo sobre cada bloque especial, en el peaje y cuando quedan pocos movimientos."))
+	dalto_buttons["muestra"] = _MuestraDalto.new()   # (un "bien" y un "mal" con los colores de ahora, para ver qué cambia)
+	row.add_child(dalto_buttons["muestra"])
+	_nota(row, Loc.t("Lleva los verdes hacia el azul en toda la pantalla, usa azul y naranja en lugar de verde y rojo, y pone un símbolo sobre cada bloque especial, en el peaje y cuando quedan pocos movimientos."))
 	row = _row(Loc.t("Cámara del casino"))
 	group = ButtonGroup.new()
 	casino_cam_buttons["sala"] = _toggle(row, Loc.t("El casino"), group, "casino_cam_sala", _on_casino_cam.bind("sala"))
@@ -532,6 +534,7 @@ func refresh() -> void:
 	var hc: bool = Settings.get_value("high_contrast")
 	contrast_buttons.box.checked = hc
 	dalto_buttons.box.checked = bool(Settings.get_value("daltonismo"))
+	dalto_buttons.muestra.queue_redraw()
 	var vs: bool = Settings.get_value("vsync")
 	vsync_buttons.box.checked = vs
 	var steps: int = Settings.get_value("volume")
@@ -774,6 +777,23 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## Barra de volumen: una fila de cubitos, dorados los encendidos.
+## La muestra de la opción de daltonismo: un cubo de "bien" con una tilde y uno de "mal" con una equis, con los colores y los símbolos de ahora.
+class _MuestraDalto extends Control:
+	func _init() -> void:
+		custom_minimum_size = Vector2(120, 34)
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var VFont := preload("res://scripts/ui/voxel_font.gd")
+		for k in 2:
+			var bien := k == 0
+			var o := Vector2(k * 62.0, 0.0)
+			Draw.cube(self, o + Vector2(0, 3), 28.0, Draw.color_bien() if bien else Draw.color_mal(), true)
+			for c in VFont.glyph_cells("✓" if bien else "×"):
+				draw_rect(Rect2(o + Vector2(6.5 + c.x * 3.0, 4.0 + (c.y - VFont.ACCENT_ROWS) * 3.0), Vector2(3, 3)), Color(0.1, 0.05, 0.15))
+
+
 class _Bar extends Control:
 	const D := preload("res://scripts/ui/voxel_draw.gd")
 	const Settings := preload("res://scripts/datos/settings.gd")
