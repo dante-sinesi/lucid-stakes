@@ -26,9 +26,9 @@ signal chosen(index: int)   ## se eligió una opción de `show_choice` (-1: se c
 const SPEED := 55.0          # letras por segundo
 const CUBE := 2.5            # lado de un cubito del texto
 const BOX_W := 1040.0
-const BOX_H := 210.0
+const BOX_H := 246.0
 const WHITE_TEXT := Color(0.97, 0.95, 0.9)
-const TEXT_CELLS := 330      # ancho máximo del texto, en celdas (unos 55 caracteres por renglón)
+const TEXT_CELLS := 290      # ancho máximo del texto, en celdas (unos 48 caracteres por renglón): con el cubito de 2,5 (que se dibuja de 2,8, ver `Draw.CUBO_CHICO_MULT`) llega justo antes del borde derecho del cuadro
 
 ## La cara del tabernero (12 x 13 cubitos): sombrero oscuro con cinta roja, bigote canoso, camisa blanca con chaleco.
 const FACE := ["....kkkk....", "....kkkk....", "....rrrr....", "..kkkkkkkk..", "...ssssss...", "..ssessess..", "..ssssssss..",
@@ -53,7 +53,7 @@ var _options: Array = []   # las salidas de una decisión: [{id, text, enabled}]
 var _opt_labels: Array = []
 var _opt_rects: Array[Rect2] = []
 var selected := 0
-const OPT_Y := 138.0
+const OPT_Y := 174.0   # (las opciones de una decisión van pegadas abajo del cuadro)
 const OPT_H := 52.0
 
 
