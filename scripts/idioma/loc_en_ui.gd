@@ -41,9 +41,7 @@ const TABLE := {
 	"Fallaste la prueba «%s»: %s.": "You failed the trial «%s»: %s.",
 	"Abandonaste la partida.": "You abandoned the game.",
 	"¡Escapaste de la pesadilla!": "You escaped the nightmare!",
-	"No te alcanza la claridad para reintentar la torre (cuesta %d).": "You don't have enough clarity to retry the tower (it costs %d).",
 	"Reintentar": "Retry",
-	"Reintentar (−%d de claridad)": "Retry (−%d clarity)",
 	"Salir al menú principal": "Exit to main menu",
 	"Abandonaste la prueba «%s» (no hay reintentos).": "You abandoned the trial «%s» (no retries).",
 	# --- reglas de la torre (tower_logic.gd) ---

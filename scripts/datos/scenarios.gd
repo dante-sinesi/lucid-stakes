@@ -40,7 +40,7 @@ const ALL: Array[Dictionary] = [
 		"lives": 1, "permadeath": true, "no_totem": true, "no_extra_life": true},
 	{"id": "gran_casino", "name": "Gran Casino", "entry": 30, "luz_mult": 1.4,
 		"desc": "Casino de lujo desde el principio y ficha más barata, pero torres más difíciles.",
-		"abilities": ["bolsillo_sonador", "segunda_oportunidad"],
+		"abilities": ["bolsillo_sonador"],
 		"pool": ["sin_ayudas", "todo_o_nada", "sin_racha", "travesuras", "mareo", "corrupcion", "memoria_pez", "terremoto", "presupuesto", "solo_tres", "espalda_mala", "ventisca", "quebradizo", "a_oscuras", "pesadilla_despierta"],
 		"casino_tier": 3, "price_mult": 0.8, "escalon": 1},
 	{"id": "relojeria", "name": "Relojería", "entry": 25, "luz_mult": 1.8,

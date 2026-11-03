@@ -51,7 +51,7 @@ Conclusiones:
   - **Boost "Caja fuerte"**: en cada casino.
   - **Consumible "Alcancía"**: una sola vez, con un porcentaje mayor.
 - Distinto del boost **Interés** que ya existe (la claridad que sobra *al salir* del casino crece 25 %, con tope): momento y base distintos. Los dos conviven.
-- **Cuidado:** reintentar ya **no cuesta claridad** (`restart_cost(true)` devuelve 0; cuesta una vida). Los textos de la Caja fuerte que dicen "mientras tanto no sirve para reintentar" ya no valen y no se copian.
+- **Cuidado:** reintentar ya **no cuesta claridad** (cuesta una vida; el costo en claridad se eliminó del todo). Los textos de la Caja fuerte que dicen "mientras tanto no sirve para reintentar" ya no valen y no se copian.
 
 ### El Taller
 - Se queda **solo en el segundo casino (el salón)**, como hasta ahora.

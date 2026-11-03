@@ -43,8 +43,6 @@ const TABLE := {
 	"Cada sala tiene 3 movimientos más.": "Every room has 3 more moves.",
 	"Bolsillo de soñador": "Dreamer's pocket",
 	"Un lugar más para consumibles.": "One more consumable slot.",
-	"Segunda oportunidad": "Second chance",
-	"Reintentar la torre cuesta 15 % menos.": "Retrying the tower costs 15% less.",
 	"Racha firme": "Firm streak",
 	"Mecha larga": "Long fuse",
 	"Buena letra": "Good word",

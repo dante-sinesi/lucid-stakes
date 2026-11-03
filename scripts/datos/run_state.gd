@@ -26,7 +26,7 @@ var casino_evento := {}   # el evento sorteado para el casino de esta etapa: {st
 var casino_spent := 0   # estadísticas del run
 var casino_won := 0
 var retries := 0          # reintentos de torre en todo el run
-var tower_retries := 0    # reintentos de la torre actual (cada uno cuesta más que el anterior)
+var tower_retries := 0    # reintentos de la torre actual (sólo para las estadísticas)
 var towers_cleared := 0
 var claridad_earned := 0  # claridad juntada en las torres superadas
 var moves := 0
@@ -37,7 +37,6 @@ var trial_schedule := {}          # etapa -> id de la prueba que toca (se sortea
 var price_mult := 1.0             # multiplicador del precio de la ficha (lo fija el escenario)
 var dice_pending := {"luz": 0, "cosmetics": []}   # la Luz y los cosméticos que dieron los dados: pasan al perfil recién al superar una torre (así no se pueden sacar empezando y cerrando)
 var meta_consumable_slots := 0   # mejoras permanentes del Despertar (ver profile.gd)
-var restart_discount := 0.0
 var movs_extra := 0               # movimientos de más en cada sala (Pies ligeros y la mejora Aire de más)
 var trials_cleared := 0   # pruebas (etapas especiales) superadas en este run
 var bonus_lives := 0       # corazones de más que dan las habilidades persistentes (Corazón extra)
@@ -54,10 +53,7 @@ var dados_semilla := 0         # la semilla de esos dados: salir y volver no sir
 var contratos := {}      # el tablón de contratos y los activos (contratos.gd); se guarda
 var sello_oro := false   # Sello de oro usado: el próximo contrato que se cobre paga ×5
 
-## Reintentar la torre cuesta claridad: la mitad de la ficha de la ruleta de la etapa, y un poco más por cada reintento
-## que ya hiciste en esta misma torre (el primero cuesta 1 vez, el segundo 2 veces, etc.).
 const MAX_LIVES := 3
-const RESTART_BASE := 25
 
 
 func scenario() -> Dictionary:
@@ -217,15 +213,7 @@ func next_trial_text(from_stage: int) -> String:
 	return Loc.f("Próxima prueba: %s (en %d etapa%s)", [Loc.t(n.trial.name), n.left, "" if n.left == 1 else "s"])
 
 
-## `dead`: se reintenta después de morir: no cuesta claridad (el costo ya es la vida que se pierde; el Tótem la salva). Reiniciar por voluntad sí cuesta.
-func restart_cost(dead := false) -> int:
-	if dead:
-		return 0
-	var base := (RESTART_BASE + 2 * maxi(stage - 1, 0)) * (1 + tower_retries)   # (la mitad de la ficha de la ruleta de esa etapa)
-	return maxi(int(round(base * (1.0 - restart_discount))), 1)
-
-
-## Reintentar la torre desde la pausa (por voluntad): cuesta una vida y no gasta claridad. false si no se puede (sin vidas o sin segundas oportunidades).
+## Reintentar la torre desde la pausa (por voluntad): cuesta una vida y no gasta claridad. false si no se puede (sin vidas o con muerte permanente).
 func pay_voluntary_retry() -> bool:
 	if permadeath() or lives <= 0:
 		return false
@@ -279,10 +267,6 @@ func add_life() -> bool:
 		return false
 	lives += 1
 	return true
-
-
-func can_afford_restart(dead := false) -> bool:
-	return can_afford(restart_cost(dead))
 
 
 func can_afford(n: int) -> bool:
@@ -382,7 +366,7 @@ func to_dict() -> Dictionary:
 	return {"stage": stage, "claridad": claridad, "boosts": boosts.duplicate(), "consumables": consumables.duplicate(),
 			"casino_spent": casino_spent, "casino_won": casino_won, "retries": retries, "tower_retries": tower_retries,
 			"towers_cleared": towers_cleared, "claridad_earned": claridad_earned, "moves": moves, "max_stage": max_stage, "trials_cleared": trials_cleared,
-			"meta_consumable_slots": meta_consumable_slots, "restart_discount": restart_discount, "movs_extra": movs_extra,
+			"meta_consumable_slots": meta_consumable_slots, "movs_extra": movs_extra,
 			"scenario_id": scenario_id, "dificultad": dificultad, "trial_schedule": _schedule_out(), "price_mult": price_mult, "dice_pending": dice_pending.duplicate(true),
 			"claridad_inicio_torre": claridad_inicio_torre, "no_vistos_torre": no_vistos_torre.duplicate(), "alcancia": alcancia, "dados_por_jugar": dados_por_jugar, "dados_semilla": dados_semilla, "contratos": contratos.duplicate(true), "sello_oro": sello_oro, "lives": lives, "bonus_lives": bonus_lives, "buena_letra": buena_letra, "buena_letra_usada": buena_letra_usada, "toll_meta_discount": toll_meta_discount, "toll_bribe": toll_bribe, "toll_adelanto": toll_adelanto, "casino_evento": casino_evento.duplicate(), "showcase": showcase.duplicate(true)}
 
@@ -416,7 +400,6 @@ static func from_dict(d: Dictionary) -> RefCounted:
 	r.max_stage = int(d.get("max_stage", 1))
 	r.trials_cleared = int(d.get("trials_cleared", 0))
 	r.meta_consumable_slots = int(d.get("meta_consumable_slots", 0))
-	r.restart_discount = float(d.get("restart_discount", 0.0))
 	r.movs_extra = int(d.get("movs_extra", 0))
 	r.scenario_id = str(d.get("scenario_id", "pesadilla"))
 	r.dificultad = str(d.get("dificultad", "media"))

@@ -15,7 +15,6 @@ func check(cond: bool, label: String) -> void:
 
 
 func _init() -> void:
-	test_cost()
 	await test_restart_flow()
 	await test_pause_menu()
 	await test_lost_menu()
@@ -37,21 +36,6 @@ func wait_tower(main: Node) -> void:
 	await process_frame
 	while main.generating or main.torre == null:
 		await process_frame
-
-
-func test_cost() -> void:
-	var r := RunState.new()
-	check(r.restart_cost() == 25, "etapa 1: reintentar cuesta 25 (la mitad de la ficha)")
-	r.stage = 8
-	check(r.restart_cost() == 39, "etapa 8: 25 + 2 por etapa")
-	r.stage = 15
-	check(r.restart_cost() == 53, "etapa 15: 53 (la mitad de la ficha de 106)")
-	r.tower_retries = 2
-	check(r.restart_cost() == 159, "cada reintento de la misma torre cuesta mas: el tercero sale 3 veces el basico")
-	r.claridad = 158
-	check(not r.can_afford_restart(), "con 158 no alcanza para 159")
-	r.claridad = 159
-	check(r.can_afford_restart(), "con 159 si")
 
 
 func test_restart_flow() -> void:

@@ -108,7 +108,7 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | La Pesadilla | Torres de bloques corruptos que se aclaran etapa a etapa. | Se puede jugar. Habilidades: Mente despejada, Ojos de gato, Racha firme |
 | El camino corto | Cada sala permite solo 2 movimientos en falso*; al tercero pierdes una vida. No se puede deshacer. * Movimiento en falso: movimiento que te deja a más pasos del final que antes. | Se puede jugar. Habilidades: Margen de error |
 | Compromiso | Una sola vida: si mueres, se termina. Los Tótems y las Vidas extra no funcionan. | Se puede jugar. Habilidades: Corazón extra |
-| Gran Casino | Casino de lujo desde el principio y ficha más barata, pero torres más difíciles. | Se puede jugar. Habilidades: Bolsillo de soñador, Segunda oportunidad |
+| Gran Casino | Casino de lujo desde el principio y ficha más barata, pero torres más difíciles. | Se puede jugar. Habilidades: Bolsillo de soñador |
 | Relojería | Cada sala da menos movimientos, pero la ficha es más barata. | Se puede jugar. Habilidades: Pies ligeros |
 | Contratista | Cuatro contratos activos a la vez, más papeles en cada visita y recompensas y fianzas un 50 % mayores. | Se puede jugar. Habilidades: Buena letra |
 | Mundo abierto | Las salas con especiales salen mucho más seguido. | Se puede jugar. Habilidades: Mecha larga |
@@ -124,7 +124,6 @@ Generado con `herramientas/catalogo.bat` a partir del código (no se edita a man
 | Margen de error | En El camino corto, cada sala permite un movimiento en falso más (3). | Se gana en: El camino corto |
 | Corazón extra | Una vida más en todas las partidas (4 corazones), salvo en Compromiso. | Se gana en: Compromiso |
 | Bolsillo de soñador | Un lugar más para consumibles. | Se gana en: Gran Casino |
-| Segunda oportunidad | Reintentar la torre cuesta 15 % menos. | Se gana en: Gran Casino |
 | Pies ligeros | Cada sala tiene 3 movimientos más. | Se gana en: Relojería |
 | Buena letra | Un contrato con fianza que falles por partida te devuelve la fianza. | Se gana en: Contratista |
 | Mecha larga | Las bombas empiezan con 3 movimientos más. | Se gana en: Mundo abierto |

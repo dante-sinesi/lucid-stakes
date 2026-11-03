@@ -59,7 +59,7 @@ func test_run() -> void:
 	# morir ya no cuesta claridad: la vida sí
 	var r2 := RunState.new()
 	r2.note_retry(true)
-	check(r2.lives == 2 and r2.restart_cost(true) == 0, "morir gasta la vida y no cuesta claridad")
+	check(r2.lives == 2, "morir gasta la vida")
 
 
 func test_item() -> void:
@@ -165,7 +165,6 @@ func test_compromiso() -> void:
 	check(c.max_lives() == 1 and c.lives == 1 and c.permadeath() and not c.can_revive(), "en Compromiso: una sola vida y no se revive (aunque tengas el Corazón extra)")
 	c.consumables.assign(["totem", "vida_extra"])
 	check(c.item_blocked("totem") and c.item_blocked("vida_extra") and not c.item_blocked("freno"), "los Tótems y las Vidas extra no sirven")
-	check(not c.can_revive() and c.restart_cost() > 0, "ni el Tótem revive; reiniciar por voluntad sigue costando")
 	c.lives = 0
 	check(not c.add_life(), "no se pueden recuperar vidas")
 	# la ruleta no regala lo que el escenario inhabilita

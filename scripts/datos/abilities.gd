@@ -15,7 +15,6 @@ const ALL: Array[Dictionary] = [
 	{"id": "margen_de_error", "name": "Margen de error", "desc": "En El camino corto, cada sala permite un movimiento en falso más (3)."},
 	{"id": "corazon_extra", "name": "Corazón extra", "desc": "Una vida más en todas las partidas (4 corazones), salvo en Compromiso."},
 	{"id": "bolsillo_sonador", "name": "Bolsillo de soñador", "desc": "Un lugar más para consumibles."},
-	{"id": "segunda_oportunidad", "name": "Segunda oportunidad", "desc": "Reintentar la torre cuesta 15 % menos."},
 	{"id": "pies_ligeros", "name": "Pies ligeros", "desc": "Cada sala tiene 3 movimientos más."},
 	{"id": "buena_letra", "name": "Buena letra", "desc": "Un contrato con fianza que falles por partida te devuelve la fianza."},
 	{"id": "mecha_larga", "name": "Mecha larga", "desc": "Las bombas empiezan con 3 movimientos más.", "perk": "reflejos"},
@@ -49,8 +48,6 @@ static func apply_to_run(run, owned: Array) -> void:
 				run.movs_extra += 3
 			"bolsillo_sonador":
 				run.meta_consumable_slots += 1
-			"segunda_oportunidad":
-				run.restart_discount += 0.15
 			"corazon_extra":
 				run.bonus_lives += 1
 			"buena_letra":

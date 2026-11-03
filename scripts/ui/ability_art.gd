@@ -16,9 +16,6 @@ const ART := {
 	"bolsillo_sonador": {   # una bolsita con su cordón
 		"pal": {"r": Color(0.8, 0.15, 0.2), "p": Color(0.5, 0.32, 0.75), "a": Color(1.0, 0.85, 0.3)},
 		"rows": ["...rrr...", "....r....", "..ppppp..", ".ppppppp.", "pppaaappp", "pppaaappp", "ppppppppp", ".ppppppp.", "..ppppp.."]},
-	"segunda_oportunidad": {   # una flecha que da la vuelta
-		"pal": {"g": Color(0.35, 0.75, 0.45), "a": Color(0.75, 1.0, 0.8)},
-		"rows": ["..gggg.a.", ".gg...aaa", "gg.....a.", "g.......g", "g.......g", "gg.....gg", ".gg...gg.", "..ggggg..", "........."]},
 	"racha_firme": {   # una llama
 		"pal": {"o": Color(1.0, 0.45, 0.1), "y": Color(1.0, 0.8, 0.2), "w": Color(1.0, 1.0, 0.8)},
 		"rows": ["....o....", "...oo....", "..ooyo...", "..oyyoo..", ".ooyyyoo.", ".oyywyyo.", ".oyywwyo.", "..oyyyo..", "...ooo..."]},

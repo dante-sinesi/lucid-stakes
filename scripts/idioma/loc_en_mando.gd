@@ -26,7 +26,6 @@ const TABLE := {
 	"Entrar": "Enter",
 	"Información": "Info",
 	"Agrégalo a tu lista de deseos": "Add it to your wishlist",
-	"Terminar la partida": "End the game",
 	"Dado": "Die",
 	"Número": "Number",
 	"Generando la torre...": "Generating the tower...",

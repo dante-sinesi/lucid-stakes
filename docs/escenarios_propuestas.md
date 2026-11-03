@@ -29,7 +29,7 @@ Los tres niveles usan la misma curva de niveles de las salas (`PENDIENTE_DIFICUL
 |---|---|---|---|---|---|
 | El camino corto | 2 movimientos en falso por sala (Sin piedad, con otro nombre); no se deshace | 25 | ×2,0 | Margen de error | implementado |
 | Compromiso | una sola vida; sin Tótem ni Vidas extra | 35 | ×2,2 | Corazón extra | implementado |
-| Gran Casino | casino de lujo desde el principio y ficha más barata; torres más difíciles | 30 | ×1,4 | Bolsillo de soñador, Segunda oportunidad | implementado |
+| Gran Casino | casino de lujo desde el principio y ficha más barata; torres más difíciles | 30 | ×1,4 | Bolsillo de soñador | implementado |
 | Relojería | menos movimientos por sala; ficha más barata | 25 | ×1,8 | Pies ligeros | implementado |
 | Contratista | el tablón manda: más contratos, fianzas y recompensas mayores | 20 | ×1,5 | Buena letra | implementado |
 | Mundo abierto | todos los especiales se habilitan desde la etapa 1 | 30 | ×2,0 | Mecha larga | implementado |
@@ -42,7 +42,7 @@ Es el escenario de la **precisión**: el mejor camino de cada sala es el que mid
 Una sola vida y no valen el Tótem ni las Vidas extra: perder una sala termina el run. Es el más duro y el más cercano a la muerte permanente. Ya está en el código (`lives: 1`, `permadeath`, `no_totem`, `no_extra_life`). Pruebas: Sin ayudas, Sin racha. Habilidad: **Corazón extra** (una vida más en todas las partidas, 4 corazones; no cuenta en Compromiso). *Falta:* la habilidad (`Abilities.PENDING`) y reescribir el texto del escenario.
 
 ### Gran Casino
-El casino es de lujo desde el principio (`casino_tier: 3`) y la ficha cuesta un 20 % menos (`price_mult: 0.8`), pero las torres son más difíciles: toda la curva de niveles corre un escalón por encima de la dificultad elegida (con tope en Pesadilla). Pruebas: Sin ayudas, Todo o nada, Sin racha. Habilidades: **Bolsillo de soñador** (un lugar más para consumibles) y **Segunda oportunidad** (reintentar la torre cuesta un 15 % menos). *Falta:* el corrimiento de dificultad por escenario y las dos habilidades.
+El casino es de lujo desde el principio (`casino_tier: 3`) y la ficha cuesta un 20 % menos (`price_mult: 0.8`), pero las torres son más difíciles: toda la curva de niveles corre un escalón por encima de la dificultad elegida (con tope en Pesadilla). Pruebas: Sin ayudas, Todo o nada, Sin racha. Habilidad: **Bolsillo de soñador** (un lugar más para consumibles). *Falta:* el corrimiento de dificultad por escenario.
 
 ### Relojería
 Cada sala da menos movimientos: el margen por sobre el mínimo (el factor y los movimientos extra de `Torre.max_movimientos`) se reduce a la mitad, a la manera de `MARGEN_DIFICULTAD`. A cambio, la ficha de la ruleta es más barata (×0,75, ya soportado). Pruebas: Todo o nada, Sin racha. Habilidad: **Pies ligeros** (cada sala tiene un movimiento más). *Falta:* un `MARGEN_ESCENARIO` junto a `MARGEN_DIFICULTAD`, y la habilidad.
@@ -63,7 +63,6 @@ Farolín cobra un 40 % más en cada peaje, pero el casino paga más: la ficha cu
 | Margen de error | un movimiento en falso más en El camino corto (3 en lugar de 2) | El camino corto (ya existe) |
 | Corazón extra | una vida más en todas las partidas | Compromiso |
 | Bolsillo de soñador | un lugar más para consumibles | Gran Casino |
-| Segunda oportunidad | reintentar la torre cuesta un 15 % menos | Gran Casino |
 | Pies ligeros | cada sala tiene un movimiento más | Relojería |
 | Buena letra | un contrato fallido por run devuelve su fianza | Contratista (nueva) |
 | Mecha larga | las cuentas de las bombas empiezan 3 movimientos más altas | Mundo abierto |

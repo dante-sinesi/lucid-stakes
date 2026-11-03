@@ -31,7 +31,7 @@ func _init() -> void:
 	var lost = load("res://scripts/ui/lost_screen.gd").new()
 	root.add_child(lost)
 	lost.fast = true
-	lost.show_loss("Caíste al vacío", 0, true, false, true, 2)
+	lost.show_loss("Caíste al vacío", false, 2)
 	await _frames(20)
 	root.get_viewport().get_texture().get_image().save_png("%s_2_derrota.png" % pref)
 	quit()

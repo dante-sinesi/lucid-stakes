@@ -1,6 +1,6 @@
 extends Control
 ## Pantalla de derrota de una torre: el fondo se va tiñendo de oscuro de a poco, aparece el motivo ("Caíste al vacío") y dos botones:
-## Reintentar (con su costo en claridad) y Salir al menú principal. Si no alcanza la claridad para reintentar, el botón pasa a "Terminar la partida".
+## Reintentar (cuesta una vida; con un Tótem no) y Salir al menú principal.
 ## `retry` y `menu` avisan a main.gd; la tecla R sigue valiendo como atajo (ver Main.request_restart).
 
 const UI := preload("res://scripts/ui/menu_ui.gd")
@@ -62,30 +62,16 @@ func _init() -> void:
 	hints = PadHints.attach(self, [], [retry_button, menu_button])
 
 
-## Muestra la derrota. `reason`: lo que pasó (ya traducido). `cost`: lo que cuesta reintentar; `free`: el reintento no cuesta (tutorial);
-## `can_afford`: alcanza la claridad.
-func show_loss(reason: String, cost: int, can_afford := true, free := false, life := false, lives_left := -1) -> void:
+## Muestra la derrota. `reason`: lo que pasó (ya traducido). `free`: el reintento no cuesta la vida (un Tótem te salva); `lives_left`: las vidas que quedan (-1 no se dice).
+func show_loss(reason: String, free := false, lives_left := -1) -> void:
 	title_label.text = reason
-	if life:   # (la torre: reintentar la sala cuesta una vida; con un Tótem no cuesta)
-		retry_button.set_label(Loc.t("Reintentar (−1 vida)") if not free else Loc.t("Reintentar"))
-		if free:
-			hint_label.text = Loc.t("Vuelves a empezar la sala; el Tótem te salva la vida.")
-		elif lives_left >= 0:
-			hint_label.text = Loc.f("Vuelves a empezar la sala. Vidas que te quedan: %d.", [lives_left])
-		else:
-			hint_label.text = ""
-	elif free:
-		retry_button.set_label(Loc.t("Reintentar"))
-		hint_label.text = ""
-	elif cost == 0:
-		retry_button.set_label(Loc.t("Reintentar"))
-		hint_label.text = ""
-	elif can_afford:
-		retry_button.set_label(Loc.f("Reintentar (−%d de claridad)", [cost]))
-		hint_label.text = ""
+	retry_button.set_label(Loc.t("Reintentar (−1 vida)") if not free else Loc.t("Reintentar"))
+	if free:
+		hint_label.text = Loc.t("Vuelves a empezar la sala; el Tótem te salva la vida.")
+	elif lives_left >= 0:
+		hint_label.text = Loc.f("Vuelves a empezar la sala. Vidas que te quedan: %d.", [lives_left])
 	else:
-		retry_button.set_label(Loc.t("Terminar la partida"))
-		hint_label.text = Loc.f("No te alcanza la claridad para reintentar la torre (cuesta %d).", [cost])
+		hint_label.text = ""
 	var listo := func(): return box.modulate.a > 0.5   # (las teclas valen cuando el cuadro ya se ve: la barra con la que se suelta una cornisa no debe actuar durante la caída)
 	hints.set_items([{"slot": PadGlyph.Slot.SOUTH, "key": "Espacio", "text": retry_button.text, "keycode": KEY_SPACE, "when": listo, "call": func(): retry.emit()},
 			{"slot": PadGlyph.Slot.WEST, "key": "Shift", "text": Loc.t("Salir al menú principal"), "keycode": KEY_SHIFT, "when": listo, "call": func(): menu.emit()}])
