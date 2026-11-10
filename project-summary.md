@@ -1,6 +1,6 @@
 # Lucid Stakes — resumen del proyecto (para brainstorming)
 
-> Contexto para otro asistente de IA. Estado a noviembre de 2026. El autor habla español rioplatense; **la interfaz y los diálogos del juego están en español neutro** (tuteo, sin voseo) y hay traducción al inglés. Los comentarios del código van en español. La carpeta local se llama "Balatro x Catherine" (de ahí salieron las inspiraciones: el casino con boosts de *Balatro* y los puzzles de torres de bloques de *Catherine*); el juego se llama **Lucid Stakes** y el repositorio es `sinesiuade/LucidStakes`.
+> Contexto para otro asistente de IA. Estado a noviembre de 2026. El autor habla español rioplatense; **la interfaz y los diálogos del juego están en español neutro** (tuteo, sin voseo) y hay traducción al inglés. Los comentarios del código van en español. La carpeta local se llama "Balatro x Catherine" (de ahí salieron las inspiraciones: el casino con boosts de *Balatro* y los puzzles de torres de bloques de *Catherine*); el juego se llama **Lucid Stakes** y el repositorio es `dante-sinesi/lucid-stakes`.
 
 ## 1. Nombre y propósito
 

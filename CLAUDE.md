@@ -4,7 +4,7 @@ Juego de puzzle de torres de cubos con casino y economía de boosts, en Godot 4.
 
 ## Cómo se trabaja (reglas del usuario)
 
-- **Git**: todo se sube a GitHub (origin `sinesiuade/LucidStakes`). Cada cambio nuevo en una rama propia; se mergea a `main` solo cuando el usuario y yo terminamos ese trabajo. Commitear y hacer push en cada hito.
+- **Git**: todo se sube a GitHub (origin `dante-sinesi/lucid-stakes`, cuenta de GitHub dante-sinesi). Cada cambio nuevo en una rama propia; se mergea a `main` solo cuando el usuario y yo terminamos ese trabajo. Commitear y hacer push en cada hito.
 - Diseño primero: los sistemas grandes se conversan antes de programarlos. No poner ayuda ni texto de depuración en el HUD.
 - Los tests y las capturas nunca tocan las partidas reales: usar `GAME_SANDBOX=1`.
 - Esperas bloqueantes: no dejar tareas en segundo plano y cortar el turno. Los topes de generación son de **trabajo** (contadores), no de tiempo, para que sea determinista.
