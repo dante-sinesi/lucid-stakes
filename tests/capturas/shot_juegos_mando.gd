@@ -12,7 +12,7 @@ func _init() -> void:
 	rng.seed = 3
 	var i := 0
 	for path in ["roulette_screen", "slots_screen", "blackjack_screen"]:
-		var s = load("res://scripts/%s.gd" % path).new()
+		var s = load("res://scripts/casino/%s.gd" % path).new()
 		root.add_child(s)
 		s.setup(run, rng, false)
 		for f in 40:
