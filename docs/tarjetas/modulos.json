@@ -1,0 +1,76 @@
+{
+ "tipo": "flujo",
+ "titulo": "Módulos del juego",
+ "columnas": 3,
+ "nodos": [
+  {
+   "id": "m",
+   "texto": "Escena principal",
+   "col": 1,
+   "fila": 0
+  },
+  {
+   "id": "t",
+   "texto": "Torre: el puzzle",
+   "col": 0,
+   "fila": 1
+  },
+  {
+   "id": "c",
+   "texto": "Casino",
+   "col": 1,
+   "fila": 1
+  },
+  {
+   "id": "u",
+   "texto": "Interfaz",
+   "col": 2,
+   "fila": 1
+  },
+  {
+   "id": "n",
+   "texto": "Solucionador en C++",
+   "col": 0,
+   "fila": 2
+  },
+  {
+   "id": "d",
+   "texto": "Datos y guardado",
+   "col": 1,
+   "fila": 2
+  },
+  {
+   "id": "i",
+   "texto": "Idiomas ES y EN",
+   "col": 2,
+   "fila": 2
+  }
+ ],
+ "flechas": [
+  {
+   "de": "m",
+   "a": "t"
+  },
+  {
+   "de": "m",
+   "a": "c"
+  },
+  {
+   "de": "m",
+   "a": "u"
+  },
+  {
+   "de": "t",
+   "a": "n"
+  },
+  {
+   "de": "c",
+   "a": "d"
+  },
+  {
+   "de": "u",
+   "a": "i"
+  }
+ ],
+ "pie": "La escena principal conecta la torre, el casino y la interfaz; el puzzle usa el solucionador en C++."
+}

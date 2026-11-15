@@ -1,0 +1,66 @@
+{
+ "tipo": "flujo",
+ "titulo": "De la sala generada a la torre",
+ "columnas": 3,
+ "nodos": [
+  {
+   "id": "g",
+   "texto": "Generador: propone salas",
+   "col": 0,
+   "fila": 0
+  },
+  {
+   "id": "s",
+   "texto": "Solucionador exacto",
+   "col": 1,
+   "fila": 0
+  },
+  {
+   "id": "f",
+   "texto": "Filtro y métricas",
+   "col": 2,
+   "fila": 0
+  },
+  {
+   "id": "b",
+   "texto": "Biblioteca de salas",
+   "col": 2,
+   "fila": 1
+  },
+  {
+   "id": "a",
+   "texto": "Armado por semilla",
+   "col": 1,
+   "fila": 1
+  },
+  {
+   "id": "j",
+   "texto": "Torre jugable",
+   "col": 0,
+   "fila": 1
+  }
+ ],
+ "flechas": [
+  {
+   "de": "g",
+   "a": "s"
+  },
+  {
+   "de": "s",
+   "a": "f"
+  },
+  {
+   "de": "f",
+   "a": "b"
+  },
+  {
+   "de": "b",
+   "a": "a"
+  },
+  {
+   "de": "a",
+   "a": "j"
+  }
+ ],
+ "pie": "Cada sala se genera, se resuelve y se filtra antes de llegar a una torre jugable."
+}

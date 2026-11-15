@@ -19,77 +19,11 @@ Un juego de puzzle de torres de cubos con un casino en el medio. Subes una torre
 
 El juego repite tres pasos en quince etapas. Primero la torre, después el casino y al final el peaje de Farolín, un farol que cuida la salida y cobra en claridad, la moneda del juego.
 
-<!-- diagrama: docs/diagramas/etapa.md#1 -->
-### Torre, casino y peaje
+<p align="center"><img src="docs/img/etapa.svg" alt="Una etapa del juego" width="760"><br><sub>En cada etapa se sube la torre, se juega el casino y se paga el peaje para seguir.</sub></p>
 
-```mermaid
-sequenceDiagram
-    actor J as Jugador
-    participant T as Torre
-    participant C as Casino
-    participant F as Farolín
-    J->>T: mover y empujar
-    T-->>J: portal alcanzado
-    J->>C: jugar y comprar
-    C-->>J: boosts y consumibles
-    J->>F: pedir paso
-    F-->>J: cobra el peaje
-    F->>T: torre siguiente
-```
-<!-- /diagrama -->
+<p align="center"><img src="docs/img/salas.svg" alt="De la sala generada a la torre" width="760"><br><sub>Cada sala se genera, se resuelve y se filtra antes de llegar a una torre jugable.</sub></p>
 
-Así es cada etapa: se sube la torre, se juega el casino y se paga el peaje para seguir.
-
-<!-- diagrama: docs/diagramas/salas.md#1 -->
-### De la sala generada a la torre jugable
-
-```mermaid
-flowchart TB
-    G["Generador<br/>propone salas"]
-    S["Solucionador exacto<br/>mínimo de movimientos"]
-    F["Filtro y métricas<br/>dificultad"]
-    B[("Biblioteca<br/>de salas")]
-    A["Armado de la torre<br/>por semilla"]
-    J["Torre jugable<br/>con tope de movimientos"]
-    G --> S
-    S --> F
-    F --> B
-    B --> A
-    A --> J
-```
-<!-- /diagrama -->
-
-Cada sala se genera, se resuelve y se filtra antes de llegar al juego; el solucionador también da su tope de movimientos.
-
-<!-- diagrama: docs/diagramas/modulos.md#1 -->
-### Dependencias entre módulos
-
-```mermaid
-flowchart TB
-    M["main.gd<br/>orquesta todo"]
-    T["torre/<br/>puzzle y armado"]
-    C["casino/<br/>ruleta, cartas, dados"]
-    D["datos/<br/>run, perfil, guardado"]
-    U["ui/<br/>menús y HUD"]
-    L["idioma/<br/>ES y EN"]
-    N["native/<br/>solucionador C++"]
-    B[("data/<br/>biblioteca de salas")]
-    M --> T
-    M --> C
-    M --> U
-    M --> D
-    T --> N
-    T --> B
-    C --> D
-    U --> L
-```
-<!-- /diagrama -->
-
-El archivo principal conecta la torre, el casino, los datos y la interfaz; el puzzle usa el solucionador en C++.
-
-
-
-
+<p align="center"><img src="docs/img/modulos.svg" alt="Módulos del juego" width="760"><br><sub>La escena principal conecta la torre, el casino y la interfaz; el puzzle usa el solucionador en C++.</sub></p>
 
 ## Cómo se ve
 

@@ -1,0 +1,63 @@
+{
+ "tipo": "secuencia",
+ "titulo": "Una etapa del juego",
+ "participantes": [
+  {
+   "id": "j",
+   "texto": "Jugador"
+  },
+  {
+   "id": "t",
+   "texto": "Torre"
+  },
+  {
+   "id": "c",
+   "texto": "Casino"
+  },
+  {
+   "id": "f",
+   "texto": "Farolín"
+  }
+ ],
+ "pasos": [
+  {
+   "de": "j",
+   "a": "t",
+   "texto": "mover y empujar"
+  },
+  {
+   "de": "t",
+   "a": "j",
+   "texto": "portal alcanzado",
+   "estilo": "punteada"
+  },
+  {
+   "de": "j",
+   "a": "c",
+   "texto": "jugar y comprar"
+  },
+  {
+   "de": "c",
+   "a": "j",
+   "texto": "boosts y consumibles",
+   "estilo": "punteada"
+  },
+  {
+   "de": "j",
+   "a": "f",
+   "texto": "pedir paso"
+  },
+  {
+   "de": "f",
+   "a": "j",
+   "texto": "cobra el peaje",
+   "estilo": "punteada"
+  },
+  {
+   "de": "f",
+   "a": "t",
+   "texto": "torre siguiente"
+  }
+ ],
+ "pie": "En cada etapa se sube la torre, se juega el casino y se paga el peaje para seguir."
+}

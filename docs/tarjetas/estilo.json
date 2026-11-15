@@ -1,0 +1,34 @@
+{
+ "nombre": "Pesadilla",
+ "composicion": "izquierda",
+ "alto": 260,
+ "colores": {
+  "fondo": "#120a22",
+  "titulo": "#f2c94c",
+  "texto": "#efe6ff",
+  "acento": "#b98bff"
+ },
+ "tipografia": {
+  "familia": "'Lucid Stakes', ui-monospace, monospace",
+  "peso_titulo": 700,
+  "peso_texto": 400,
+  "mayusculas": false
+ },
+ "sombra_titulo": "#000000",
+ "decoracion": {
+  "fondo_svg": "<g><rect x=\"500\" y=\"20\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.9\"/><rect x=\"500\" y=\"42\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.9\"/><rect x=\"500\" y=\"64\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.9\"/><rect x=\"500\" y=\"86\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.9\"/><rect x=\"500\" y=\"130\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.9\"/><rect x=\"500\" y=\"152\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.9\"/><rect x=\"500\" y=\"174\" width=\"20\" height=\"20\" fill=\"#7b3fd0\" opacity=\"0.9\"/><rect x=\"522\" y=\"20\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.85\"/><rect x=\"522\" y=\"108\" width=\"20\" height=\"20\" fill=\"#7b3fd0\" opacity=\"0.85\"/><rect x=\"522\" y=\"130\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.85\"/><rect x=\"522\" y=\"152\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.85\"/><rect x=\"522\" y=\"174\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.85\"/><rect x=\"544\" y=\"108\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.8\"/><rect x=\"544\" y=\"130\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.8\"/><rect x=\"566\" y=\"130\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.75\"/><rect x=\"588\" y=\"20\" width=\"20\" height=\"20\" fill=\"#4a2a86\" opacity=\"0.7\"/><rect x=\"588\" y=\"108\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.7\"/><rect x=\"588\" y=\"130\" width=\"20\" height=\"20\" fill=\"#7b3fd0\" opacity=\"0.7\"/><rect x=\"588\" y=\"152\" width=\"20\" height=\"20\" fill=\"#4a2a86\" opacity=\"0.7\"/><rect x=\"588\" y=\"174\" width=\"20\" height=\"20\" fill=\"#7b3fd0\" opacity=\"0.7\"/><rect x=\"610\" y=\"64\" width=\"20\" height=\"20\" fill=\"#4a2a86\" opacity=\"0.65\"/><rect x=\"610\" y=\"86\" width=\"20\" height=\"20\" fill=\"#4a2a86\" opacity=\"0.65\"/><rect x=\"632\" y=\"86\" width=\"20\" height=\"20\" fill=\"#4a2a86\" opacity=\"0.6\"/><rect x=\"632\" y=\"174\" width=\"20\" height=\"20\" fill=\"#7b3fd0\" opacity=\"0.6\"/><rect x=\"654\" y=\"152\" width=\"20\" height=\"20\" fill=\"#4a2a86\" opacity=\"0.55\"/><rect x=\"654\" y=\"174\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.55\"/><rect x=\"676\" y=\"86\" width=\"20\" height=\"20\" fill=\"#7b3fd0\" opacity=\"0.5\"/><rect x=\"698\" y=\"20\" width=\"20\" height=\"20\" fill=\"#7b3fd0\" opacity=\"0.44999999999999996\"/><rect x=\"698\" y=\"108\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.44999999999999996\"/><rect x=\"698\" y=\"130\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.44999999999999996\"/><rect x=\"698\" y=\"174\" width=\"20\" height=\"20\" fill=\"#3a2166\" opacity=\"0.44999999999999996\"/><rect x=\"720\" y=\"42\" width=\"20\" height=\"20\" fill=\"#7b3fd0\" opacity=\"0.39999999999999997\"/><rect x=\"720\" y=\"130\" width=\"20\" height=\"20\" fill=\"#2a1650\" opacity=\"0.39999999999999997\"/></g>",
+  "frente_svg": ""
+ },
+ "fuentes": [
+  {
+   "archivo": "web_fuente/fonts/lucid-stakes-400.woff2",
+   "familia": "Lucid Stakes",
+   "peso": 400
+  },
+  {
+   "archivo": "web_fuente/fonts/lucid-stakes-700.woff2",
+   "familia": "Lucid Stakes",
+   "peso": 700
+  }
+ ]
+}
